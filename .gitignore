@@ -1,0 +1,9 @@
+.superpowers
+node_modules
+.bufcache
+.gocache
+.gotmp
+gen
+_tmp_*
+playwright-report
+test-results

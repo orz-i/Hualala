@@ -23,6 +23,7 @@
 6. 发布策略采用混合模式：`backend + admin` 为主发布轨，`creator` 可独立发版
 7. `数据库迁移` 与 `环境模板` 进入主仓，完整私有化部署清单暂不作为 Phase 1 主体
 8. Phase 1 在原有生产主链基础上，新增 `DAG/工作流编排` 与 `成本计量/计费守卫`
+9. Phase 1 将正文版本化纳入最小实现，但动态样片预演只预留扩展边界，不作为 MVP 硬验收前置
 
 ## 3. 设计目标与非目标
 
@@ -88,6 +89,7 @@ Phase 1 采用 `混合收口型 monorepo`：
 │  ├─ env/
 │  └─ docker/
 ├─ docs/
+├─ tests/
 ├─ package.json
 ├─ pnpm-workspace.yaml
 ├─ turbo.json
@@ -107,6 +109,7 @@ Phase 1 采用 `混合收口型 monorepo`：
 | `tooling` | 工程工具 | 脚本、模板、生成器、开发辅助命令 |
 | `infra` | 运行时资产 | 数据库迁移、环境模板、最小 Docker 运行样板 |
 | `docs` | 设计与计划文档 | 规格说明、实施计划、数据库设计与后续 ADR |
+| `tests` | 跨应用验证 | e2e、集成测试与跨端验收脚本 |
 
 ### 5.2 顶层目录设计原则
 
@@ -471,6 +474,15 @@ Phase 1 采用混合发布模式：
 - `packages/sdk` 必须保持对两端前端应用的兼容
 - 若协议破坏兼容，应通过版本策略处理
 
+最低门禁建议固定为：
+
+- `buf lint`
+- `buf breaking`
+- `turbo run lint`
+- `turbo run test`
+- `turbo run build`
+- `go test ./...`
+
 ## 10. 本地开发与 CI 建议
 
 ### 10.1 推荐任务流
@@ -479,6 +491,8 @@ Phase 1 采用混合发布模式：
 
 ```text
 proto changed
+  -> buf lint
+  -> buf breaking
   -> buf generate
   -> sdk build/test
   -> admin build/test
@@ -494,6 +508,13 @@ proto changed
 - `turbo run test`
 - `turbo run build`
 - `turbo run dev`
+
+CI 中建议至少拆成以下 job：
+
+- `proto-contract`: 运行 `buf lint` 与 `buf breaking`
+- `frontend-quality`: 运行 `turbo run lint test build`
+- `backend-quality`: 运行 Go 单测与构建
+- `e2e-phase1`: 运行关键主链 E2E
 
 这样做的目的是：
 
@@ -586,6 +607,8 @@ proto changed
 8. `Shot` 不允许继续持有主素材、执行状态和审核状态字段
 9. `ExecutionService` 应作为镜头执行工作台的主接口
 10. `workflow` 与 `billing/usage` 对镜头的归因点应统一落在 `shot_execution_run`
+11. `tests/` 目录承担跨应用与跨协议验证，不把 E2E 混入单个应用目录
+12. `creator` 虽可独立发版，但不得绕开 `buf breaking` 与共享协议兼容门槛
 
 ## 13. 推荐的下一步
 

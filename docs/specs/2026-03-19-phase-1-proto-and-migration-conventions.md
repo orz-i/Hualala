@@ -85,12 +85,17 @@ proto/
 
 | Service | 最小接口 |
 | --- | --- |
+| `AuthService` | `GetCurrentSession`、`RefreshSession` |
+| `OrgService` | `ListMembers`、`ListRoles`、`UpdateMemberRole` |
+| `ProjectService` | `CreateProject`、`GetProject`、`ListProjects`、`ListEpisodes` |
 | `ContentService` | `ListShots`、`GetShot`、`UpdateShotStructure` |
 | `ExecutionService` | `GetShotExecution`、`ListShotExecutions`、`ListShotExecutionRuns`、`StartShotExecutionRun`、`SelectPrimaryAsset`、`SubmitShotForReview`、`MarkShotReworkRequired` |
 | `ReviewService` | `ListShotReviews`、`CreateShotReview`、`GetLatestShotReviewSummary` |
 | `AssetService` | `CreateImportBatch`、`ListImportBatchItems`、`ConfirmImportBatchItem`、`ListCandidateAssets` |
 | `WorkflowService` | `StartWorkflow`、`GetWorkflowRun`、`ListWorkflowRuns`、`CancelWorkflowRun`、`RetryWorkflowRun` |
 | `BillingService` | `GetBudgetSnapshot`、`ListUsageRecords`、`ListBillingEvents`、`UpdateBudgetPolicy` |
+
+Phase 1 当前不单列 `ApprovalService`。通用审批流配置与审批状态机不进入首批协议面；镜头审核与导演抽检统一通过 `ReviewService` 事件流承接。
 
 ### 3.3 硬边界规则
 
@@ -150,6 +155,13 @@ proto/
 - 详情对象不承担页面级无限扩展字段
 - 摘要对象用于列表、状态条、告警卡片
 - 聚合对象用于工作台或看板，不伪装成基础资源对象
+- 聚合对象应由拥有主状态真相的 service 暴露，避免出现跨域“万能查询服务”
+
+推荐归属如下：
+
+- `GetShotWorkbenchResponse` 由 `ExecutionService` 暴露
+- `GetShotPipelineOverviewResponse` 由 `ExecutionService` 暴露
+- 组织成员 / 角色治理类聚合响应由 `OrgService` 暴露
 
 ### 4.3 跨域引用规则
 
@@ -179,7 +191,7 @@ SSE 事件名统一使用点分语义：
 - `shot.execution.updated`
 - `shot.execution.run.created`
 - `shot.review.created`
-- `shot.review.updated`
+- `shot.review.summary.updated`
 - `workflow.updated`
 - `import_batch.updated`
 - `budget.updated`
@@ -191,6 +203,7 @@ SSE 事件名统一使用点分语义：
 2. RPC 名描述“你要做什么”
 3. 禁止把 RPC 动作名直接复用为事件名
 4. `shot.updated` 仅表示结构骨架变更
+5. `shot.review.created` 仅表示新增审核事件；如需表达摘要投影变化，应使用单独的 summary 类事件，而不是更新原始 review 事件
 
 ### 4.5 事件 envelope 规则
 
@@ -206,6 +219,12 @@ SSE 事件名统一使用点分语义：
 - `payload`
 
 其中 `payload` 只放该事件所需的最小摘要，不返回整页数据。
+
+### 4.6 状态机与事件写出约束
+
+1. 所有改变 `shot_executions`、`shot_execution_runs`、`workflow_runs`、`budget_policies` 等可观察状态的写操作，都应由拥有当前态真相的应用服务负责写出 `state_transitions` 与 `event_outbox`
+2. `AssetService`、`ReviewService` 可以触发执行态变化，但不得各自维护执行状态机真相；实际状态推进应由 `ExecutionService` 或对应应用编排层完成
+3. `event_outbox` 应显式承载 envelope 关键字段，`payload` 仅保留最小摘要
 
 ## 5. Greenfield Migration 规则
 
@@ -269,10 +288,12 @@ Phase 1 当前只允许描述 greenfield 初始建库：
 因此当前基线下：
 
 - `shots` 从第一天就是结构骨架
+- 正文版本化的最小实现通过 `content_snapshots` 落地，可与 Batch 2 的内容 migration 同批创建
 - `shot_executions.primary_asset_id` 从第一天就是主素材真相
 - `shot_candidate_assets` 从第一天就挂 `shot_execution_id`
 - `shot_reviews` 从第一天就是事件流
 - 不创建 `shot_asset_links`
+- 不创建 `approvals`
 
 ## 6. Phase 1 初始建库批次建议
 
@@ -289,7 +310,7 @@ Phase 1 当前只允许描述 greenfield 初始建库：
 
 ```text
 0005_content_create_story_bibles_characters.sql
-0006_content_create_scripts_storyboards.sql
+0006_content_create_scripts_storyboards_snapshots.sql
 0007_content_create_shots.sql
 ```
 
@@ -321,6 +342,12 @@ Phase 1 当前只允许描述 greenfield 初始建库：
 0015_review_create_shot_reviews.sql
 0016_billing_create_usage_budget_billing.sql
 ```
+
+说明：
+
+- Phase 1 首批 migration 不包含 `approvals`
+- Phase 1 首批 migration 不包含通用 `asset_links`
+- 角色 / 场景资产复用链路仅保留后续扩展边界
 
 ## 7. 对现有文档的影响分析
 
