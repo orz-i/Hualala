@@ -17,6 +17,8 @@
 - 高价值长链路任务以 Temporal 为主，普通异步任务继续使用 `jobs`
 - 数据库迁移路径以 `infra/migrations` 为准，不再以 `apps/backend/db/migrations` 为准
 - 后端目录组织以 [2026-03-19-phase-1-monorepo-design.md](D:/Documents/Hualala/docs/specs/2026-03-19-phase-1-monorepo-design.md) 为准，实施前需重排到 `domain / application / interfaces / platform`
+- `SSE` 仅用于状态推送，不作为多人实时协同编辑协议
+- `C2PA` 兼容与多轨音频链路属于后续阶段能力，一期只做数据与接口预留
 - 本文可继续作为一期任务拆分参考，但在正式执行前应先输出一份与最新总设计和数据库设计完全对齐的修订版实施计划
 
 ### Task 1: 初始化仓库、Buf 与共享通信层

@@ -342,6 +342,8 @@ packages/sdk/
 - 管理端与创作端共用的业务 ViewModel
 - UI 组件
 - 页面级别 DTO 和状态管理逻辑
+- `WebSocket + CRDT` 协同适配器
+- Yjs provider、富文本协同 binding、协同状态缓存
 
 ### 7.6 前端类型策略
 
@@ -360,6 +362,15 @@ packages/sdk/
 - `domain/workflow`：负责工作流实例与节点语义
 - `domain/usage`：负责使用量事实模型
 - `domain/billing`：负责额度、预算、预警与熔断规则
+
+### 7.8 实时协同与来源凭证的放置原则
+
+针对后续调研里新增的两类能力，本仓结构建议保持以下纪律：
+
+1. `SSE` 继续只承担单向状态推送，不承担剧本 / 分镜板的多人实时共编
+2. 实时协同编辑在后续阶段单独采用 `WebSocket + CRDT / Yjs`，并优先放在各应用自身的协同模块，而不是直接塞入当前 `packages/sdk`
+3. `packages/sdk` 仍保持“薄通信层”定位，只共享稳定的 Connect / SSE / Upload Session 能力
+4. `C2PA` 与来源凭证能力优先体现在后端资产模型和导入 / 导出流程边界，不在当前 monorepo 中单独抽一个通用前端包
 
 ## 8. 工程编排与工具链设计
 

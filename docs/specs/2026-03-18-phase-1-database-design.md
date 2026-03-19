@@ -253,7 +253,16 @@ Phase 1 必须优先落地的主干表为：
 - `paused`
 - `archived`
 
-### 5.9 `upload_sessions`
+### 5.9 媒体来源凭证与多轨音频预留边界
+
+虽然 Phase 1 不把 `C2PA` 和多轨音频链路纳入主干交付，但数据库层应明确预留兼容边界：
+
+- `media_assets` 必须允许 `audio` 作为合法媒体类型
+- `media_assets.meta` 应预留 `provenance`、`content_credentials`、`generator_info` 等扩展位
+- 后续建议增加 `asset_provenance_records`，保存来源凭证与导入 / 导出挂载记录
+- 后续建议增加 `timeline_tracks / track_asset_bindings`，表达镜头与对白、拟音、环境音、配乐等多轨资产的时间轴绑定
+
+### 5.10 `upload_sessions`
 
 `upload_sessions` 管一次上传行为，和 `import_batches` 的“业务批次”不是同一层。
 
@@ -646,7 +655,7 @@ create table if not exists media_assets (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     constraint uq_media_assets_storage_key unique (storage_key),
-    constraint chk_media_assets_media_type check (media_type in ('image', 'video')),
+    constraint chk_media_assets_media_type check (media_type in ('image', 'video', 'audio')),
     constraint chk_media_assets_status check (status in ('active', 'archived', 'invalid')),
     constraint chk_media_assets_source_type check (
         source_type in (
@@ -1206,7 +1215,8 @@ create index if not exists idx_event_outbox_project_created
 2. `story_bibles / characters / scripts / storyboards / content_snapshots`
 3. `approvals / asset_links`
 4. `workflow_runs / workflow_steps / usage_records / budget_policies / billing_events`
-5. 如确有需要，再补 `job_events` 等时间线专用表
+5. `asset_provenance_records / timeline_tracks / track_asset_bindings`
+6. 如确有需要，再补 `job_events` 等时间线专用表
 
 Phase 1 当前不建议单独建立 `job_events`，任务进度优先使用：
 
@@ -1216,3 +1226,8 @@ Phase 1 当前不建议单独建立 `job_events`，任务进度优先使用：
 - `event_outbox`
 
 来承载。
+
+对于本轮调研新增结论，数据库层建议明确两条边界：
+
+1. 实时协同编辑不建立在 `SSE` 之上，后续如做多人正文共编，应单独引入 `WebSocket + CRDT` 协议与操作日志存储
+2. 音频和来源凭证不应继续作为视觉资产附属备注处理，而应通过独立媒体类型与后续专用绑定表建模

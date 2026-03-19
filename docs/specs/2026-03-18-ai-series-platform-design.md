@@ -167,6 +167,10 @@
 2. `SSE` 负责长任务状态与业务事件推送
 3. `Upload Session` 负责图片 / 视频等大文件导入
 
+对于未来的多人实时协同编辑，建议单独增加第四类通信通道，但不纳入 Phase 1 主实现：
+
+4. `WebSocket + CRDT` 负责剧本、分镜板等高实时共编场景
+
 #### Connect RPC 适用范围
 
 Connect RPC 负责以下业务接口：
@@ -193,6 +197,8 @@ SSE 仅用于服务端向前端推送状态变化，主要包括：
 - `budget.updated`
 - `billing.alert`
 - `system.notice`
+
+SSE 不承担剧本、分镜板等正文对象的多人实时协同编辑。该类场景在后续阶段应采用 `WebSocket + CRDT` 架构，避免多人并发修改时出现版本覆盖与离线合并冲突。
 
 #### Upload Session 适用范围
 
@@ -316,6 +322,8 @@ Connect RPC、SSE、Upload Session 三层都必须共用同一套组织隔离与
 - `Media Asset`
 - `Import Batch`
 - `Reference Frame`
+- `Audio Track`
+- `Track Binding`
 - `Shot Pack`
 - `Preview Cut`
 - `Asset Library`
@@ -328,6 +336,8 @@ Connect RPC、SSE、Upload Session 三层都必须共用同一套组织隔离与
 
 - `Shot`：作为分镜下的镜头单元，支持独立状态流转
 - `Reference Frame`：作为镜头执行参考图的独立资产类型
+- `Provenance Credential`：用于保存素材来源凭证、AI 生成声明和后续 C2PA 兼容元数据
+- `Track Binding`：用于表达镜头时间轴与对白、拟音、环境音、配乐等多轨音频的绑定关系
 - `Shot Composition Notes`：用于保存构图重点、主体位置、必须出现元素、禁止项等结构化字段
 - `Shot Review Reason`：用于记录导演或审核打回原因标签
 - `Primary Asset` / `Candidate Assets`：用于表达单镜头的主素材与候选素材集合
@@ -352,6 +362,8 @@ Connect RPC、SSE、Upload Session 三层都必须共用同一套组织隔离与
 7. 视觉资产必须允许双挂接，既可挂到镜头，也可挂到角色 / 场景，以兼顾当前执行与后续复用
 8. 单镜头素材必须支持“1 份主素材 + 多份候选素材”的结构，避免审核与替换过程丢失上下文
 9. `Shot` 必须承载镜头类型、运镜方式、主体动作和连续性备注，作为后续审核、抽检、模板复用和导演意图标准化的核心字段
+10. 媒体资产必须预留来源凭证挂载位，兼容后续 `C2PA Content Credentials` 与人类贡献记录
+11. 音频资产必须独立于单一视觉主素材建模，为对白、拟音、环境音、配乐等多轨结构预留绑定空间
 
 ## 7. 核心流程设计
 
@@ -471,6 +483,7 @@ Connect RPC、SSE、Upload Session 三层都必须共用同一套组织隔离与
 
 - 角色 / 场景一致性资产
 - 版权溯源与人类贡献记录
+- `C2PA Content Credentials` 兼容导入 / 导出
 - 更强的模型网关与算力路由
 - 更细粒度的成本归因与组织级统计
 
@@ -483,7 +496,8 @@ Connect RPC、SSE、Upload Session 三层都必须共用同一套组织隔离与
 聚焦能力：
 
 - 实时协同编辑
-- 音频多轨链路
+- 实时协同编辑（`WebSocket + CRDT / Yjs`）
+- 音频多轨链路（对白 / 拟音 / 环境音 / 配乐）
 - 帧级审片与空间批注
 - 更完整的视觉素材治理与资产复用
 
@@ -593,6 +607,8 @@ Connect RPC、SSE、Upload Session 三层都必须共用同一套组织隔离与
 - 对象级状态锁或编辑租约
 - 草稿版本与发布版本分离
 - 评论、指派、审批全程留痕
+- Phase 1 不把 SSE 误用为实时共编协议
+- 后续多人正文共编采用 `WebSocket + CRDT`，解决弱网与离线重连下的合并冲突
 
 ### 10.6 导演意图交接失真风险
 
@@ -648,6 +664,8 @@ Connect RPC、SSE、Upload Session 三层都必须共用同一套组织隔离与
 - 增加结构化镜头卡
 - 增加执行基准图确认流
 - 增加镜头一致性质检
+- 增加素材来源凭证与 C2PA 兼容导入 / 导出
+- 增加多轨音频绑定与时间轴级审阅
 
 ## 11. 测试与验收原则
 
