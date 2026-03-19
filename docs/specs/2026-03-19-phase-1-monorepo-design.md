@@ -21,6 +21,7 @@
 5. UI 组件和业务 ViewModel 由 `admin`、`creator` 各端自管
 6. 发布策略采用混合模式：`backend + admin` 为主发布轨，`creator` 可独立发版
 7. `数据库迁移` 与 `环境模板` 进入主仓，完整私有化部署清单暂不作为 Phase 1 主体
+8. Phase 1 在原有生产主链基础上，新增 `DAG/工作流编排` 与 `成本计量/计费守卫`
 
 ## 3. 设计目标与非目标
 
@@ -142,6 +143,8 @@ apps/backend/
 │  │  ├─ content/
 │  │  ├─ asset/
 │  │  ├─ workflow/
+│  │  ├─ usage/
+│  │  ├─ billing/
 │  │  └─ review/
 │  ├─ application/
 │  │  ├─ authapp/
@@ -150,6 +153,8 @@ apps/backend/
 │  │  ├─ contentapp/
 │  │  ├─ assetapp/
 │  │  ├─ workflowapp/
+│  │  ├─ usageapp/
+│  │  ├─ billingapp/
 │  │  └─ reviewapp/
 │  ├─ interfaces/
 │  │  ├─ connect/
@@ -160,6 +165,9 @@ apps/backend/
 │     ├─ db/
 │     ├─ storage/
 │     ├─ events/
+│     ├─ temporal/
+│     ├─ pricing/
+│     ├─ budget/
 │     ├─ authz/
 │     ├─ config/
 │     └─ observability/
@@ -228,6 +236,8 @@ apps/backend/
 | `content` | 世界观、角色、剧本、分镜、镜头正文 |
 | `asset` | 导入批次、上传、媒体资产、镜头挂接、候选池 |
 | `workflow` | 长任务、状态迁移、事件出站、流程推进 |
+| `usage` | 模型调用、视频秒数、存储量等使用量事实记录 |
+| `billing` | 额度、预算、预警、拒绝与熔断策略 |
 | `review` | 审批、导演抽检、打回与结论 |
 
 ### 6.5 依赖方向
@@ -272,6 +282,7 @@ proto/
 ├─ hualala/content/v1/
 ├─ hualala/asset/v1/
 ├─ hualala/workflow/v1/
+├─ hualala/billing/v1/
 └─ hualala/review/v1/
 ```
 
@@ -339,6 +350,16 @@ packages/sdk/
 - 管理端自行维护审批页、配置页、成员管理页的 ViewModel
 - 创作端自行维护工作台、剧本编辑、镜头工作区、素材确认页的 ViewModel
 - 前端页面层可基于 proto 生成类型做适配，但不反向抽成共享业务类型包
+
+### 7.7 Phase 1 增量边界
+
+本设计在调研优化后，要求 `proto` 与后端内部结构同步补足以下边界：
+
+- `workflow/v1`：面向高价值长链路工作流实例，而不再只表达平面 job 动作
+- `billing/v1`：面向预算快照、使用量明细、成本事件与预算策略管理
+- `domain/workflow`：负责工作流实例与节点语义
+- `domain/usage`：负责使用量事实模型
+- `domain/billing`：负责额度、预算、预警与熔断规则
 
 ## 8. 工程编排与工具链设计
 
