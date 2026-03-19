@@ -5,7 +5,16 @@
 本文用于固化 Phase 1 的两类工程约束：
 
 1. `proto` 的领域边界、服务归属、消息命名、事件命名与跨域引用规则
-2. `infra/migrations` 的编号、命名、批次、回填与兼容窗口规则
+2. `infra/migrations` 的 greenfield 初始建库编号、命名与批次规则
+
+当前项目以 `纯 greenfield 基线` 为前提：
+
+- 不考虑旧 schema 迁移
+- 不考虑历史数据回填
+- 不考虑兼容表与双写过渡
+- 不在主线中引入 `shot_asset_links`
+
+如未来真的出现 PoC 旧库或临时数据迁移需求，应另写附录，不回灌当前基线文档。
 
 本文是以下文档的补充约束源：
 
@@ -24,7 +33,7 @@
 - SSE 事件命名与事件 envelope 规则
 - 跨域轻引用与聚合查询的建模规则
 - `infra/migrations` 的编号与命名规范
-- schema 变更、数据回填、切换与遗留清理的执行顺序
+- Phase 1 初始建库批次与正式文件名建议
 
 ### 2.2 本文不覆盖范围
 
@@ -33,6 +42,7 @@
 - 页面级 ViewModel 设计
 - 具体 Temporal workflow 定义
 - 具体 CI 命令实现
+- 任何 legacy schema 迁移方案
 
 ## 3. Proto 领域边界
 
@@ -197,7 +207,7 @@ SSE 事件名统一使用点分语义：
 
 其中 `payload` 只放该事件所需的最小摘要，不返回整页数据。
 
-## 5. Migration 规则
+## 5. Greenfield Migration 规则
 
 ### 5.1 编号规则
 
@@ -232,11 +242,10 @@ NNNN_<domain>_<action>_<target>.sql
 推荐示例：
 
 ```text
-0003_execution_create_shot_executions.sql
-0004_execution_create_shot_execution_runs.sql
-0005_execution_backfill_shot_executions_from_shots.sql
-0006_asset_backfill_candidate_assets_execution_refs.sql
-0007_review_create_shot_reviews.sql
+0008_execution_create_shot_executions.sql
+0009_execution_create_shot_execution_runs.sql
+0012_asset_create_import_batches_upload_sessions.sql
+0015_review_create_shot_reviews.sql
 ```
 
 禁止长期使用：
@@ -245,109 +254,94 @@ NNNN_<domain>_<action>_<target>.sql
 - `update_xxx.sql`
 - `misc.sql`
 - `fix.sql`
+- `backfill_xxx.sql`
+- `compat_xxx.sql`
 
-### 5.3 批次与执行顺序
+### 5.3 初始建库原则
 
-schema 演进固定采用：
+Phase 1 当前只允许描述 greenfield 初始建库：
 
-```text
-expand -> backfill -> switch -> contract
-```
+1. 直接创建目标模型
+2. 不创建只为兼容旧 schema 存在的表
+3. 不写回填 migration
+4. 不写双读 / 双写 / 切换窗口说明
 
-各阶段含义如下：
+因此当前基线下：
 
-1. `expand`
-   - 新增表、新增列、新增索引
-   - 不删除旧结构
-2. `backfill`
-   - 把旧数据迁移到新结构
-   - 要求幂等、可重跑
-3. `switch`
-   - 应用切到新读写入口
-   - 旧结构只保兼容读，不鼓励长期双写
-4. `contract`
-   - 删除遗留列、遗留读路径、兼容表
+- `shots` 从第一天就是结构骨架
+- `shot_executions.primary_asset_id` 从第一天就是主素材真相
+- `shot_candidate_assets` 从第一天就挂 `shot_execution_id`
+- `shot_reviews` 从第一天就是事件流
+- 不创建 `shot_asset_links`
 
-禁止在一个 migration 中同时完成：
+## 6. Phase 1 初始建库批次建议
 
-- 建表
-- 数据回填
-- 删除旧字段
-
-### 5.4 回填规则
-
-所有回填 migration 必须满足：
-
-1. 幂等
-2. 可重复执行
-3. 明确映射假设
-4. 带校验查询
-5. 失败可人工复盘
-
-### 5.5 兼容窗口规则
-
-兼容窗口采用以下策略：
-
-- 优先双读过渡
-- 谨慎双写过渡
-- 必须明确结束点
-
-具体规则：
-
-1. 兼容层只用于过渡，不得成为长期主写入口
-2. 一旦新服务与新页面切换完成，应进入遗留清理阶段
-3. 禁止新增功能继续写回旧过载字段
-
-## 6. Shot 拆分的推荐迁移顺序
-
-针对 `Shot -> ShotExecution -> ShotExecutionRun -> ShotReview` 拆分，推荐序列如下：
+### Batch 1：治理与项目骨架
 
 ```text
-0003_execution_create_shot_executions.sql
-0004_execution_create_shot_execution_runs.sql
-0005_execution_backfill_shot_executions_from_shots.sql
-0006_execution_backfill_runs_from_shots.sql
-0007_asset_backfill_candidate_assets_execution_refs.sql
-0008_review_expand_shot_reviews_links.sql
-0009_execution_switch_primary_asset_truth.sql
-0010_cleanup_drop_legacy_shot_fields.sql
+0001_org_create_organizations.sql
+0002_org_create_users_memberships_roles.sql
+0003_project_create_projects.sql
+0004_project_create_episodes.sql
 ```
 
-建议回填假设写死为：
+### Batch 2：内容结构骨架
 
-1. 每个旧 `Shot` 回填一条 `shot_executions`
-2. 若旧数据没有轮次概念，则补一条 `run_no = 1` 的 `shot_execution_runs`
-3. 旧 `shots.primary_asset_id` 若存在，则回填到 `shot_executions.primary_asset_id`
-4. 旧 `shot_candidate_assets` 必须补 `shot_execution_id`
-5. 旧审核记录若缺执行轮次信息，允许只挂 `shot_id`
+```text
+0005_content_create_story_bibles_characters.sql
+0006_content_create_scripts_storyboards.sql
+0007_content_create_shots.sql
+```
 
-建议校验项至少包括：
+### Batch 3：镜头执行链
 
-1. `shots` 数量与 `shot_executions` 数量一致
-2. 每个 `shot_execution` 都有合法 `shot_id`
-3. 同一 `shot` 下 `run_no` 唯一
-4. 候选池不存在悬空 `shot_execution_id`
+```text
+0008_execution_create_shot_executions.sql
+0009_execution_create_shot_execution_runs.sql
+```
+
+### Batch 4：工作流主干
+
+```text
+0010_workflow_create_jobs_workflow_runs.sql
+0011_workflow_create_workflow_steps_state_transitions_outbox.sql
+```
+
+### Batch 5：资产接入链
+
+```text
+0012_asset_create_import_batches_upload_sessions.sql
+0013_asset_create_upload_files_media_assets.sql
+0014_asset_create_import_batch_items_candidate_assets.sql
+```
+
+### Batch 6：审核与成本治理
+
+```text
+0015_review_create_shot_reviews.sql
+0016_billing_create_usage_budget_billing.sql
+```
 
 ## 7. 对现有文档的影响分析
 
 ### 7.1 直接影响分析
 
 - 总设计中的 proto 与服务边界应引用本文，不再各自重复命名规则
-- 数据库设计稿中的 migration 章节应以本文作为命名与回填规范
+- 数据库设计稿中的 migration 章节应以本文作为 greenfield 初始建库规范
 - monorepo 设计中的 `proto/sdk` 边界应以本文作为协议约束源
-- 对齐版实施计划中的 migration 文件名允许作为任务占位，但正式落地应遵循本文
+- 对齐版实施计划中的 migration 文件名应直接对齐本文，不再保留模糊占位名
 
 ### 7.2 间接影响分析
 
 - 前端 SDK 生成代码会围绕 `content / execution / review / workflow / billing` 清晰分域
 - 前后端聚合查询会更倾向显式工作台 response，而不是继续膨胀单一资源对象
-- 迁移实施时可以更早结束遗留兼容窗口，降低双真相风险
+- 数据库主线不再被兼容层和临时迁移方案污染
 
 ### 7.3 数据结构兼容性
 
-- 本文不改变 `shot_id` 作为稳定核心标识
-- 本文不要求立刻删除兼容表，但要求兼容表不再成为长期主真相
-- 本文允许旧审核记录只挂 `shot_id`，以换取平滑迁移
+- 当前基线不讨论旧数据兼容
+- 当前基线不讨论旧客户端兼容
+- 若未来出现历史包袱，应以新附录单独处理，不修改本基线
 
 ## 8. 推荐的下一步
 

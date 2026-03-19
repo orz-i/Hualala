@@ -8,6 +8,8 @@
 
 **Tech Stack:** Go 1.24、PostgreSQL、Connect RPC、Buf、SSE、Upload Session、Temporal、对象存储适配层、pnpm workspace、turbo、React、Vite、Tauri 2、Tailwind CSS、shadcn/ui、Vitest、React Testing Library、Playwright
 
+**Baseline:** 当前计划以纯 greenfield 初始建库为前提，不创建兼容表，不写回填 migration，不讨论旧 schema 迁移。
+
 ---
 
 ## 仓库结构与职责映射
@@ -29,13 +31,6 @@
 - `apps/backend/internal/application`: 用例编排
 - `apps/backend/internal/interfaces`: Connect/SSE/HTTP/Upload 适配层
 - `apps/backend/internal/platform`: PostgreSQL、Temporal、对象存储、价格映射、预算守卫等技术实现
-
-### 本计划与旧计划的关系
-
-- 本计划替代 [2026-03-18-phase-1-ai-series-platform.md](D:/Documents/Hualala/docs/plans/2026-03-18-phase-1-ai-series-platform.md) 作为正式执行基线
-- 旧计划保留为历史草稿，不再作为落地目录和任务顺序依据
-
----
 
 ### Task 1: 初始化 monorepo、Turbo、Buf 与共享通信层
 
@@ -220,8 +215,13 @@ git commit -m "feat: bootstrap backend composition root and transports"
 - `apps/backend/internal/application/contentapp/service.go`
 - `apps/backend/internal/interfaces/connect/content_handler.go`
 - `apps/backend/internal/platform/db/content_repository.go`
-- `infra/migrations/0001_init_org_project.sql`
-- `infra/migrations/0002_init_story_content.sql`
+- `infra/migrations/0001_org_create_organizations.sql`
+- `infra/migrations/0002_org_create_users_memberships_roles.sql`
+- `infra/migrations/0003_project_create_projects.sql`
+- `infra/migrations/0004_project_create_episodes.sql`
+- `infra/migrations/0005_content_create_story_bibles_characters.sql`
+- `infra/migrations/0006_content_create_scripts_storyboards.sql`
+- `infra/migrations/0007_content_create_shots.sql`
 
 **关键要求:**
 - `Shot` 只保留结构骨架字段，不再出现主素材、执行状态、审核状态
@@ -242,7 +242,8 @@ git commit -m "feat: bootstrap backend composition root and transports"
 - `apps/backend/internal/application/executionapp/service.go`
 - `apps/backend/internal/interfaces/connect/execution_handler.go`
 - `apps/backend/internal/platform/db/execution_repository.go`
-- `infra/migrations/0003_init_shot_execution.sql`
+- `infra/migrations/0008_execution_create_shot_executions.sql`
+- `infra/migrations/0009_execution_create_shot_execution_runs.sql`
 - `proto/hualala/execution/v1/execution.proto`
 
 **关键要求:**
@@ -263,7 +264,8 @@ git commit -m "feat: bootstrap backend composition root and transports"
 - `apps/backend/internal/platform/temporal/workflows/high_value_generation.go`
 - `apps/backend/internal/platform/db/workflow_repository.go`
 - `apps/backend/internal/platform/db/job_repository.go`
-- `infra/migrations/0004_init_workflow_core.sql`
+- `infra/migrations/0010_workflow_create_jobs_workflow_runs.sql`
+- `infra/migrations/0011_workflow_create_workflow_steps_state_transitions_outbox.sql`
 - `proto/hualala/workflow/v1/workflow.proto`
 
 **关键要求:**
@@ -284,13 +286,15 @@ git commit -m "feat: bootstrap backend composition root and transports"
 - `apps/backend/internal/interfaces/connect/asset_handler.go`
 - `apps/backend/internal/interfaces/upload/upload_handler.go`
 - `apps/backend/internal/platform/db/asset_repository.go`
-- `infra/migrations/0005_init_asset_import.sql`
+- `infra/migrations/0012_asset_create_import_batches_upload_sessions.sql`
+- `infra/migrations/0013_asset_create_upload_files_media_assets.sql`
+- `infra/migrations/0014_asset_create_import_batch_items_candidate_assets.sql`
 - `proto/hualala/asset/v1/asset.proto`
 
 **关键要求:**
 - 导入确认后更新 `ShotExecution.primary_asset_id`
 - 候选池主挂 `shot_execution_id`，可选挂 `shot_execution_run_id`
-- `shot_asset_links` 仅保留兼容写读窗口
+- 不创建 `shot_asset_links`，主素材真相直接写 `shot_executions.primary_asset_id`
 - `media_assets` 继续允许 `audio` 并保留来源凭证扩展位
 
 **验证:**
@@ -306,7 +310,7 @@ git commit -m "feat: bootstrap backend composition root and transports"
 - `apps/backend/internal/application/reviewapp/service.go`
 - `apps/backend/internal/interfaces/connect/review_handler.go`
 - `apps/backend/internal/platform/db/review_repository.go`
-- `infra/migrations/0006_init_shot_review.sql`
+- `infra/migrations/0015_review_create_shot_reviews.sql`
 - `proto/hualala/review/v1/review.proto`
 
 **关键要求:**
@@ -328,7 +332,7 @@ git commit -m "feat: bootstrap backend composition root and transports"
 - `apps/backend/internal/interfaces/connect/billing_handler.go`
 - `apps/backend/internal/platform/pricing/catalog.go`
 - `apps/backend/internal/platform/budget/guard.go`
-- `infra/migrations/0007_init_usage_billing.sql`
+- `infra/migrations/0016_billing_create_usage_budget_billing.sql`
 - `proto/hualala/billing/v1/billing.proto`
 
 **关键要求:**

@@ -4,7 +4,7 @@
 
 本文是 [AI 剧集生产协作平台总设计](D:/Documents/Hualala/docs/specs/2026-03-18-ai-series-platform-design.md) 的数据库落地稿，聚焦 Phase 1 的核心生产链，不覆盖完整商业化计费与后续 SaaS 扩展细节。
 
-关于 `proto` 领域边界、事件命名、migration 编号与回填规则，统一以 [Phase 1 Proto 与 Migration 约定](D:/Documents/Hualala/docs/specs/2026-03-19-phase-1-proto-and-migration-conventions.md) 为准。
+关于 `proto` 领域边界、事件命名、migration 编号与初始建库规则，统一以 [Phase 1 Proto 与 Migration 约定](D:/Documents/Hualala/docs/specs/2026-03-19-phase-1-proto-and-migration-conventions.md) 为准。
 
 本文主要解决四件事：
 
@@ -55,7 +55,7 @@
 这样做的原因是：
 
 - 私有化环境差异大
-- 批量导入与数据回填较多
+- 批量导入与异步任务较多
 - 需要更灵活地处理异步任务和补偿逻辑
 
 但代价也明确存在：
@@ -111,7 +111,6 @@
 | `upload_files` | 上传文件记录 | P0 |
 | `media_assets` | 正式沉淀后的素材资产 | P0 |
 | `import_batch_items` | 自动匹配与人工确认中间层 | P0 |
-| `shot_asset_links` | 镜头当前主素材 | P0 |
 | `shot_candidate_assets` | 镜头候选素材池 | P0 |
 | `asset_links` | 角色 / 场景 / 镜头多目标挂接 | P1 |
 
@@ -146,7 +145,6 @@ Phase 1 必须优先落地的主干表为：
 - `upload_files`
 - `media_assets`
 - `import_batch_items`
-- `shot_asset_links`
 - `shot_candidate_assets`
 - `jobs`
 - `workflow_runs`
@@ -240,9 +238,9 @@ Phase 1 必须优先落地的主干表为：
 - `rejected`
 - `archived`
 
-### 5.6 `shot_asset_links`
+### 5.6 主素材真相
 
-`shot_asset_links` 在拆分后建议退化为兼容层。当前主素材真相应收口到 `shot_executions.primary_asset_id`，本表仅在迁移窗口内保留。
+Phase 1 当前采用纯 greenfield 基线，不创建 `shot_asset_links`。镜头主素材真相直接收口到 `shot_executions.primary_asset_id`。
 
 ### 5.7 `shot_reviews`
 
@@ -529,7 +527,6 @@ Phase 1 必须优先落地的主干表为：
 - `shots.storyboard_id` 找不到分镜
 - `media_assets.import_batch_id` 指向不存在批次
 - `import_batch_items.media_asset_id` 指向不存在素材
-- `shot_asset_links.primary_asset_id` 找不到素材
 - `shot_candidate_assets.shot_execution_id` 找不到执行态
 - `shot_candidate_assets.asset_id` 找不到素材
 - `shot_reviews.shot_execution_run_id` 找不到执行轮次
@@ -561,29 +558,31 @@ Phase 1 必须优先落地的主干表为：
 - `shot_executions`
 - `shot_execution_runs`
 
-### Batch 4：资产接入链
+### Batch 4：工作流主干
+
+- `jobs`
+- `workflow_runs`
+- `workflow_steps`
+- `state_transitions`
+- `event_outbox`
+
+### Batch 5：资产接入链
 
 - `import_batches`
 - `upload_sessions`
 - `upload_files`
 - `media_assets`
 - `import_batch_items`
-- `shot_asset_links`
 - `shot_candidate_assets`
 - `asset_links`
 
-### Batch 5：流程与事件
+### Batch 6：审核与成本治理
 
-- `jobs`
-- `workflow_runs`
-- `workflow_steps`
+- `approvals`
+- `shot_reviews`
 - `usage_records`
 - `budget_policies`
 - `billing_events`
-- `approvals`
-- `shot_reviews`
-- `state_transitions`
-- `event_outbox`
 
 ## 9. SQL 草案
 
@@ -934,25 +933,9 @@ create index if not exists idx_import_batch_items_pending_review
     where status = 'pending_review';
 ```
 
-### 9.9 `shot_asset_links`
+### 9.9 主素材真相约束
 
-```sql
-create table if not exists shot_asset_links (
-    id uuid primary key,
-    shot_id uuid not null,
-    primary_asset_id uuid not null,
-    confirmed_by uuid not null,
-    confirmed_at timestamptz not null,
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now(),
-    constraint uq_shot_asset_links_shot unique (shot_id)
-);
-
-create index if not exists idx_shot_asset_links_primary_asset
-    on shot_asset_links (primary_asset_id);
-create index if not exists idx_shot_asset_links_confirmed_by
-    on shot_asset_links (confirmed_by, confirmed_at desc);
-```
+Phase 1 当前不创建 `shot_asset_links`。镜头主素材真相直接落在 `shot_executions.primary_asset_id`，候选池与提审链路围绕 `shot_execution_id` / `shot_execution_run_id` 展开。
 
 ### 9.10 `shot_candidate_assets`
 

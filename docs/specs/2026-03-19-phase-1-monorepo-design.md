@@ -5,7 +5,7 @@
 本文是对以下文档的仓库与工程组织层补充设计：
 
 - [AI 剧集生产协作平台设计文档](D:/Documents/Hualala/docs/specs/2026-03-18-ai-series-platform-design.md)
-- [AI 剧集平台 Phase 1 实施计划](D:/Documents/Hualala/docs/plans/2026-03-18-phase-1-ai-series-platform.md)
+- [AI 剧集平台 Phase 1 对齐版实施计划](D:/Documents/Hualala/docs/plans/2026-03-19-phase-1-ai-series-platform-aligned-plan.md)
 - [AI 剧集平台 Phase 1 数据库设计稿](D:/Documents/Hualala/docs/specs/2026-03-18-phase-1-database-design.md)
 - [AI 剧集平台 Phase 1 Proto 与 Migration 约定](D:/Documents/Hualala/docs/specs/2026-03-19-phase-1-proto-and-migration-conventions.md)
 
@@ -469,7 +469,7 @@ Phase 1 采用混合发布模式：
 
 - `proto` 改动必须通过 Buf 检查
 - `packages/sdk` 必须保持对两端前端应用的兼容
-- 若协议破坏兼容，应通过版本策略或显式迁移窗口处理
+- 若协议破坏兼容，应通过版本策略处理
 
 ## 10. 本地开发与 CI 建议
 
@@ -517,9 +517,9 @@ proto changed
 
 ### 11.1 直接影响分析
 
-#### 对现有 Phase 1 实施计划的影响
+#### 对现有 Phase 1 对齐版实施计划的影响
 
-现有 [Phase 1 实施计划](D:/Documents/Hualala/docs/plans/2026-03-18-phase-1-ai-series-platform.md) 中已经提出了：
+现有 [Phase 1 对齐版实施计划](D:/Documents/Hualala/docs/plans/2026-03-19-phase-1-ai-series-platform-aligned-plan.md) 中已经提出了：
 
 - `apps/backend`
 - `apps/admin`
@@ -527,7 +527,7 @@ proto changed
 - `proto`
 - `packages/sdk`
 
-因此总体方向兼容，不会推翻主计划。
+因此总体方向一致，不会推翻当前执行基线。
 
 但以下路径需要以本文为准进行调整：
 
@@ -563,14 +563,14 @@ proto changed
 3. 前端页面类型不再试图抽取到共享包，有助于降低管理端与创作端耦合
 4. 后端跨领域调用会被强制提升到 `application` 层，减少隐式依赖扩散
 
-### 11.3 数据结构兼容性分析
+### 11.3 Greenfield 基线分析
 
-本次文档在 `Shot` 相关数据结构上存在明确增量变化，但兼容策略可控：
+本次文档以纯 greenfield 基线为前提：
 
 - `shot_id` 继续保留为核心稳定标识
-- 旧数据可通过回填一条 `shot_executions` 与首条 `shot_execution_runs` 平滑迁移
-- 旧前端若暂时未切换，可通过聚合读模型维持只读兼容
-- 新实现不得再向 `Shot` 回填执行态与审核态字段
+- `shots` 从第一天起就是结构骨架，不承担执行态和审核态
+- `shot_executions` 与 `shot_execution_runs` 从第一天起就是正式模型
+- 不讨论旧数据回填、兼容表和迁移窗口
 
 ## 12. 关键约束清单
 
