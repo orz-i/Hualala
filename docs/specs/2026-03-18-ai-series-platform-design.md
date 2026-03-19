@@ -1,5 +1,7 @@
 # AI 剧集生产协作平台设计文档
 
+补充约束参见 [Phase 1 Proto 与 Migration 约定](D:/Documents/Hualala/docs/specs/2026-03-19-phase-1-proto-and-migration-conventions.md)。
+
 ## 1. 背景与定位
 
 本项目面向小型短剧工作室与 MCN，目标不是做单点 AI 生成工具，而是做一套覆盖选题策划、世界观设定、分集生成、剧本生成、分镜拆解、视觉资产生成与动态样片预演的生产协作平台。

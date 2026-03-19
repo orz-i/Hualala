@@ -410,6 +410,6 @@ git commit -m "feat: bootstrap backend composition root and transports"
 
 ## 实施备注
 
-- 本计划以 [2026-03-18-ai-series-platform-design.md](D:/Documents/Hualala/docs/specs/2026-03-18-ai-series-platform-design.md)、[2026-03-18-phase-1-database-design.md](D:/Documents/Hualala/docs/specs/2026-03-18-phase-1-database-design.md) 和 [2026-03-19-phase-1-monorepo-design.md](D:/Documents/Hualala/docs/specs/2026-03-19-phase-1-monorepo-design.md) 为约束源。
+- 本计划以 [2026-03-18-ai-series-platform-design.md](D:/Documents/Hualala/docs/specs/2026-03-18-ai-series-platform-design.md)、[2026-03-18-phase-1-database-design.md](D:/Documents/Hualala/docs/specs/2026-03-18-phase-1-database-design.md)、[2026-03-19-phase-1-monorepo-design.md](D:/Documents/Hualala/docs/specs/2026-03-19-phase-1-monorepo-design.md) 和 [2026-03-19-phase-1-proto-and-migration-conventions.md](D:/Documents/Hualala/docs/specs/2026-03-19-phase-1-proto-and-migration-conventions.md) 为约束源。
 - Phase 1 不把 `WebSocket + CRDT`、`C2PA` 和多轨音频链路拉入主实现，但已预留边界；执行中不得误把这些后续能力塞回当前主干任务。
 - Phase 1 前端共享层只允许保留 `packages/sdk`，禁止新增共享 UI 包和共享业务类型包。

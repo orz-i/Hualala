@@ -4,6 +4,8 @@
 
 本文是 [AI 剧集生产协作平台总设计](D:/Documents/Hualala/docs/specs/2026-03-18-ai-series-platform-design.md) 的数据库落地稿，聚焦 Phase 1 的核心生产链，不覆盖完整商业化计费与后续 SaaS 扩展细节。
 
+关于 `proto` 领域边界、事件命名、migration 编号与回填规则，统一以 [Phase 1 Proto 与 Migration 约定](D:/Documents/Hualala/docs/specs/2026-03-19-phase-1-proto-and-migration-conventions.md) 为准。
+
 本文主要解决四件事：
 
 1. 明确 Phase 1 需要落地的核心表、字段、约束和索引

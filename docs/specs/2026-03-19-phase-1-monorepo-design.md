@@ -7,6 +7,7 @@
 - [AI 剧集生产协作平台设计文档](D:/Documents/Hualala/docs/specs/2026-03-18-ai-series-platform-design.md)
 - [AI 剧集平台 Phase 1 实施计划](D:/Documents/Hualala/docs/plans/2026-03-18-phase-1-ai-series-platform.md)
 - [AI 剧集平台 Phase 1 数据库设计稿](D:/Documents/Hualala/docs/specs/2026-03-18-phase-1-database-design.md)
+- [AI 剧集平台 Phase 1 Proto 与 Migration 约定](D:/Documents/Hualala/docs/specs/2026-03-19-phase-1-proto-and-migration-conventions.md)
 
 本文只解决 Phase 1 的 `monorepo 目录结构`、`Go 后端包边界`、`proto/sdk 共享策略`、`tooling 与 infra 组织方式`、`发布轨设计` 五件事，不展开到页面交互、数据库字段级 DDL 和详细任务拆分。
 
