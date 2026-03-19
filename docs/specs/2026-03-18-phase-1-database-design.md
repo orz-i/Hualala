@@ -7,7 +7,7 @@
 本文主要解决四件事：
 
 1. 明确 Phase 1 需要落地的核心表、字段、约束和索引
-2. 固化 `Shot -> Asset -> Workflow -> Usage -> Billing -> Event` 的数据边界
+2. 固化 `Shot -> ShotExecution -> ShotExecutionRun -> Asset -> Review -> Workflow -> Usage -> Billing -> Event` 的数据边界
 3. 明确在 `不使用 FK` 的前提下，数据库与 Golang Guard 的责任分工
 4. 给出可直接进入 migration 的 SQL 草案
 
@@ -97,7 +97,7 @@
 | `characters` | 角色对象 | P1 |
 | `scripts` | 剧本对象 | P1 |
 | `storyboards` | 分镜对象 | P1 |
-| `shots` | 镜头对象，Phase 1 核心锚点 | P0 |
+| `shots` | 镜头结构骨架对象 | P0 |
 | `content_snapshots` | 文本版本快照 | P1 |
 
 ### 4.3 资产接入层
@@ -117,6 +117,8 @@
 
 | 表名 | 说明 | 优先级 |
 | --- | --- | --- |
+| `shot_executions` | 镜头当前执行态 | P0 |
+| `shot_execution_runs` | 镜头执行轮次归档 | P0 |
 | `jobs` | 统一长任务中心 | P0 |
 | `workflow_runs` | 高价值长链路工作流实例 | P0 |
 | `workflow_steps` | 工作流节点执行记录 | P1 |
@@ -135,6 +137,8 @@ Phase 1 必须优先落地的主干表为：
 - `projects`
 - `episodes`
 - `shots`
+- `shot_executions`
+- `shot_execution_runs`
 - `import_batches`
 - `upload_sessions`
 - `upload_files`
@@ -156,18 +160,63 @@ Phase 1 必须优先落地的主干表为：
 
 ### 5.1 `shots`
 
-`shots` 是 Phase 1 最重要的生产对象，既是创作端镜头工作台的主锚点，也是素材挂接、抽检、打回和后续导演意图标准化的扩展基础。
+`shots` 是 Phase 1 的镜头结构骨架对象，用于表达镜头定义本身，而不是表达当前执行态与审核态。
 
 关键字段：
 
+- 生命周期：`lifecycle_status`
 - 结构化镜头语义：`shot_size`、`camera_move`
 - 执行动作：`subject_action`
 - 构图说明：`composition_notes`
 - 连续性说明：`continuity_notes`
-- 当前主素材：`primary_asset_id`
-- 抽检状态：`spot_check_status`
 
-### 5.2 `import_batch_items`
+### 5.2 `shot_executions`
+
+`shot_executions` 是镜头当前执行态对象。每个 `shot` 只保留一条当前有效执行态，执行工作台的主查询应优先落在这张表。
+
+推荐状态：
+
+- `pending`
+- `in_progress`
+- `candidate_ready`
+- `primary_selected`
+- `submitted_for_review`
+- `rework_required`
+- `approved_for_use`
+- `archived`
+
+关键字段：
+
+- `current_status`
+- `current_run_id`
+- `assignee_user_id`
+- `primary_asset_id`
+- `last_submitted_at`
+- `last_reworked_at`
+
+### 5.3 `shot_execution_runs`
+
+`shot_execution_runs` 是镜头执行轮次归档表，用于表达每一轮执行、重跑、返工、导入替换与工作流绑定。
+
+推荐状态：
+
+- `pending`
+- `running`
+- `completed`
+- `failed`
+- `cancelled`
+
+关键字段：
+
+- `run_no`
+- `source_type`
+- `trigger_type`
+- `workflow_run_id`
+- `import_batch_id`
+- `output_primary_asset_id`
+- `failed_reason`
+
+### 5.4 `import_batch_items`
 
 `import_batch_items` 描述“每条导入记录在自动匹配与人工确认中的位置”，不直接承担最终挂接真相。
 
@@ -179,9 +228,9 @@ Phase 1 必须优先落地的主干表为：
 - `confirmed`
 - `rejected`
 
-### 5.3 `shot_candidate_assets`
+### 5.5 `shot_candidate_assets`
 
-`shot_candidate_assets` 描述镜头当前可用的候选素材池，不承担导入过程状态。
+`shot_candidate_assets` 描述镜头当前执行态可用的候选素材池，不承担导入过程状态。推荐通过 `shot_execution_id` 主挂当前执行态，可选通过 `shot_execution_run_id` 追溯来源轮次。
 
 推荐状态：
 
@@ -189,11 +238,28 @@ Phase 1 必须优先落地的主干表为：
 - `rejected`
 - `archived`
 
-### 5.4 `shot_asset_links`
+### 5.6 `shot_asset_links`
 
-`shot_asset_links` 只负责“当前主素材是谁”，不再混入候选集合。
+`shot_asset_links` 在拆分后建议退化为兼容层。当前主素材真相应收口到 `shot_executions.primary_asset_id`，本表仅在迁移窗口内保留。
 
-### 5.5 `jobs`
+### 5.7 `shot_reviews`
+
+`shot_reviews` 改为审核事件流模型，不再承担“当前审核态唯一真相”。
+
+建模原则：
+
+- 必须关联 `shot_id`
+- 可选关联 `shot_execution_id`
+- 可选关联 `shot_execution_run_id`
+- 可选关联 `asset_id`
+
+推荐状态：
+
+- `commented`
+- `approved`
+- `rejected`
+
+### 5.8 `jobs`
 
 `jobs` 继续作为前端统一任务锚点，承载 AI 生成、导入批次解析、自动匹配、样片预演等异步动作，但不再独自承担高价值长链路编排真相。
 
@@ -213,7 +279,7 @@ Phase 1 必须优先落地的主干表为：
 - `cancelled`
 - `partial_success`
 
-### 5.6 `workflow_runs`
+### 5.9 `workflow_runs`
 
 `workflow_runs` 表达一条高价值长链路工作流实例，例如“剧本生成 -> 分镜拆解 -> 动态样片预演”。
 
@@ -227,7 +293,7 @@ Phase 1 必须优先落地的主干表为：
 - `compensating`
 - `partially_succeeded`
 
-### 5.7 `usage_records`
+### 5.10 `usage_records`
 
 `usage_records` 是成本治理的事实层，负责记录模型调用、视频秒数、分辨率、Token、存储消耗等不可变用量记录。
 
@@ -243,7 +309,7 @@ Phase 1 必须优先落地的主干表为：
 - `resource_id`
 - `workflow_run_id`
 
-### 5.8 `budget_policies`
+### 5.11 `budget_policies`
 
 `budget_policies` 用于表达组织级和项目级额度、预算阈值、告警与熔断策略。
 
@@ -253,7 +319,7 @@ Phase 1 必须优先落地的主干表为：
 - `paused`
 - `archived`
 
-### 5.9 媒体来源凭证与多轨音频预留边界
+### 5.12 媒体来源凭证与多轨音频预留边界
 
 虽然 Phase 1 不把 `C2PA` 和多轨音频链路纳入主干交付，但数据库层应明确预留兼容边界：
 
@@ -262,7 +328,7 @@ Phase 1 必须优先落地的主干表为：
 - 后续建议增加 `asset_provenance_records`，保存来源凭证与导入 / 导出挂载记录
 - 后续建议增加 `timeline_tracks / track_asset_bindings`，表达镜头与对白、拟音、环境音、配乐等多轨资产的时间轴绑定
 
-### 5.10 `upload_sessions`
+### 5.13 `upload_sessions`
 
 `upload_sessions` 管一次上传行为，和 `import_batches` 的“业务批次”不是同一层。
 
@@ -297,19 +363,50 @@ Phase 1 必须优先落地的主干表为：
 高频查询：
 
 - 按 storyboard 列镜头
-- 筛选无主素材镜头
-- 筛选待抽检 / 已打回镜头
-- 按责任人筛镜头
+- 按镜头语义筛选
+- 按结构化构图字段筛选
+- 查看镜头骨架定义
 
 关键索引：
 
 - `shots (storyboard_id, shot_no)`
-- `shots (storyboard_id, status, shot_no)`
-- `shots (storyboard_id, spot_check_status, shot_no)`
-- `shots (assignee_user_id, status, updated_at desc)`
-- `shots (storyboard_id, updated_at desc) where primary_asset_id is null`
+- `shots (storyboard_id, lifecycle_status, shot_no)`
+- `shots (storyboard_id, shot_size, shot_no)`
+- `shots (storyboard_id, camera_move, shot_no)`
 
-### 6.3 导入批次确认页
+### 6.3 镜头执行工作台
+
+高频查询：
+
+- 筛选无主素材执行态
+- 筛选待审核 / 返工中镜头
+- 按执行责任人筛镜头
+- 查看当前执行态与当前轮次
+
+关键索引：
+
+- `shot_executions (project_id, current_status, updated_at desc)`
+- `shot_executions (assignee_user_id, current_status, updated_at desc)`
+- `shot_executions (shot_id)`
+- `shot_executions (primary_asset_id) where primary_asset_id is not null`
+- `shot_executions (project_id, updated_at desc) where primary_asset_id is null`
+
+### 6.4 执行轮次与返工历史
+
+高频查询：
+
+- 查看某镜头历史执行轮次
+- 查看某轮次的失败原因
+- 按工作流实例反查执行轮次
+
+关键索引：
+
+- `shot_execution_runs (shot_id, run_no desc)`
+- `shot_execution_runs (shot_execution_id, run_no desc)`
+- `shot_execution_runs (workflow_run_id) where workflow_run_id is not null`
+- `shot_execution_runs (import_batch_id) where import_batch_id is not null`
+
+### 6.5 导入批次确认页
 
 高频查询：
 
@@ -325,7 +422,24 @@ Phase 1 必须优先落地的主干表为：
 - `import_batch_items (import_batch_id, match_confidence desc)`
 - `import_batch_items (matched_shot_id, status)`
 
-### 6.4 任务监控
+### 6.6 审核时间线
+
+高频查询：
+
+- 查看某镜头最近审核记录
+- 查看某执行态当前审核线程
+- 查看某执行轮次的审核结果
+- 查看某资产被谁打回
+
+关键索引：
+
+- `shot_reviews (shot_id, created_at desc)`
+- `shot_reviews (shot_execution_id, created_at desc) where shot_execution_id is not null`
+- `shot_reviews (shot_execution_run_id, created_at desc) where shot_execution_run_id is not null`
+- `shot_reviews (asset_id, created_at desc) where asset_id is not null`
+- `shot_reviews (reviewed_by, created_at desc)`
+
+### 6.7 任务监控
 
 高频查询：
 
@@ -340,7 +454,7 @@ Phase 1 必须优先落地的主干表为：
 - `jobs (type, status, created_at desc)`
 - `jobs (resource_type, resource_id, created_at desc)`
 
-### 6.5 工作流监控
+### 6.8 工作流监控
 
 高频查询：
 
@@ -356,7 +470,7 @@ Phase 1 必须优先落地的主干表为：
 - `workflow_steps (workflow_run_id, step_no)`
 - `workflow_steps (workflow_run_id, status, updated_at desc)`
 
-### 6.6 成本治理
+### 6.9 成本治理
 
 高频查询：
 
@@ -373,7 +487,7 @@ Phase 1 必须优先落地的主干表为：
 - `billing_events (project_id, created_at desc) where project_id is not null`
 - `budget_policies (organization_id, scope_type, scope_id, status)`
 
-### 6.7 事件投递
+### 6.10 事件投递
 
 高频查询：
 
@@ -393,6 +507,7 @@ Phase 1 必须优先落地的主干表为：
 - `OrganizationGuard`
 - `ProjectGuard`
 - `ShotGuard`
+- `ShotExecutionGuard`
 - `AssetGuard`
 - `WorkflowGuard`
 - `BillingGuard`
@@ -413,7 +528,9 @@ Phase 1 必须优先落地的主干表为：
 - `media_assets.import_batch_id` 指向不存在批次
 - `import_batch_items.media_asset_id` 指向不存在素材
 - `shot_asset_links.primary_asset_id` 找不到素材
+- `shot_candidate_assets.shot_execution_id` 找不到执行态
 - `shot_candidate_assets.asset_id` 找不到素材
+- `shot_reviews.shot_execution_run_id` 找不到执行轮次
 - `jobs.resource_id` 指向不存在资源
 
 ## 8. 迁移批次建议
@@ -437,7 +554,12 @@ Phase 1 必须优先落地的主干表为：
 - `shots`
 - `content_snapshots`
 
-### Batch 3：资产接入链
+### Batch 3：镜头执行链
+
+- `shot_executions`
+- `shot_execution_runs`
+
+### Batch 4：资产接入链
 
 - `import_batches`
 - `upload_sessions`
@@ -448,7 +570,7 @@ Phase 1 必须优先落地的主干表为：
 - `shot_candidate_assets`
 - `asset_links`
 
-### Batch 4：流程与事件
+### Batch 5：流程与事件
 
 - `jobs`
 - `workflow_runs`
@@ -535,24 +657,18 @@ create table if not exists shots (
     shot_no integer not null,
     title text,
     summary text,
-    status text not null default 'draft',
-    spot_check_status text not null default 'pending',
-    assignee_user_id uuid,
+    lifecycle_status text not null default 'draft',
     shot_size text not null default 'medium',
     camera_move text not null default 'static',
     subject_action text,
     composition_notes jsonb not null default '{}'::jsonb,
     continuity_notes jsonb not null default '{}'::jsonb,
-    primary_asset_id uuid,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     constraint uq_shots_storyboard_shot_no unique (storyboard_id, shot_no),
     constraint chk_shots_shot_no_positive check (shot_no > 0),
-    constraint chk_shots_status check (
-        status in ('draft', 'assets_linked', 'ready_for_spot_check', 'approved', 'rejected')
-    ),
-    constraint chk_shots_spot_check_status check (
-        spot_check_status in ('pending', 'submitted', 'approved', 'rejected')
+    constraint chk_shots_lifecycle_status check (
+        lifecycle_status in ('draft', 'active', 'archived')
     ),
     constraint chk_shots_shot_size check (
         shot_size in ('wide', 'medium', 'close_up', 'extreme_close_up')
@@ -564,25 +680,102 @@ create table if not exists shots (
 
 create index if not exists idx_shots_storyboard_shot_no
     on shots (storyboard_id, shot_no);
-create index if not exists idx_shots_storyboard_status_shot_no
-    on shots (storyboard_id, status, shot_no);
-create index if not exists idx_shots_storyboard_spot_check_shot_no
-    on shots (storyboard_id, spot_check_status, shot_no);
-create index if not exists idx_shots_project_episode_status
-    on shots (project_id, episode_id, status);
-create index if not exists idx_shots_assignee_status_updated
-    on shots (assignee_user_id, status, updated_at desc);
-create index if not exists idx_shots_primary_asset_present
-    on shots (primary_asset_id) where primary_asset_id is not null;
-create index if not exists idx_shots_storyboard_without_primary_asset
-    on shots (storyboard_id, updated_at desc) where primary_asset_id is null;
+create index if not exists idx_shots_storyboard_lifecycle_shot_no
+    on shots (storyboard_id, lifecycle_status, shot_no);
 create index if not exists idx_shots_storyboard_shot_size
     on shots (storyboard_id, shot_size);
 create index if not exists idx_shots_storyboard_camera_move
     on shots (storyboard_id, camera_move);
 ```
 
-### 9.4 `import_batches`
+### 9.4 `shot_executions`
+
+```sql
+create table if not exists shot_executions (
+    id uuid primary key,
+    organization_id uuid not null,
+    project_id uuid not null,
+    shot_id uuid not null,
+    current_status text not null default 'pending',
+    current_run_id uuid,
+    assignee_user_id uuid,
+    primary_asset_id uuid,
+    last_submitted_at timestamptz,
+    last_reworked_at timestamptz,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint uq_shot_executions_shot unique (shot_id),
+    constraint chk_shot_executions_status check (
+        current_status in (
+            'pending', 'in_progress', 'candidate_ready', 'primary_selected',
+            'submitted_for_review', 'rework_required', 'approved_for_use', 'archived'
+        )
+    )
+);
+
+create index if not exists idx_shot_executions_project_status_updated
+    on shot_executions (project_id, current_status, updated_at desc);
+create index if not exists idx_shot_executions_assignee_status_updated
+    on shot_executions (assignee_user_id, current_status, updated_at desc)
+    where assignee_user_id is not null;
+create index if not exists idx_shot_executions_primary_asset
+    on shot_executions (primary_asset_id)
+    where primary_asset_id is not null;
+create index if not exists idx_shot_executions_without_primary_asset
+    on shot_executions (project_id, updated_at desc)
+    where primary_asset_id is null;
+```
+
+### 9.5 `shot_execution_runs`
+
+```sql
+create table if not exists shot_execution_runs (
+    id uuid primary key,
+    organization_id uuid not null,
+    project_id uuid not null,
+    shot_id uuid not null,
+    shot_execution_id uuid not null,
+    run_no integer not null,
+    source_type text not null,
+    trigger_type text not null,
+    status text not null,
+    workflow_run_id uuid,
+    import_batch_id uuid,
+    input_snapshot jsonb not null default '{}'::jsonb,
+    output_summary jsonb not null default '{}'::jsonb,
+    output_primary_asset_id uuid,
+    started_by uuid not null,
+    started_at timestamptz,
+    finished_at timestamptz,
+    failed_reason text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint uq_shot_execution_runs_shot_run_no unique (shot_id, run_no),
+    constraint chk_shot_execution_runs_run_no_positive check (run_no > 0),
+    constraint chk_shot_execution_runs_source_type check (
+        source_type in ('external_import', 'platform_generated', 'manual_replace')
+    ),
+    constraint chk_shot_execution_runs_trigger_type check (
+        trigger_type in ('initial', 'regenerate', 'reimport', 'review_rework')
+    ),
+    constraint chk_shot_execution_runs_status check (
+        status in ('pending', 'running', 'completed', 'failed', 'cancelled')
+    )
+);
+
+create index if not exists idx_shot_execution_runs_shot_run_no
+    on shot_execution_runs (shot_id, run_no desc);
+create index if not exists idx_shot_execution_runs_execution_run_no
+    on shot_execution_runs (shot_execution_id, run_no desc);
+create index if not exists idx_shot_execution_runs_workflow_run
+    on shot_execution_runs (workflow_run_id)
+    where workflow_run_id is not null;
+create index if not exists idx_shot_execution_runs_import_batch
+    on shot_execution_runs (import_batch_id)
+    where import_batch_id is not null;
+```
+
+### 9.6 `import_batches`
 
 ```sql
 create table if not exists import_batches (
@@ -629,7 +822,7 @@ create index if not exists idx_import_batches_source_platform
     on import_batches (source_platform) where source_platform is not null;
 ```
 
-### 9.5 `media_assets`
+### 9.7 `media_assets`
 
 ```sql
 create table if not exists media_assets (
@@ -684,7 +877,7 @@ create index if not exists idx_media_assets_source_platform
     on media_assets (source_platform) where source_platform is not null;
 ```
 
-### 9.6 `import_batch_items`
+### 9.8 `import_batch_items`
 
 ```sql
 create table if not exists import_batch_items (
@@ -739,7 +932,7 @@ create index if not exists idx_import_batch_items_pending_review
     where status = 'pending_review';
 ```
 
-### 9.7 `shot_asset_links`
+### 9.9 `shot_asset_links`
 
 ```sql
 create table if not exists shot_asset_links (
@@ -759,13 +952,14 @@ create index if not exists idx_shot_asset_links_confirmed_by
     on shot_asset_links (confirmed_by, confirmed_at desc);
 ```
 
-### 9.8 `shot_candidate_assets`
+### 9.10 `shot_candidate_assets`
 
 ```sql
 create table if not exists shot_candidate_assets (
     id uuid primary key,
     organization_id uuid not null,
-    shot_id uuid not null,
+    shot_execution_id uuid not null,
+    shot_execution_run_id uuid,
     asset_id uuid not null,
     import_batch_item_id uuid,
     sort_order integer not null default 0,
@@ -775,23 +969,26 @@ create table if not exists shot_candidate_assets (
     added_by uuid not null,
     added_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
-    constraint uq_shot_candidate_assets_shot_asset unique (shot_id, asset_id),
+    constraint uq_shot_candidate_assets_execution_asset unique (shot_execution_id, asset_id),
     constraint chk_shot_candidate_assets_sort_order check (sort_order >= 0),
     constraint chk_shot_candidate_assets_status check (status in ('active', 'rejected', 'archived'))
 );
 
-create index if not exists idx_shot_candidate_assets_shot_status_sort
-    on shot_candidate_assets (shot_id, status, sort_order);
+create index if not exists idx_shot_candidate_assets_execution_status_sort
+    on shot_candidate_assets (shot_execution_id, status, sort_order);
+create index if not exists idx_shot_candidate_assets_execution_run
+    on shot_candidate_assets (shot_execution_run_id)
+    where shot_execution_run_id is not null;
 create index if not exists idx_shot_candidate_assets_asset
     on shot_candidate_assets (asset_id);
 create index if not exists idx_shot_candidate_assets_import_batch_item
     on shot_candidate_assets (import_batch_item_id)
     where import_batch_item_id is not null;
-create index if not exists idx_shot_candidate_assets_shot_promoted
-    on shot_candidate_assets (shot_id, is_promoted);
+create index if not exists idx_shot_candidate_assets_execution_promoted
+    on shot_candidate_assets (shot_execution_id, is_promoted);
 ```
 
-### 9.9 `upload_sessions`
+### 9.11 `upload_sessions`
 
 ```sql
 create table if not exists upload_sessions (
@@ -828,7 +1025,7 @@ create index if not exists idx_upload_sessions_expires_at
     on upload_sessions (expires_at) where expires_at is not null;
 ```
 
-### 9.10 `upload_files`
+### 9.12 `upload_files`
 
 ```sql
 create table if not exists upload_files (
@@ -861,7 +1058,7 @@ create index if not exists idx_upload_files_checksum
     on upload_files (checksum) where checksum is not null;
 ```
 
-### 9.11 `jobs`
+### 9.13 `jobs`
 
 ```sql
 create table if not exists jobs (
@@ -916,7 +1113,7 @@ create index if not exists idx_jobs_created_by
     on jobs (created_by, created_at desc);
 ```
 
-### 9.12 `workflow_runs`
+### 9.14 `workflow_runs`
 
 ```sql
 create table if not exists workflow_runs (
@@ -957,7 +1154,7 @@ create index if not exists idx_workflow_runs_started_by
     on workflow_runs (started_by, created_at desc);
 ```
 
-### 9.13 `workflow_steps`
+### 9.15 `workflow_steps`
 
 ```sql
 create table if not exists workflow_steps (
@@ -996,7 +1193,7 @@ create index if not exists idx_workflow_steps_org_created
     on workflow_steps (organization_id, created_at desc);
 ```
 
-### 9.14 `usage_records`
+### 9.16 `usage_records`
 
 ```sql
 create table if not exists usage_records (
@@ -1041,7 +1238,7 @@ create index if not exists idx_usage_records_meter_created
     on usage_records (meter_type, created_at desc);
 ```
 
-### 9.15 `budget_policies`
+### 9.17 `budget_policies`
 
 ```sql
 create table if not exists budget_policies (
@@ -1076,7 +1273,7 @@ create index if not exists idx_budget_policies_created_by
     on budget_policies (created_by, created_at desc);
 ```
 
-### 9.16 `billing_events`
+### 9.18 `billing_events`
 
 ```sql
 create table if not exists billing_events (
@@ -1111,34 +1308,50 @@ create index if not exists idx_billing_events_workflow_created
     where workflow_run_id is not null;
 ```
 
-### 9.17 `shot_reviews`
+### 9.19 `shot_reviews`
 
 ```sql
 create table if not exists shot_reviews (
     id uuid primary key,
     organization_id uuid not null,
+    project_id uuid not null,
     shot_id uuid not null,
+    shot_execution_id uuid,
+    shot_execution_run_id uuid,
+    asset_id uuid,
     review_type text not null,
     status text not null,
     reason_codes jsonb not null default '[]'::jsonb,
     comment text,
+    annotation_payload jsonb not null default '{}'::jsonb,
     reviewed_by uuid not null,
     created_at timestamptz not null default now(),
     constraint chk_shot_reviews_review_type check (
-        review_type in ('spot_check', 'key_shot_review')
+        review_type in ('spot_check', 'key_shot_review', 'director_review', 'structure_review')
     ),
-    constraint chk_shot_reviews_status check (status in ('approved', 'rejected'))
+    constraint chk_shot_reviews_status check (status in ('commented', 'approved', 'rejected'))
 );
 
 create index if not exists idx_shot_reviews_shot_created
     on shot_reviews (shot_id, created_at desc);
+create index if not exists idx_shot_reviews_execution_created
+    on shot_reviews (shot_execution_id, created_at desc)
+    where shot_execution_id is not null;
+create index if not exists idx_shot_reviews_execution_run_created
+    on shot_reviews (shot_execution_run_id, created_at desc)
+    where shot_execution_run_id is not null;
+create index if not exists idx_shot_reviews_asset_created
+    on shot_reviews (asset_id, created_at desc)
+    where asset_id is not null;
 create index if not exists idx_shot_reviews_reviewer_created
     on shot_reviews (reviewed_by, created_at desc);
+create index if not exists idx_shot_reviews_project_created
+    on shot_reviews (project_id, created_at desc);
 create index if not exists idx_shot_reviews_org_created
     on shot_reviews (organization_id, created_at desc);
 ```
 
-### 9.18 `state_transitions`
+### 9.20 `state_transitions`
 
 ```sql
 create table if not exists state_transitions (
@@ -1168,7 +1381,7 @@ create index if not exists idx_state_transitions_org_created
     on state_transitions (organization_id, created_at desc);
 ```
 
-### 9.19 `event_outbox`
+### 9.21 `event_outbox`
 
 ```sql
 create table if not exists event_outbox (

@@ -141,6 +141,7 @@ apps/backend/
 │  │  ├─ org/
 │  │  ├─ project/
 │  │  ├─ content/
+│  │  ├─ execution/
 │  │  ├─ asset/
 │  │  ├─ workflow/
 │  │  ├─ usage/
@@ -151,6 +152,7 @@ apps/backend/
 │  │  ├─ orgapp/
 │  │  ├─ projectapp/
 │  │  ├─ contentapp/
+│  │  ├─ executionapp/
 │  │  ├─ assetapp/
 │  │  ├─ workflowapp/
 │  │  ├─ usageapp/
@@ -233,7 +235,8 @@ apps/backend/
 | `auth` | 登录态、token/session、当前身份 |
 | `org` | 组织、成员、角色、权限 |
 | `project` | 项目、集数、阶段总览 |
-| `content` | 世界观、角色、剧本、分镜、镜头正文 |
+| `content` | 世界观、角色、剧本、分镜、镜头结构骨架 |
+| `execution` | 镜头当前执行态、执行轮次、主素材选择与返工推进 |
 | `asset` | 导入批次、上传、媒体资产、镜头挂接、候选池 |
 | `workflow` | 长任务、状态迁移、事件出站、流程推进 |
 | `usage` | 模型调用、视频秒数、存储量等使用量事实记录 |
@@ -266,6 +269,9 @@ application -X-> 其他应用层内部实现细节
 3. repository 接口定义放在领域层，具体实现放在 `platform/db`
 4. `cmd/api` 只负责应用装配与启动，不写业务逻辑
 5. `asset` 与 `review` 不能互相直接修改对方实现，需由 `workflowapp` 或对应应用服务编排
+6. `content` 只表达镜头结构骨架，不承担执行态与审核态
+7. `workflow` 的资源绑定点应优先落在 `shot_execution_run`
+8. `review` 只记录审核事件流，不回退成 `Shot` 当前状态真相
 
 ## 7. Proto、生成产物与 SDK 设计
 
@@ -280,6 +286,7 @@ proto/
 ├─ hualala/org/v1/
 ├─ hualala/project/v1/
 ├─ hualala/content/v1/
+├─ hualala/execution/v1/
 ├─ hualala/asset/v1/
 ├─ hualala/workflow/v1/
 ├─ hualala/billing/v1/
@@ -291,6 +298,10 @@ proto/
 1. `proto` 是请求、响应、枚举和服务定义的唯一事实源
 2. `common` 只保留跨域稳定通用结构，不建立一个巨大的业务共享 proto
 3. 各业务对象尽量留在自己的领域 proto 中，避免“全局 shared business types”膨胀
+4. `Shot` 相关协议明确拆为：
+   - `content/v1` 只负责结构骨架
+   - `execution/v1` 负责当前执行态与执行轮次
+   - `review/v1` 负责审核事件流
 
 ### 7.3 生成产物位置
 
@@ -357,8 +368,10 @@ packages/sdk/
 
 本设计在调研优化后，要求 `proto` 与后端内部结构同步补足以下边界：
 
+- `execution/v1`：面向 `ShotExecution` 与 `ShotExecutionRun`，承接执行工作台主接口
 - `workflow/v1`：面向高价值长链路工作流实例，而不再只表达平面 job 动作
 - `billing/v1`：面向预算快照、使用量明细、成本事件与预算策略管理
+- `domain/execution`：负责镜头执行态、执行轮次与主素材选择规则
 - `domain/workflow`：负责工作流实例与节点语义
 - `domain/usage`：负责使用量事实模型
 - `domain/billing`：负责额度、预算、预警与熔断规则
@@ -521,14 +534,26 @@ proto changed
 2. 后端生成代码路径固定为 `apps/backend/gen`
 3. 前端生成代码路径固定为 `packages/sdk/src/gen`
 4. Go 后端内部模块组织从“按模块散落实现”提升为“领域 + 应用 + 接口 + 平台”分层
+5. `Shot` 相关实现必须拆为 `content`、`execution`、`review` 三个边界，不能继续由单一对象承载
 
 #### 对 proto 服务边界的影响
 
-不改变现有 proto 领域划分方向，只是把“生成物放哪里、谁依赖谁”明确固定下来。
+会直接影响 proto 领域划分：
+
+1. 新增 `hualala/execution/v1`
+2. 新增 `ExecutionService`
+3. `content/v1` 不再承担执行态字段
+4. `review/v1` 保持审核事件流，不再回退成“镜头当前审核状态接口”
 
 #### 对数据库设计稿的影响
 
-不改变现有数据库主表、状态字段、索引和 Guard 责任分工。数据库设计稿在语义上保持兼容，仅影响迁移文件在仓库中的放置位置。
+会直接影响数据库设计稿：
+
+1. `shots` 回归镜头结构骨架
+2. 新增 `shot_executions` 与 `shot_execution_runs`
+3. `shot_candidate_assets` 主挂点切换到 `shot_execution_id`
+4. `shot_reviews` 改为审核事件流，并可关联执行态、执行轮次和资产
+5. 主素材真相收口到 `shot_executions.primary_asset_id`
 
 ### 11.2 间接影响分析
 
@@ -539,13 +564,12 @@ proto changed
 
 ### 11.3 数据结构兼容性分析
 
-本次文档不改变以下核心数据结构：
+本次文档在 `Shot` 相关数据结构上存在明确增量变化，但兼容策略可控：
 
-- 业务主表设计
-- proto 包名与业务域边界
-- 组织、项目、内容、资产、流程的核心对象语义
-
-因此对已有数据库设计和现有产品对象模型没有破坏性变化。
+- `shot_id` 继续保留为核心稳定标识
+- 旧数据可通过回填一条 `shot_executions` 与首条 `shot_execution_runs` 平滑迁移
+- 旧前端若暂时未切换，可通过聚合读模型维持只读兼容
+- 新实现不得再向 `Shot` 回填执行态与审核态字段
 
 ## 12. 关键约束清单
 
@@ -558,6 +582,9 @@ proto changed
 5. `creator` 可以独立发版，但不能绕开协议兼容性约束
 6. `cmd/api` 不允许写业务逻辑
 7. `domain` 不允许依赖 `platform` 和 `interfaces`
+8. `Shot` 不允许继续持有主素材、执行状态和审核状态字段
+9. `ExecutionService` 应作为镜头执行工作台的主接口
+10. `workflow` 与 `billing/usage` 对镜头的归因点应统一落在 `shot_execution_run`
 
 ## 13. 推荐的下一步
 
