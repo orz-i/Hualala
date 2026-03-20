@@ -1,6 +1,7 @@
 package connect
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -28,6 +29,8 @@ func TestRegisterRoutes(t *testing.T) {
 		name           string
 		method         string
 		target         string
+		body           []byte
+		contentType    string
 		expectedStatus int
 	}{
 		{
@@ -37,22 +40,27 @@ func TestRegisterRoutes(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name:           "sse route placeholder is available",
+			name:           "sse route is available",
 			method:         http.MethodGet,
 			target:         "/sse/events",
-			expectedStatus: http.StatusNotImplemented,
+			expectedStatus: http.StatusOK,
 		},
 		{
-			name:           "upload session route placeholder is available",
+			name:           "upload session route is available",
 			method:         http.MethodPost,
 			target:         "/upload/sessions",
-			expectedStatus: http.StatusNotImplemented,
+			body:           []byte(`{"organization_id":"org-1","project_id":"project-1","file_name":"shot.png","checksum":"sha256:abc123","size_bytes":1024,"expires_in_seconds":1}`),
+			contentType:    "application/json",
+			expectedStatus: http.StatusOK,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := httptest.NewRequest(tc.method, tc.target, nil)
+			req := httptest.NewRequest(tc.method, tc.target, bytes.NewReader(tc.body))
+			if tc.contentType != "" {
+				req.Header.Set("Content-Type", tc.contentType)
+			}
 			rec := httptest.NewRecorder()
 
 			mux.ServeHTTP(rec, req)
