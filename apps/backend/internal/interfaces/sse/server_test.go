@@ -5,12 +5,15 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 func TestSSEReplayWithLastEventID(t *testing.T) {
-	resetEventStore()
-	publishEvent(eventEnvelope{
-		EventID:        "evt-1",
+	publisher := events.NewPublisher()
+	resetEventStore(publisher)
+	publishEvent(publisher, events.Event{
+		ID:             "evt-1",
 		EventType:      "shot.execution.updated",
 		OrganizationID: "org-1",
 		ProjectID:      "project-1",
@@ -18,8 +21,8 @@ func TestSSEReplayWithLastEventID(t *testing.T) {
 		ResourceID:     "shot-execution-1",
 		Payload:        `{"status":"candidate_ready"}`,
 	})
-	publishEvent(eventEnvelope{
-		EventID:        "evt-2",
+	publishEvent(publisher, events.Event{
+		ID:             "evt-2",
 		EventType:      "shot.execution.updated",
 		OrganizationID: "org-1",
 		ProjectID:      "project-1",
@@ -29,7 +32,7 @@ func TestSSEReplayWithLastEventID(t *testing.T) {
 	})
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux)
+	RegisterRoutes(mux, publisher)
 
 	req := httptest.NewRequest(http.MethodGet, "/sse/events?organization_id=org-1&project_id=project-1", nil)
 	req.Header.Set("Last-Event-ID", "evt-1")
@@ -53,9 +56,10 @@ func TestSSEReplayWithLastEventID(t *testing.T) {
 }
 
 func TestSSEFiltersByOrgAndProject(t *testing.T) {
-	resetEventStore()
-	publishEvent(eventEnvelope{
-		EventID:        "evt-1",
+	publisher := events.NewPublisher()
+	resetEventStore(publisher)
+	publishEvent(publisher, events.Event{
+		ID:             "evt-1",
 		EventType:      "shot.execution.updated",
 		OrganizationID: "org-1",
 		ProjectID:      "project-1",
@@ -63,8 +67,8 @@ func TestSSEFiltersByOrgAndProject(t *testing.T) {
 		ResourceID:     "shot-execution-1",
 		Payload:        `{"status":"candidate_ready"}`,
 	})
-	publishEvent(eventEnvelope{
-		EventID:        "evt-2",
+	publishEvent(publisher, events.Event{
+		ID:             "evt-2",
 		EventType:      "shot.execution.updated",
 		OrganizationID: "org-2",
 		ProjectID:      "project-2",
@@ -74,7 +78,7 @@ func TestSSEFiltersByOrgAndProject(t *testing.T) {
 	})
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux)
+	RegisterRoutes(mux, publisher)
 
 	req := httptest.NewRequest(http.MethodGet, "/sse/events?organization_id=org-1&project_id=project-1", nil)
 	rec := httptest.NewRecorder()

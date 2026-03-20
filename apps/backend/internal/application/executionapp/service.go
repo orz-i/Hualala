@@ -2,6 +2,7 @@ package executionapp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -11,6 +12,7 @@ import (
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 type Service struct {
@@ -126,6 +128,13 @@ func (s *Service) StartShotExecutionRun(_ context.Context, input StartShotExecut
 			return execution.ShotExecutionRun{}, err
 		}
 	}
+	s.publishShotExecutionUpdated(shotExecution, map[string]any{
+		"shot_execution_id": shotExecution.ID,
+		"shot_id":           shotExecution.ShotID,
+		"status":            shotExecution.Status,
+		"current_run_id":    shotExecution.CurrentRunID,
+		"trigger_type":      run.TriggerType,
+	})
 
 	return run, nil
 }
@@ -170,6 +179,12 @@ func (s *Service) SelectPrimaryAsset(_ context.Context, input SelectPrimaryAsset
 	record.Status = "primary_selected"
 	record.UpdatedAt = time.Now().UTC()
 	s.store.ShotExecutions[record.ID] = record
+	s.publishShotExecutionUpdated(record, map[string]any{
+		"shot_execution_id": record.ID,
+		"shot_id":           record.ShotID,
+		"status":            record.Status,
+		"primary_asset_id":  record.PrimaryAssetID,
+	})
 	return record, nil
 }
 
@@ -223,6 +238,12 @@ func (s *Service) SubmitShotForReview(_ context.Context, input SubmitShotForRevi
 	record.Status = "submitted_for_review"
 	record.UpdatedAt = time.Now().UTC()
 	s.store.ShotExecutions[record.ID] = record
+	s.publishShotExecutionUpdated(record, map[string]any{
+		"shot_execution_id": record.ID,
+		"shot_id":           record.ShotID,
+		"status":            record.Status,
+		"primary_asset_id":  record.PrimaryAssetID,
+	})
 	return record, nil
 }
 
@@ -351,4 +372,24 @@ func (s *Service) reserveBudgetForRun(shotExecution execution.ShotExecution, run
 		return nil
 	}
 	return nil
+}
+
+func (s *Service) publishShotExecutionUpdated(record execution.ShotExecution, payload map[string]any) {
+	if s == nil || s.store == nil || s.store.EventPublisher == nil {
+		return
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	s.store.EventPublisher.Publish(events.Event{
+		EventType:      "shot.execution.updated",
+		OrganizationID: record.OrgID,
+		ProjectID:      record.ProjectID,
+		ResourceType:   "shot_execution",
+		ResourceID:     record.ID,
+		Payload:        string(body),
+	})
 }

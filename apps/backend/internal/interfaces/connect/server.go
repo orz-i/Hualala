@@ -16,6 +16,7 @@ import (
 	"github.com/hualala/apps/backend/internal/interfaces/sse"
 	"github.com/hualala/apps/backend/internal/interfaces/upload"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 var allowedHealthMethods = []string{http.MethodGet}
@@ -25,6 +26,7 @@ type RouteDependencies struct {
 	AssetService     *assetapp.Service
 	ReviewService    *reviewapp.Service
 	BillingService   *billingapp.Service
+	EventPublisher   *events.Publisher
 }
 
 func NewRouteDependencies(store *db.MemoryStore) RouteDependencies {
@@ -33,6 +35,7 @@ func NewRouteDependencies(store *db.MemoryStore) RouteDependencies {
 		AssetService:     assetapp.NewService(store),
 		ReviewService:    reviewapp.NewService(store),
 		BillingService:   billingapp.NewService(store),
+		EventPublisher:   store.EventPublisher,
 	}
 }
 
@@ -62,6 +65,6 @@ func RegisterRoutes(mux *http.ServeMux, deps RouteDependencies) {
 		path, handler := billingv1connect.NewBillingServiceHandler(&billingHandler{service: deps.BillingService})
 		mux.Handle(path, handler)
 	}
-	sse.RegisterRoutes(mux)
+	sse.RegisterRoutes(mux, deps.EventPublisher)
 	upload.RegisterRoutes(mux)
 }

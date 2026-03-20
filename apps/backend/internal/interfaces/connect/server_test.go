@@ -3,8 +3,10 @@ package connect
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	connectrpc "connectrpc.com/connect"
@@ -292,5 +294,40 @@ func TestExecutionAssetReviewBillingRoutes(t *testing.T) {
 	}
 	if got := budgetSnapshot.Msg.GetBudgetSnapshot().GetRemainingBudgetCents(); got != 380 {
 		t.Fatalf("expected remaining_budget_cents 380, got %d", got)
+	}
+
+	sseReq, err := http.NewRequest(http.MethodGet, server.URL+"/sse/events?organization_id="+project.OrganizationID+"&project_id="+project.ID, nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest returned error: %v", err)
+	}
+	sseResp, err := server.Client().Do(sseReq)
+	if err != nil {
+		t.Fatalf("SSE request returned error: %v", err)
+	}
+	defer sseResp.Body.Close()
+
+	if sseResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected SSE status 200, got %d", sseResp.StatusCode)
+	}
+	if got := sseResp.Header.Get("Content-Type"); !strings.Contains(got, "text/event-stream") {
+		t.Fatalf("expected SSE content type, got %q", got)
+	}
+
+	sseBody, err := io.ReadAll(sseResp.Body)
+	if err != nil {
+		t.Fatalf("io.ReadAll returned error: %v", err)
+	}
+	body := string(sseBody)
+	if !strings.Contains(body, "event: shot.execution.updated") {
+		t.Fatalf("expected execution SSE event, got body %q", body)
+	}
+	if !strings.Contains(body, `"status":"submitted_for_review"`) {
+		t.Fatalf("expected submitted_for_review SSE payload, got body %q", body)
+	}
+	if !strings.Contains(body, "event: shot.review.created") {
+		t.Fatalf("expected review SSE event, got body %q", body)
+	}
+	if !strings.Contains(body, `"conclusion":"approved"`) {
+		t.Fatalf("expected approved review SSE payload, got body %q", body)
 	}
 }

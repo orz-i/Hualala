@@ -10,6 +10,7 @@ import (
 	"github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/review"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 type Handle struct{}
@@ -55,6 +56,7 @@ type MemoryStore struct {
 	Budgets           map[string]billing.ProjectBudget
 	UsageRecords      map[string]billing.UsageRecord
 	BillingEvents     map[string]billing.BillingEvent
+	EventPublisher    *events.Publisher
 }
 
 func NewMemoryStore() *MemoryStore {
@@ -75,6 +77,7 @@ func NewMemoryStore() *MemoryStore {
 		Budgets:           make(map[string]billing.ProjectBudget),
 		UsageRecords:      make(map[string]billing.UsageRecord),
 		BillingEvents:     make(map[string]billing.BillingEvent),
+		EventPublisher:    events.NewPublisher(),
 	}
 }
 

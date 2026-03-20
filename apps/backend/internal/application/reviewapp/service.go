@@ -2,6 +2,7 @@ package reviewapp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sort"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/hualala/apps/backend/internal/domain/review"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 type Service struct {
@@ -54,7 +56,8 @@ func (s *Service) CreateShotReview(_ context.Context, input CreateShotReviewInpu
 	if s == nil || s.store == nil {
 		return review.ShotReview{}, errors.New("reviewapp: store is required")
 	}
-	if _, ok := s.store.ShotExecutions[input.ShotExecutionID]; !ok {
+	shotExecution, ok := s.store.ShotExecutions[input.ShotExecutionID]
+	if !ok {
 		return review.ShotReview{}, errors.New("reviewapp: shot execution not found")
 	}
 	if strings.TrimSpace(input.Conclusion) == "" {
@@ -75,6 +78,12 @@ func (s *Service) CreateShotReview(_ context.Context, input CreateShotReviewInpu
 		UpdatedAt:       now,
 	}
 	s.store.Reviews[record.ID] = record
+	s.publishReviewEvent("shot.review.created", shotExecution.OrgID, shotExecution.ProjectID, "shot_review", record.ID, map[string]any{
+		"shot_execution_id": record.ShotExecutionID,
+		"review_id":         record.ID,
+		"conclusion":        record.Conclusion,
+		"comment_locale":    record.CommentLocale,
+	})
 	return record, nil
 }
 
@@ -82,7 +91,8 @@ func (s *Service) CreateEvaluationRun(_ context.Context, input CreateEvaluationR
 	if s == nil || s.store == nil {
 		return review.EvaluationRun{}, errors.New("reviewapp: store is required")
 	}
-	if _, ok := s.store.ShotExecutions[input.ShotExecutionID]; !ok {
+	shotExecution, ok := s.store.ShotExecutions[input.ShotExecutionID]
+	if !ok {
 		return review.EvaluationRun{}, errors.New("reviewapp: shot execution not found")
 	}
 
@@ -101,6 +111,11 @@ func (s *Service) CreateEvaluationRun(_ context.Context, input CreateEvaluationR
 	}
 
 	s.store.EvaluationRuns[record.ID] = record
+	s.publishReviewEvent("shot.evaluation.created", shotExecution.OrgID, shotExecution.ProjectID, "evaluation_run", record.ID, map[string]any{
+		"shot_execution_id": record.ShotExecutionID,
+		"evaluation_run_id": record.ID,
+		"status":            record.Status,
+	})
 	return record, nil
 }
 
@@ -153,4 +168,24 @@ func (s *Service) GetShotReviewSummary(ctx context.Context, input GetShotReviewS
 		LatestConclusion: lastReview.Conclusion,
 		LatestReviewID:   lastReview.ID,
 	}, nil
+}
+
+func (s *Service) publishReviewEvent(eventType string, organizationID string, projectID string, resourceType string, resourceID string, payload map[string]any) {
+	if s == nil || s.store == nil || s.store.EventPublisher == nil {
+		return
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	s.store.EventPublisher.Publish(events.Event{
+		EventType:      eventType,
+		OrganizationID: organizationID,
+		ProjectID:      projectID,
+		ResourceType:   resourceType,
+		ResourceID:     resourceID,
+		Payload:        string(body),
+	})
 }
