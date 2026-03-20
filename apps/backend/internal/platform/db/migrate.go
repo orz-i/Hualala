@@ -11,6 +11,11 @@ import (
 	"strings"
 )
 
+const (
+	transactionBeginMarker  = "BEGIN;"
+	transactionCommitMarker = "COMMIT;"
+)
+
 func ensureMigrationLedger(ctx context.Context, handle *sql.DB) error {
 	if _, err := handle.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -155,14 +160,16 @@ func RunMigrations(ctx context.Context, handle *sql.DB, migrationsDir string) er
 		if err != nil {
 			return fmt.Errorf("db: read migration %s: %w", migrationFile, err)
 		}
-		if strings.TrimSpace(string(payload)) == "" {
+		migrationSQL := strings.TrimSpace(string(payload))
+		if migrationSQL == "" {
 			continue
 		}
+		migrationSQL = stripTransactionWrapper(migrationSQL)
 		tx, err := handle.BeginTx(ctx, nil)
 		if err != nil {
 			return fmt.Errorf("db: begin migration %s: %w", filename, err)
 		}
-		if _, err := tx.ExecContext(ctx, string(payload)); err != nil {
+		if _, err := tx.ExecContext(ctx, migrationSQL); err != nil {
 			_ = tx.Rollback()
 			return fmt.Errorf("db: execute migration %s: %w", filename, err)
 		}
@@ -176,4 +183,18 @@ func RunMigrations(ctx context.Context, handle *sql.DB, migrationsDir string) er
 	}
 
 	return nil
+}
+
+func stripTransactionWrapper(migrationSQL string) string {
+	trimmed := strings.TrimSpace(migrationSQL)
+	upper := strings.ToUpper(trimmed)
+	if !strings.HasPrefix(upper, transactionBeginMarker) || !strings.HasSuffix(upper, transactionCommitMarker) {
+		return trimmed
+	}
+
+	inner := strings.TrimSpace(trimmed[len(transactionBeginMarker) : len(trimmed)-len(transactionCommitMarker)])
+	if inner == "" {
+		return trimmed
+	}
+	return inner
 }
