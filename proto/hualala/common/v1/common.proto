@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package hualala.common.v1;
+
+option go_package = "github.com/hualala/apps/backend/gen/hualala/common/v1;commonv1";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+message PageRequest {
+  uint32 page_size = 1;
+  string page_token = 2;
+}
+
+message PageResponse {
+  string next_page_token = 1;
+  uint64 total_size = 2;
+}
+
+message ResourceRef {
+  string resource_type = 1;
+  string resource_id = 2;
+  string display_name = 3;
+}
+
+message MoneySummary {
+  string currency_code = 1;
+  int64 units = 2;
+  int32 nanos = 3;
+  string formatted_amount = 4;
+}
+
+message ActorSummary {
+  string actor_id = 1;
+  string actor_type = 2;
+  string display_name = 3;
+}
+
+message Locale {
+  string language_code = 1;
+  string script_code = 2;
+  string region_code = 3;
+}
+
+message LocalizedLabel {
+  Locale locale = 1;
+  string label = 2;
+}
+
+message EventEnvelope {
+  string event_id = 1;
+  string event_type = 2;
+  string organization_id = 3;
+  string project_id = 4;
+  string resource_type = 5;
+  string resource_id = 6;
+  google.protobuf.Timestamp occurred_at = 7;
+  google.protobuf.Any payload = 8;
+}

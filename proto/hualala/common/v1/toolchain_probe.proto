@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package hualala.common.v1;
+
+option go_package = "github.com/hualala/apps/backend/gen/hualala/common/v1;commonv1";
+
+message ToolchainProbe {}

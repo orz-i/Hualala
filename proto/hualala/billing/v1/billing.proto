@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package hualala.billing.v1;
+
+option go_package = "github.com/hualala/apps/backend/gen/hualala/billing/v1;billingv1";
+
+service BillingService {
+  rpc GetBudgetSnapshot(GetBudgetSnapshotRequest) returns (GetBudgetSnapshotResponse);
+  rpc ListUsageRecords(ListUsageRecordsRequest) returns (ListUsageRecordsResponse);
+  rpc ListBillingEvents(ListBillingEventsRequest) returns (ListBillingEventsResponse);
+  rpc UpdateBudgetPolicy(UpdateBudgetPolicyRequest) returns (UpdateBudgetPolicyResponse);
+}
+
+message BudgetSnapshot {
+  string project_id = 1;
+  int64 limit_cents = 2;
+  int64 reserved_cents = 3;
+  int64 remaining_budget_cents = 4;
+}
+
+message UsageRecord {
+  string id = 1;
+  string shot_execution_run_id = 2;
+  string shot_execution_id = 3;
+  string meter = 4;
+  int64 amount_cents = 5;
+  string project_id = 6;
+}
+
+message BillingEvent {
+  string id = 1;
+  string event_type = 2;
+  string project_id = 3;
+  string shot_execution_id = 4;
+  string shot_execution_run_id = 5;
+  int64 amount_cents = 6;
+}
+
+message BudgetPolicy {
+  string id = 1;
+  string org_id = 2;
+  string project_id = 3;
+  int64 limit_cents = 4;
+  int64 reserved_cents = 5;
+}
+
+message GetBudgetSnapshotRequest {
+  string project_id = 1;
+}
+
+message GetBudgetSnapshotResponse {
+  BudgetSnapshot budget_snapshot = 1;
+}
+
+message ListUsageRecordsRequest {
+  string project_id = 1;
+}
+
+message ListUsageRecordsResponse {
+  repeated UsageRecord usage_records = 1;
+}
+
+message ListBillingEventsRequest {
+  string project_id = 1;
+}
+
+message ListBillingEventsResponse {
+  repeated BillingEvent billing_events = 1;
+}
+
+message UpdateBudgetPolicyRequest {
+  string project_id = 1;
+  string org_id = 2;
+  int64 limit_cents = 3;
+}
+
+message UpdateBudgetPolicyResponse {
+  BudgetPolicy budget_policy = 1;
+}

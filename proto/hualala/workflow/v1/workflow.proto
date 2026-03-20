@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package hualala.workflow.v1;
+
+option go_package = "github.com/hualala/apps/backend/gen/hualala/workflow/v1;workflowv1";
+
+service WorkflowService {
+  rpc StartWorkflow(StartWorkflowRequest) returns (StartWorkflowResponse);
+  rpc GetWorkflowRun(GetWorkflowRunRequest) returns (GetWorkflowRunResponse);
+  rpc ListWorkflowRuns(ListWorkflowRunsRequest) returns (ListWorkflowRunsResponse);
+  rpc CancelWorkflowRun(CancelWorkflowRunRequest) returns (CancelWorkflowRunResponse);
+  rpc RetryWorkflowRun(RetryWorkflowRunRequest) returns (RetryWorkflowRunResponse);
+}
+
+message WorkflowRun {
+  string id = 1;
+  string workflow_type = 2;
+  string status = 3;
+}
+
+message StartWorkflowRequest {
+  string workflow_type = 1;
+  string resource_id = 2;
+}
+
+message StartWorkflowResponse {
+  WorkflowRun workflow_run = 1;
+}
+
+message GetWorkflowRunRequest {
+  string workflow_run_id = 1;
+}
+
+message GetWorkflowRunResponse {
+  WorkflowRun workflow_run = 1;
+}
+
+message ListWorkflowRunsRequest {
+  string project_id = 1;
+}
+
+message ListWorkflowRunsResponse {
+  repeated WorkflowRun workflow_runs = 1;
+}
+
+message CancelWorkflowRunRequest {
+  string workflow_run_id = 1;
+}
+
+message CancelWorkflowRunResponse {
+  WorkflowRun workflow_run = 1;
+}
+
+message RetryWorkflowRunRequest {
+  string workflow_run_id = 1;
+}
+
+message RetryWorkflowRunResponse {
+  WorkflowRun workflow_run = 1;
+}

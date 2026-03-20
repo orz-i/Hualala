@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package hualala.org.v1;
+
+option go_package = "github.com/hualala/apps/backend/gen/hualala/org/v1;orgv1";
+
+service OrgService {
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
+  rpc ListRoles(ListRolesRequest) returns (ListRolesResponse);
+  rpc UpdateMemberRole(UpdateMemberRoleRequest) returns (UpdateMemberRoleResponse);
+  rpc UpdateOrgLocaleSettings(UpdateOrgLocaleSettingsRequest) returns (UpdateOrgLocaleSettingsResponse);
+}
+
+message Member {
+  string member_id = 1;
+  string org_id = 2;
+  string user_id = 3;
+  string role_id = 4;
+}
+
+message Role {
+  string role_id = 1;
+  string org_id = 2;
+  string code = 3;
+  string display_name = 4;
+}
+
+message OrgLocaleSettings {
+  string org_id = 1;
+  string default_locale = 2;
+  repeated string supported_locales = 3;
+}
+
+message ListMembersRequest {
+  string org_id = 1;
+}
+
+message ListMembersResponse {
+  repeated Member members = 1;
+}
+
+message ListRolesRequest {
+  string org_id = 1;
+}
+
+message ListRolesResponse {
+  repeated Role roles = 1;
+}
+
+message UpdateMemberRoleRequest {
+  string org_id = 1;
+  string member_id = 2;
+  string role_id = 3;
+}
+
+message UpdateMemberRoleResponse {
+  Member member = 1;
+}
+
+message UpdateOrgLocaleSettingsRequest {
+  string org_id = 1;
+  string default_locale = 2;
+  repeated string supported_locales = 3;
+}
+
+message UpdateOrgLocaleSettingsResponse {
+  OrgLocaleSettings locale_settings = 1;
+}

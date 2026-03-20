@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package hualala.review.v1;
+
+option go_package = "github.com/hualala/apps/backend/gen/hualala/review/v1;reviewv1";
+
+service ReviewService {
+  rpc ListEvaluationRuns(ListEvaluationRunsRequest) returns (ListEvaluationRunsResponse);
+  rpc CreateEvaluationRun(CreateEvaluationRunRequest) returns (CreateEvaluationRunResponse);
+  rpc ListShotReviews(ListShotReviewsRequest) returns (ListShotReviewsResponse);
+  rpc CreateShotReview(CreateShotReviewRequest) returns (CreateShotReviewResponse);
+  rpc GetShotReviewSummary(GetShotReviewSummaryRequest) returns (GetShotReviewSummaryResponse);
+}
+
+message EvaluationRun {
+  string id = 1;
+  string shot_execution_id = 2;
+  repeated string passed_checks = 3;
+  repeated string failed_checks = 4;
+  string status = 5;
+}
+
+message ShotReview {
+  string id = 1;
+  string shot_execution_id = 2;
+  string conclusion = 3;
+  string comment_locale = 4;
+}
+
+message ShotReviewSummary {
+  string shot_execution_id = 1;
+  string latest_conclusion = 2;
+  string latest_review_id = 3;
+}
+
+message ListEvaluationRunsRequest {
+  string shot_execution_id = 1;
+}
+
+message ListEvaluationRunsResponse {
+  repeated EvaluationRun evaluation_runs = 1;
+}
+
+message CreateEvaluationRunRequest {
+  string shot_execution_id = 1;
+  repeated string passed_checks = 2;
+  repeated string failed_checks = 3;
+}
+
+message CreateEvaluationRunResponse {
+  EvaluationRun evaluation_run = 1;
+}
+
+message ListShotReviewsRequest {
+  string shot_execution_id = 1;
+}
+
+message ListShotReviewsResponse {
+  repeated ShotReview shot_reviews = 1;
+}
+
+message CreateShotReviewRequest {
+  string shot_execution_id = 1;
+  string conclusion = 2;
+  string comment_locale = 3;
+  string comment = 4;
+}
+
+message CreateShotReviewResponse {
+  ShotReview shot_review = 1;
+}
+
+message GetShotReviewSummaryRequest {
+  string shot_execution_id = 1;
+}
+
+message GetShotReviewSummaryResponse {
+  ShotReviewSummary summary = 1;
+}

@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package hualala.execution.v1;
+
+option go_package = "github.com/hualala/apps/backend/gen/hualala/execution/v1;executionv1";
+
+import "hualala/asset/v1/asset.proto";
+import "hualala/review/v1/review.proto";
+
+service ExecutionService {
+  rpc GetShotWorkbench(GetShotWorkbenchRequest) returns (GetShotWorkbenchResponse);
+  rpc GetShotExecution(GetShotExecutionRequest) returns (GetShotExecutionResponse);
+  rpc ListShotExecutionRuns(ListShotExecutionRunsRequest) returns (ListShotExecutionRunsResponse);
+  rpc StartShotExecutionRun(StartShotExecutionRunRequest) returns (StartShotExecutionRunResponse);
+  rpc SelectPrimaryAsset(SelectPrimaryAssetRequest) returns (SelectPrimaryAssetResponse);
+  rpc RunSubmissionGateChecks(RunSubmissionGateChecksRequest) returns (RunSubmissionGateChecksResponse);
+  rpc SubmitShotForReview(SubmitShotForReviewRequest) returns (SubmitShotForReviewResponse);
+  rpc MarkShotReworkRequired(MarkShotReworkRequiredRequest) returns (MarkShotReworkRequiredResponse);
+}
+
+message ShotExecution {
+  string id = 1;
+  string org_id = 2;
+  string project_id = 3;
+  string shot_id = 4;
+  string status = 5;
+  string primary_asset_id = 6;
+  string current_run_id = 7;
+}
+
+message ShotExecutionRun {
+  string id = 1;
+  string shot_execution_id = 2;
+  string status = 3;
+  uint32 run_number = 4;
+  string trigger_type = 5;
+  string operator_id = 6;
+}
+
+message ShotWorkbench {
+  ShotExecution shot_execution = 1;
+  repeated ShotExecutionRun runs = 2;
+  repeated hualala.asset.v1.ShotCandidateAsset candidate_assets = 3;
+  hualala.review.v1.ShotReviewSummary review_summary = 4;
+  hualala.review.v1.EvaluationRun latest_evaluation_run = 5;
+}
+
+message GetShotWorkbenchRequest {
+  string shot_id = 1;
+  string display_locale = 2;
+}
+
+message GetShotWorkbenchResponse {
+  ShotWorkbench workbench = 1;
+}
+
+message GetShotExecutionRequest {
+  string shot_execution_id = 1;
+}
+
+message GetShotExecutionResponse {
+  ShotExecution shot_execution = 1;
+}
+
+message ListShotExecutionRunsRequest {
+  string shot_execution_id = 1;
+}
+
+message ListShotExecutionRunsResponse {
+  repeated ShotExecutionRun runs = 1;
+}
+
+message StartShotExecutionRunRequest {
+  string shot_id = 1;
+  string operator_id = 2;
+  string project_id = 3;
+  string org_id = 4;
+  string trigger_type = 5;
+  int64 estimated_cost_cents = 6;
+}
+
+message StartShotExecutionRunResponse {
+  ShotExecutionRun run = 1;
+}
+
+message SelectPrimaryAssetRequest {
+  string shot_execution_id = 1;
+  string asset_id = 2;
+}
+
+message SelectPrimaryAssetResponse {
+  ShotExecution shot_execution = 1;
+}
+
+message RunSubmissionGateChecksRequest {
+  string shot_execution_id = 1;
+}
+
+message RunSubmissionGateChecksResponse {
+  repeated string passed_checks = 1;
+  repeated string failed_checks = 2;
+}
+
+message SubmitShotForReviewRequest {
+  string shot_execution_id = 1;
+}
+
+message SubmitShotForReviewResponse {
+  ShotExecution shot_execution = 1;
+}
+
+message MarkShotReworkRequiredRequest {
+  string shot_execution_id = 1;
+  string reason = 2;
+}
+
+message MarkShotReworkRequiredResponse {
+  ShotExecution shot_execution = 1;
+}

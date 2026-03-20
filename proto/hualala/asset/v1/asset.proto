@@ -1,0 +1,165 @@
+syntax = "proto3";
+
+package hualala.asset.v1;
+
+option go_package = "github.com/hualala/apps/backend/gen/hualala/asset/v1;assetv1";
+
+service AssetService {
+  rpc CreateImportBatch(CreateImportBatchRequest) returns (CreateImportBatchResponse);
+  rpc AddCandidateAsset(AddCandidateAssetRequest) returns (AddCandidateAssetResponse);
+  rpc ListImportBatchItems(ListImportBatchItemsRequest) returns (ListImportBatchItemsResponse);
+  rpc BatchConfirmImportBatchItems(BatchConfirmImportBatchItemsRequest) returns (BatchConfirmImportBatchItemsResponse);
+  rpc GetImportBatchWorkbench(GetImportBatchWorkbenchRequest) returns (GetImportBatchWorkbenchResponse);
+  rpc ListCandidateAssets(ListCandidateAssetsRequest) returns (ListCandidateAssetsResponse);
+  rpc GetAssetProvenanceSummary(GetAssetProvenanceSummaryRequest) returns (GetAssetProvenanceSummaryResponse);
+}
+
+message ImportBatch {
+  string id = 1;
+  string org_id = 2;
+  string project_id = 3;
+  string operator_id = 4;
+  string source_type = 5;
+  string status = 6;
+}
+
+message ImportBatchItem {
+  string id = 1;
+  string import_batch_id = 2;
+  string status = 3;
+  string matched_shot_id = 4;
+  string asset_id = 5;
+}
+
+message MediaAsset {
+  string id = 1;
+  string project_id = 2;
+  string source_type = 3;
+  string rights_status = 4;
+  string import_batch_id = 5;
+  string locale = 6;
+  bool ai_annotated = 7;
+}
+
+message ShotCandidateAsset {
+  string id = 1;
+  string shot_execution_id = 2;
+  string asset_id = 3;
+  string source_run_id = 4;
+}
+
+message UploadSession {
+  string id = 1;
+  string org_id = 2;
+  string project_id = 3;
+  string import_batch_id = 4;
+  string file_name = 5;
+  string checksum = 6;
+  int64 size_bytes = 7;
+  uint32 retry_count = 8;
+  string status = 9;
+  string resume_hint = 10;
+}
+
+message UploadFile {
+  string id = 1;
+  string upload_session_id = 2;
+  string file_name = 3;
+  string mime_type = 4;
+  string checksum = 5;
+  int64 size_bytes = 6;
+}
+
+message MediaAssetVariant {
+  string id = 1;
+  string asset_id = 2;
+  string upload_file_id = 3;
+  string variant_type = 4;
+  string mime_type = 5;
+  uint32 width = 6;
+  uint32 height = 7;
+}
+
+message ImportBatchShotExecution {
+  string id = 1;
+  string shot_id = 2;
+  string status = 3;
+  string primary_asset_id = 4;
+  string current_run_id = 5;
+}
+
+message CreateImportBatchRequest {
+  string project_id = 1;
+  string operator_id = 2;
+  string org_id = 3;
+  string source_type = 4;
+}
+
+message CreateImportBatchResponse {
+  ImportBatch import_batch = 1;
+}
+
+message AddCandidateAssetRequest {
+  string shot_execution_id = 1;
+  string project_id = 2;
+  string org_id = 3;
+  string import_batch_id = 4;
+  string source_run_id = 5;
+  string source_type = 6;
+  string asset_locale = 7;
+  string rights_status = 8;
+  bool ai_annotated = 9;
+}
+
+message AddCandidateAssetResponse {
+  ShotCandidateAsset asset = 1;
+}
+
+message ListImportBatchItemsRequest {
+  string import_batch_id = 1;
+}
+
+message ListImportBatchItemsResponse {
+  repeated ImportBatchItem items = 1;
+}
+
+message BatchConfirmImportBatchItemsRequest {
+  string import_batch_id = 1;
+  repeated string item_ids = 2;
+}
+
+message BatchConfirmImportBatchItemsResponse {
+  repeated ImportBatchItem items = 1;
+}
+
+message GetImportBatchWorkbenchRequest {
+  string import_batch_id = 1;
+}
+
+message GetImportBatchWorkbenchResponse {
+  ImportBatch import_batch = 1;
+  repeated UploadSession upload_sessions = 2;
+  repeated UploadFile upload_files = 3;
+  repeated MediaAsset media_assets = 4;
+  repeated MediaAssetVariant media_asset_variants = 5;
+  repeated ImportBatchItem items = 6;
+  repeated ShotCandidateAsset candidate_assets = 7;
+  repeated ImportBatchShotExecution shot_executions = 8;
+}
+
+message ListCandidateAssetsRequest {
+  string shot_execution_id = 1;
+}
+
+message ListCandidateAssetsResponse {
+  repeated ShotCandidateAsset assets = 1;
+}
+
+message GetAssetProvenanceSummaryRequest {
+  string asset_id = 1;
+}
+
+message GetAssetProvenanceSummaryResponse {
+  MediaAsset asset = 1;
+  string provenance_summary = 2;
+}

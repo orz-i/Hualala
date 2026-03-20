@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package hualala.auth.v1;
+
+option go_package = "github.com/hualala/apps/backend/gen/hualala/auth/v1;authv1";
+
+service AuthService {
+  rpc GetCurrentSession(GetCurrentSessionRequest) returns (GetCurrentSessionResponse);
+  rpc RefreshSession(RefreshSessionRequest) returns (RefreshSessionResponse);
+  rpc UpdateUserPreferences(UpdateUserPreferencesRequest) returns (UpdateUserPreferencesResponse);
+}
+
+message Session {
+  string session_id = 1;
+  string user_id = 2;
+  string org_id = 3;
+  string locale = 4;
+}
+
+message UserPreferences {
+  string user_id = 1;
+  string display_locale = 2;
+  string timezone = 3;
+}
+
+message GetCurrentSessionRequest {}
+
+message GetCurrentSessionResponse {
+  Session session = 1;
+}
+
+message RefreshSessionRequest {
+  string refresh_token = 1;
+}
+
+message RefreshSessionResponse {
+  Session session = 1;
+}
+
+message UpdateUserPreferencesRequest {
+  string user_id = 1;
+  string display_locale = 2;
+  string timezone = 3;
+}
+
+message UpdateUserPreferencesResponse {
+  UserPreferences preferences = 1;
+}

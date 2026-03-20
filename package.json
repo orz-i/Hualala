@@ -1,0 +1,35 @@
+{
+  "name": "hualala",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.16.0",
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:e2e:admin": "node tooling/scripts/run-playwright-suite.mjs admin test tests/e2e/admin-smoke.spec.ts",
+    "test:e2e:creator": "node tooling/scripts/run-playwright-suite.mjs creator test tests/e2e/creator-smoke.spec.ts",
+    "test:e2e:phase1": "node tooling/scripts/run-playwright-suite.mjs all test tests/e2e/phase1-acceptance.spec.ts",
+    "test:e2e:admin:real": "node tooling/scripts/run-playwright-suite.mjs admin-real test tests/e2e/admin-real-smoke.spec.ts",
+    "test:e2e:creator:real": "node tooling/scripts/run-playwright-suite.mjs creator-real test tests/e2e/creator-real-smoke.spec.ts",
+    "test:e2e:phase1:real": "node tooling/scripts/run-playwright-suite.mjs all-real test tests/e2e/phase1-real-acceptance.spec.ts",
+    "test:tooling": "node --test tooling/scripts/demo_seed.test.mjs tooling/scripts/backend_seed.test.mjs tooling/scripts/i18n_key_parity_check.test.mjs",
+    "demo:seed": "node tooling/scripts/demo_seed.mjs",
+    "demo:seed:backend": "node tooling/scripts/backend_seed.mjs",
+    "dev": "turbo run dev",
+    "proto:lint": "node tooling/scripts/run-buf.mjs lint",
+    "proto:gen": "node tooling/scripts/run-buf.mjs generate",
+    "i18n:check": "node tooling/scripts/i18n_key_parity_check.mjs"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.66.1",
+    "@playwright/test": "^1.58.2",
+    "pnpm": "10.16.0",
+    "turbo": "^2.5.6"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@bufbuild/buf"
+    ]
+  }
+}
