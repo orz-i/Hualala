@@ -99,3 +99,26 @@ jobs:
 
       - name: Phase1 acceptance
         run: corepack pnpm run test:e2e:phase1
+
+  e2e_real:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: corepack pnpm exec playwright install chromium
+
+      - name: Phase1 real acceptance
+        run: corepack pnpm run test:e2e:phase1:real

@@ -119,6 +119,8 @@
 
 ### 真实联调 Smoke
 
+以下 3 条现在都视为正式质量门，其中 `test:e2e:phase1:real` 是 CI 级真实 backend acceptance：
+
 - `corepack pnpm run test:e2e:admin:real`
 - `corepack pnpm run test:e2e:creator:real`
 - `corepack pnpm run test:e2e:phase1:real`
