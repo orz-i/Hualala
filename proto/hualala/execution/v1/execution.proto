@@ -4,6 +4,9 @@ package hualala.execution.v1;
 
 option go_package = "github.com/hualala/apps/backend/gen/hualala/execution/v1;executionv1";
 
+import "hualala/asset/v1/asset.proto";
+import "hualala/review/v1/review.proto";
+
 service ExecutionService {
   rpc GetShotWorkbench(GetShotWorkbenchRequest) returns (GetShotWorkbenchResponse);
   rpc GetShotExecution(GetShotExecutionRequest) returns (GetShotExecutionResponse);
@@ -37,6 +40,9 @@ message ShotExecutionRun {
 message ShotWorkbench {
   ShotExecution shot_execution = 1;
   repeated ShotExecutionRun runs = 2;
+  repeated hualala.asset.v1.ShotCandidateAsset candidate_assets = 3;
+  hualala.review.v1.ShotReviewSummary review_summary = 4;
+  hualala.review.v1.EvaluationRun latest_evaluation_run = 5;
 }
 
 message GetShotWorkbenchRequest {

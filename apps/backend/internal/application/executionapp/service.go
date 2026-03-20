@@ -9,8 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/execution"
+	"github.com/hualala/apps/backend/internal/domain/review"
 	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/events"
 )
@@ -63,8 +65,17 @@ type ListShotExecutionRunsInput struct {
 }
 
 type ShotWorkbench struct {
-	ShotExecution execution.ShotExecution
-	Runs          []execution.ShotExecutionRun
+	ShotExecution       execution.ShotExecution
+	Runs                []execution.ShotExecutionRun
+	CandidateAssets     []asset.CandidateAsset
+	ReviewSummary       ShotReviewSummary
+	LatestEvaluationRun *review.EvaluationRun
+}
+
+type ShotReviewSummary struct {
+	ShotExecutionID  string
+	LatestConclusion string
+	LatestReviewID   string
 }
 
 func NewService(store *db.MemoryStore) *Service {
@@ -161,8 +172,11 @@ func (s *Service) GetShotWorkbench(ctx context.Context, input GetShotWorkbenchIn
 	}
 
 	return ShotWorkbench{
-		ShotExecution: record,
-		Runs:          runs,
+		ShotExecution:       record,
+		Runs:                runs,
+		CandidateAssets:     s.listCandidateAssets(record.ID),
+		ReviewSummary:       s.buildShotReviewSummary(record.ID),
+		LatestEvaluationRun: s.findLatestEvaluationRun(record.ID),
 	}, nil
 }
 
@@ -292,6 +306,57 @@ func (s *Service) findExecutionByShotID(shotID string) (execution.ShotExecution,
 		}
 	}
 	return execution.ShotExecution{}, false
+}
+
+func (s *Service) listCandidateAssets(shotExecutionID string) []asset.CandidateAsset {
+	candidates := make([]asset.CandidateAsset, 0)
+	for _, candidate := range s.store.CandidateAssets {
+		if candidate.ShotExecutionID == shotExecutionID {
+			candidates = append(candidates, candidate)
+		}
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].ID < candidates[j].ID
+	})
+	return candidates
+}
+
+func (s *Service) buildShotReviewSummary(shotExecutionID string) ShotReviewSummary {
+	reviews := make([]review.ShotReview, 0)
+	for _, record := range s.store.Reviews {
+		if record.ShotExecutionID == shotExecutionID {
+			reviews = append(reviews, record)
+		}
+	}
+	sort.Slice(reviews, func(i, j int) bool {
+		return reviews[i].ID < reviews[j].ID
+	})
+	if len(reviews) == 0 {
+		return ShotReviewSummary{ShotExecutionID: shotExecutionID}
+	}
+	lastReview := reviews[len(reviews)-1]
+	return ShotReviewSummary{
+		ShotExecutionID:  shotExecutionID,
+		LatestConclusion: lastReview.Conclusion,
+		LatestReviewID:   lastReview.ID,
+	}
+}
+
+func (s *Service) findLatestEvaluationRun(shotExecutionID string) *review.EvaluationRun {
+	runs := make([]review.EvaluationRun, 0)
+	for _, run := range s.store.EvaluationRuns {
+		if run.ShotExecutionID == shotExecutionID {
+			runs = append(runs, run)
+		}
+	}
+	sort.Slice(runs, func(i, j int) bool {
+		return runs[i].ID < runs[j].ID
+	})
+	if len(runs) == 0 {
+		return nil
+	}
+	latest := runs[len(runs)-1]
+	return &latest
 }
 
 func (s *Service) appendCheck(result *execution.SubmissionGateResult, check string, passed bool) {

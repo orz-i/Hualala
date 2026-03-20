@@ -42,9 +42,20 @@ func mapShotWorkbench(record executionapp.ShotWorkbench) *executionv1.ShotWorkbe
 	for _, run := range record.Runs {
 		runs = append(runs, mapShotExecutionRun(run))
 	}
+	candidateAssets := make([]*assetv1.ShotCandidateAsset, 0, len(record.CandidateAssets))
+	for _, candidate := range record.CandidateAssets {
+		candidateAssets = append(candidateAssets, mapCandidateAsset(candidate))
+	}
+	var latestEvaluationRun *reviewv1.EvaluationRun
+	if record.LatestEvaluationRun != nil {
+		latestEvaluationRun = mapEvaluationRun(*record.LatestEvaluationRun)
+	}
 	return &executionv1.ShotWorkbench{
-		ShotExecution: mapShotExecution(record.ShotExecution),
-		Runs:          runs,
+		ShotExecution:       mapShotExecution(record.ShotExecution),
+		Runs:                runs,
+		CandidateAssets:     candidateAssets,
+		ReviewSummary:       mapShotReviewSummary(reviewapp.ShotReviewSummary(record.ReviewSummary)),
+		LatestEvaluationRun: latestEvaluationRun,
 	}
 }
 

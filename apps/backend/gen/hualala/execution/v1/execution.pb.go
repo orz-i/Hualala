@@ -7,6 +7,8 @@
 package executionv1
 
 import (
+	v1 "github.com/hualala/apps/backend/gen/hualala/asset/v1"
+	v11 "github.com/hualala/apps/backend/gen/hualala/review/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -198,11 +200,14 @@ func (x *ShotExecutionRun) GetOperatorId() string {
 }
 
 type ShotWorkbench struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ShotExecution *ShotExecution         `protobuf:"bytes,1,opt,name=shot_execution,json=shotExecution,proto3" json:"shot_execution,omitempty"`
-	Runs          []*ShotExecutionRun    `protobuf:"bytes,2,rep,name=runs,proto3" json:"runs,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState   `protogen:"open.v1"`
+	ShotExecution       *ShotExecution           `protobuf:"bytes,1,opt,name=shot_execution,json=shotExecution,proto3" json:"shot_execution,omitempty"`
+	Runs                []*ShotExecutionRun      `protobuf:"bytes,2,rep,name=runs,proto3" json:"runs,omitempty"`
+	CandidateAssets     []*v1.ShotCandidateAsset `protobuf:"bytes,3,rep,name=candidate_assets,json=candidateAssets,proto3" json:"candidate_assets,omitempty"`
+	ReviewSummary       *v11.ShotReviewSummary   `protobuf:"bytes,4,opt,name=review_summary,json=reviewSummary,proto3" json:"review_summary,omitempty"`
+	LatestEvaluationRun *v11.EvaluationRun       `protobuf:"bytes,5,opt,name=latest_evaluation_run,json=latestEvaluationRun,proto3" json:"latest_evaluation_run,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *ShotWorkbench) Reset() {
@@ -245,6 +250,27 @@ func (x *ShotWorkbench) GetShotExecution() *ShotExecution {
 func (x *ShotWorkbench) GetRuns() []*ShotExecutionRun {
 	if x != nil {
 		return x.Runs
+	}
+	return nil
+}
+
+func (x *ShotWorkbench) GetCandidateAssets() []*v1.ShotCandidateAsset {
+	if x != nil {
+		return x.CandidateAssets
+	}
+	return nil
+}
+
+func (x *ShotWorkbench) GetReviewSummary() *v11.ShotReviewSummary {
+	if x != nil {
+		return x.ReviewSummary
+	}
+	return nil
+}
+
+func (x *ShotWorkbench) GetLatestEvaluationRun() *v11.EvaluationRun {
+	if x != nil {
+		return x.LatestEvaluationRun
 	}
 	return nil
 }
@@ -1029,7 +1055,7 @@ var File_hualala_execution_v1_execution_proto protoreflect.FileDescriptor
 
 const file_hualala_execution_v1_execution_proto_rawDesc = "" +
 	"\n" +
-	"$hualala/execution/v1/execution.proto\x12\x14hualala.execution.v1\"\xd6\x01\n" +
+	"$hualala/execution/v1/execution.proto\x12\x14hualala.execution.v1\x1a\x1chualala/asset/v1/asset.proto\x1a\x1ehualala/review/v1/review.proto\"\xd6\x01\n" +
 	"\rShotExecution\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06org_id\x18\x02 \x01(\tR\x05orgId\x12\x1d\n" +
@@ -1047,10 +1073,13 @@ const file_hualala_execution_v1_execution_proto_rawDesc = "" +
 	"run_number\x18\x04 \x01(\rR\trunNumber\x12!\n" +
 	"\ftrigger_type\x18\x05 \x01(\tR\vtriggerType\x12\x1f\n" +
 	"\voperator_id\x18\x06 \x01(\tR\n" +
-	"operatorId\"\x97\x01\n" +
+	"operatorId\"\x8b\x03\n" +
 	"\rShotWorkbench\x12J\n" +
 	"\x0eshot_execution\x18\x01 \x01(\v2#.hualala.execution.v1.ShotExecutionR\rshotExecution\x12:\n" +
-	"\x04runs\x18\x02 \x03(\v2&.hualala.execution.v1.ShotExecutionRunR\x04runs\"Y\n" +
+	"\x04runs\x18\x02 \x03(\v2&.hualala.execution.v1.ShotExecutionRunR\x04runs\x12O\n" +
+	"\x10candidate_assets\x18\x03 \x03(\v2$.hualala.asset.v1.ShotCandidateAssetR\x0fcandidateAssets\x12K\n" +
+	"\x0ereview_summary\x18\x04 \x01(\v2$.hualala.review.v1.ShotReviewSummaryR\rreviewSummary\x12T\n" +
+	"\x15latest_evaluation_run\x18\x05 \x01(\v2 .hualala.review.v1.EvaluationRunR\x13latestEvaluationRun\"Y\n" +
 	"\x17GetShotWorkbenchRequest\x12\x17\n" +
 	"\ashot_id\x18\x01 \x01(\tR\x06shotId\x12%\n" +
 	"\x0edisplay_locale\x18\x02 \x01(\tR\rdisplayLocale\"]\n" +
@@ -1138,38 +1167,44 @@ var file_hualala_execution_v1_execution_proto_goTypes = []any{
 	(*SubmitShotForReviewResponse)(nil),     // 16: hualala.execution.v1.SubmitShotForReviewResponse
 	(*MarkShotReworkRequiredRequest)(nil),   // 17: hualala.execution.v1.MarkShotReworkRequiredRequest
 	(*MarkShotReworkRequiredResponse)(nil),  // 18: hualala.execution.v1.MarkShotReworkRequiredResponse
+	(*v1.ShotCandidateAsset)(nil),           // 19: hualala.asset.v1.ShotCandidateAsset
+	(*v11.ShotReviewSummary)(nil),           // 20: hualala.review.v1.ShotReviewSummary
+	(*v11.EvaluationRun)(nil),               // 21: hualala.review.v1.EvaluationRun
 }
 var file_hualala_execution_v1_execution_proto_depIdxs = []int32{
 	0,  // 0: hualala.execution.v1.ShotWorkbench.shot_execution:type_name -> hualala.execution.v1.ShotExecution
 	1,  // 1: hualala.execution.v1.ShotWorkbench.runs:type_name -> hualala.execution.v1.ShotExecutionRun
-	2,  // 2: hualala.execution.v1.GetShotWorkbenchResponse.workbench:type_name -> hualala.execution.v1.ShotWorkbench
-	0,  // 3: hualala.execution.v1.GetShotExecutionResponse.shot_execution:type_name -> hualala.execution.v1.ShotExecution
-	1,  // 4: hualala.execution.v1.ListShotExecutionRunsResponse.runs:type_name -> hualala.execution.v1.ShotExecutionRun
-	1,  // 5: hualala.execution.v1.StartShotExecutionRunResponse.run:type_name -> hualala.execution.v1.ShotExecutionRun
-	0,  // 6: hualala.execution.v1.SelectPrimaryAssetResponse.shot_execution:type_name -> hualala.execution.v1.ShotExecution
-	0,  // 7: hualala.execution.v1.SubmitShotForReviewResponse.shot_execution:type_name -> hualala.execution.v1.ShotExecution
-	0,  // 8: hualala.execution.v1.MarkShotReworkRequiredResponse.shot_execution:type_name -> hualala.execution.v1.ShotExecution
-	3,  // 9: hualala.execution.v1.ExecutionService.GetShotWorkbench:input_type -> hualala.execution.v1.GetShotWorkbenchRequest
-	5,  // 10: hualala.execution.v1.ExecutionService.GetShotExecution:input_type -> hualala.execution.v1.GetShotExecutionRequest
-	7,  // 11: hualala.execution.v1.ExecutionService.ListShotExecutionRuns:input_type -> hualala.execution.v1.ListShotExecutionRunsRequest
-	9,  // 12: hualala.execution.v1.ExecutionService.StartShotExecutionRun:input_type -> hualala.execution.v1.StartShotExecutionRunRequest
-	11, // 13: hualala.execution.v1.ExecutionService.SelectPrimaryAsset:input_type -> hualala.execution.v1.SelectPrimaryAssetRequest
-	13, // 14: hualala.execution.v1.ExecutionService.RunSubmissionGateChecks:input_type -> hualala.execution.v1.RunSubmissionGateChecksRequest
-	15, // 15: hualala.execution.v1.ExecutionService.SubmitShotForReview:input_type -> hualala.execution.v1.SubmitShotForReviewRequest
-	17, // 16: hualala.execution.v1.ExecutionService.MarkShotReworkRequired:input_type -> hualala.execution.v1.MarkShotReworkRequiredRequest
-	4,  // 17: hualala.execution.v1.ExecutionService.GetShotWorkbench:output_type -> hualala.execution.v1.GetShotWorkbenchResponse
-	6,  // 18: hualala.execution.v1.ExecutionService.GetShotExecution:output_type -> hualala.execution.v1.GetShotExecutionResponse
-	8,  // 19: hualala.execution.v1.ExecutionService.ListShotExecutionRuns:output_type -> hualala.execution.v1.ListShotExecutionRunsResponse
-	10, // 20: hualala.execution.v1.ExecutionService.StartShotExecutionRun:output_type -> hualala.execution.v1.StartShotExecutionRunResponse
-	12, // 21: hualala.execution.v1.ExecutionService.SelectPrimaryAsset:output_type -> hualala.execution.v1.SelectPrimaryAssetResponse
-	14, // 22: hualala.execution.v1.ExecutionService.RunSubmissionGateChecks:output_type -> hualala.execution.v1.RunSubmissionGateChecksResponse
-	16, // 23: hualala.execution.v1.ExecutionService.SubmitShotForReview:output_type -> hualala.execution.v1.SubmitShotForReviewResponse
-	18, // 24: hualala.execution.v1.ExecutionService.MarkShotReworkRequired:output_type -> hualala.execution.v1.MarkShotReworkRequiredResponse
-	17, // [17:25] is the sub-list for method output_type
-	9,  // [9:17] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	19, // 2: hualala.execution.v1.ShotWorkbench.candidate_assets:type_name -> hualala.asset.v1.ShotCandidateAsset
+	20, // 3: hualala.execution.v1.ShotWorkbench.review_summary:type_name -> hualala.review.v1.ShotReviewSummary
+	21, // 4: hualala.execution.v1.ShotWorkbench.latest_evaluation_run:type_name -> hualala.review.v1.EvaluationRun
+	2,  // 5: hualala.execution.v1.GetShotWorkbenchResponse.workbench:type_name -> hualala.execution.v1.ShotWorkbench
+	0,  // 6: hualala.execution.v1.GetShotExecutionResponse.shot_execution:type_name -> hualala.execution.v1.ShotExecution
+	1,  // 7: hualala.execution.v1.ListShotExecutionRunsResponse.runs:type_name -> hualala.execution.v1.ShotExecutionRun
+	1,  // 8: hualala.execution.v1.StartShotExecutionRunResponse.run:type_name -> hualala.execution.v1.ShotExecutionRun
+	0,  // 9: hualala.execution.v1.SelectPrimaryAssetResponse.shot_execution:type_name -> hualala.execution.v1.ShotExecution
+	0,  // 10: hualala.execution.v1.SubmitShotForReviewResponse.shot_execution:type_name -> hualala.execution.v1.ShotExecution
+	0,  // 11: hualala.execution.v1.MarkShotReworkRequiredResponse.shot_execution:type_name -> hualala.execution.v1.ShotExecution
+	3,  // 12: hualala.execution.v1.ExecutionService.GetShotWorkbench:input_type -> hualala.execution.v1.GetShotWorkbenchRequest
+	5,  // 13: hualala.execution.v1.ExecutionService.GetShotExecution:input_type -> hualala.execution.v1.GetShotExecutionRequest
+	7,  // 14: hualala.execution.v1.ExecutionService.ListShotExecutionRuns:input_type -> hualala.execution.v1.ListShotExecutionRunsRequest
+	9,  // 15: hualala.execution.v1.ExecutionService.StartShotExecutionRun:input_type -> hualala.execution.v1.StartShotExecutionRunRequest
+	11, // 16: hualala.execution.v1.ExecutionService.SelectPrimaryAsset:input_type -> hualala.execution.v1.SelectPrimaryAssetRequest
+	13, // 17: hualala.execution.v1.ExecutionService.RunSubmissionGateChecks:input_type -> hualala.execution.v1.RunSubmissionGateChecksRequest
+	15, // 18: hualala.execution.v1.ExecutionService.SubmitShotForReview:input_type -> hualala.execution.v1.SubmitShotForReviewRequest
+	17, // 19: hualala.execution.v1.ExecutionService.MarkShotReworkRequired:input_type -> hualala.execution.v1.MarkShotReworkRequiredRequest
+	4,  // 20: hualala.execution.v1.ExecutionService.GetShotWorkbench:output_type -> hualala.execution.v1.GetShotWorkbenchResponse
+	6,  // 21: hualala.execution.v1.ExecutionService.GetShotExecution:output_type -> hualala.execution.v1.GetShotExecutionResponse
+	8,  // 22: hualala.execution.v1.ExecutionService.ListShotExecutionRuns:output_type -> hualala.execution.v1.ListShotExecutionRunsResponse
+	10, // 23: hualala.execution.v1.ExecutionService.StartShotExecutionRun:output_type -> hualala.execution.v1.StartShotExecutionRunResponse
+	12, // 24: hualala.execution.v1.ExecutionService.SelectPrimaryAsset:output_type -> hualala.execution.v1.SelectPrimaryAssetResponse
+	14, // 25: hualala.execution.v1.ExecutionService.RunSubmissionGateChecks:output_type -> hualala.execution.v1.RunSubmissionGateChecksResponse
+	16, // 26: hualala.execution.v1.ExecutionService.SubmitShotForReview:output_type -> hualala.execution.v1.SubmitShotForReviewResponse
+	18, // 27: hualala.execution.v1.ExecutionService.MarkShotReworkRequired:output_type -> hualala.execution.v1.MarkShotReworkRequiredResponse
+	20, // [20:28] is the sub-list for method output_type
+	12, // [12:20] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_hualala_execution_v1_execution_proto_init() }
