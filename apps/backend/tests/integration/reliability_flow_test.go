@@ -19,6 +19,7 @@ import (
 	"github.com/hualala/apps/backend/internal/domain/workflow"
 	connectiface "github.com/hualala/apps/backend/internal/interfaces/connect"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/runtime"
 	"github.com/hualala/apps/backend/internal/platform/temporal"
 )
 
@@ -32,10 +33,12 @@ func TestReliabilityFlow(t *testing.T) {
 	gatewayService := gatewayapp.NewService(store, adapter)
 	workflowService := workflowapp.NewService(store, store.EventPublisher, temporal.NewInMemoryExecutor(gatewayService), policyService)
 
-	deps := connectiface.NewRouteDependencies(connectiface.NewRuntimeDependenciesFromStore(store))
-	deps.PolicyService = policyService
-	deps.GatewayService = gatewayService
-	deps.WorkflowService = workflowService
+	services := runtime.NewServiceSet(runtime.NewRepositorySet(store))
+	services.PolicyService = policyService
+	services.GatewayService = gatewayService
+	services.WorkflowService = workflowService
+	services.UploadService = connectiface.NewRouteDependencies(services).UploadService
+	deps := connectiface.NewRouteDependencies(services)
 
 	mux := http.NewServeMux()
 	connectiface.RegisterRoutes(mux, deps)

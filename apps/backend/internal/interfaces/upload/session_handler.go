@@ -39,13 +39,7 @@ func NewService(deps Dependencies) *Service {
 
 func RegisterRoutes(mux *http.ServeMux, service *Service) {
 	if service == nil {
-		store := db.NewMemoryStore()
-		service = NewService(Dependencies{
-			Assets:         store,
-			Executions:     store,
-			Policy:         policyapp.NewService(store),
-			EventPublisher: store.EventPublisher,
-		})
+		return
 	}
 
 	mux.HandleFunc("/upload/sessions", func(w http.ResponseWriter, r *http.Request) {

@@ -9,6 +9,7 @@ import (
 	"github.com/hualala/apps/backend/internal/platform/config"
 	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/observability"
+	"github.com/hualala/apps/backend/internal/platform/runtime"
 )
 
 func main() {
@@ -38,7 +39,7 @@ func main() {
 			}
 		}
 	}()
-	connectiface.RegisterRoutes(mux, connectiface.NewRouteDependencies(connectiface.NewRuntimeDependenciesFromStore(store)))
+	connectiface.RegisterRoutes(mux, connectiface.NewRouteDependencies(runtime.NewServiceSet(runtime.NewRepositorySet(store))))
 
 	if err := http.ListenAndServe(cfg.HTTPAddr, mux); err != nil {
 		observability.Logger().Fatal(err)

@@ -24,11 +24,12 @@ import (
 	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/runtime"
 )
 
 func TestRegisterRoutes(t *testing.T) {
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, RouteDependencies{})
+	RegisterRoutes(mux, newRouteDependenciesFromStore(db.NewMemoryStore()))
 
 	testCases := []struct {
 		name           string
@@ -133,7 +134,7 @@ func TestExecutionAssetReviewBillingRoutes(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, NewRouteDependencies(NewRuntimeDependenciesFromStore(store)))
+	RegisterRoutes(mux, newRouteDependenciesFromStore(store))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -358,7 +359,7 @@ func TestImportBatchWorkbenchIncludesUploadArtifacts(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, NewRouteDependencies(NewRuntimeDependenciesFromStore(store)))
+	RegisterRoutes(mux, newRouteDependenciesFromStore(store))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -486,7 +487,7 @@ func TestImportBatchWorkbenchIncludesShotExecutionState(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, NewRouteDependencies(NewRuntimeDependenciesFromStore(store)))
+	RegisterRoutes(mux, newRouteDependenciesFromStore(store))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -623,7 +624,7 @@ func TestGetShotWorkbenchIncludesCandidateAndReviewSummary(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, NewRouteDependencies(NewRuntimeDependenciesFromStore(store)))
+	RegisterRoutes(mux, newRouteDependenciesFromStore(store))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -769,4 +770,14 @@ func TestServerRouteDependenciesDoNotExposeRawMemoryStore(t *testing.T) {
 	if strings.Contains(text, "Store            *db.MemoryStore") || strings.Contains(text, "Store *db.MemoryStore") {
 		t.Fatalf("expected RouteDependencies to avoid raw *db.MemoryStore field")
 	}
+	if strings.Contains(text, "type RuntimeDependencies struct") {
+		t.Fatalf("expected connect package to avoid RuntimeDependencies composition root")
+	}
+	if strings.Contains(text, "NewRuntimeDependenciesFromStore") {
+		t.Fatalf("expected connect package to avoid NewRuntimeDependenciesFromStore")
+	}
+}
+
+func newRouteDependenciesFromStore(store *db.MemoryStore) RouteDependencies {
+	return NewRouteDependencies(runtime.NewServiceSet(runtime.NewRepositorySet(store)))
 }
