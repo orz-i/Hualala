@@ -12,11 +12,11 @@ import (
 )
 
 type Service struct {
-	store   *db.MemoryStore
+	store   db.GatewayResultStore
 	adapter gateway.ProviderAdapter
 }
 
-func NewService(store *db.MemoryStore, adapter gateway.ProviderAdapter) *Service {
+func NewService(store db.GatewayResultStore, adapter gateway.ProviderAdapter) *Service {
 	if adapter == nil {
 		adapter = NewFakeAdapter()
 	}
@@ -28,7 +28,7 @@ func NewService(store *db.MemoryStore, adapter gateway.ProviderAdapter) *Service
 
 func (s *Service) Execute(ctx context.Context, request gateway.GatewayRequest) (gateway.GatewayResult, error) {
 	if s == nil || s.store == nil {
-		return gateway.GatewayResult{}, errors.New("gatewayapp: store is required")
+		return gateway.GatewayResult{}, errors.New("gatewayapp: result store is required")
 	}
 	if s.adapter == nil {
 		return gateway.GatewayResult{}, errors.New("gatewayapp: adapter is required")
@@ -47,7 +47,7 @@ func (s *Service) Execute(ctx context.Context, request gateway.GatewayRequest) (
 	}
 
 	idempotencyKey := strings.TrimSpace(request.IdempotencyKey)
-	if result, ok := s.store.GatewayResults[idempotencyKey]; ok {
+	if result, ok := s.store.GetGatewayResult(idempotencyKey); ok {
 		return result, nil
 	}
 
@@ -56,13 +56,12 @@ func (s *Service) Execute(ctx context.Context, request gateway.GatewayRequest) (
 		return gateway.GatewayResult{}, err
 	}
 	if strings.TrimSpace(result.ExternalRequestID) == "" {
-		result.ExternalRequestID = s.store.NextGatewayExternalRequestID()
+		result.ExternalRequestID = s.store.GenerateGatewayExternalRequestID()
 	}
 	if strings.TrimSpace(result.Provider) == "" {
 		result.Provider = strings.TrimSpace(request.Provider)
 	}
-	s.store.GatewayResults[idempotencyKey] = result
-	return result, nil
+	return result, s.store.SaveGatewayResult(ctx, idempotencyKey, result)
 }
 
 type FakeAdapter struct {

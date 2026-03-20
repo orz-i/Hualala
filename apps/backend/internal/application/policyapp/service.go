@@ -12,7 +12,7 @@ import (
 )
 
 type Service struct {
-	store *db.MemoryStore
+	budgets db.PolicyReader
 }
 
 type UploadResumeDecision struct {
@@ -21,22 +21,18 @@ type UploadResumeDecision struct {
 	ResumeHint  string
 }
 
-func NewService(store *db.MemoryStore) *Service {
-	return &Service{store: store}
+func NewService(budgets db.PolicyReader) *Service {
+	return &Service{budgets: budgets}
 }
 
 func (s *Service) EvaluateBudgetGuard(projectID string, estimatedCostCents int64) error {
-	if s == nil || s.store == nil {
-		return errors.New("policyapp: store is required")
+	if s == nil || s.budgets == nil {
+		return errors.New("policyapp: budget reader is required")
 	}
 	if strings.TrimSpace(projectID) == "" || estimatedCostCents <= 0 {
 		return nil
 	}
-
-	for _, record := range s.store.Budgets {
-		if record.ProjectID != strings.TrimSpace(projectID) {
-			continue
-		}
+	if record, ok := s.budgets.GetBudgetByProject(strings.TrimSpace(projectID)); ok {
 		remaining := record.LimitCents - record.ReservedCents
 		if estimatedCostCents > remaining {
 			return fmt.Errorf("policyapp: budget exceeded for project %s", strings.TrimSpace(projectID))

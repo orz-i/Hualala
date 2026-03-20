@@ -16,18 +16,18 @@ import (
 
 func TestShotExecutionFlow(t *testing.T) {
 	ctx := context.Background()
-	store := db.NewMemoryStore()
+	fixture := openIntegrationFixture(t)
 
-	projectService := projectapp.NewService(store)
-	contentService := contentapp.NewService(store)
-	executionService := executionapp.NewService(store)
-	assetService := assetapp.NewService(store)
-	billingService := billingapp.NewService(store)
-	reviewService := reviewapp.NewService(store)
+	projectService := fixture.Services.ProjectService
+	contentService := fixture.Services.ContentService
+	executionService := fixture.Services.ExecutionService
+	assetService := fixture.Services.AssetService
+	billingService := fixture.Services.BillingService
+	reviewService := fixture.Services.ReviewService
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
-		OrganizationID:          "org-1",
-		OwnerUserID:             "user-1",
+		OrganizationID:          db.DefaultDevOrganizationID,
+		OwnerUserID:             db.DefaultDevUserID,
 		Title:                   "AI 剧集平台",
 		PrimaryContentLocale:    "zh-CN",
 		SupportedContentLocales: []string{"zh-CN", "en-US"},
@@ -95,7 +95,7 @@ func TestShotExecutionFlow(t *testing.T) {
 
 	run1, err := executionService.StartShotExecutionRun(ctx, executionapp.StartShotExecutionRunInput{
 		ShotID:             shot.ID,
-		OperatorID:         "user-1",
+		OperatorID:         db.DefaultDevUserID,
 		ProjectID:          project.ID,
 		OrgID:              project.OrganizationID,
 		TriggerType:        "manual",
@@ -111,7 +111,7 @@ func TestShotExecutionFlow(t *testing.T) {
 	importBatch, err := assetService.CreateImportBatch(ctx, assetapp.CreateImportBatchInput{
 		ProjectID:  project.ID,
 		OrgID:      project.OrganizationID,
-		OperatorID: "user-1",
+		OperatorID: db.DefaultDevUserID,
 		SourceType: "manual_upload",
 	})
 	if err != nil {
@@ -226,7 +226,7 @@ func TestShotExecutionFlow(t *testing.T) {
 
 	run2, err := executionService.StartShotExecutionRun(ctx, executionapp.StartShotExecutionRunInput{
 		ShotID:             shot.ID,
-		OperatorID:         "user-1",
+		OperatorID:         db.DefaultDevUserID,
 		ProjectID:          project.ID,
 		OrgID:              project.OrganizationID,
 		TriggerType:        "rework",
@@ -275,16 +275,16 @@ func TestShotExecutionFlow(t *testing.T) {
 
 func TestShotExecutionBudgetGuard(t *testing.T) {
 	ctx := context.Background()
-	store := db.NewMemoryStore()
+	fixture := openIntegrationFixture(t)
 
-	projectService := projectapp.NewService(store)
-	contentService := contentapp.NewService(store)
-	executionService := executionapp.NewService(store)
-	billingService := billingapp.NewService(store)
+	projectService := fixture.Services.ProjectService
+	contentService := fixture.Services.ContentService
+	executionService := fixture.Services.ExecutionService
+	billingService := fixture.Services.BillingService
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
-		OrganizationID:          "org-1",
-		OwnerUserID:             "user-1",
+		OrganizationID:          db.DefaultDevOrganizationID,
+		OwnerUserID:             db.DefaultDevUserID,
 		Title:                   "预算守卫",
 		PrimaryContentLocale:    "zh-CN",
 		SupportedContentLocales: []string{"zh-CN"},
@@ -332,7 +332,7 @@ func TestShotExecutionBudgetGuard(t *testing.T) {
 
 	_, err = executionService.StartShotExecutionRun(ctx, executionapp.StartShotExecutionRunInput{
 		ShotID:             shot.ID,
-		OperatorID:         "user-1",
+		OperatorID:         db.DefaultDevUserID,
 		ProjectID:          project.ID,
 		OrgID:              project.OrganizationID,
 		TriggerType:        "manual",
@@ -344,7 +344,7 @@ func TestShotExecutionBudgetGuard(t *testing.T) {
 
 	_, err = executionService.StartShotExecutionRun(ctx, executionapp.StartShotExecutionRunInput{
 		ShotID:             shot.ID,
-		OperatorID:         "user-1",
+		OperatorID:         db.DefaultDevUserID,
 		ProjectID:          project.ID,
 		OrgID:              project.OrganizationID,
 		TriggerType:        "retry",

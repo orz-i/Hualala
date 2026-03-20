@@ -13,6 +13,7 @@ const scriptPath = join(process.cwd(), "tooling", "scripts", "backend_seed.mjs")
 test("seedPhase1Backend returns generated ids and urls from public APIs", async () => {
   const requests = [];
   let counter = 0;
+  const bootstrapCalls = [];
   const server = createServer(async (req, res) => {
     const body = [];
     for await (const chunk of req) {
@@ -85,12 +86,25 @@ test("seedPhase1Backend returns generated ids and urls from public APIs", async 
     const module = await import(pathToFileURL(scriptPath).href);
     const address = server.address();
     const baseUrl = `http://127.0.0.1:${address.port}`;
-    const result = await module.seedPhase1Backend({ baseUrl, fetchFn: fetch });
+    const result = await module.seedPhase1Backend({
+      baseUrl,
+      fetchFn: fetch,
+      bootstrapFn: async () => {
+        bootstrapCalls.push(true);
+        return {
+          organization_id: "11111111-1111-1111-1111-111111111111",
+          user_id: "22222222-2222-2222-2222-222222222222",
+        };
+      },
+    });
 
     assert.ok(result.admin.projectId.startsWith("project-"));
     assert.ok(result.admin.shotExecutionId.startsWith("shot-exec-"));
     assert.ok(result.creatorShot.shotId.startsWith("shot-"));
     assert.ok(result.creatorImport.importBatchId.startsWith("import-batch-"));
+    assert.equal(result.admin.orgId, "11111111-1111-1111-1111-111111111111");
+    assert.equal(result.admin.operatorId, "22222222-2222-2222-2222-222222222222");
+    assert.equal(bootstrapCalls.length, 1);
     assert.match(result.urls.admin, /\?projectId=.*&shotExecutionId=.*/);
     assert.ok(requests.some((entry) => entry.url === "/hualala.project.v1.ProjectService/CreateEpisode"));
     assert.ok(requests.some((entry) => entry.url === "/hualala.content.v1.ContentService/CreateScene"));
@@ -101,6 +115,8 @@ test("seedPhase1Backend returns generated ids and urls from public APIs", async 
 });
 
 test("backend_seed cli writes the generated backend seed artifact", async () => {
+  process.env.DATABASE_URL = "postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable";
+  process.env.DB_DRIVER = "postgres";
   const server = createServer(async (req, res) => {
     const body = [];
     for await (const chunk of req) {
@@ -110,7 +126,7 @@ test("backend_seed cli writes the generated backend seed artifact", async () => 
     res.setHeader("Content-Type", "application/json");
     const url = req.url ?? "";
     if (url === "/hualala.project.v1.ProjectService/CreateProject") {
-      res.end(JSON.stringify({ project: { projectId: "project-10", orgId: "org-1", title: "P" } }));
+      res.end(JSON.stringify({ project: { projectId: "project-10", orgId: "11111111-1111-1111-1111-111111111111", title: "P" } }));
       return;
     }
     if (url === "/hualala.project.v1.ProjectService/CreateEpisode") {
@@ -130,7 +146,7 @@ test("backend_seed cli writes the generated backend seed artifact", async () => 
       return;
     }
     if (url === "/hualala.billing.v1.BillingService/UpdateBudgetPolicy") {
-      res.end(JSON.stringify({ budgetPolicy: { id: "budget-10", projectId: "project-10", orgId: "org-1", limitCents: 120000 } }));
+      res.end(JSON.stringify({ budgetPolicy: { id: "budget-10", projectId: "project-10", orgId: "11111111-1111-1111-1111-111111111111", limitCents: 120000 } }));
       return;
     }
     if (url === "/hualala.execution.v1.ExecutionService/StartShotExecutionRun") {
@@ -176,13 +192,18 @@ test("backend_seed cli writes the generated backend seed artifact", async () => 
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
 
-  const outputDir = mkdtempSync(join(tmpdir(), "hualala-backend-seed-"));
+    const outputDir = mkdtempSync(join(tmpdir(), "hualala-backend-seed-"));
 
   try {
     const address = server.address();
     const baseUrl = `http://127.0.0.1:${address.port}`;
     const child = spawn(process.execPath, [scriptPath, "--base-url", baseUrl, "--output-dir", outputDir], {
       cwd: process.cwd(),
+      env: {
+        ...process.env,
+        PATH: process.env.PATH,
+        CODEX_BACKEND_BOOTSTRAP_TEST_STUB: "1",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";
@@ -199,6 +220,8 @@ test("backend_seed cli writes the generated backend seed artifact", async () => 
     assert.equal(code, 0, stderr || stdout);
 
     const written = JSON.parse(readFileSync(join(outputDir, "phase1-backend-seed.json"), "utf8"));
+    assert.equal(written.admin.orgId, "11111111-1111-1111-1111-111111111111");
+    assert.equal(written.admin.operatorId, "22222222-2222-2222-2222-222222222222");
     assert.equal(written.admin.projectId, "project-10");
     assert.equal(written.creatorShot.shotId, "shot-10");
     assert.equal(written.creatorImport.importBatchId, "import-batch-2");
@@ -232,7 +255,14 @@ test("seedPhase1Backend surfaces backend request failures", async () => {
     const address = server.address();
     const baseUrl = `http://127.0.0.1:${address.port}`;
     await assert.rejects(
-      () => module.seedPhase1Backend({ baseUrl, fetchFn: fetch }),
+      () => module.seedPhase1Backend({
+        baseUrl,
+        fetchFn: fetch,
+        bootstrapFn: async () => ({
+          organization_id: "11111111-1111-1111-1111-111111111111",
+          user_id: "22222222-2222-2222-2222-222222222222",
+        }),
+      }),
       /backend-seed: request failed/,
     );
   } finally {

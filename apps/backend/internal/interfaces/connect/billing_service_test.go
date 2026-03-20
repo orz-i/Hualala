@@ -151,7 +151,7 @@ func seedBillingObservabilityScenario(t *testing.T) (billingv1connect.BillingSer
 	}
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, NewRouteDependencies(store))
+	RegisterRoutes(mux, newRouteDependenciesFromStore(store))
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -13,7 +12,7 @@ import (
 )
 
 type Service struct {
-	store *db.MemoryStore
+	repo db.ProjectContentRepository
 }
 
 type CreateSceneInput struct {
@@ -65,13 +64,13 @@ type UpdateShotStructureInput struct {
 	ContentLocale string
 }
 
-func NewService(store *db.MemoryStore) *Service {
-	return &Service{store: store}
+func NewService(repo db.ProjectContentRepository) *Service {
+	return &Service{repo: repo}
 }
 
-func (s *Service) CreateScene(_ context.Context, input CreateSceneInput) (content.Scene, error) {
-	if s == nil || s.store == nil {
-		return content.Scene{}, errors.New("contentapp: store is required")
+func (s *Service) CreateScene(ctx context.Context, input CreateSceneInput) (content.Scene, error) {
+	if s == nil || s.repo == nil {
+		return content.Scene{}, errors.New("contentapp: repository is required")
 	}
 	projectID := strings.TrimSpace(input.ProjectID)
 	episodeID := strings.TrimSpace(input.EpisodeID)
@@ -88,18 +87,18 @@ func (s *Service) CreateScene(_ context.Context, input CreateSceneInput) (conten
 	if input.SceneNo <= 0 {
 		return content.Scene{}, errors.New("contentapp: scene_no must be greater than 0")
 	}
-	projectRecord, ok := s.store.Projects[projectID]
+	projectRecord, ok := s.repo.GetProject(projectID)
 	if !ok {
 		return content.Scene{}, errors.New("contentapp: project not found")
 	}
-	if _, ok := s.store.Episodes[episodeID]; !ok {
+	if _, ok := s.repo.GetEpisode(episodeID); !ok {
 		return content.Scene{}, errors.New("contentapp: episode not found")
 	}
 
 	now := time.Now().UTC()
 
 	scene := content.Scene{
-		ID:           s.store.NextSceneID(),
+		ID:           s.repo.GenerateSceneID(),
 		ProjectID:    projectID,
 		EpisodeID:    episodeID,
 		SceneNo:      input.SceneNo,
@@ -113,13 +112,15 @@ func (s *Service) CreateScene(_ context.Context, input CreateSceneInput) (conten
 		scene.SourceLocale = "zh-CN"
 	}
 
-	s.store.Scenes[scene.ID] = scene
+	if err := s.repo.SaveScene(ctx, scene); err != nil {
+		return content.Scene{}, err
+	}
 	return scene, nil
 }
 
-func (s *Service) CreateShot(_ context.Context, input CreateShotInput) (content.Shot, error) {
-	if s == nil || s.store == nil {
-		return content.Shot{}, errors.New("contentapp: store is required")
+func (s *Service) CreateShot(ctx context.Context, input CreateShotInput) (content.Shot, error) {
+	if s == nil || s.repo == nil {
+		return content.Shot{}, errors.New("contentapp: repository is required")
 	}
 	sceneID := strings.TrimSpace(input.SceneID)
 	title := strings.TrimSpace(input.Title)
@@ -135,13 +136,13 @@ func (s *Service) CreateShot(_ context.Context, input CreateShotInput) (content.
 
 	now := time.Now().UTC()
 
-	scene, ok := s.store.Scenes[sceneID]
+	scene, ok := s.repo.GetScene(sceneID)
 	if !ok {
 		return content.Shot{}, fmt.Errorf("contentapp: scene %q not found", sceneID)
 	}
 
 	shot := content.Shot{
-		ID:           s.store.NextShotID(),
+		ID:           s.repo.GenerateShotID(),
 		SceneID:      sceneID,
 		ShotNo:       input.ShotNo,
 		Code:         fmt.Sprintf("%s-SHOT-%03d", scene.Code, input.ShotNo),
@@ -151,11 +152,13 @@ func (s *Service) CreateShot(_ context.Context, input CreateShotInput) (content.
 		UpdatedAt:    now,
 	}
 
-	s.store.Shots[shot.ID] = shot
+	if err := s.repo.SaveShot(ctx, shot); err != nil {
+		return content.Shot{}, err
+	}
 	return shot, nil
 }
 
-func (s *Service) CreateContentSnapshot(_ context.Context, input CreateContentSnapshotInput) (content.Snapshot, error) {
+func (s *Service) CreateContentSnapshot(ctx context.Context, input CreateContentSnapshotInput) (content.Snapshot, error) {
 	if strings.TrimSpace(input.OwnerType) == "" {
 		return content.Snapshot{}, errors.New("owner_type is required")
 	}
@@ -172,22 +175,24 @@ func (s *Service) CreateContentSnapshot(_ context.Context, input CreateContentSn
 	now := time.Now().UTC()
 
 	snapshot := content.Snapshot{
-		ID:                 s.store.NextSnapshotID(),
+		ID:                 s.repo.GenerateSnapshotID(),
 		OwnerType:          input.OwnerType,
 		OwnerID:            input.OwnerID,
 		Locale:             input.ContentLocale,
-		TranslationGroupID: s.store.NextTranslationGroupID(),
+		TranslationGroupID: s.repo.GenerateTranslationGroupID(),
 		TranslationStatus:  "source",
 		Body:               input.Body,
 		CreatedAt:          now,
 		UpdatedAt:          now,
 	}
 
-	s.store.Snapshots[snapshot.ID] = snapshot
+	if err := s.repo.SaveSnapshot(ctx, snapshot); err != nil {
+		return content.Snapshot{}, err
+	}
 	return snapshot, nil
 }
 
-func (s *Service) CreateLocalizedSnapshot(_ context.Context, input CreateLocalizedSnapshotInput) (content.Snapshot, error) {
+func (s *Service) CreateLocalizedSnapshot(ctx context.Context, input CreateLocalizedSnapshotInput) (content.Snapshot, error) {
 	if strings.TrimSpace(input.ContentLocale) == "" {
 		return content.Snapshot{}, errors.New("content_locale is required")
 	}
@@ -197,13 +202,13 @@ func (s *Service) CreateLocalizedSnapshot(_ context.Context, input CreateLocaliz
 
 	now := time.Now().UTC()
 
-	sourceSnapshot, ok := s.store.Snapshots[input.SourceSnapshotID]
+	sourceSnapshot, ok := s.repo.GetSnapshot(input.SourceSnapshotID)
 	if !ok {
 		return content.Snapshot{}, fmt.Errorf("source snapshot %q not found", input.SourceSnapshotID)
 	}
 
 	snapshot := content.Snapshot{
-		ID:                 s.store.NextSnapshotID(),
+		ID:                 s.repo.GenerateSnapshotID(),
 		OwnerType:          sourceSnapshot.OwnerType,
 		OwnerID:            sourceSnapshot.OwnerID,
 		Locale:             input.ContentLocale,
@@ -215,40 +220,28 @@ func (s *Service) CreateLocalizedSnapshot(_ context.Context, input CreateLocaliz
 		UpdatedAt:          now,
 	}
 
-	s.store.Snapshots[snapshot.ID] = snapshot
+	if err := s.repo.SaveSnapshot(ctx, snapshot); err != nil {
+		return content.Snapshot{}, err
+	}
 	return snapshot, nil
 }
 
 func (s *Service) ListScenes(_ context.Context, input ListScenesInput) ([]content.Scene, error) {
-	if s == nil || s.store == nil {
-		return nil, errors.New("contentapp: store is required")
+	if s == nil || s.repo == nil {
+		return nil, errors.New("contentapp: repository is required")
 	}
-	scenes := make([]content.Scene, 0)
-	for _, scene := range s.store.Scenes {
-		if scene.ProjectID == input.ProjectID && scene.EpisodeID == input.EpisodeID {
-			scenes = append(scenes, scene)
-		}
-	}
-
-	sort.Slice(scenes, func(i, j int) bool {
-		if scenes[i].SceneNo == scenes[j].SceneNo {
-			return scenes[i].ID < scenes[j].ID
-		}
-		return scenes[i].SceneNo < scenes[j].SceneNo
-	})
-
-	return scenes, nil
+	return s.repo.ListScenes(input.ProjectID, input.EpisodeID), nil
 }
 
 func (s *Service) GetScene(_ context.Context, input GetSceneInput) (content.Scene, error) {
-	if s == nil || s.store == nil {
-		return content.Scene{}, errors.New("contentapp: store is required")
+	if s == nil || s.repo == nil {
+		return content.Scene{}, errors.New("contentapp: repository is required")
 	}
 	sceneID := strings.TrimSpace(input.SceneID)
 	if sceneID == "" {
 		return content.Scene{}, errors.New("contentapp: scene_id is required")
 	}
-	record, ok := s.store.Scenes[sceneID]
+	record, ok := s.repo.GetScene(sceneID)
 	if !ok {
 		return content.Scene{}, fmt.Errorf("contentapp: scene %q not found", sceneID)
 	}
@@ -256,35 +249,21 @@ func (s *Service) GetScene(_ context.Context, input GetSceneInput) (content.Scen
 }
 
 func (s *Service) ListSceneShots(_ context.Context, input ListSceneShotsInput) ([]content.Shot, error) {
-	if s == nil || s.store == nil {
-		return nil, errors.New("contentapp: store is required")
+	if s == nil || s.repo == nil {
+		return nil, errors.New("contentapp: repository is required")
 	}
-	shots := make([]content.Shot, 0)
-	for _, shot := range s.store.Shots {
-		if shot.SceneID == input.SceneID {
-			shots = append(shots, shot)
-		}
-	}
-
-	sort.Slice(shots, func(i, j int) bool {
-		if shots[i].ShotNo == shots[j].ShotNo {
-			return shots[i].ID < shots[j].ID
-		}
-		return shots[i].ShotNo < shots[j].ShotNo
-	})
-
-	return shots, nil
+	return s.repo.ListShotsByScene(input.SceneID), nil
 }
 
 func (s *Service) GetShot(_ context.Context, input GetShotInput) (content.Shot, error) {
-	if s == nil || s.store == nil {
-		return content.Shot{}, errors.New("contentapp: store is required")
+	if s == nil || s.repo == nil {
+		return content.Shot{}, errors.New("contentapp: repository is required")
 	}
 	shotID := strings.TrimSpace(input.ShotID)
 	if shotID == "" {
 		return content.Shot{}, errors.New("contentapp: shot_id is required")
 	}
-	shot, ok := s.store.Shots[shotID]
+	shot, ok := s.repo.GetShot(shotID)
 	if !ok {
 		return content.Shot{}, fmt.Errorf("contentapp: shot %q not found", shotID)
 	}
@@ -292,15 +271,15 @@ func (s *Service) GetShot(_ context.Context, input GetShotInput) (content.Shot, 
 	return shot, nil
 }
 
-func (s *Service) UpdateShotStructure(_ context.Context, input UpdateShotStructureInput) (content.Shot, error) {
-	if s == nil || s.store == nil {
-		return content.Shot{}, errors.New("contentapp: store is required")
+func (s *Service) UpdateShotStructure(ctx context.Context, input UpdateShotStructureInput) (content.Shot, error) {
+	if s == nil || s.repo == nil {
+		return content.Shot{}, errors.New("contentapp: repository is required")
 	}
 	shotID := strings.TrimSpace(input.ShotID)
 	if shotID == "" {
 		return content.Shot{}, errors.New("contentapp: shot_id is required")
 	}
-	record, ok := s.store.Shots[shotID]
+	record, ok := s.repo.GetShot(shotID)
 	if !ok {
 		return content.Shot{}, fmt.Errorf("contentapp: shot %q not found", shotID)
 	}
@@ -311,6 +290,8 @@ func (s *Service) UpdateShotStructure(_ context.Context, input UpdateShotStructu
 		record.SourceLocale = locale
 	}
 	record.UpdatedAt = time.Now().UTC()
-	s.store.Shots[shotID] = record
+	if err := s.repo.SaveShot(ctx, record); err != nil {
+		return content.Shot{}, err
+	}
 	return record, nil
 }

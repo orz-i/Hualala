@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"sort"
 	"strings"
 	"time"
 
@@ -14,7 +13,9 @@ import (
 )
 
 type Service struct {
-	store *db.MemoryStore
+	executions     db.ExecutionRepository
+	repo           db.ReviewBillingRepository
+	eventPublisher *events.Publisher
 }
 
 type CreateShotReviewInput struct {
@@ -48,15 +49,15 @@ type ShotReviewSummary struct {
 	LatestReviewID   string
 }
 
-func NewService(store *db.MemoryStore) *Service {
-	return &Service{store: store}
+func NewService(executions db.ExecutionRepository, repo db.ReviewBillingRepository, eventPublisher *events.Publisher) *Service {
+	return &Service{executions: executions, repo: repo, eventPublisher: eventPublisher}
 }
 
-func (s *Service) CreateShotReview(_ context.Context, input CreateShotReviewInput) (review.ShotReview, error) {
-	if s == nil || s.store == nil {
-		return review.ShotReview{}, errors.New("reviewapp: store is required")
+func (s *Service) CreateShotReview(ctx context.Context, input CreateShotReviewInput) (review.ShotReview, error) {
+	if s == nil || s.repo == nil || s.executions == nil {
+		return review.ShotReview{}, errors.New("reviewapp: repositories are required")
 	}
-	shotExecution, ok := s.store.ShotExecutions[input.ShotExecutionID]
+	shotExecution, ok := s.executions.GetShotExecution(input.ShotExecutionID)
 	if !ok {
 		return review.ShotReview{}, errors.New("reviewapp: shot execution not found")
 	}
@@ -69,7 +70,7 @@ func (s *Service) CreateShotReview(_ context.Context, input CreateShotReviewInpu
 
 	now := time.Now().UTC()
 	record := review.ShotReview{
-		ID:              s.store.NextReviewID(),
+		ID:              s.repo.GenerateReviewID(),
 		ShotExecutionID: strings.TrimSpace(input.ShotExecutionID),
 		Conclusion:      strings.TrimSpace(input.Conclusion),
 		CommentLocale:   strings.TrimSpace(input.CommentLocale),
@@ -77,7 +78,9 @@ func (s *Service) CreateShotReview(_ context.Context, input CreateShotReviewInpu
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
-	s.store.Reviews[record.ID] = record
+	if err := s.repo.SaveReview(ctx, record); err != nil {
+		return review.ShotReview{}, err
+	}
 	s.publishReviewEvent("shot.review.created", shotExecution.OrgID, shotExecution.ProjectID, "shot_review", record.ID, map[string]any{
 		"shot_execution_id": record.ShotExecutionID,
 		"review_id":         record.ID,
@@ -87,18 +90,18 @@ func (s *Service) CreateShotReview(_ context.Context, input CreateShotReviewInpu
 	return record, nil
 }
 
-func (s *Service) CreateEvaluationRun(_ context.Context, input CreateEvaluationRunInput) (review.EvaluationRun, error) {
-	if s == nil || s.store == nil {
-		return review.EvaluationRun{}, errors.New("reviewapp: store is required")
+func (s *Service) CreateEvaluationRun(ctx context.Context, input CreateEvaluationRunInput) (review.EvaluationRun, error) {
+	if s == nil || s.repo == nil || s.executions == nil {
+		return review.EvaluationRun{}, errors.New("reviewapp: repositories are required")
 	}
-	shotExecution, ok := s.store.ShotExecutions[input.ShotExecutionID]
+	shotExecution, ok := s.executions.GetShotExecution(input.ShotExecutionID)
 	if !ok {
 		return review.EvaluationRun{}, errors.New("reviewapp: shot execution not found")
 	}
 
 	now := time.Now().UTC()
 	record := review.EvaluationRun{
-		ID:              s.store.NextEvaluationRunID(),
+		ID:              s.repo.GenerateEvaluationRunID(),
 		ShotExecutionID: strings.TrimSpace(input.ShotExecutionID),
 		PassedChecks:    append([]string(nil), input.PassedChecks...),
 		FailedChecks:    append([]string(nil), input.FailedChecks...),
@@ -110,7 +113,9 @@ func (s *Service) CreateEvaluationRun(_ context.Context, input CreateEvaluationR
 		record.Status = "failed"
 	}
 
-	s.store.EvaluationRuns[record.ID] = record
+	if err := s.repo.SaveEvaluationRun(ctx, record); err != nil {
+		return review.EvaluationRun{}, err
+	}
 	s.publishReviewEvent("shot.evaluation.created", shotExecution.OrgID, shotExecution.ProjectID, "evaluation_run", record.ID, map[string]any{
 		"shot_execution_id": record.ShotExecutionID,
 		"evaluation_run_id": record.ID,
@@ -120,33 +125,17 @@ func (s *Service) CreateEvaluationRun(_ context.Context, input CreateEvaluationR
 }
 
 func (s *Service) ListEvaluationRuns(_ context.Context, input ListEvaluationRunsInput) ([]review.EvaluationRun, error) {
-	runs := make([]review.EvaluationRun, 0)
-	for _, run := range s.store.EvaluationRuns {
-		if run.ShotExecutionID == input.ShotExecutionID {
-			runs = append(runs, run)
-		}
+	if s == nil || s.repo == nil {
+		return nil, errors.New("reviewapp: repository is required")
 	}
-
-	sort.Slice(runs, func(i, j int) bool {
-		return runs[i].ID < runs[j].ID
-	})
-
-	return runs, nil
+	return s.repo.ListEvaluationRunsByExecution(input.ShotExecutionID), nil
 }
 
 func (s *Service) ListShotReviews(_ context.Context, input ListShotReviewsInput) ([]review.ShotReview, error) {
-	records := make([]review.ShotReview, 0)
-	for _, record := range s.store.Reviews {
-		if record.ShotExecutionID == input.ShotExecutionID {
-			records = append(records, record)
-		}
+	if s == nil || s.repo == nil {
+		return nil, errors.New("reviewapp: repository is required")
 	}
-
-	sort.Slice(records, func(i, j int) bool {
-		return records[i].ID < records[j].ID
-	})
-
-	return records, nil
+	return s.repo.ListReviewsByExecution(input.ShotExecutionID), nil
 }
 
 func (s *Service) GetShotReviewSummary(ctx context.Context, input GetShotReviewSummaryInput) (ShotReviewSummary, error) {
@@ -171,7 +160,7 @@ func (s *Service) GetShotReviewSummary(ctx context.Context, input GetShotReviewS
 }
 
 func (s *Service) publishReviewEvent(eventType string, organizationID string, projectID string, resourceType string, resourceID string, payload map[string]any) {
-	if s == nil || s.store == nil || s.store.EventPublisher == nil {
+	if s == nil || s.eventPublisher == nil {
 		return
 	}
 
@@ -180,7 +169,7 @@ func (s *Service) publishReviewEvent(eventType string, organizationID string, pr
 		return
 	}
 
-	s.store.EventPublisher.Publish(events.Event{
+	s.eventPublisher.Publish(events.Event{
 		EventType:      eventType,
 		OrganizationID: organizationID,
 		ProjectID:      projectID,

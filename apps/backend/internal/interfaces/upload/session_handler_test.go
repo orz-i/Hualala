@@ -6,9 +6,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/hualala/apps/backend/internal/application/policyapp"
 	assetdomain "github.com/hualala/apps/backend/internal/domain/asset"
 	executiondomain "github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/interfaces/sse"
@@ -20,7 +23,7 @@ func TestCreateAndRetryUploadSession(t *testing.T) {
 	resetSessionStore(store)
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, store)
+	RegisterRoutes(mux, newUploadServiceFromStore(store))
 
 	createPayload := map[string]any{
 		"organization_id":    "org-1",
@@ -55,7 +58,7 @@ func TestExpiredUploadSessionStatus(t *testing.T) {
 	resetSessionStore(store)
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, store)
+	RegisterRoutes(mux, newUploadServiceFromStore(store))
 
 	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
 		"organization_id":    "org-1",
@@ -91,9 +94,9 @@ func TestUploadSessionsAreScopedToStore(t *testing.T) {
 	resetSessionStore(storeB)
 
 	muxA := http.NewServeMux()
-	RegisterRoutes(muxA, storeA)
+	RegisterRoutes(muxA, newUploadServiceFromStore(storeA))
 	muxB := http.NewServeMux()
-	RegisterRoutes(muxB, storeB)
+	RegisterRoutes(muxB, newUploadServiceFromStore(storeB))
 
 	createRec := performUploadJSONRequest(t, muxA, http.MethodPost, "/upload/sessions", map[string]any{
 		"organization_id":    "org-1",
@@ -121,7 +124,7 @@ func TestUploadSessionPublishesSSEEvents(t *testing.T) {
 	store.EventPublisher.Reset()
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, store)
+	RegisterRoutes(mux, newUploadServiceFromStore(store))
 	sse.RegisterRoutes(mux, store.EventPublisher)
 
 	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
@@ -178,7 +181,7 @@ func TestCompleteUploadSessionCreatesAssetRecords(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, store)
+	RegisterRoutes(mux, newUploadServiceFromStore(store))
 
 	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
 		"organization_id":    "org-1",
@@ -254,7 +257,7 @@ func TestCreateUploadSessionRejectsUnknownImportBatch(t *testing.T) {
 	resetSessionStore(store)
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, store)
+	RegisterRoutes(mux, newUploadServiceFromStore(store))
 
 	reqBody, err := json.Marshal(map[string]any{
 		"organization_id":    "org-1",
@@ -299,7 +302,7 @@ func TestCompleteUploadSessionCanAttachCandidateToShotExecution(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, store)
+	RegisterRoutes(mux, newUploadServiceFromStore(store))
 
 	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
 		"organization_id":    "org-1",
@@ -387,4 +390,30 @@ func decodeUploadJSONResponse(t *testing.T, rec *httptest.ResponseRecorder) map[
 		t.Fatalf("json.Unmarshal returned error: %v", err)
 	}
 	return response
+}
+
+func resetSessionStore(store *db.MemoryStore) {
+	if store == nil {
+		return
+	}
+	store.UploadSessions = map[string]assetdomain.UploadSession{}
+}
+
+func newUploadServiceFromStore(store *db.MemoryStore) *Service {
+	return NewService(Dependencies{
+		Assets:         store,
+		Executions:     store,
+		Policy:         policyapp.NewService(store),
+		EventPublisher: store.EventPublisher,
+	})
+}
+
+func TestSessionHandlerDoesNotDependOnRawMemoryStore(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("session_handler.go"))
+	if err != nil {
+		t.Fatalf("os.ReadFile returned error: %v", err)
+	}
+	if strings.Contains(string(content), "*db.MemoryStore") {
+		t.Fatalf("expected upload session handler to avoid raw *db.MemoryStore dependency")
+	}
 }

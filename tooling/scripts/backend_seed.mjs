@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -40,6 +41,58 @@ async function postJson(fetchFn, baseUrl, path, body) {
   });
   await assertOk(response, `backend-seed: request failed for ${path}`);
   return response.json();
+}
+
+async function runDevBootstrap({
+  spawnFn = spawn,
+  cwd = repoRoot,
+  env = process.env,
+} = {}) {
+  if (env.DB_DRIVER === "memory" || !env.DATABASE_URL) {
+    return {
+      organization_id: "11111111-1111-1111-1111-111111111111",
+      user_id: "22222222-2222-2222-2222-222222222222",
+      role_id: "33333333-3333-3333-3333-333333333333",
+      membership_id: "44444444-4444-4444-4444-444444444444",
+    };
+  }
+
+  if (env.CODEX_BACKEND_BOOTSTRAP_TEST_STUB === "1") {
+    return {
+      organization_id: "11111111-1111-1111-1111-111111111111",
+      user_id: "22222222-2222-2222-2222-222222222222",
+      role_id: "33333333-3333-3333-3333-333333333333",
+      membership_id: "44444444-4444-4444-4444-444444444444",
+    };
+  }
+
+  const child = spawnFn("go", ["run", "./apps/backend/cmd/bootstrapdev"], {
+    cwd,
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => {
+    stdout += chunk;
+  });
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk;
+  });
+
+  const exitCode = await new Promise((resolveExit, rejectExit) => {
+    child.on("error", rejectExit);
+    child.on("close", resolveExit);
+  });
+
+  if (exitCode !== 0) {
+    throw new Error(stderr.trim() || stdout.trim() || `backend bootstrap failed with code ${exitCode}`);
+  }
+
+  return JSON.parse(stdout);
 }
 
 async function createShotDataset({ fetchFn, baseUrl, orgId, operatorId, projectTitle, episodeTitle, sceneTitle, shotTitle, snapshotBody, budgetLimitCents, estimatedCostCents, shouldSelectPrimary, shouldCreateReview }) {
@@ -205,13 +258,15 @@ async function createShotDataset({ fetchFn, baseUrl, orgId, operatorId, projectT
 export async function seedPhase1Backend({
   baseUrl = "http://127.0.0.1:8080",
   fetchFn = fetch,
+  bootstrapFn = runDevBootstrap,
   outputDir,
   adminOrigin = "http://127.0.0.1:4173",
   creatorOrigin = "http://127.0.0.1:4174",
 } = {}) {
   const resolvedBaseUrl = trimTrailingSlash(baseUrl);
-  const orgId = "org-local-1";
-  const operatorId = "user-local-1";
+  const bootstrap = await bootstrapFn();
+  const orgId = bootstrap.organization_id;
+  const operatorId = bootstrap.user_id;
 
   const adminDataset = await createShotDataset({
     fetchFn,
@@ -248,6 +303,7 @@ export async function seedPhase1Backend({
   const result = {
     admin: {
       orgId,
+      operatorId,
       projectId: adminDataset.projectId,
       shotExecutionId: adminDataset.shotExecutionId,
     },

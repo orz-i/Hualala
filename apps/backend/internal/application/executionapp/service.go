@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -18,7 +17,11 @@ import (
 )
 
 type Service struct {
-	store *db.MemoryStore
+	executions     db.ExecutionRepository
+	projectContent db.ProjectContentRepository
+	assets         db.AssetRepository
+	reviewBilling  db.ReviewBillingRepository
+	eventPublisher *events.Publisher
 }
 
 type StartShotExecutionRunInput struct {
@@ -78,13 +81,19 @@ type ShotReviewSummary struct {
 	LatestReviewID   string
 }
 
-func NewService(store *db.MemoryStore) *Service {
-	return &Service{store: store}
+func NewService(executions db.ExecutionRepository, projectContent db.ProjectContentRepository, assets db.AssetRepository, reviewBilling db.ReviewBillingRepository, eventPublisher *events.Publisher) *Service {
+	return &Service{
+		executions:     executions,
+		projectContent: projectContent,
+		assets:         assets,
+		reviewBilling:  reviewBilling,
+		eventPublisher: eventPublisher,
+	}
 }
 
-func (s *Service) StartShotExecutionRun(_ context.Context, input StartShotExecutionRunInput) (execution.ShotExecutionRun, error) {
-	if s == nil || s.store == nil {
-		return execution.ShotExecutionRun{}, errors.New("executionapp: store is required")
+func (s *Service) StartShotExecutionRun(ctx context.Context, input StartShotExecutionRunInput) (execution.ShotExecutionRun, error) {
+	if s == nil || s.executions == nil || s.reviewBilling == nil {
+		return execution.ShotExecutionRun{}, errors.New("executionapp: repositories are required")
 	}
 	if strings.TrimSpace(input.ShotID) == "" {
 		return execution.ShotExecutionRun{}, errors.New("executionapp: shot_id is required")
@@ -100,7 +109,7 @@ func (s *Service) StartShotExecutionRun(_ context.Context, input StartShotExecut
 	shotExecution, found := s.findExecutionByShotID(input.ShotID)
 	if !found {
 		shotExecution = execution.ShotExecution{
-			ID:        s.store.NextShotExecutionID(),
+			ID:        s.executions.GenerateShotExecutionID(),
 			OrgID:     strings.TrimSpace(input.OrgID),
 			ProjectID: strings.TrimSpace(input.ProjectID),
 			ShotID:    strings.TrimSpace(input.ShotID),
@@ -114,14 +123,14 @@ func (s *Service) StartShotExecutionRun(_ context.Context, input StartShotExecut
 	}
 
 	runNumber := 1
-	for _, run := range s.store.ShotExecutionRuns {
-		if run.ShotExecutionID == shotExecution.ID && run.RunNumber >= runNumber {
+	for _, run := range s.executions.ListShotExecutionRuns(shotExecution.ID) {
+		if run.RunNumber >= runNumber {
 			runNumber = run.RunNumber + 1
 		}
 	}
 
 	run := execution.ShotExecutionRun{
-		ID:              s.store.NextShotExecutionRunID(),
+		ID:              s.executions.GenerateShotExecutionRunID(),
 		ShotExecutionID: shotExecution.ID,
 		RunNumber:       runNumber,
 		Status:          "running",
@@ -131,11 +140,25 @@ func (s *Service) StartShotExecutionRun(_ context.Context, input StartShotExecut
 		UpdatedAt:       now,
 	}
 
-	shotExecution.CurrentRunID = run.ID
-	s.store.ShotExecutions[shotExecution.ID] = shotExecution
-	s.store.ShotExecutionRuns[run.ID] = run
 	if input.EstimatedCostCents > 0 {
-		if err := s.reserveBudgetForRun(shotExecution, run, input.EstimatedCostCents, now); err != nil {
+		if err := s.ensureBudgetReservationAllowed(shotExecution.ProjectID, input.EstimatedCostCents); err != nil {
+			return execution.ShotExecutionRun{}, err
+		}
+	}
+	if !found {
+		if err := s.executions.SaveShotExecution(ctx, shotExecution); err != nil {
+			return execution.ShotExecutionRun{}, err
+		}
+	}
+	if err := s.executions.SaveShotExecutionRun(ctx, run); err != nil {
+		return execution.ShotExecutionRun{}, err
+	}
+	shotExecution.CurrentRunID = run.ID
+	if err := s.executions.SaveShotExecution(ctx, shotExecution); err != nil {
+		return execution.ShotExecutionRun{}, err
+	}
+	if input.EstimatedCostCents > 0 {
+		if err := s.reserveBudgetForRun(ctx, shotExecution, run, input.EstimatedCostCents, now); err != nil {
 			return execution.ShotExecutionRun{}, err
 		}
 	}
@@ -151,7 +174,10 @@ func (s *Service) StartShotExecutionRun(_ context.Context, input StartShotExecut
 }
 
 func (s *Service) GetShotExecution(_ context.Context, input GetShotExecutionInput) (execution.ShotExecution, error) {
-	record, ok := s.store.ShotExecutions[input.ShotExecutionID]
+	if s == nil || s.executions == nil {
+		return execution.ShotExecution{}, errors.New("executionapp: repository is required")
+	}
+	record, ok := s.executions.GetShotExecution(input.ShotExecutionID)
 	if !ok {
 		return execution.ShotExecution{}, errors.New("executionapp: shot execution not found")
 	}
@@ -180,19 +206,21 @@ func (s *Service) GetShotWorkbench(ctx context.Context, input GetShotWorkbenchIn
 	}, nil
 }
 
-func (s *Service) SelectPrimaryAsset(_ context.Context, input SelectPrimaryAssetInput) (execution.ShotExecution, error) {
-	record, ok := s.store.ShotExecutions[input.ShotExecutionID]
+func (s *Service) SelectPrimaryAsset(ctx context.Context, input SelectPrimaryAssetInput) (execution.ShotExecution, error) {
+	record, ok := s.executions.GetShotExecution(input.ShotExecutionID)
 	if !ok {
 		return execution.ShotExecution{}, errors.New("executionapp: shot execution not found")
 	}
-	if _, ok := s.store.MediaAssets[input.AssetID]; !ok {
+	if _, ok := s.assets.GetMediaAsset(input.AssetID); !ok {
 		return execution.ShotExecution{}, errors.New("executionapp: asset not found")
 	}
 
 	record.PrimaryAssetID = input.AssetID
 	record.Status = "primary_selected"
 	record.UpdatedAt = time.Now().UTC()
-	s.store.ShotExecutions[record.ID] = record
+	if err := s.executions.SaveShotExecution(ctx, record); err != nil {
+		return execution.ShotExecution{}, err
+	}
 	s.publishShotExecutionUpdated(record, map[string]any{
 		"shot_execution_id": record.ID,
 		"shot_id":           record.ShotID,
@@ -203,40 +231,34 @@ func (s *Service) SelectPrimaryAsset(_ context.Context, input SelectPrimaryAsset
 }
 
 func (s *Service) RunSubmissionGateChecks(_ context.Context, input RunSubmissionGateChecksInput) (execution.SubmissionGateResult, error) {
-	record, ok := s.store.ShotExecutions[input.ShotExecutionID]
+	record, ok := s.executions.GetShotExecution(input.ShotExecutionID)
 	if !ok {
 		return execution.SubmissionGateResult{}, errors.New("executionapp: shot execution not found")
 	}
 
-	hasCandidate := false
-	for _, candidate := range s.store.CandidateAssets {
-		if candidate.ShotExecutionID == record.ID {
-			hasCandidate = true
-			break
-		}
-	}
+	hasCandidate := len(s.assets.ListCandidateAssetsByExecution(record.ID)) > 0
 
 	result := execution.SubmissionGateResult{}
 	s.appendCheck(&result, "candidate_assets_present", hasCandidate)
 
-	shot, hasShot := s.store.Shots[record.ShotID]
+	shot, hasShot := s.projectContent.GetShot(record.ShotID)
 	s.appendCheck(&result, "structure_complete", hasShot && strings.TrimSpace(shot.Title) != "" && strings.TrimSpace(shot.SceneID) != "")
 	s.appendCheck(&result, "content_consistent", s.hasShotSnapshot(record.ShotID))
 	s.appendCheck(&result, "primary_asset_selected", strings.TrimSpace(record.PrimaryAssetID) != "")
 
-	project, hasProject := s.store.Projects[record.ProjectID]
-	primaryAsset, hasPrimaryAsset := s.store.MediaAssets[record.PrimaryAssetID]
+	projectRecord, hasProject := s.projectContent.GetProject(record.ProjectID)
+	primaryAsset, hasPrimaryAsset := s.assets.GetMediaAsset(record.PrimaryAssetID)
 	s.appendCheck(&result, "source_traceable", hasPrimaryAsset && strings.TrimSpace(primaryAsset.ImportBatchID) != "")
 	s.appendCheck(&result, "rights_cleared", hasPrimaryAsset && primaryAsset.RightsStatus == "clear")
 	s.appendCheck(&result, "ai_labeled", hasPrimaryAsset && primaryAsset.AIAnnotated)
 	s.appendCheck(&result, "budget_available", s.hasAvailableBudget(record.ProjectID))
-	s.appendCheck(&result, "language_consistent", hasProject && hasPrimaryAsset && s.isSupportedLocale(project.SupportedContentLocales, primaryAsset.Locale))
+	s.appendCheck(&result, "language_consistent", hasProject && hasPrimaryAsset && s.isSupportedLocale(projectRecord.SupportedContentLocales, primaryAsset.Locale))
 
 	return result, nil
 }
 
-func (s *Service) SubmitShotForReview(_ context.Context, input SubmitShotForReviewInput) (execution.ShotExecution, error) {
-	record, ok := s.store.ShotExecutions[input.ShotExecutionID]
+func (s *Service) SubmitShotForReview(ctx context.Context, input SubmitShotForReviewInput) (execution.ShotExecution, error) {
+	record, ok := s.executions.GetShotExecution(input.ShotExecutionID)
 	if !ok {
 		return execution.ShotExecution{}, errors.New("executionapp: shot execution not found")
 	}
@@ -251,7 +273,9 @@ func (s *Service) SubmitShotForReview(_ context.Context, input SubmitShotForRevi
 	}
 	record.Status = "submitted_for_review"
 	record.UpdatedAt = time.Now().UTC()
-	s.store.ShotExecutions[record.ID] = record
+	if err := s.executions.SaveShotExecution(ctx, record); err != nil {
+		return execution.ShotExecution{}, err
+	}
 	s.publishShotExecutionUpdated(record, map[string]any{
 		"shot_execution_id": record.ID,
 		"shot_id":           record.ShotID,
@@ -261,76 +285,49 @@ func (s *Service) SubmitShotForReview(_ context.Context, input SubmitShotForRevi
 	return record, nil
 }
 
-func (s *Service) MarkShotReworkRequired(_ context.Context, input MarkShotReworkRequiredInput) (execution.ShotExecution, error) {
-	record, ok := s.store.ShotExecutions[input.ShotExecutionID]
+func (s *Service) MarkShotReworkRequired(ctx context.Context, input MarkShotReworkRequiredInput) (execution.ShotExecution, error) {
+	record, ok := s.executions.GetShotExecution(input.ShotExecutionID)
 	if !ok {
 		return execution.ShotExecution{}, errors.New("executionapp: shot execution not found")
 	}
 	record.Status = "rework_required"
 	record.UpdatedAt = time.Now().UTC()
-	s.store.ShotExecutions[record.ID] = record
+	if err := s.executions.SaveShotExecution(ctx, record); err != nil {
+		return execution.ShotExecution{}, err
+	}
 	return record, nil
 }
 
-func (s *Service) MarkShotApprovedForUse(_ context.Context, input MarkShotApprovedForUseInput) (execution.ShotExecution, error) {
-	record, ok := s.store.ShotExecutions[input.ShotExecutionID]
+func (s *Service) MarkShotApprovedForUse(ctx context.Context, input MarkShotApprovedForUseInput) (execution.ShotExecution, error) {
+	record, ok := s.executions.GetShotExecution(input.ShotExecutionID)
 	if !ok {
 		return execution.ShotExecution{}, errors.New("executionapp: shot execution not found")
 	}
 	record.Status = "approved_for_use"
 	record.UpdatedAt = time.Now().UTC()
-	s.store.ShotExecutions[record.ID] = record
+	if err := s.executions.SaveShotExecution(ctx, record); err != nil {
+		return execution.ShotExecution{}, err
+	}
 	return record, nil
 }
 
 func (s *Service) ListShotExecutionRuns(_ context.Context, input ListShotExecutionRunsInput) ([]execution.ShotExecutionRun, error) {
-	runs := make([]execution.ShotExecutionRun, 0)
-	for _, run := range s.store.ShotExecutionRuns {
-		if run.ShotExecutionID == input.ShotExecutionID {
-			runs = append(runs, run)
-		}
+	if s == nil || s.executions == nil {
+		return nil, errors.New("executionapp: repository is required")
 	}
-	sort.Slice(runs, func(i, j int) bool {
-		if runs[i].RunNumber == runs[j].RunNumber {
-			return runs[i].ID < runs[j].ID
-		}
-		return runs[i].RunNumber < runs[j].RunNumber
-	})
-	return runs, nil
+	return s.executions.ListShotExecutionRuns(input.ShotExecutionID), nil
 }
 
 func (s *Service) findExecutionByShotID(shotID string) (execution.ShotExecution, bool) {
-	for _, shotExecution := range s.store.ShotExecutions {
-		if shotExecution.ShotID == shotID {
-			return shotExecution, true
-		}
-	}
-	return execution.ShotExecution{}, false
+	return s.executions.FindShotExecutionByShotID(shotID)
 }
 
 func (s *Service) listCandidateAssets(shotExecutionID string) []asset.CandidateAsset {
-	candidates := make([]asset.CandidateAsset, 0)
-	for _, candidate := range s.store.CandidateAssets {
-		if candidate.ShotExecutionID == shotExecutionID {
-			candidates = append(candidates, candidate)
-		}
-	}
-	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].ID < candidates[j].ID
-	})
-	return candidates
+	return s.assets.ListCandidateAssetsByExecution(shotExecutionID)
 }
 
 func (s *Service) buildShotReviewSummary(shotExecutionID string) ShotReviewSummary {
-	reviews := make([]review.ShotReview, 0)
-	for _, record := range s.store.Reviews {
-		if record.ShotExecutionID == shotExecutionID {
-			reviews = append(reviews, record)
-		}
-	}
-	sort.Slice(reviews, func(i, j int) bool {
-		return reviews[i].ID < reviews[j].ID
-	})
+	reviews := s.reviewBilling.ListReviewsByExecution(shotExecutionID)
 	if len(reviews) == 0 {
 		return ShotReviewSummary{ShotExecutionID: shotExecutionID}
 	}
@@ -343,15 +340,7 @@ func (s *Service) buildShotReviewSummary(shotExecutionID string) ShotReviewSumma
 }
 
 func (s *Service) findLatestEvaluationRun(shotExecutionID string) *review.EvaluationRun {
-	runs := make([]review.EvaluationRun, 0)
-	for _, run := range s.store.EvaluationRuns {
-		if run.ShotExecutionID == shotExecutionID {
-			runs = append(runs, run)
-		}
-	}
-	sort.Slice(runs, func(i, j int) bool {
-		return runs[i].ID < runs[j].ID
-	})
+	runs := s.reviewBilling.ListEvaluationRunsByExecution(shotExecutionID)
 	if len(runs) == 0 {
 		return nil
 	}
@@ -368,7 +357,7 @@ func (s *Service) appendCheck(result *execution.SubmissionGateResult, check stri
 }
 
 func (s *Service) hasShotSnapshot(shotID string) bool {
-	for _, snapshot := range s.store.Snapshots {
+	for _, snapshot := range s.projectContent.ListSnapshotsByOwner("shot", shotID) {
 		if snapshot.OwnerType == "shot" && snapshot.OwnerID == shotID && strings.TrimSpace(snapshot.Body) != "" {
 			return true
 		}
@@ -390,57 +379,64 @@ func (s *Service) isSupportedLocale(supported []string, target string) bool {
 }
 
 func (s *Service) hasAvailableBudget(projectID string) bool {
-	for _, record := range s.store.Budgets {
-		if record.ProjectID == projectID {
-			return record.ReservedCents <= record.LimitCents
-		}
+	if record, ok := s.reviewBilling.GetBudgetByProject(projectID); ok {
+		return record.ReservedCents <= record.LimitCents
 	}
 	return true
 }
 
-func (s *Service) reserveBudgetForRun(shotExecution execution.ShotExecution, run execution.ShotExecutionRun, amountCents int64, now time.Time) error {
-	for id, budgetRecord := range s.store.Budgets {
-		if budgetRecord.ProjectID != shotExecution.ProjectID {
-			continue
-		}
-		if budgetRecord.ReservedCents+amountCents > budgetRecord.LimitCents {
-			return fmt.Errorf("executionapp: budget exceeded for project %s", shotExecution.ProjectID)
-		}
-
-		budgetRecord.ReservedCents += amountCents
-		budgetRecord.UpdatedAt = now
-		s.store.Budgets[id] = budgetRecord
-
-		usageRecord := billing.UsageRecord{
-			ID:                 s.store.NextUsageRecordID(),
-			OrgID:              shotExecution.OrgID,
-			ProjectID:          shotExecution.ProjectID,
-			ShotExecutionID:    shotExecution.ID,
-			ShotExecutionRunID: run.ID,
-			Meter:              "shot_execution_run",
-			AmountCents:        amountCents,
-			CreatedAt:          now,
-		}
-		s.store.UsageRecords[usageRecord.ID] = usageRecord
-
-		billingEvent := billing.BillingEvent{
-			ID:                 s.store.NextBillingEventID(),
-			OrgID:              shotExecution.OrgID,
-			ProjectID:          shotExecution.ProjectID,
-			ShotExecutionID:    shotExecution.ID,
-			ShotExecutionRunID: run.ID,
-			EventType:          "execution_reserved",
-			AmountCents:        amountCents,
-			CreatedAt:          now,
-		}
-		s.store.BillingEvents[billingEvent.ID] = billingEvent
+func (s *Service) ensureBudgetReservationAllowed(projectID string, amountCents int64) error {
+	budgetRecord, ok := s.reviewBilling.GetBudgetByProject(projectID)
+	if !ok {
 		return nil
+	}
+	if budgetRecord.ReservedCents+amountCents > budgetRecord.LimitCents {
+		return fmt.Errorf("executionapp: budget exceeded for project %s", projectID)
 	}
 	return nil
 }
 
+func (s *Service) reserveBudgetForRun(ctx context.Context, shotExecution execution.ShotExecution, run execution.ShotExecutionRun, amountCents int64, now time.Time) error {
+	budgetRecord, ok := s.reviewBilling.GetBudgetByProject(shotExecution.ProjectID)
+	if !ok {
+		return nil
+	}
+
+	budgetRecord.ReservedCents += amountCents
+	budgetRecord.UpdatedAt = now
+	if err := s.reviewBilling.SaveBudget(ctx, budgetRecord); err != nil {
+		return err
+	}
+
+	usageRecord := billing.UsageRecord{
+		ID:                 s.reviewBilling.GenerateUsageRecordID(),
+		OrgID:              shotExecution.OrgID,
+		ProjectID:          shotExecution.ProjectID,
+		ShotExecutionID:    shotExecution.ID,
+		ShotExecutionRunID: run.ID,
+		Meter:              "shot_execution_run",
+		AmountCents:        amountCents,
+		CreatedAt:          now,
+	}
+	if err := s.reviewBilling.SaveUsageRecord(ctx, usageRecord); err != nil {
+		return err
+	}
+
+	billingEvent := billing.BillingEvent{
+		ID:                 s.reviewBilling.GenerateBillingEventID(),
+		OrgID:              shotExecution.OrgID,
+		ProjectID:          shotExecution.ProjectID,
+		ShotExecutionID:    shotExecution.ID,
+		ShotExecutionRunID: run.ID,
+		EventType:          "execution_reserved",
+		AmountCents:        amountCents,
+		CreatedAt:          now,
+	}
+	return s.reviewBilling.SaveBillingEvent(ctx, billingEvent)
+}
+
 func (s *Service) publishShotExecutionUpdated(record execution.ShotExecution, payload map[string]any) {
-	if s == nil || s.store == nil || s.store.EventPublisher == nil {
+	if s == nil || s.eventPublisher == nil {
 		return
 	}
 
@@ -449,7 +445,7 @@ func (s *Service) publishShotExecutionUpdated(record execution.ShotExecution, pa
 		return
 	}
 
-	s.store.EventPublisher.Publish(events.Event{
+	s.eventPublisher.Publish(events.Event{
 		EventType:      "shot.execution.updated",
 		OrganizationID: record.OrgID,
 		ProjectID:      record.ProjectID,

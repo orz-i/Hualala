@@ -16,16 +16,13 @@ import (
 	"github.com/hualala/apps/backend/internal/application/billingapp"
 	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/executionapp"
-	"github.com/hualala/apps/backend/internal/application/gatewayapp"
-	"github.com/hualala/apps/backend/internal/application/policyapp"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
 	"github.com/hualala/apps/backend/internal/application/reviewapp"
 	"github.com/hualala/apps/backend/internal/application/workflowapp"
 	"github.com/hualala/apps/backend/internal/interfaces/sse"
 	"github.com/hualala/apps/backend/internal/interfaces/upload"
-	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/events"
-	"github.com/hualala/apps/backend/internal/platform/temporal"
+	"github.com/hualala/apps/backend/internal/platform/runtime"
 )
 
 var allowedHealthMethods = []string{http.MethodGet}
@@ -38,28 +35,21 @@ type RouteDependencies struct {
 	ProjectService   *projectapp.Service
 	ContentService   *contentapp.Service
 	WorkflowService  *workflowapp.Service
-	GatewayService   *gatewayapp.Service
-	PolicyService    *policyapp.Service
+	UploadService    *upload.Service
 	EventPublisher   *events.Publisher
-	Store            *db.MemoryStore
 }
 
-func NewRouteDependencies(store *db.MemoryStore) RouteDependencies {
-	policyService := policyapp.NewService(store)
-	gatewayService := gatewayapp.NewService(store, gatewayapp.NewFakeAdapter())
-	workflowService := workflowapp.NewService(store, temporal.NewInMemoryExecutor(gatewayService), policyService)
+func NewRouteDependencies(services runtime.ServiceSet) RouteDependencies {
 	return RouteDependencies{
-		ExecutionService: executionapp.NewService(store),
-		AssetService:     assetapp.NewService(store),
-		ReviewService:    reviewapp.NewService(store),
-		BillingService:   billingapp.NewService(store),
-		ProjectService:   projectapp.NewService(store),
-		ContentService:   contentapp.NewService(store),
-		WorkflowService:  workflowService,
-		GatewayService:   gatewayService,
-		PolicyService:    policyService,
-		EventPublisher:   store.EventPublisher,
-		Store:            store,
+		ExecutionService: services.ExecutionService,
+		AssetService:     services.AssetService,
+		ReviewService:    services.ReviewService,
+		BillingService:   services.BillingService,
+		ProjectService:   services.ProjectService,
+		ContentService:   services.ContentService,
+		WorkflowService:  services.WorkflowService,
+		UploadService:    services.UploadService,
+		EventPublisher:   services.EventPublisher,
 	}
 }
 
@@ -102,5 +92,7 @@ func RegisterRoutes(mux *http.ServeMux, deps RouteDependencies) {
 		mux.Handle(path, handler)
 	}
 	sse.RegisterRoutes(mux, deps.EventPublisher)
-	upload.RegisterRoutes(mux, deps.Store)
+	if deps.UploadService != nil {
+		upload.RegisterRoutes(mux, deps.UploadService)
+	}
 }

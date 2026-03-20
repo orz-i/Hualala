@@ -11,14 +11,14 @@ import (
 
 func TestProjectContentFlow(t *testing.T) {
 	ctx := context.Background()
-	store := db.NewMemoryStore()
+	fixture := openIntegrationFixture(t)
 
-	projectService := projectapp.NewService(store)
-	contentService := contentapp.NewService(store)
+	projectService := fixture.Services.ProjectService
+	contentService := fixture.Services.ContentService
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
-		OrganizationID:          "org-1",
-		OwnerUserID:             "user-1",
+		OrganizationID:          db.DefaultDevOrganizationID,
+		OwnerUserID:             db.DefaultDevUserID,
 		Title:                   "AI 剧集平台",
 		PrimaryContentLocale:    "zh-CN",
 		SupportedContentLocales: []string{"zh-CN", "en-US"},

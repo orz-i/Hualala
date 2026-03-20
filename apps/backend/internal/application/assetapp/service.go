@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -14,7 +13,8 @@ import (
 )
 
 type Service struct {
-	store *db.MemoryStore
+	assets     db.AssetRepository
+	executions db.ExecutionRepository
 }
 
 type CreateImportBatchInput struct {
@@ -73,13 +73,13 @@ type ImportBatchWorkbench struct {
 	ShotExecutions     []execution.ShotExecution
 }
 
-func NewService(store *db.MemoryStore) *Service {
-	return &Service{store: store}
+func NewService(assets db.AssetRepository, executions db.ExecutionRepository) *Service {
+	return &Service{assets: assets, executions: executions}
 }
 
-func (s *Service) CreateImportBatch(_ context.Context, input CreateImportBatchInput) (asset.ImportBatch, error) {
-	if s == nil || s.store == nil {
-		return asset.ImportBatch{}, errors.New("assetapp: store is required")
+func (s *Service) CreateImportBatch(ctx context.Context, input CreateImportBatchInput) (asset.ImportBatch, error) {
+	if s == nil || s.assets == nil {
+		return asset.ImportBatch{}, errors.New("assetapp: repository is required")
 	}
 	if strings.TrimSpace(input.ProjectID) == "" || strings.TrimSpace(input.OrgID) == "" {
 		return asset.ImportBatch{}, errors.New("assetapp: project_id and org_id are required")
@@ -87,7 +87,7 @@ func (s *Service) CreateImportBatch(_ context.Context, input CreateImportBatchIn
 
 	now := time.Now().UTC()
 	record := asset.ImportBatch{
-		ID:         s.store.NextImportBatchID(),
+		ID:         s.assets.GenerateImportBatchID(),
 		OrgID:      strings.TrimSpace(input.OrgID),
 		ProjectID:  strings.TrimSpace(input.ProjectID),
 		OperatorID: strings.TrimSpace(input.OperatorID),
@@ -97,19 +97,21 @@ func (s *Service) CreateImportBatch(_ context.Context, input CreateImportBatchIn
 		UpdatedAt:  now,
 	}
 
-	s.store.ImportBatches[record.ID] = record
+	if err := s.assets.SaveImportBatch(ctx, record); err != nil {
+		return asset.ImportBatch{}, err
+	}
 	return record, nil
 }
 
-func (s *Service) AddCandidateAsset(_ context.Context, input AddCandidateAssetInput) (asset.CandidateAsset, error) {
-	shotExecution, ok := s.store.ShotExecutions[input.ShotExecutionID]
+func (s *Service) AddCandidateAsset(ctx context.Context, input AddCandidateAssetInput) (asset.CandidateAsset, error) {
+	shotExecution, ok := s.executions.GetShotExecution(input.ShotExecutionID)
 	if !ok {
 		return asset.CandidateAsset{}, errors.New("assetapp: shot execution not found")
 	}
 
 	now := time.Now().UTC()
 	mediaAsset := asset.MediaAsset{
-		ID:            s.store.NextMediaAssetID(),
+		ID:            s.assets.GenerateMediaAssetID(),
 		OrgID:         strings.TrimSpace(input.OrgID),
 		ProjectID:     strings.TrimSpace(input.ProjectID),
 		ImportBatchID: strings.TrimSpace(input.ImportBatchID),
@@ -121,22 +123,26 @@ func (s *Service) AddCandidateAsset(_ context.Context, input AddCandidateAssetIn
 		UpdatedAt:     now,
 	}
 	if mediaAsset.RightsStatus == "" {
-		mediaAsset.RightsStatus = "pending"
+		mediaAsset.RightsStatus = "unknown"
 	}
-	s.store.MediaAssets[mediaAsset.ID] = mediaAsset
+	if err := s.assets.SaveMediaAsset(ctx, mediaAsset); err != nil {
+		return asset.CandidateAsset{}, err
+	}
 
 	candidate := asset.CandidateAsset{
-		ID:              s.store.NextCandidateAssetID(),
+		ID:              s.assets.GenerateCandidateAssetID(),
 		ShotExecutionID: strings.TrimSpace(input.ShotExecutionID),
 		AssetID:         mediaAsset.ID,
 		SourceRunID:     strings.TrimSpace(input.SourceRunID),
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
-	s.store.CandidateAssets[candidate.ID] = candidate
+	if err := s.assets.SaveCandidateAsset(ctx, candidate); err != nil {
+		return asset.CandidateAsset{}, err
+	}
 
 	importBatchItem := asset.ImportBatchItem{
-		ID:            s.store.NextImportBatchItemID(),
+		ID:            s.assets.GenerateImportBatchItemID(),
 		ImportBatchID: strings.TrimSpace(input.ImportBatchID),
 		Status:        "matched_pending_confirm",
 		MatchedShotID: shotExecution.ShotID,
@@ -144,50 +150,40 @@ func (s *Service) AddCandidateAsset(_ context.Context, input AddCandidateAssetIn
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
-	s.store.ImportBatchItems[importBatchItem.ID] = importBatchItem
+	if err := s.assets.SaveImportBatchItem(ctx, importBatchItem); err != nil {
+		return asset.CandidateAsset{}, err
+	}
 
 	shotExecution.Status = "candidate_ready"
 	shotExecution.UpdatedAt = now
-	s.store.ShotExecutions[shotExecution.ID] = shotExecution
+	if err := s.executions.SaveShotExecution(ctx, shotExecution); err != nil {
+		return asset.CandidateAsset{}, err
+	}
 
 	return candidate, nil
 }
 
 func (s *Service) ListCandidateAssets(_ context.Context, input ListCandidateAssetsInput) ([]asset.CandidateAsset, error) {
-	candidates := make([]asset.CandidateAsset, 0)
-	for _, candidate := range s.store.CandidateAssets {
-		if candidate.ShotExecutionID == input.ShotExecutionID {
-			candidates = append(candidates, candidate)
-		}
+	if s == nil || s.assets == nil {
+		return nil, errors.New("assetapp: repository is required")
 	}
-
-	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].ID < candidates[j].ID
-	})
-
-	return candidates, nil
+	return s.assets.ListCandidateAssetsByExecution(input.ShotExecutionID), nil
 }
 
 func (s *Service) ListImportBatchItems(_ context.Context, input ListImportBatchItemsInput) ([]asset.ImportBatchItem, error) {
+	if s == nil || s.assets == nil {
+		return nil, errors.New("assetapp: repository is required")
+	}
 	if strings.TrimSpace(input.ImportBatchID) == "" {
 		return nil, errors.New("assetapp: import_batch_id is required")
 	}
-
-	items := make([]asset.ImportBatchItem, 0)
-	for _, item := range s.store.ImportBatchItems {
-		if item.ImportBatchID == input.ImportBatchID {
-			items = append(items, item)
-		}
-	}
-
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].ID < items[j].ID
-	})
-
-	return items, nil
+	return s.assets.ListImportBatchItems(input.ImportBatchID), nil
 }
 
-func (s *Service) BatchConfirmImportBatchItems(_ context.Context, input BatchConfirmImportBatchItemsInput) ([]asset.ImportBatchItem, error) {
+func (s *Service) BatchConfirmImportBatchItems(ctx context.Context, input BatchConfirmImportBatchItemsInput) ([]asset.ImportBatchItem, error) {
+	if s == nil || s.assets == nil {
+		return nil, errors.New("assetapp: repository is required")
+	}
 	if strings.TrimSpace(input.ImportBatchID) == "" {
 		return nil, errors.New("assetapp: import_batch_id is required")
 	}
@@ -198,119 +194,106 @@ func (s *Service) BatchConfirmImportBatchItems(_ context.Context, input BatchCon
 	confirmedItems := make([]asset.ImportBatchItem, 0, len(input.ItemIDs))
 	now := time.Now().UTC()
 	for _, itemID := range input.ItemIDs {
-		record, ok := s.store.ImportBatchItems[itemID]
+		record, ok := s.assets.GetImportBatchItem(itemID)
 		if !ok || record.ImportBatchID != input.ImportBatchID {
 			return nil, fmt.Errorf("assetapp: import batch item %q not found", itemID)
 		}
 		record.Status = "confirmed"
 		record.UpdatedAt = now
-		s.store.ImportBatchItems[itemID] = record
+		if err := s.assets.SaveImportBatchItem(ctx, record); err != nil {
+			return nil, err
+		}
 		confirmedItems = append(confirmedItems, record)
 	}
 
-	if batch, ok := s.store.ImportBatches[input.ImportBatchID]; ok {
+	if batch, ok := s.assets.GetImportBatch(input.ImportBatchID); ok {
 		batch.Status = "confirmed"
 		batch.UpdatedAt = now
-		s.store.ImportBatches[input.ImportBatchID] = batch
+		if err := s.assets.SaveImportBatch(ctx, batch); err != nil {
+			return nil, err
+		}
 	}
-
-	sort.Slice(confirmedItems, func(i, j int) bool {
-		return confirmedItems[i].ID < confirmedItems[j].ID
-	})
 
 	return confirmedItems, nil
 }
 
 func (s *Service) GetImportBatchWorkbench(_ context.Context, input GetImportBatchWorkbenchInput) (ImportBatchWorkbench, error) {
-	if s == nil || s.store == nil {
-		return ImportBatchWorkbench{}, errors.New("assetapp: store is required")
+	if s == nil || s.assets == nil || s.executions == nil {
+		return ImportBatchWorkbench{}, errors.New("assetapp: repositories are required")
 	}
 	importBatchID := strings.TrimSpace(input.ImportBatchID)
 	if importBatchID == "" {
 		return ImportBatchWorkbench{}, errors.New("assetapp: import_batch_id is required")
 	}
 
-	importBatch, ok := s.store.ImportBatches[importBatchID]
+	importBatch, ok := s.assets.GetImportBatch(importBatchID)
 	if !ok {
 		return ImportBatchWorkbench{}, errors.New("assetapp: import batch not found")
 	}
 
 	workbench := ImportBatchWorkbench{
 		ImportBatch:        importBatch,
-		UploadSessions:     make([]asset.UploadSession, 0),
+		UploadSessions:     s.assets.ListUploadSessionsByImportBatch(importBatchID),
+		MediaAssets:        s.assets.ListMediaAssetsByImportBatch(importBatchID),
+		Items:              s.assets.ListImportBatchItems(importBatchID),
 		UploadFiles:        make([]asset.UploadFile, 0),
-		MediaAssets:        make([]asset.MediaAsset, 0),
 		MediaAssetVariants: make([]asset.MediaAssetVariant, 0),
-		Items:              make([]asset.ImportBatchItem, 0),
 		CandidateAssets:    make([]asset.CandidateAsset, 0),
 		ShotExecutions:     make([]execution.ShotExecution, 0),
 	}
 
-	sessionIDs := make(map[string]struct{})
-	uploadFileIDs := make(map[string]struct{})
-	assetIDs := make(map[string]struct{})
+	sessionIDs := make([]string, 0, len(workbench.UploadSessions))
+	for _, session := range workbench.UploadSessions {
+		sessionIDs = append(sessionIDs, session.ID)
+	}
+	workbench.UploadFiles = s.assets.ListUploadFilesBySessionIDs(sessionIDs)
 
-	for _, session := range s.store.UploadSessions {
-		if session.ImportBatchID == importBatchID {
-			workbench.UploadSessions = append(workbench.UploadSessions, session)
-			sessionIDs[session.ID] = struct{}{}
-		}
+	uploadFileIDs := make([]string, 0, len(workbench.UploadFiles))
+	for _, uploadFile := range workbench.UploadFiles {
+		uploadFileIDs = append(uploadFileIDs, uploadFile.ID)
 	}
-	for _, uploadFile := range s.store.UploadFiles {
-		if _, ok := sessionIDs[uploadFile.UploadSessionID]; ok {
-			workbench.UploadFiles = append(workbench.UploadFiles, uploadFile)
-			uploadFileIDs[uploadFile.ID] = struct{}{}
+	workbench.MediaAssetVariants = s.assets.ListMediaAssetVariantsByUploadFileIDs(uploadFileIDs)
+
+	assetIDs := make([]string, 0, len(workbench.MediaAssets)+len(workbench.Items))
+	seenAssetIDs := make(map[string]struct{})
+	for _, mediaAsset := range workbench.MediaAssets {
+		if _, ok := seenAssetIDs[mediaAsset.ID]; ok {
+			continue
 		}
+		seenAssetIDs[mediaAsset.ID] = struct{}{}
+		assetIDs = append(assetIDs, mediaAsset.ID)
 	}
-	for _, mediaAsset := range s.store.MediaAssets {
-		if mediaAsset.ImportBatchID == importBatchID {
-			workbench.MediaAssets = append(workbench.MediaAssets, mediaAsset)
-			assetIDs[mediaAsset.ID] = struct{}{}
+	for _, item := range workbench.Items {
+		if item.AssetID == "" {
+			continue
 		}
-	}
-	for _, variant := range s.store.MediaAssetVariants {
-		if _, ok := uploadFileIDs[variant.UploadFileID]; ok {
-			workbench.MediaAssetVariants = append(workbench.MediaAssetVariants, variant)
+		if _, ok := seenAssetIDs[item.AssetID]; ok {
+			continue
 		}
+		seenAssetIDs[item.AssetID] = struct{}{}
+		assetIDs = append(assetIDs, item.AssetID)
 	}
-	for _, item := range s.store.ImportBatchItems {
-		if item.ImportBatchID == importBatchID {
-			workbench.Items = append(workbench.Items, item)
-			if item.AssetID != "" {
-				assetIDs[item.AssetID] = struct{}{}
-			}
-		}
-	}
-	for _, candidate := range s.store.CandidateAssets {
-		if _, ok := assetIDs[candidate.AssetID]; ok {
-			workbench.CandidateAssets = append(workbench.CandidateAssets, candidate)
-		}
-	}
-	shotExecutionIDs := make(map[string]struct{})
+
+	workbench.CandidateAssets = s.assets.ListCandidateAssetsByAssetIDs(assetIDs)
+	shotExecutionIDs := make([]string, 0, len(workbench.CandidateAssets))
+	seenShotExecutionIDs := make(map[string]struct{})
 	for _, candidate := range workbench.CandidateAssets {
-		if candidate.ShotExecutionID != "" {
-			shotExecutionIDs[candidate.ShotExecutionID] = struct{}{}
+		if candidate.ShotExecutionID == "" {
+			continue
 		}
-	}
-	for _, shotExecution := range s.store.ShotExecutions {
-		if _, ok := shotExecutionIDs[shotExecution.ID]; ok {
-			workbench.ShotExecutions = append(workbench.ShotExecutions, shotExecution)
+		if _, ok := seenShotExecutionIDs[candidate.ShotExecutionID]; ok {
+			continue
 		}
+		seenShotExecutionIDs[candidate.ShotExecutionID] = struct{}{}
+		shotExecutionIDs = append(shotExecutionIDs, candidate.ShotExecutionID)
 	}
-
-	sort.Slice(workbench.UploadSessions, func(i, j int) bool { return workbench.UploadSessions[i].ID < workbench.UploadSessions[j].ID })
-	sort.Slice(workbench.UploadFiles, func(i, j int) bool { return workbench.UploadFiles[i].ID < workbench.UploadFiles[j].ID })
-	sort.Slice(workbench.MediaAssets, func(i, j int) bool { return workbench.MediaAssets[i].ID < workbench.MediaAssets[j].ID })
-	sort.Slice(workbench.MediaAssetVariants, func(i, j int) bool { return workbench.MediaAssetVariants[i].ID < workbench.MediaAssetVariants[j].ID })
-	sort.Slice(workbench.Items, func(i, j int) bool { return workbench.Items[i].ID < workbench.Items[j].ID })
-	sort.Slice(workbench.CandidateAssets, func(i, j int) bool { return workbench.CandidateAssets[i].ID < workbench.CandidateAssets[j].ID })
-	sort.Slice(workbench.ShotExecutions, func(i, j int) bool { return workbench.ShotExecutions[i].ID < workbench.ShotExecutions[j].ID })
+	workbench.ShotExecutions = s.executions.ListShotExecutionsByIDs(shotExecutionIDs)
 
 	return workbench, nil
 }
 
 func (s *Service) GetAssetProvenanceSummary(_ context.Context, input GetAssetProvenanceSummaryInput) (AssetProvenanceSummary, error) {
-	record, ok := s.store.MediaAssets[input.AssetID]
+	record, ok := s.assets.GetMediaAsset(input.AssetID)
 	if !ok {
 		return AssetProvenanceSummary{}, errors.New("assetapp: asset not found")
 	}
