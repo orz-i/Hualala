@@ -205,6 +205,9 @@ func TestExecutionAssetReviewBillingRoutes(t *testing.T) {
 	if got := importItemsBeforeConfirm.Msg.GetItems()[0].GetStatus(); got != "matched_pending_confirm" {
 		t.Fatalf("expected matched_pending_confirm, got %q", got)
 	}
+	if got := importItemsBeforeConfirm.Msg.GetItems()[0].GetAssetId(); got != candidate.Msg.GetAsset().GetAssetId() {
+		t.Fatalf("expected import batch item asset_id %q, got %q", candidate.Msg.GetAsset().GetAssetId(), got)
+	}
 
 	importItemsAfterConfirm, err := assetClient.BatchConfirmImportBatchItems(ctx, connectrpc.NewRequest(&assetv1.BatchConfirmImportBatchItemsRequest{
 		ImportBatchId: importBatch.Msg.GetImportBatch().GetId(),
@@ -218,6 +221,9 @@ func TestExecutionAssetReviewBillingRoutes(t *testing.T) {
 	}
 	if got := importItemsAfterConfirm.Msg.GetItems()[0].GetStatus(); got != "confirmed" {
 		t.Fatalf("expected confirmed import batch item, got %q", got)
+	}
+	if got := importItemsAfterConfirm.Msg.GetItems()[0].GetAssetId(); got != candidate.Msg.GetAsset().GetAssetId() {
+		t.Fatalf("expected confirmed import batch item asset_id %q, got %q", candidate.Msg.GetAsset().GetAssetId(), got)
 	}
 
 	executionRecord, err := executionClient.SelectPrimaryAsset(ctx, connectrpc.NewRequest(&executionv1.SelectPrimaryAssetRequest{

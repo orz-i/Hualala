@@ -111,6 +111,7 @@ type ImportBatchItem struct {
 	ImportBatchId string                 `protobuf:"bytes,2,opt,name=import_batch_id,json=importBatchId,proto3" json:"import_batch_id,omitempty"`
 	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
 	MatchedShotId string                 `protobuf:"bytes,4,opt,name=matched_shot_id,json=matchedShotId,proto3" json:"matched_shot_id,omitempty"`
+	AssetId       string                 `protobuf:"bytes,5,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -169,6 +170,13 @@ func (x *ImportBatchItem) GetStatus() string {
 func (x *ImportBatchItem) GetMatchedShotId() string {
 	if x != nil {
 		return x.MatchedShotId
+	}
+	return ""
+}
+
+func (x *ImportBatchItem) GetAssetId() string {
+	if x != nil {
+		return x.AssetId
 	}
 	return ""
 }
@@ -979,12 +987,13 @@ const file_hualala_asset_v1_asset_proto_rawDesc = "" +
 	"operatorId\x12\x1f\n" +
 	"\vsource_type\x18\x05 \x01(\tR\n" +
 	"sourceType\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\"\x89\x01\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\"\xa4\x01\n" +
 	"\x0fImportBatchItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12&\n" +
 	"\x0fimport_batch_id\x18\x02 \x01(\tR\rimportBatchId\x12\x16\n" +
 	"\x06status\x18\x03 \x01(\tR\x06status\x12&\n" +
-	"\x0fmatched_shot_id\x18\x04 \x01(\tR\rmatchedShotId\"\xe4\x01\n" +
+	"\x0fmatched_shot_id\x18\x04 \x01(\tR\rmatchedShotId\x12\x19\n" +
+	"\basset_id\x18\x05 \x01(\tR\aassetId\"\xe4\x01\n" +
 	"\n" +
 	"MediaAsset\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +

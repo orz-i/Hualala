@@ -65,6 +65,7 @@ func mapImportBatchItem(record asset.ImportBatchItem) *assetv1.ImportBatchItem {
 		ImportBatchId: record.ImportBatchID,
 		Status:        record.Status,
 		MatchedShotId: record.MatchedShotID,
+		AssetId:       record.AssetID,
 	}
 }
 

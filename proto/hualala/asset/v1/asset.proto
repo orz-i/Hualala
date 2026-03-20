@@ -27,6 +27,7 @@ message ImportBatchItem {
   string import_batch_id = 2;
   string status = 3;
   string matched_shot_id = 4;
+  string asset_id = 5;
 }
 
 message MediaAsset {
