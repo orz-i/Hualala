@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { ImportBatchWorkbenchPage } from "./ImportBatchWorkbenchPage";
 
 describe("ImportBatchWorkbenchPage", () => {
@@ -24,5 +24,40 @@ describe("ImportBatchWorkbenchPage", () => {
     expect(screen.getByText("1 个上传会话")).toBeInTheDocument();
     expect(screen.getByText("1 个候选素材")).toBeInTheDocument();
     expect(screen.getByText("candidate_ready")).toBeInTheDocument();
+  });
+
+  it("emits confirm and primary asset actions with the current workbench ids", () => {
+    const onConfirmMatches = vi.fn();
+    const onSelectPrimaryAsset = vi.fn();
+
+    render(
+      <ImportBatchWorkbenchPage
+        workbench={{
+          importBatch: {
+            id: "batch-1",
+            status: "matched_pending_confirm",
+            sourceType: "upload_session",
+          },
+          uploadSessions: [{ id: "upload-session-1", status: "completed" }],
+          items: [{ id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" }],
+          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
+          shotExecutions: [{ id: "shot-exec-1", status: "candidate_ready", primaryAssetId: "" }],
+        }}
+        onConfirmMatches={onConfirmMatches}
+        onSelectPrimaryAsset={onSelectPrimaryAsset}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "确认匹配" }));
+    fireEvent.click(screen.getByRole("button", { name: "设为主素材" }));
+
+    expect(onConfirmMatches).toHaveBeenCalledWith({
+      importBatchId: "batch-1",
+      itemIds: ["item-1"],
+    });
+    expect(onSelectPrimaryAsset).toHaveBeenCalledWith({
+      shotExecutionId: "shot-exec-1",
+      assetId: "asset-1",
+    });
   });
 });

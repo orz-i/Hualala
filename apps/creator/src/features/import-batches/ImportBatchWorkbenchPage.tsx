@@ -38,6 +38,11 @@ export type ImportBatchWorkbenchViewModel = {
 
 type ImportBatchWorkbenchPageProps = {
   workbench: ImportBatchWorkbenchViewModel;
+  onConfirmMatches?: (input: { importBatchId: string; itemIds: string[] }) => void;
+  onSelectPrimaryAsset?: (input: {
+    shotExecutionId: string;
+    assetId: string;
+  }) => void;
 };
 
 const panelStyle: CSSProperties = {
@@ -57,8 +62,12 @@ const metricStyle: CSSProperties = {
 
 export function ImportBatchWorkbenchPage({
   workbench,
+  onConfirmMatches,
+  onSelectPrimaryAsset,
 }: ImportBatchWorkbenchPageProps) {
   const currentExecution = workbench.shotExecutions[0];
+  const currentItem = workbench.items[0];
+  const currentCandidate = workbench.candidateAssets[0];
 
   return (
     <main
@@ -123,6 +132,29 @@ export function ImportBatchWorkbenchPage({
             </h2>
             <p style={metricStyle}>{workbench.candidateAssets.length} 个候选素材</p>
             <p style={metricStyle}>{workbench.items.length} 个批次条目</p>
+            <button
+              type="button"
+              style={{
+                marginTop: "16px",
+                border: 0,
+                borderRadius: "999px",
+                padding: "10px 16px",
+                background: "#1d4ed8",
+                color: "#eff6ff",
+                cursor: "pointer",
+              }}
+              onClick={() => {
+                if (!currentItem || !onConfirmMatches) {
+                  return;
+                }
+                onConfirmMatches({
+                  importBatchId: workbench.importBatch.id,
+                  itemIds: [currentItem.id],
+                });
+              }}
+            >
+              确认匹配
+            </button>
           </article>
 
           <article style={panelStyle}>
@@ -135,6 +167,29 @@ export function ImportBatchWorkbenchPage({
             <p style={metricStyle}>
               主素材：{currentExecution?.primaryAssetId || "未选择"}
             </p>
+            <button
+              type="button"
+              style={{
+                marginTop: "16px",
+                border: 0,
+                borderRadius: "999px",
+                padding: "10px 16px",
+                background: "#0f766e",
+                color: "#ecfeff",
+                cursor: "pointer",
+              }}
+              onClick={() => {
+                if (!currentExecution || !currentCandidate || !onSelectPrimaryAsset) {
+                  return;
+                }
+                onSelectPrimaryAsset({
+                  shotExecutionId: currentExecution.id,
+                  assetId: currentCandidate.assetId,
+                });
+              }}
+            >
+              设为主素材
+            </button>
           </article>
         </section>
       </section>

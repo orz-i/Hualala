@@ -4,6 +4,10 @@ import {
   type ImportBatchWorkbenchViewModel,
 } from "../features/import-batches/ImportBatchWorkbenchPage";
 import { loadImportBatchWorkbench } from "../features/import-batches/loadImportBatchWorkbench";
+import {
+  confirmImportBatchItems,
+  selectPrimaryAssetForImportBatch,
+} from "../features/import-batches/mutateImportBatchWorkbench";
 import { loadShotWorkbench } from "../features/shot-workbench/loadShotWorkbench";
 import { ShotWorkbenchPage, type ShotWorkbenchViewModel } from "../features/shot-workbench/ShotWorkbenchPage";
 
@@ -13,14 +17,20 @@ export function App() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const importBatchId = searchParams.get("importBatchId");
-    const shotId = searchParams.get("shotId") ?? "shot-demo-001";
     let cancelled = false;
+    const loadCurrentWorkbench = () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const importBatchId = searchParams.get("importBatchId");
+      const shotId = searchParams.get("shotId") ?? "shot-demo-001";
+      return {
+        importBatchId,
+        load: importBatchId
+          ? loadImportBatchWorkbench({ importBatchId })
+          : loadShotWorkbench({ shotId }),
+      };
+    };
 
-    const load = importBatchId
-      ? loadImportBatchWorkbench({ importBatchId })
-      : loadShotWorkbench({ shotId });
+    const { importBatchId, load } = loadCurrentWorkbench();
 
     load
       .then((nextWorkbench) => {
@@ -56,12 +66,36 @@ export function App() {
     };
   }, []);
 
+  const refreshImportWorkbench = async () => {
+    const importBatchId = new URLSearchParams(window.location.search).get("importBatchId");
+    if (!importBatchId) {
+      return;
+    }
+    const nextWorkbench = await loadImportBatchWorkbench({ importBatchId });
+    startTransition(() => {
+      setImportWorkbench(nextWorkbench);
+      setErrorMessage("");
+    });
+  };
+
   if (errorMessage) {
     return <main style={{ padding: "32px" }}>工作台加载失败：{errorMessage}</main>;
   }
 
   if (importWorkbench) {
-    return <ImportBatchWorkbenchPage workbench={importWorkbench} />;
+    return (
+      <ImportBatchWorkbenchPage
+        workbench={importWorkbench}
+        onConfirmMatches={async (input) => {
+          await confirmImportBatchItems(input);
+          await refreshImportWorkbench();
+        }}
+        onSelectPrimaryAsset={async (input) => {
+          await selectPrimaryAssetForImportBatch(input);
+          await refreshImportWorkbench();
+        }}
+      />
+    );
   }
 
   if (shotWorkbench) {
