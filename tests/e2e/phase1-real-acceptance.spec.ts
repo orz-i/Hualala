@@ -33,13 +33,6 @@ test("phase1 real acceptance: admin and creator flows are usable against backend
   await shotPage.close();
 
   const importPage = await browser.newPage();
-  await importPage.route(
-    "**/hualala.execution.v1.ExecutionService/SelectPrimaryAsset",
-    async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      await route.continue();
-    },
-  );
   await importPage.goto(seed.urls.creatorImport);
   await importPage.getByRole("button", { name: "设为主素材" }).click();
   await expect(importPage.getByText("主素材选择已完成")).toBeVisible();
