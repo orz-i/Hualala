@@ -14,6 +14,11 @@ func openIntegrationStore(t *testing.T) *db.MemoryStore {
 	t.Helper()
 
 	cfg := config.Load()
+	if cfg.DBDriver == "postgres" {
+		if _, err := db.EnsureDevBootstrapWithURL(context.Background(), cfg.DatabaseURL); err != nil {
+			t.Fatalf("EnsureDevBootstrapWithURL returned error: %v", err)
+		}
+	}
 	store, closeFn, err := db.OpenStore(context.Background(), db.OpenStoreOptions{
 		Driver:        cfg.DBDriver,
 		DatabaseURL:   cfg.DatabaseURL,

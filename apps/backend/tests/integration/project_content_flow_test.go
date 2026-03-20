@@ -6,6 +6,7 @@ import (
 
 	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
+	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
 func TestProjectContentFlow(t *testing.T) {
@@ -16,8 +17,8 @@ func TestProjectContentFlow(t *testing.T) {
 	contentService := contentapp.NewService(store)
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
-		OrganizationID:          "org-1",
-		OwnerUserID:             "user-1",
+		OrganizationID:          db.DefaultDevOrganizationID,
+		OwnerUserID:             db.DefaultDevUserID,
 		Title:                   "AI 剧集平台",
 		PrimaryContentLocale:    "zh-CN",
 		SupportedContentLocales: []string{"zh-CN", "en-US"},

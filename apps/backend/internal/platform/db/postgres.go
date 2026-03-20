@@ -48,12 +48,19 @@ func OpenStore(ctx context.Context, options OpenStoreOptions) (*MemoryStore, fun
 				return nil, nil, err
 			}
 		}
+		if options.StoreKey != "" && options.StoreKey != defaultSnapshotStoreKey {
+			if err := resetRelationalState(ctx, handle); err != nil {
+				_ = handle.Close()
+				return nil, nil, err
+			}
+		}
 
 		store, err := NewPersistentMemoryStore(ctx, NewPostgresPersister(handle, options.StoreKey))
 		if err != nil {
 			_ = handle.Close()
 			return nil, nil, err
 		}
+		store.EnableUUIDIDs()
 		return store, handle.Close, nil
 	default:
 		return nil, nil, fmt.Errorf("db: unsupported driver %q", options.Driver)
@@ -74,6 +81,44 @@ func (p *PostgresPersister) Load(ctx context.Context) (*Snapshot, error) {
 	if p == nil || p.db == nil {
 		return nil, errors.New("db: postgres persister requires database handle")
 	}
+	snapshot := newEmptySnapshot()
+	fallback, err := p.loadFallbackSnapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if fallback != nil {
+		mergeFallbackSnapshot(&snapshot, *fallback)
+	}
+	if err := p.loadRelationalSnapshot(ctx, &snapshot); err != nil {
+		return nil, err
+	}
+	return &snapshot, nil
+}
+
+func (p *PostgresPersister) Save(ctx context.Context, snapshot Snapshot) error {
+	if p == nil || p.db == nil {
+		return errors.New("db: postgres persister requires database handle")
+	}
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("db: begin postgres save tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	if err := p.saveRelationalSnapshot(ctx, tx, snapshot); err != nil {
+		return err
+	}
+	if err := p.saveFallbackSnapshotTx(ctx, tx, extractFallbackSnapshot(snapshot)); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("db: commit postgres save tx: %w", err)
+	}
+	return nil
+}
+
+func (p *PostgresPersister) loadFallbackSnapshot(ctx context.Context) (*Snapshot, error) {
 	var payload []byte
 	err := p.db.QueryRowContext(
 		ctx,
@@ -84,26 +129,21 @@ func (p *PostgresPersister) Load(ctx context.Context) (*Snapshot, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("db: load snapshot: %w", err)
+		return nil, fmt.Errorf("db: load fallback snapshot: %w", err)
 	}
-
 	var snapshot Snapshot
 	if err := json.Unmarshal(payload, &snapshot); err != nil {
-		return nil, fmt.Errorf("db: decode snapshot: %w", err)
+		return nil, fmt.Errorf("db: decode fallback snapshot: %w", err)
 	}
 	return &snapshot, nil
 }
 
-func (p *PostgresPersister) Save(ctx context.Context, snapshot Snapshot) error {
-	if p == nil || p.db == nil {
-		return errors.New("db: postgres persister requires database handle")
-	}
+func (p *PostgresPersister) saveFallbackSnapshotTx(ctx context.Context, tx *sql.Tx, snapshot Snapshot) error {
 	payload, err := json.Marshal(snapshot)
 	if err != nil {
-		return fmt.Errorf("db: encode snapshot: %w", err)
+		return fmt.Errorf("db: encode fallback snapshot: %w", err)
 	}
-
-	_, err = p.db.ExecContext(
+	if _, err := tx.ExecContext(
 		ctx,
 		`INSERT INTO app_state_snapshots (store_key, payload, updated_at)
 		 VALUES ($1, $2::jsonb, NOW())
@@ -111,9 +151,28 @@ func (p *PostgresPersister) Save(ctx context.Context, snapshot Snapshot) error {
 		 DO UPDATE SET payload = EXCLUDED.payload, updated_at = EXCLUDED.updated_at`,
 		p.storeKey,
 		string(payload),
-	)
+	); err != nil {
+		return fmt.Errorf("db: save fallback snapshot: %w", err)
+	}
+	return nil
+}
+
+func resetRelationalState(ctx context.Context, handle *sql.DB) error {
+	tx, err := handle.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("db: save snapshot: %w", err)
+		return fmt.Errorf("db: begin reset relational tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	if err := clearMainTables(ctx, tx); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM app_state_snapshots WHERE store_key <> $1`, defaultSnapshotStoreKey); err != nil {
+		return fmt.Errorf("db: clear integration snapshots: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("db: commit reset relational tx: %w", err)
 	}
 	return nil
 }

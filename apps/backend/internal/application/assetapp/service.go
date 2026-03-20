@@ -124,7 +124,7 @@ func (s *Service) AddCandidateAsset(ctx context.Context, input AddCandidateAsset
 		UpdatedAt:     now,
 	}
 	if mediaAsset.RightsStatus == "" {
-		mediaAsset.RightsStatus = "pending"
+		mediaAsset.RightsStatus = "unknown"
 	}
 	s.store.MediaAssets[mediaAsset.ID] = mediaAsset
 

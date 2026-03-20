@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/content"
@@ -127,6 +128,7 @@ type MemoryStore struct {
 	GatewayResults     map[string]gateway.GatewayResult
 	EventPublisher     *events.Publisher
 	persister          SnapshotPersister
+	useUUIDIDs         bool
 }
 
 func NewMemoryStore() *MemoryStore {
@@ -174,6 +176,13 @@ func NewPersistentMemoryStore(ctx context.Context, persister SnapshotPersister) 
 
 	store.applySnapshot(*snapshot)
 	return store, nil
+}
+
+func (s *MemoryStore) EnableUUIDIDs() {
+	if s == nil {
+		return
+	}
+	s.useUUIDIDs = true
 }
 
 func (s *MemoryStore) Save(ctx context.Context) error {
@@ -304,116 +313,185 @@ func cloneMap[T any](input map[string]T) map[string]T {
 }
 
 func (s *MemoryStore) NextProjectID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextProjectID++
 	return fmt.Sprintf("project-%d", s.nextProjectID)
 }
 
 func (s *MemoryStore) NextEpisodeID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextEpisodeID++
 	return fmt.Sprintf("episode-%d", s.nextEpisodeID)
 }
 
 func (s *MemoryStore) NextSceneID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextSceneID++
 	return fmt.Sprintf("scene-%d", s.nextSceneID)
 }
 
 func (s *MemoryStore) NextShotID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextShotID++
 	return fmt.Sprintf("shot-%d", s.nextShotID)
 }
 
 func (s *MemoryStore) NextSnapshotID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextSnapshotID++
 	return fmt.Sprintf("snapshot-%d", s.nextSnapshotID)
 }
 
 func (s *MemoryStore) NextTranslationGroupID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextGroupID++
 	return fmt.Sprintf("translation-group-%d", s.nextGroupID)
 }
 
 func (s *MemoryStore) NextShotExecutionID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextExecutionID++
 	return fmt.Sprintf("shot-execution-%d", s.nextExecutionID)
 }
 
 func (s *MemoryStore) NextShotExecutionRunID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextRunID++
 	return fmt.Sprintf("shot-execution-run-%d", s.nextRunID)
 }
 
 func (s *MemoryStore) NextImportBatchID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextImportBatchID++
 	return fmt.Sprintf("import-batch-%d", s.nextImportBatchID)
 }
 
 func (s *MemoryStore) NextImportBatchItemID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextImportBatchItemID++
 	return fmt.Sprintf("import-batch-item-%d", s.nextImportBatchItemID)
 }
 
 func (s *MemoryStore) NextUploadSessionID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextUploadSessionID++
 	return fmt.Sprintf("upload-session-%d", s.nextUploadSessionID)
 }
 
 func (s *MemoryStore) NextUploadFileID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextUploadFileID++
 	return fmt.Sprintf("upload-file-%d", s.nextUploadFileID)
 }
 
 func (s *MemoryStore) NextMediaAssetID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextAssetID++
 	return fmt.Sprintf("media-asset-%d", s.nextAssetID)
 }
 
 func (s *MemoryStore) NextMediaAssetVariantID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextVariantID++
 	return fmt.Sprintf("media-asset-variant-%d", s.nextVariantID)
 }
 
 func (s *MemoryStore) NextCandidateAssetID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextCandidateID++
 	return fmt.Sprintf("candidate-asset-%d", s.nextCandidateID)
 }
 
 func (s *MemoryStore) NextReviewID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextReviewID++
 	return fmt.Sprintf("shot-review-%d", s.nextReviewID)
 }
 
 func (s *MemoryStore) NextBudgetID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextBudgetID++
 	return fmt.Sprintf("budget-%d", s.nextBudgetID)
 }
 
 func (s *MemoryStore) NextUsageRecordID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextUsageID++
 	return fmt.Sprintf("usage-record-%d", s.nextUsageID)
 }
 
 func (s *MemoryStore) NextBillingEventID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextBillingEventID++
 	return fmt.Sprintf("billing-event-%d", s.nextBillingEventID)
 }
 
 func (s *MemoryStore) NextEvaluationRunID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextEvaluationRunID++
 	return fmt.Sprintf("evaluation-run-%d", s.nextEvaluationRunID)
 }
 
 func (s *MemoryStore) NextWorkflowRunID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextWorkflowRunID++
 	return fmt.Sprintf("workflow-run-%d", s.nextWorkflowRunID)
 }
 
 func (s *MemoryStore) NextWorkflowStepID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextWorkflowStepID++
 	return fmt.Sprintf("workflow-step-%d", s.nextWorkflowStepID)
 }
 
 func (s *MemoryStore) NextGatewayExternalRequestID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
 	s.nextGatewayRequestID++
 	return fmt.Sprintf("external-request-%d", s.nextGatewayRequestID)
 }

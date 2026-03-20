@@ -13,16 +13,19 @@ import (
 
 	"github.com/hualala/apps/backend/internal/application/gatewayapp"
 	"github.com/hualala/apps/backend/internal/application/policyapp"
+	"github.com/hualala/apps/backend/internal/application/projectapp"
 	"github.com/hualala/apps/backend/internal/application/workflowapp"
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/workflow"
 	connectiface "github.com/hualala/apps/backend/internal/interfaces/connect"
+	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/temporal"
 )
 
 func TestReliabilityFlow(t *testing.T) {
 	ctx := context.Background()
 	store := openIntegrationStore(t)
+	projectService := projectapp.NewService(store)
 	policyService := policyapp.NewService(store)
 	adapter := gatewayapp.NewFakeAdapter()
 	adapter.SetProviderFailure("seedance", errors.New("provider failed"))
@@ -39,9 +42,20 @@ func TestReliabilityFlow(t *testing.T) {
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
+	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
+		OrganizationID:          db.DefaultDevOrganizationID,
+		OwnerUserID:             db.DefaultDevUserID,
+		Title:                   "Reliability Project",
+		PrimaryContentLocale:    "zh-CN",
+		SupportedContentLocales: []string{"zh-CN"},
+	})
+	if err != nil {
+		t.Fatalf("CreateProject returned error: %v", err)
+	}
+
 	failedRun, err := workflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
-		OrganizationID:     "org-1",
-		ProjectID:          "project-1",
+		OrganizationID:     project.OrganizationID,
+		ProjectID:          project.ID,
 		WorkflowType:       "asset.import",
 		ResourceID:         "batch-1",
 		Provider:           "seedance",
@@ -55,7 +69,7 @@ func TestReliabilityFlow(t *testing.T) {
 		t.Fatalf("expected failed workflow status, got %q", got)
 	}
 
-	events := store.EventPublisher.List("org-1", "project-1", "")
+	events := store.EventPublisher.List(project.OrganizationID, project.ID, "")
 	if len(events) < 2 {
 		t.Fatalf("expected workflow running and failed events, got %d", len(events))
 	}
@@ -84,8 +98,8 @@ func TestReliabilityFlow(t *testing.T) {
 	}
 
 	successRun, err := workflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
-		OrganizationID:     "org-1",
-		ProjectID:          "project-1",
+		OrganizationID:     project.OrganizationID,
+		ProjectID:          project.ID,
 		WorkflowType:       "asset.import",
 		ResourceID:         "batch-2",
 		Provider:           "seedance",
@@ -116,7 +130,7 @@ func TestReliabilityFlow(t *testing.T) {
 
 	store.Budgets["budget-1"] = billing.ProjectBudget{
 		ID:            "budget-1",
-		OrgID:         "org-1",
+		OrgID:         project.OrganizationID,
 		ProjectID:     "project-budget-1",
 		LimitCents:    100,
 		ReservedCents: 90,
@@ -135,8 +149,8 @@ func TestReliabilityFlow(t *testing.T) {
 	}
 
 	createUploadResponse := performUploadRequest(t, server, http.MethodPost, "/upload/sessions", map[string]any{
-		"organization_id":    "org-1",
-		"project_id":         "project-1",
+		"organization_id":    project.OrganizationID,
+		"project_id":         project.ID,
 		"file_name":          "shot.png",
 		"checksum":           "sha256:abc123",
 		"size_bytes":         1024,
@@ -165,13 +179,13 @@ func TestReliabilityFlow(t *testing.T) {
 		t.Fatalf("expected expired resume hint, got %q", got)
 	}
 
-	allEvents := store.EventPublisher.List("org-1", "project-1", "")
+	allEvents := store.EventPublisher.List(project.OrganizationID, project.ID, "")
 	if len(allEvents) < 4 {
 		t.Fatalf("expected workflow and upload events, got %d", len(allEvents))
 	}
 	lastEventID := allEvents[0].ID
 
-	sseReq, err := http.NewRequest(http.MethodGet, server.URL+"/sse/events?organization_id=org-1&project_id=project-1", nil)
+	sseReq, err := http.NewRequest(http.MethodGet, server.URL+"/sse/events?organization_id="+project.OrganizationID+"&project_id="+project.ID, nil)
 	if err != nil {
 		t.Fatalf("http.NewRequest returned error: %v", err)
 	}

@@ -203,7 +203,7 @@ func completeSession(store *db.MemoryStore, policy *policyapp.Service, sessionID
 		UpdatedAt:     now,
 	}
 	if mediaAsset.RightsStatus == "" {
-		mediaAsset.RightsStatus = "pending"
+		mediaAsset.RightsStatus = "unknown"
 	}
 	store.MediaAssets[mediaAsset.ID] = mediaAsset
 

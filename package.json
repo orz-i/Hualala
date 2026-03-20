@@ -19,6 +19,7 @@
     "db:up": "docker compose -f infra/docker/postgres.compose.yml up -d",
     "db:down": "docker compose -f infra/docker/postgres.compose.yml down -v",
     "db:migrate": "go run ./apps/backend/cmd/migrate",
+    "db:bootstrap-dev": "go run ./apps/backend/cmd/bootstrapdev",
     "dev": "turbo run dev",
     "proto:lint": "node tooling/scripts/run-buf.mjs lint",
     "proto:gen": "node tooling/scripts/run-buf.mjs generate",

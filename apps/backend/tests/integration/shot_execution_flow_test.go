@@ -11,6 +11,7 @@ import (
 	"github.com/hualala/apps/backend/internal/application/executionapp"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
 	"github.com/hualala/apps/backend/internal/application/reviewapp"
+	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
 func TestShotExecutionFlow(t *testing.T) {
@@ -25,8 +26,8 @@ func TestShotExecutionFlow(t *testing.T) {
 	reviewService := reviewapp.NewService(store)
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
-		OrganizationID:          "org-1",
-		OwnerUserID:             "user-1",
+		OrganizationID:          db.DefaultDevOrganizationID,
+		OwnerUserID:             db.DefaultDevUserID,
 		Title:                   "AI 剧集平台",
 		PrimaryContentLocale:    "zh-CN",
 		SupportedContentLocales: []string{"zh-CN", "en-US"},
@@ -94,7 +95,7 @@ func TestShotExecutionFlow(t *testing.T) {
 
 	run1, err := executionService.StartShotExecutionRun(ctx, executionapp.StartShotExecutionRunInput{
 		ShotID:             shot.ID,
-		OperatorID:         "user-1",
+		OperatorID:         db.DefaultDevUserID,
 		ProjectID:          project.ID,
 		OrgID:              project.OrganizationID,
 		TriggerType:        "manual",
@@ -110,7 +111,7 @@ func TestShotExecutionFlow(t *testing.T) {
 	importBatch, err := assetService.CreateImportBatch(ctx, assetapp.CreateImportBatchInput{
 		ProjectID:  project.ID,
 		OrgID:      project.OrganizationID,
-		OperatorID: "user-1",
+		OperatorID: db.DefaultDevUserID,
 		SourceType: "manual_upload",
 	})
 	if err != nil {
@@ -225,7 +226,7 @@ func TestShotExecutionFlow(t *testing.T) {
 
 	run2, err := executionService.StartShotExecutionRun(ctx, executionapp.StartShotExecutionRunInput{
 		ShotID:             shot.ID,
-		OperatorID:         "user-1",
+		OperatorID:         db.DefaultDevUserID,
 		ProjectID:          project.ID,
 		OrgID:              project.OrganizationID,
 		TriggerType:        "rework",
@@ -282,8 +283,8 @@ func TestShotExecutionBudgetGuard(t *testing.T) {
 	billingService := billingapp.NewService(store)
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
-		OrganizationID:          "org-1",
-		OwnerUserID:             "user-1",
+		OrganizationID:          db.DefaultDevOrganizationID,
+		OwnerUserID:             db.DefaultDevUserID,
 		Title:                   "预算守卫",
 		PrimaryContentLocale:    "zh-CN",
 		SupportedContentLocales: []string{"zh-CN"},
@@ -331,7 +332,7 @@ func TestShotExecutionBudgetGuard(t *testing.T) {
 
 	_, err = executionService.StartShotExecutionRun(ctx, executionapp.StartShotExecutionRunInput{
 		ShotID:             shot.ID,
-		OperatorID:         "user-1",
+		OperatorID:         db.DefaultDevUserID,
 		ProjectID:          project.ID,
 		OrgID:              project.OrganizationID,
 		TriggerType:        "manual",
@@ -343,7 +344,7 @@ func TestShotExecutionBudgetGuard(t *testing.T) {
 
 	_, err = executionService.StartShotExecutionRun(ctx, executionapp.StartShotExecutionRunInput{
 		ShotID:             shot.ID,
-		OperatorID:         "user-1",
+		OperatorID:         db.DefaultDevUserID,
 		ProjectID:          project.ID,
 		OrgID:              project.OrganizationID,
 		TriggerType:        "retry",

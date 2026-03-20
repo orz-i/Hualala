@@ -82,6 +82,12 @@ func (s *Service) CreateProject(ctx context.Context, input CreateProjectInput) (
 		CreatedAt:               now,
 		UpdatedAt:               now,
 	}
+	if record.Status == "" {
+		record.Status = "draft"
+	}
+	if record.CurrentStage == "" {
+		record.CurrentStage = "planning"
+	}
 
 	s.store.Projects[record.ID] = record
 	if err := s.store.Persist(ctx); err != nil {
