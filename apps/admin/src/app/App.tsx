@@ -20,6 +20,33 @@ function waitForFeedbackPaint() {
   });
 }
 
+function buildFallbackGovernance(orgId?: string, userId?: string): AdminGovernanceViewModel {
+  const fallbackOrgId = orgId ?? "org-dev-fallback";
+  const fallbackUserId = userId ?? "user-dev-fallback";
+  const locale = "zh-CN";
+
+  return {
+    currentSession: {
+      sessionId: `dev:${fallbackOrgId}:${fallbackUserId}`,
+      orgId: fallbackOrgId,
+      userId: fallbackUserId,
+      locale,
+    },
+    userPreferences: {
+      userId: fallbackUserId,
+      displayLocale: locale,
+      timezone: "",
+    },
+    members: [],
+    roles: [],
+    orgLocaleSettings: {
+      orgId: fallbackOrgId,
+      defaultLocale: locale,
+      supportedLocales: [locale],
+    },
+  };
+}
+
 export function App() {
   const { locale, setLocale, t } = useLocaleState();
   const [overview, setOverview] = useState<AdminOverviewViewModel | null>(null);
@@ -36,31 +63,30 @@ export function App() {
   const orgId = searchParams.get("orgId") ?? undefined;
   const userId = searchParams.get("userId") ?? undefined;
 
-  const refreshData = async () => {
-    const [nextOverview, nextGovernance] = await Promise.all([
-      loadAdminOverview({ projectId, shotExecutionId }),
-      loadGovernancePanel({ orgId, userId }),
-    ]);
+  const refreshOverview = async () => {
+    const nextOverview = await loadAdminOverview({ projectId, shotExecutionId });
     startTransition(() => {
       setOverview(nextOverview);
-      setGovernance(nextGovernance);
       setErrorMessage("");
+    });
+  };
+
+  const refreshGovernance = async () => {
+    const nextGovernance = await loadGovernancePanel({ orgId, userId });
+    startTransition(() => {
+      setGovernance(nextGovernance);
     });
   };
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      loadAdminOverview({ projectId, shotExecutionId }),
-      loadGovernancePanel({ orgId, userId }),
-    ])
-      .then(([nextOverview, nextGovernance]) => {
+    loadAdminOverview({ projectId, shotExecutionId })
+      .then((nextOverview) => {
         if (cancelled) {
           return;
         }
         startTransition(() => {
           setOverview(nextOverview);
-          setGovernance(nextGovernance);
           setErrorMessage("");
         });
       })
@@ -73,6 +99,23 @@ export function App() {
         startTransition(() => {
           setErrorMessage(message);
           setOverview(null);
+        });
+      });
+
+    loadGovernancePanel({ orgId, userId })
+      .then((nextGovernance) => {
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setGovernance(nextGovernance);
+        });
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
           setGovernance(null);
         });
       });
@@ -86,17 +129,18 @@ export function App() {
     return <main style={{ padding: "32px" }}>{t("app.error.load", { message: errorMessage })}</main>;
   }
 
-  if (!overview || !governance) {
+  if (!overview) {
     return <main style={{ padding: "32px" }}>{t("app.loading")}</main>;
   }
 
-  const effectiveOrgId = orgId ?? governance.currentSession.orgId;
-  const effectiveUserId = userId ?? governance.currentSession.userId;
+  const effectiveGovernance = governance ?? buildFallbackGovernance(orgId, userId);
+  const effectiveOrgId = orgId ?? effectiveGovernance.currentSession.orgId;
+  const effectiveUserId = userId ?? effectiveGovernance.currentSession.userId;
 
   return (
     <AdminOverviewPage
       overview={overview}
-      governance={governance}
+      governance={effectiveGovernance}
       locale={locale}
       t={t}
       onLocaleChange={setLocale}
@@ -115,7 +159,7 @@ export function App() {
             projectId: input.projectId,
             limitCents: input.limitCents,
           });
-          await refreshData();
+          await refreshOverview();
           startTransition(() => {
             setBudgetFeedback({
               tone: "success",
@@ -140,7 +184,7 @@ export function App() {
           displayLocale: input.displayLocale,
           timezone: input.timezone,
         });
-        await refreshData();
+        await refreshGovernance();
       }}
       onUpdateMemberRole={async (input) => {
         await updateMemberRole({
@@ -149,7 +193,7 @@ export function App() {
           memberId: input.memberId,
           roleId: input.roleId,
         });
-        await refreshData();
+        await refreshGovernance();
       }}
       onUpdateOrgLocaleSettings={async (input) => {
         await updateOrgLocaleSettings({
@@ -157,7 +201,7 @@ export function App() {
           userId: effectiveUserId,
           defaultLocale: input.defaultLocale,
         });
-        await refreshData();
+        await refreshGovernance();
       }}
     />
   );
