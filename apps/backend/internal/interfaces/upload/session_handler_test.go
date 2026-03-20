@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	assetdomain "github.com/hualala/apps/backend/internal/domain/asset"
+	executiondomain "github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/interfaces/sse"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
@@ -266,6 +267,76 @@ func TestCreateUploadSessionRejectsUnknownImportBatch(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected status 400 for unknown import batch, got %d with body %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCompleteUploadSessionCanAttachCandidateToShotExecution(t *testing.T) {
+	store := db.NewMemoryStore()
+	resetSessionStore(store)
+	store.ImportBatches["import-batch-1"] = assetdomain.ImportBatch{
+		ID:         "import-batch-1",
+		OrgID:      "org-1",
+		ProjectID:  "project-1",
+		OperatorID: "user-1",
+		SourceType: "upload_session",
+		Status:     "pending_review",
+	}
+	store.ShotExecutions["shot-execution-1"] = executiondomain.ShotExecution{
+		ID:        "shot-execution-1",
+		OrgID:     "org-1",
+		ProjectID: "project-1",
+		ShotID:    "shot-1",
+		Status:    "in_progress",
+	}
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, store)
+
+	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
+		"organization_id":    "org-1",
+		"project_id":         "project-1",
+		"import_batch_id":    "import-batch-1",
+		"file_name":          "shot.png",
+		"checksum":           "sha256:abc123",
+		"size_bytes":         1024,
+		"expires_in_seconds": 60,
+	})
+	createResponse := decodeUploadJSONResponse(t, createRec)
+	sessionID := createResponse["session_id"].(string)
+
+	completeRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions/"+sessionID+"/complete", map[string]any{
+		"shot_execution_id": "shot-execution-1",
+		"variant_type":      "original",
+		"mime_type":         "image/png",
+		"locale":            "zh-CN",
+		"rights_status":     "clear",
+		"ai_annotated":      true,
+		"width":             1920,
+		"height":            1080,
+	})
+	completeResponse := decodeUploadJSONResponse(t, completeRec)
+	if got := completeResponse["status"].(string); got != "uploaded" {
+		t.Fatalf("expected uploaded session status, got %q", got)
+	}
+
+	if len(store.CandidateAssets) != 1 {
+		t.Fatalf("expected 1 candidate asset, got %d", len(store.CandidateAssets))
+	}
+
+	if len(store.ImportBatchItems) != 1 {
+		t.Fatalf("expected 1 import batch item, got %d", len(store.ImportBatchItems))
+	}
+	for _, item := range store.ImportBatchItems {
+		if item.Status != "matched_pending_confirm" {
+			t.Fatalf("expected matched_pending_confirm item status, got %q", item.Status)
+		}
+		if item.MatchedShotID != "shot-1" {
+			t.Fatalf("expected matched shot id shot-1, got %q", item.MatchedShotID)
+		}
+	}
+
+	if got := store.ShotExecutions["shot-execution-1"].Status; got != "candidate_ready" {
+		t.Fatalf("expected shot execution status candidate_ready, got %q", got)
 	}
 }
 

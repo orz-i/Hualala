@@ -80,19 +80,20 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 			writeSessionResponse(w, http.StatusOK, session)
 		case r.Method == http.MethodPost && action == "complete":
 			var request struct {
-				VariantType  string `json:"variant_type"`
-				MimeType     string `json:"mime_type"`
-				Locale       string `json:"locale"`
-				RightsStatus string `json:"rights_status"`
-				AIAnnotated  bool   `json:"ai_annotated"`
-				Width        int    `json:"width"`
-				Height       int    `json:"height"`
+				ShotExecutionID string `json:"shot_execution_id"`
+				VariantType     string `json:"variant_type"`
+				MimeType        string `json:"mime_type"`
+				Locale          string `json:"locale"`
+				RightsStatus    string `json:"rights_status"`
+				AIAnnotated     bool   `json:"ai_annotated"`
+				Width           int    `json:"width"`
+				Height          int    `json:"height"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			session, ok := completeSession(store, sessionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.AIAnnotated, request.Width, request.Height)
+			session, ok := completeSession(store, sessionID, request.ShotExecutionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.AIAnnotated, request.Width, request.Height)
 			if !ok {
 				http.NotFound(w, r)
 				return
@@ -143,10 +144,25 @@ func retrySession(store *db.MemoryStore, sessionID string) (asset.UploadSession,
 	return session, true
 }
 
-func completeSession(store *db.MemoryStore, sessionID string, variantType string, mimeType string, locale string, rightsStatus string, aiAnnotated bool, width int, height int) (asset.UploadSession, bool) {
+func completeSession(store *db.MemoryStore, sessionID string, shotExecutionID string, variantType string, mimeType string, locale string, rightsStatus string, aiAnnotated bool, width int, height int) (asset.UploadSession, bool) {
 	session, ok := store.UploadSessions[sessionID]
 	if !ok {
 		return asset.UploadSession{}, false
+	}
+	shotExecutionID = strings.TrimSpace(shotExecutionID)
+	var shotExecution assetLikeShotExecution
+	if shotExecutionID != "" {
+		record, ok := store.ShotExecutions[shotExecutionID]
+		if !ok {
+			return asset.UploadSession{}, false
+		}
+		shotExecution = assetLikeShotExecution{
+			ID:        record.ID,
+			ProjectID: record.ProjectID,
+			OrgID:     record.OrgID,
+			ShotID:    record.ShotID,
+			Status:    record.Status,
+		}
 	}
 	now := time.Now().UTC()
 	session.Status = "uploaded"
@@ -194,23 +210,52 @@ func completeSession(store *db.MemoryStore, sessionID string, variantType string
 	store.MediaAssetVariants[variant.ID] = variant
 
 	if strings.TrimSpace(session.ImportBatchID) != "" {
+		itemStatus := "uploaded_pending_match"
+		matchedShotID := ""
+		if shotExecutionID != "" {
+			candidate := asset.CandidateAsset{
+				ID:              store.NextCandidateAssetID(),
+				ShotExecutionID: shotExecutionID,
+				AssetID:         mediaAsset.ID,
+				SourceRunID:     "",
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			}
+			store.CandidateAssets[candidate.ID] = candidate
+			itemStatus = "matched_pending_confirm"
+			matchedShotID = shotExecution.ShotID
+			record := store.ShotExecutions[shotExecutionID]
+			record.Status = "candidate_ready"
+			record.UpdatedAt = now
+			store.ShotExecutions[shotExecutionID] = record
+		}
+
 		item := asset.ImportBatchItem{
 			ID:            store.NextImportBatchItemID(),
 			ImportBatchID: session.ImportBatchID,
-			Status:        "uploaded_pending_match",
+			Status:        itemStatus,
+			MatchedShotID: matchedShotID,
 			AssetID:       mediaAsset.ID,
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}
 		store.ImportBatchItems[item.ID] = item
 		if batch, ok := store.ImportBatches[session.ImportBatchID]; ok {
-			batch.Status = "uploaded_pending_match"
+			batch.Status = itemStatus
 			batch.UpdatedAt = now
 			store.ImportBatches[session.ImportBatchID] = batch
 		}
 	}
 
 	return session, true
+}
+
+type assetLikeShotExecution struct {
+	ID        string
+	ProjectID string
+	OrgID     string
+	ShotID    string
+	Status    string
 }
 
 func parseSessionPath(path string) (string, string) {
