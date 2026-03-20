@@ -7,13 +7,16 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
 func TestCreateAndRetryUploadSession(t *testing.T) {
-	resetSessionStore()
+	store := db.NewMemoryStore()
+	resetSessionStore(store)
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux)
+	RegisterRoutes(mux, store)
 
 	createPayload := map[string]any{
 		"organization_id":    "org-1",
@@ -44,10 +47,11 @@ func TestCreateAndRetryUploadSession(t *testing.T) {
 }
 
 func TestExpiredUploadSessionStatus(t *testing.T) {
-	resetSessionStore()
+	store := db.NewMemoryStore()
+	resetSessionStore(store)
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux)
+	RegisterRoutes(mux, store)
 
 	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
 		"organization_id":    "org-1",
@@ -73,6 +77,37 @@ func TestExpiredUploadSessionStatus(t *testing.T) {
 	}
 	if hint := statusResponse["resume_hint"].(string); !strings.Contains(hint, "create a retry session") {
 		t.Fatalf("expected expired resume hint, got %q", hint)
+	}
+}
+
+func TestUploadSessionsAreScopedToStore(t *testing.T) {
+	storeA := db.NewMemoryStore()
+	storeB := db.NewMemoryStore()
+	resetSessionStore(storeA)
+	resetSessionStore(storeB)
+
+	muxA := http.NewServeMux()
+	RegisterRoutes(muxA, storeA)
+	muxB := http.NewServeMux()
+	RegisterRoutes(muxB, storeB)
+
+	createRec := performUploadJSONRequest(t, muxA, http.MethodPost, "/upload/sessions", map[string]any{
+		"organization_id":    "org-1",
+		"project_id":         "project-1",
+		"file_name":          "shot.png",
+		"checksum":           "sha256:abc123",
+		"size_bytes":         1024,
+		"expires_in_seconds": 60,
+	})
+	createResponse := decodeUploadJSONResponse(t, createRec)
+	sessionID := createResponse["session_id"].(string)
+
+	statusReq := httptest.NewRequest(http.MethodGet, "/upload/sessions/"+sessionID, nil)
+	statusRec := httptest.NewRecorder()
+	muxB.ServeHTTP(statusRec, statusReq)
+
+	if statusRec.Code != http.StatusNotFound {
+		t.Fatalf("expected store-scoped session to be missing from another store, got %d with body %s", statusRec.Code, statusRec.Body.String())
 	}
 }
 

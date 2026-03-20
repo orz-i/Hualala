@@ -44,3 +44,18 @@ type ImportBatchItem struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
+
+type UploadSession struct {
+	ID          string
+	OrgID       string
+	ProjectID   string
+	FileName    string
+	Checksum    string
+	SizeBytes   int64
+	RetryCount  int
+	Status      string
+	ResumeHint  string
+	CreatedAt   time.Time
+	ExpiresAt   time.Time
+	LastRetryAt time.Time
+}

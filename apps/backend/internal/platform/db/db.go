@@ -32,6 +32,7 @@ type MemoryStore struct {
 	nextRunID             int
 	nextImportBatchID     int
 	nextImportBatchItemID int
+	nextUploadSessionID   int
 	nextAssetID           int
 	nextCandidateID       int
 	nextReviewID          int
@@ -49,6 +50,7 @@ type MemoryStore struct {
 	ShotExecutionRuns map[string]execution.ShotExecutionRun
 	ImportBatches     map[string]asset.ImportBatch
 	ImportBatchItems  map[string]asset.ImportBatchItem
+	UploadSessions    map[string]asset.UploadSession
 	MediaAssets       map[string]asset.MediaAsset
 	CandidateAssets   map[string]asset.CandidateAsset
 	Reviews           map[string]review.ShotReview
@@ -70,6 +72,7 @@ func NewMemoryStore() *MemoryStore {
 		ShotExecutionRuns: make(map[string]execution.ShotExecutionRun),
 		ImportBatches:     make(map[string]asset.ImportBatch),
 		ImportBatchItems:  make(map[string]asset.ImportBatchItem),
+		UploadSessions:    make(map[string]asset.UploadSession),
 		MediaAssets:       make(map[string]asset.MediaAsset),
 		CandidateAssets:   make(map[string]asset.CandidateAsset),
 		Reviews:           make(map[string]review.ShotReview),
@@ -129,6 +132,11 @@ func (s *MemoryStore) NextImportBatchID() string {
 func (s *MemoryStore) NextImportBatchItemID() string {
 	s.nextImportBatchItemID++
 	return fmt.Sprintf("import-batch-item-%d", s.nextImportBatchItemID)
+}
+
+func (s *MemoryStore) NextUploadSessionID() string {
+	s.nextUploadSessionID++
+	return fmt.Sprintf("upload-session-%d", s.nextUploadSessionID)
 }
 
 func (s *MemoryStore) NextMediaAssetID() string {

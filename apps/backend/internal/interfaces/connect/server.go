@@ -27,6 +27,7 @@ type RouteDependencies struct {
 	ReviewService    *reviewapp.Service
 	BillingService   *billingapp.Service
 	EventPublisher   *events.Publisher
+	Store            *db.MemoryStore
 }
 
 func NewRouteDependencies(store *db.MemoryStore) RouteDependencies {
@@ -36,6 +37,7 @@ func NewRouteDependencies(store *db.MemoryStore) RouteDependencies {
 		ReviewService:    reviewapp.NewService(store),
 		BillingService:   billingapp.NewService(store),
 		EventPublisher:   store.EventPublisher,
+		Store:            store,
 	}
 }
 
@@ -66,5 +68,5 @@ func RegisterRoutes(mux *http.ServeMux, deps RouteDependencies) {
 		mux.Handle(path, handler)
 	}
 	sse.RegisterRoutes(mux, deps.EventPublisher)
-	upload.RegisterRoutes(mux)
+	upload.RegisterRoutes(mux, deps.Store)
 }

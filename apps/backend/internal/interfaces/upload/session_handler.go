@@ -5,37 +5,24 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/hualala/apps/backend/internal/domain/asset"
+	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
-type uploadSession struct {
-	SessionID      string    `json:"session_id"`
-	OrganizationID string    `json:"organization_id"`
-	ProjectID      string    `json:"project_id"`
-	FileName       string    `json:"file_name"`
-	Checksum       string    `json:"checksum"`
-	SizeBytes      int64     `json:"size_bytes"`
-	RetryCount     int       `json:"retry_count"`
-	CreatedAt      time.Time `json:"created_at"`
-	ExpiresAt      time.Time `json:"expires_at"`
+func resetSessionStore(store *db.MemoryStore) {
+	if store == nil {
+		return
+	}
+	store.UploadSessions = map[string]asset.UploadSession{}
 }
 
-var (
-	sessionStoreMu sync.RWMutex
-	sessionStore   = map[string]uploadSession{}
-	nextSessionID  = 1
-)
+func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
+	if store == nil {
+		store = db.NewMemoryStore()
+	}
 
-func resetSessionStore() {
-	sessionStoreMu.Lock()
-	defer sessionStoreMu.Unlock()
-
-	sessionStore = map[string]uploadSession{}
-	nextSessionID = 1
-}
-
-func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/upload/sessions", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -55,7 +42,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 			return
 		}
 
-		session := createSession(request.OrganizationID, request.ProjectID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
+		session := createSession(store, request.OrganizationID, request.ProjectID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
 		writeSessionResponse(w, http.StatusOK, session)
 	})
 
@@ -68,14 +55,14 @@ func RegisterRoutes(mux *http.ServeMux) {
 
 		switch {
 		case r.Method == http.MethodGet && action == "":
-			session, ok := getSession(sessionID)
+			session, ok := getSession(store, sessionID)
 			if !ok {
 				http.NotFound(w, r)
 				return
 			}
 			writeSessionResponse(w, http.StatusOK, session)
 		case r.Method == http.MethodPost && action == "retry":
-			session, ok := retrySession(sessionID)
+			session, ok := retrySession(store, sessionID)
 			if !ok {
 				http.NotFound(w, r)
 				return
@@ -87,45 +74,40 @@ func RegisterRoutes(mux *http.ServeMux) {
 	})
 }
 
-func createSession(organizationID string, projectID string, fileName string, checksum string, sizeBytes int64, expiresInSeconds int64) uploadSession {
-	sessionStoreMu.Lock()
-	defer sessionStoreMu.Unlock()
-
+func createSession(store *db.MemoryStore, organizationID string, projectID string, fileName string, checksum string, sizeBytes int64, expiresInSeconds int64) asset.UploadSession {
 	now := time.Now().UTC()
-	session := uploadSession{
-		SessionID:      fmt.Sprintf("upload-session-%d", nextSessionID),
-		OrganizationID: organizationID,
-		ProjectID:      projectID,
-		FileName:       fileName,
-		Checksum:       checksum,
-		SizeBytes:      sizeBytes,
-		RetryCount:     0,
-		CreatedAt:      now,
-		ExpiresAt:      now.Add(time.Duration(expiresInSeconds) * time.Second),
+	session := asset.UploadSession{
+		ID:         store.NextUploadSessionID(),
+		OrgID:      organizationID,
+		ProjectID:  projectID,
+		FileName:   fileName,
+		Checksum:   checksum,
+		SizeBytes:  sizeBytes,
+		RetryCount: 0,
+		Status:     "pending",
+		ResumeHint: fmt.Sprintf("upload %s from byte 0", fileName),
+		CreatedAt:  now,
+		ExpiresAt:  now.Add(time.Duration(expiresInSeconds) * time.Second),
 	}
-	nextSessionID++
-	sessionStore[session.SessionID] = session
+	store.UploadSessions[session.ID] = session
 	return session
 }
 
-func getSession(sessionID string) (uploadSession, bool) {
-	sessionStoreMu.RLock()
-	defer sessionStoreMu.RUnlock()
-
-	session, ok := sessionStore[sessionID]
+func getSession(store *db.MemoryStore, sessionID string) (asset.UploadSession, bool) {
+	session, ok := store.UploadSessions[sessionID]
 	return session, ok
 }
 
-func retrySession(sessionID string) (uploadSession, bool) {
-	sessionStoreMu.Lock()
-	defer sessionStoreMu.Unlock()
-
-	session, ok := sessionStore[sessionID]
+func retrySession(store *db.MemoryStore, sessionID string) (asset.UploadSession, bool) {
+	session, ok := store.UploadSessions[sessionID]
 	if !ok {
-		return uploadSession{}, false
+		return asset.UploadSession{}, false
 	}
 	session.RetryCount++
-	sessionStore[sessionID] = session
+	session.LastRetryAt = time.Now().UTC()
+	session.Status = sessionStatus(session)
+	session.ResumeHint = sessionResumeHint(session)
+	store.UploadSessions[sessionID] = session
 	return session, true
 }
 
@@ -145,14 +127,14 @@ func parseSessionPath(path string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func writeSessionResponse(w http.ResponseWriter, statusCode int, session uploadSession) {
+func writeSessionResponse(w http.ResponseWriter, statusCode int, session asset.UploadSession) {
 	response := map[string]any{
-		"session_id":   session.SessionID,
+		"session_id":   session.ID,
 		"status":       sessionStatus(session),
 		"retry_count":  session.RetryCount,
 		"resume_hint":  sessionResumeHint(session),
 		"expires_at":   session.ExpiresAt.Format(time.RFC3339),
-		"organization": session.OrganizationID,
+		"organization": session.OrgID,
 		"project_id":   session.ProjectID,
 	}
 
@@ -161,14 +143,14 @@ func writeSessionResponse(w http.ResponseWriter, statusCode int, session uploadS
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-func sessionStatus(session uploadSession) string {
+func sessionStatus(session asset.UploadSession) string {
 	if !session.ExpiresAt.After(time.Now().UTC()) {
 		return "expired"
 	}
 	return "pending"
 }
 
-func sessionResumeHint(session uploadSession) string {
+func sessionResumeHint(session asset.UploadSession) string {
 	if sessionStatus(session) == "expired" {
 		return "upload session expired; create a retry session to resume upload"
 	}
