@@ -57,6 +57,20 @@ type AssetProvenanceSummary struct {
 	ProvenanceSummary string
 }
 
+type GetImportBatchWorkbenchInput struct {
+	ImportBatchID string
+}
+
+type ImportBatchWorkbench struct {
+	ImportBatch        asset.ImportBatch
+	UploadSessions     []asset.UploadSession
+	UploadFiles        []asset.UploadFile
+	MediaAssets        []asset.MediaAsset
+	MediaAssetVariants []asset.MediaAssetVariant
+	Items              []asset.ImportBatchItem
+	CandidateAssets    []asset.CandidateAsset
+}
+
 func NewService(store *db.MemoryStore) *Service {
 	return &Service{store: store}
 }
@@ -203,6 +217,81 @@ func (s *Service) BatchConfirmImportBatchItems(_ context.Context, input BatchCon
 	})
 
 	return confirmedItems, nil
+}
+
+func (s *Service) GetImportBatchWorkbench(_ context.Context, input GetImportBatchWorkbenchInput) (ImportBatchWorkbench, error) {
+	if s == nil || s.store == nil {
+		return ImportBatchWorkbench{}, errors.New("assetapp: store is required")
+	}
+	importBatchID := strings.TrimSpace(input.ImportBatchID)
+	if importBatchID == "" {
+		return ImportBatchWorkbench{}, errors.New("assetapp: import_batch_id is required")
+	}
+
+	importBatch, ok := s.store.ImportBatches[importBatchID]
+	if !ok {
+		return ImportBatchWorkbench{}, errors.New("assetapp: import batch not found")
+	}
+
+	workbench := ImportBatchWorkbench{
+		ImportBatch:        importBatch,
+		UploadSessions:     make([]asset.UploadSession, 0),
+		UploadFiles:        make([]asset.UploadFile, 0),
+		MediaAssets:        make([]asset.MediaAsset, 0),
+		MediaAssetVariants: make([]asset.MediaAssetVariant, 0),
+		Items:              make([]asset.ImportBatchItem, 0),
+		CandidateAssets:    make([]asset.CandidateAsset, 0),
+	}
+
+	sessionIDs := make(map[string]struct{})
+	uploadFileIDs := make(map[string]struct{})
+	assetIDs := make(map[string]struct{})
+
+	for _, session := range s.store.UploadSessions {
+		if session.ImportBatchID == importBatchID {
+			workbench.UploadSessions = append(workbench.UploadSessions, session)
+			sessionIDs[session.ID] = struct{}{}
+		}
+	}
+	for _, uploadFile := range s.store.UploadFiles {
+		if _, ok := sessionIDs[uploadFile.UploadSessionID]; ok {
+			workbench.UploadFiles = append(workbench.UploadFiles, uploadFile)
+			uploadFileIDs[uploadFile.ID] = struct{}{}
+		}
+	}
+	for _, mediaAsset := range s.store.MediaAssets {
+		if mediaAsset.ImportBatchID == importBatchID {
+			workbench.MediaAssets = append(workbench.MediaAssets, mediaAsset)
+			assetIDs[mediaAsset.ID] = struct{}{}
+		}
+	}
+	for _, variant := range s.store.MediaAssetVariants {
+		if _, ok := uploadFileIDs[variant.UploadFileID]; ok {
+			workbench.MediaAssetVariants = append(workbench.MediaAssetVariants, variant)
+		}
+	}
+	for _, item := range s.store.ImportBatchItems {
+		if item.ImportBatchID == importBatchID {
+			workbench.Items = append(workbench.Items, item)
+			if item.AssetID != "" {
+				assetIDs[item.AssetID] = struct{}{}
+			}
+		}
+	}
+	for _, candidate := range s.store.CandidateAssets {
+		if _, ok := assetIDs[candidate.AssetID]; ok {
+			workbench.CandidateAssets = append(workbench.CandidateAssets, candidate)
+		}
+	}
+
+	sort.Slice(workbench.UploadSessions, func(i, j int) bool { return workbench.UploadSessions[i].ID < workbench.UploadSessions[j].ID })
+	sort.Slice(workbench.UploadFiles, func(i, j int) bool { return workbench.UploadFiles[i].ID < workbench.UploadFiles[j].ID })
+	sort.Slice(workbench.MediaAssets, func(i, j int) bool { return workbench.MediaAssets[i].ID < workbench.MediaAssets[j].ID })
+	sort.Slice(workbench.MediaAssetVariants, func(i, j int) bool { return workbench.MediaAssetVariants[i].ID < workbench.MediaAssetVariants[j].ID })
+	sort.Slice(workbench.Items, func(i, j int) bool { return workbench.Items[i].ID < workbench.Items[j].ID })
+	sort.Slice(workbench.CandidateAssets, func(i, j int) bool { return workbench.CandidateAssets[i].ID < workbench.CandidateAssets[j].ID })
+
+	return workbench, nil
 }
 
 func (s *Service) GetAssetProvenanceSummary(_ context.Context, input GetAssetProvenanceSummaryInput) (AssetProvenanceSummary, error) {

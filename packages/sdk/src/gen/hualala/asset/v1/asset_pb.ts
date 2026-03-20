@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hualala/asset/v1/asset.proto.
  */
 export const file_hualala_asset_v1_asset: GenFile = /*@__PURE__*/
-  fileDesc("ChxodWFsYWxhL2Fzc2V0L3YxL2Fzc2V0LnByb3RvEhBodWFsYWxhLmFzc2V0LnYxIncKC0ltcG9ydEJhdGNoEgoKAmlkGAEgASgJEg4KBm9yZ19pZBgCIAEoCRISCgpwcm9qZWN0X2lkGAMgASgJEhMKC29wZXJhdG9yX2lkGAQgASgJEhMKC3NvdXJjZV90eXBlGAUgASgJEg4KBnN0YXR1cxgGIAEoCSJxCg9JbXBvcnRCYXRjaEl0ZW0SCgoCaWQYASABKAkSFwoPaW1wb3J0X2JhdGNoX2lkGAIgASgJEg4KBnN0YXR1cxgDIAEoCRIXCg9tYXRjaGVkX3Nob3RfaWQYBCABKAkSEAoIYXNzZXRfaWQYBSABKAkilwEKCk1lZGlhQXNzZXQSCgoCaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRITCgtzb3VyY2VfdHlwZRgDIAEoCRIVCg1yaWdodHNfc3RhdHVzGAQgASgJEhcKD2ltcG9ydF9iYXRjaF9pZBgFIAEoCRIOCgZsb2NhbGUYBiABKAkSFAoMYWlfYW5ub3RhdGVkGAcgASgIImQKElNob3RDYW5kaWRhdGVBc3NldBIKCgJpZBgBIAEoCRIZChFzaG90X2V4ZWN1dGlvbl9pZBgCIAEoCRIQCghhc3NldF9pZBgDIAEoCRIVCg1zb3VyY2VfcnVuX2lkGAQgASgJImgKGENyZWF0ZUltcG9ydEJhdGNoUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhMKC29wZXJhdG9yX2lkGAIgASgJEg4KBm9yZ19pZBgDIAEoCRITCgtzb3VyY2VfdHlwZRgEIAEoCSJQChlDcmVhdGVJbXBvcnRCYXRjaFJlc3BvbnNlEjMKDGltcG9ydF9iYXRjaBgBIAEoCzIdLmh1YWxhbGEuYXNzZXQudjEuSW1wb3J0QmF0Y2gi4QEKGEFkZENhbmRpZGF0ZUFzc2V0UmVxdWVzdBIZChFzaG90X2V4ZWN1dGlvbl9pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEg4KBm9yZ19pZBgDIAEoCRIXCg9pbXBvcnRfYmF0Y2hfaWQYBCABKAkSFQoNc291cmNlX3J1bl9pZBgFIAEoCRITCgtzb3VyY2VfdHlwZRgGIAEoCRIUCgxhc3NldF9sb2NhbGUYByABKAkSFQoNcmlnaHRzX3N0YXR1cxgIIAEoCRIUCgxhaV9hbm5vdGF0ZWQYCSABKAgiUAoZQWRkQ2FuZGlkYXRlQXNzZXRSZXNwb25zZRIzCgVhc3NldBgBIAEoCzIkLmh1YWxhbGEuYXNzZXQudjEuU2hvdENhbmRpZGF0ZUFzc2V0IjYKG0xpc3RJbXBvcnRCYXRjaEl0ZW1zUmVxdWVzdBIXCg9pbXBvcnRfYmF0Y2hfaWQYASABKAkiUAocTGlzdEltcG9ydEJhdGNoSXRlbXNSZXNwb25zZRIwCgVpdGVtcxgBIAMoCzIhLmh1YWxhbGEuYXNzZXQudjEuSW1wb3J0QmF0Y2hJdGVtIlAKI0JhdGNoQ29uZmlybUltcG9ydEJhdGNoSXRlbXNSZXF1ZXN0EhcKD2ltcG9ydF9iYXRjaF9pZBgBIAEoCRIQCghpdGVtX2lkcxgCIAMoCSJYCiRCYXRjaENvbmZpcm1JbXBvcnRCYXRjaEl0ZW1zUmVzcG9uc2USMAoFaXRlbXMYASADKAsyIS5odWFsYWxhLmFzc2V0LnYxLkltcG9ydEJhdGNoSXRlbSI3ChpMaXN0Q2FuZGlkYXRlQXNzZXRzUmVxdWVzdBIZChFzaG90X2V4ZWN1dGlvbl9pZBgBIAEoCSJTChtMaXN0Q2FuZGlkYXRlQXNzZXRzUmVzcG9uc2USNAoGYXNzZXRzGAEgAygLMiQuaHVhbGFsYS5hc3NldC52MS5TaG90Q2FuZGlkYXRlQXNzZXQiNAogR2V0QXNzZXRQcm92ZW5hbmNlU3VtbWFyeVJlcXVlc3QSEAoIYXNzZXRfaWQYASABKAkibAohR2V0QXNzZXRQcm92ZW5hbmNlU3VtbWFyeVJlc3BvbnNlEisKBWFzc2V0GAEgASgLMhwuaHVhbGFsYS5hc3NldC52MS5NZWRpYUFzc2V0EhoKEnByb3ZlbmFuY2Vfc3VtbWFyeRgCIAEoCTLsBQoMQXNzZXRTZXJ2aWNlEmwKEUNyZWF0ZUltcG9ydEJhdGNoEiouaHVhbGFsYS5hc3NldC52MS5DcmVhdGVJbXBvcnRCYXRjaFJlcXVlc3QaKy5odWFsYWxhLmFzc2V0LnYxLkNyZWF0ZUltcG9ydEJhdGNoUmVzcG9uc2USbAoRQWRkQ2FuZGlkYXRlQXNzZXQSKi5odWFsYWxhLmFzc2V0LnYxLkFkZENhbmRpZGF0ZUFzc2V0UmVxdWVzdBorLmh1YWxhbGEuYXNzZXQudjEuQWRkQ2FuZGlkYXRlQXNzZXRSZXNwb25zZRJ1ChRMaXN0SW1wb3J0QmF0Y2hJdGVtcxItLmh1YWxhbGEuYXNzZXQudjEuTGlzdEltcG9ydEJhdGNoSXRlbXNSZXF1ZXN0Gi4uaHVhbGFsYS5hc3NldC52MS5MaXN0SW1wb3J0QmF0Y2hJdGVtc1Jlc3BvbnNlEo0BChxCYXRjaENvbmZpcm1JbXBvcnRCYXRjaEl0ZW1zEjUuaHVhbGFsYS5hc3NldC52MS5CYXRjaENvbmZpcm1JbXBvcnRCYXRjaEl0ZW1zUmVxdWVzdBo2Lmh1YWxhbGEuYXNzZXQudjEuQmF0Y2hDb25maXJtSW1wb3J0QmF0Y2hJdGVtc1Jlc3BvbnNlEnIKE0xpc3RDYW5kaWRhdGVBc3NldHMSLC5odWFsYWxhLmFzc2V0LnYxLkxpc3RDYW5kaWRhdGVBc3NldHNSZXF1ZXN0Gi0uaHVhbGFsYS5hc3NldC52MS5MaXN0Q2FuZGlkYXRlQXNzZXRzUmVzcG9uc2UShAEKGUdldEFzc2V0UHJvdmVuYW5jZVN1bW1hcnkSMi5odWFsYWxhLmFzc2V0LnYxLkdldEFzc2V0UHJvdmVuYW5jZVN1bW1hcnlSZXF1ZXN0GjMuaHVhbGFsYS5hc3NldC52MS5HZXRBc3NldFByb3ZlbmFuY2VTdW1tYXJ5UmVzcG9uc2VCwgEKFGNvbS5odWFsYWxhLmFzc2V0LnYxQgpBc3NldFByb3RvUAFaPGdpdGh1Yi5jb20vaHVhbGFsYS9hcHBzL2JhY2tlbmQvZ2VuL2h1YWxhbGEvYXNzZXQvdjE7YXNzZXR2MaICA0hBWKoCEEh1YWxhbGEuQXNzZXQuVjHKAhBIdWFsYWxhXEFzc2V0XFYx4gIcSHVhbGFsYVxBc3NldFxWMVxHUEJNZXRhZGF0YeoCEkh1YWxhbGE6OkFzc2V0OjpWMWIGcHJvdG8z");
+  fileDesc("ChxodWFsYWxhL2Fzc2V0L3YxL2Fzc2V0LnByb3RvEhBodWFsYWxhLmFzc2V0LnYxIncKC0ltcG9ydEJhdGNoEgoKAmlkGAEgASgJEg4KBm9yZ19pZBgCIAEoCRISCgpwcm9qZWN0X2lkGAMgASgJEhMKC29wZXJhdG9yX2lkGAQgASgJEhMKC3NvdXJjZV90eXBlGAUgASgJEg4KBnN0YXR1cxgGIAEoCSJxCg9JbXBvcnRCYXRjaEl0ZW0SCgoCaWQYASABKAkSFwoPaW1wb3J0X2JhdGNoX2lkGAIgASgJEg4KBnN0YXR1cxgDIAEoCRIXCg9tYXRjaGVkX3Nob3RfaWQYBCABKAkSEAoIYXNzZXRfaWQYBSABKAkilwEKCk1lZGlhQXNzZXQSCgoCaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRITCgtzb3VyY2VfdHlwZRgDIAEoCRIVCg1yaWdodHNfc3RhdHVzGAQgASgJEhcKD2ltcG9ydF9iYXRjaF9pZBgFIAEoCRIOCgZsb2NhbGUYBiABKAkSFAoMYWlfYW5ub3RhdGVkGAcgASgIImQKElNob3RDYW5kaWRhdGVBc3NldBIKCgJpZBgBIAEoCRIZChFzaG90X2V4ZWN1dGlvbl9pZBgCIAEoCRIQCghhc3NldF9pZBgDIAEoCRIVCg1zb3VyY2VfcnVuX2lkGAQgASgJIssBCg1VcGxvYWRTZXNzaW9uEgoKAmlkGAEgASgJEg4KBm9yZ19pZBgCIAEoCRISCgpwcm9qZWN0X2lkGAMgASgJEhcKD2ltcG9ydF9iYXRjaF9pZBgEIAEoCRIRCglmaWxlX25hbWUYBSABKAkSEAoIY2hlY2tzdW0YBiABKAkSEgoKc2l6ZV9ieXRlcxgHIAEoAxITCgtyZXRyeV9jb3VudBgIIAEoDRIOCgZzdGF0dXMYCSABKAkSEwoLcmVzdW1lX2hpbnQYCiABKAkifwoKVXBsb2FkRmlsZRIKCgJpZBgBIAEoCRIZChF1cGxvYWRfc2Vzc2lvbl9pZBgCIAEoCRIRCglmaWxlX25hbWUYAyABKAkSEQoJbWltZV90eXBlGAQgASgJEhAKCGNoZWNrc3VtGAUgASgJEhIKCnNpemVfYnl0ZXMYBiABKAMikQEKEU1lZGlhQXNzZXRWYXJpYW50EgoKAmlkGAEgASgJEhAKCGFzc2V0X2lkGAIgASgJEhYKDnVwbG9hZF9maWxlX2lkGAMgASgJEhQKDHZhcmlhbnRfdHlwZRgEIAEoCRIRCgltaW1lX3R5cGUYBSABKAkSDQoFd2lkdGgYBiABKA0SDgoGaGVpZ2h0GAcgASgNImgKGENyZWF0ZUltcG9ydEJhdGNoUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhMKC29wZXJhdG9yX2lkGAIgASgJEg4KBm9yZ19pZBgDIAEoCRITCgtzb3VyY2VfdHlwZRgEIAEoCSJQChlDcmVhdGVJbXBvcnRCYXRjaFJlc3BvbnNlEjMKDGltcG9ydF9iYXRjaBgBIAEoCzIdLmh1YWxhbGEuYXNzZXQudjEuSW1wb3J0QmF0Y2gi4QEKGEFkZENhbmRpZGF0ZUFzc2V0UmVxdWVzdBIZChFzaG90X2V4ZWN1dGlvbl9pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEg4KBm9yZ19pZBgDIAEoCRIXCg9pbXBvcnRfYmF0Y2hfaWQYBCABKAkSFQoNc291cmNlX3J1bl9pZBgFIAEoCRITCgtzb3VyY2VfdHlwZRgGIAEoCRIUCgxhc3NldF9sb2NhbGUYByABKAkSFQoNcmlnaHRzX3N0YXR1cxgIIAEoCRIUCgxhaV9hbm5vdGF0ZWQYCSABKAgiUAoZQWRkQ2FuZGlkYXRlQXNzZXRSZXNwb25zZRIzCgVhc3NldBgBIAEoCzIkLmh1YWxhbGEuYXNzZXQudjEuU2hvdENhbmRpZGF0ZUFzc2V0IjYKG0xpc3RJbXBvcnRCYXRjaEl0ZW1zUmVxdWVzdBIXCg9pbXBvcnRfYmF0Y2hfaWQYASABKAkiUAocTGlzdEltcG9ydEJhdGNoSXRlbXNSZXNwb25zZRIwCgVpdGVtcxgBIAMoCzIhLmh1YWxhbGEuYXNzZXQudjEuSW1wb3J0QmF0Y2hJdGVtIlAKI0JhdGNoQ29uZmlybUltcG9ydEJhdGNoSXRlbXNSZXF1ZXN0EhcKD2ltcG9ydF9iYXRjaF9pZBgBIAEoCRIQCghpdGVtX2lkcxgCIAMoCSJYCiRCYXRjaENvbmZpcm1JbXBvcnRCYXRjaEl0ZW1zUmVzcG9uc2USMAoFaXRlbXMYASADKAsyIS5odWFsYWxhLmFzc2V0LnYxLkltcG9ydEJhdGNoSXRlbSI5Ch5HZXRJbXBvcnRCYXRjaFdvcmtiZW5jaFJlcXVlc3QSFwoPaW1wb3J0X2JhdGNoX2lkGAEgASgJIq0DCh9HZXRJbXBvcnRCYXRjaFdvcmtiZW5jaFJlc3BvbnNlEjMKDGltcG9ydF9iYXRjaBgBIAEoCzIdLmh1YWxhbGEuYXNzZXQudjEuSW1wb3J0QmF0Y2gSOAoPdXBsb2FkX3Nlc3Npb25zGAIgAygLMh8uaHVhbGFsYS5hc3NldC52MS5VcGxvYWRTZXNzaW9uEjIKDHVwbG9hZF9maWxlcxgDIAMoCzIcLmh1YWxhbGEuYXNzZXQudjEuVXBsb2FkRmlsZRIyCgxtZWRpYV9hc3NldHMYBCADKAsyHC5odWFsYWxhLmFzc2V0LnYxLk1lZGlhQXNzZXQSQQoUbWVkaWFfYXNzZXRfdmFyaWFudHMYBSADKAsyIy5odWFsYWxhLmFzc2V0LnYxLk1lZGlhQXNzZXRWYXJpYW50EjAKBWl0ZW1zGAYgAygLMiEuaHVhbGFsYS5hc3NldC52MS5JbXBvcnRCYXRjaEl0ZW0SPgoQY2FuZGlkYXRlX2Fzc2V0cxgHIAMoCzIkLmh1YWxhbGEuYXNzZXQudjEuU2hvdENhbmRpZGF0ZUFzc2V0IjcKGkxpc3RDYW5kaWRhdGVBc3NldHNSZXF1ZXN0EhkKEXNob3RfZXhlY3V0aW9uX2lkGAEgASgJIlMKG0xpc3RDYW5kaWRhdGVBc3NldHNSZXNwb25zZRI0CgZhc3NldHMYASADKAsyJC5odWFsYWxhLmFzc2V0LnYxLlNob3RDYW5kaWRhdGVBc3NldCI0CiBHZXRBc3NldFByb3ZlbmFuY2VTdW1tYXJ5UmVxdWVzdBIQCghhc3NldF9pZBgBIAEoCSJsCiFHZXRBc3NldFByb3ZlbmFuY2VTdW1tYXJ5UmVzcG9uc2USKwoFYXNzZXQYASABKAsyHC5odWFsYWxhLmFzc2V0LnYxLk1lZGlhQXNzZXQSGgoScHJvdmVuYW5jZV9zdW1tYXJ5GAIgASgJMuwGCgxBc3NldFNlcnZpY2USbAoRQ3JlYXRlSW1wb3J0QmF0Y2gSKi5odWFsYWxhLmFzc2V0LnYxLkNyZWF0ZUltcG9ydEJhdGNoUmVxdWVzdBorLmh1YWxhbGEuYXNzZXQudjEuQ3JlYXRlSW1wb3J0QmF0Y2hSZXNwb25zZRJsChFBZGRDYW5kaWRhdGVBc3NldBIqLmh1YWxhbGEuYXNzZXQudjEuQWRkQ2FuZGlkYXRlQXNzZXRSZXF1ZXN0GisuaHVhbGFsYS5hc3NldC52MS5BZGRDYW5kaWRhdGVBc3NldFJlc3BvbnNlEnUKFExpc3RJbXBvcnRCYXRjaEl0ZW1zEi0uaHVhbGFsYS5hc3NldC52MS5MaXN0SW1wb3J0QmF0Y2hJdGVtc1JlcXVlc3QaLi5odWFsYWxhLmFzc2V0LnYxLkxpc3RJbXBvcnRCYXRjaEl0ZW1zUmVzcG9uc2USjQEKHEJhdGNoQ29uZmlybUltcG9ydEJhdGNoSXRlbXMSNS5odWFsYWxhLmFzc2V0LnYxLkJhdGNoQ29uZmlybUltcG9ydEJhdGNoSXRlbXNSZXF1ZXN0GjYuaHVhbGFsYS5hc3NldC52MS5CYXRjaENvbmZpcm1JbXBvcnRCYXRjaEl0ZW1zUmVzcG9uc2USfgoXR2V0SW1wb3J0QmF0Y2hXb3JrYmVuY2gSMC5odWFsYWxhLmFzc2V0LnYxLkdldEltcG9ydEJhdGNoV29ya2JlbmNoUmVxdWVzdBoxLmh1YWxhbGEuYXNzZXQudjEuR2V0SW1wb3J0QmF0Y2hXb3JrYmVuY2hSZXNwb25zZRJyChNMaXN0Q2FuZGlkYXRlQXNzZXRzEiwuaHVhbGFsYS5hc3NldC52MS5MaXN0Q2FuZGlkYXRlQXNzZXRzUmVxdWVzdBotLmh1YWxhbGEuYXNzZXQudjEuTGlzdENhbmRpZGF0ZUFzc2V0c1Jlc3BvbnNlEoQBChlHZXRBc3NldFByb3ZlbmFuY2VTdW1tYXJ5EjIuaHVhbGFsYS5hc3NldC52MS5HZXRBc3NldFByb3ZlbmFuY2VTdW1tYXJ5UmVxdWVzdBozLmh1YWxhbGEuYXNzZXQudjEuR2V0QXNzZXRQcm92ZW5hbmNlU3VtbWFyeVJlc3BvbnNlQsIBChRjb20uaHVhbGFsYS5hc3NldC52MUIKQXNzZXRQcm90b1ABWjxnaXRodWIuY29tL2h1YWxhbGEvYXBwcy9iYWNrZW5kL2dlbi9odWFsYWxhL2Fzc2V0L3YxO2Fzc2V0djGiAgNIQViqAhBIdWFsYWxhLkFzc2V0LlYxygIQSHVhbGFsYVxBc3NldFxWMeICHEh1YWxhbGFcQXNzZXRcVjFcR1BCTWV0YWRhdGHqAhJIdWFsYWxhOjpBc3NldDo6VjFiBnByb3RvMw");
 
 /**
  * @generated from message hualala.asset.v1.ImportBatch
@@ -171,6 +171,157 @@ export const ShotCandidateAssetSchema: GenMessage<ShotCandidateAsset> = /*@__PUR
   messageDesc(file_hualala_asset_v1_asset, 3);
 
 /**
+ * @generated from message hualala.asset.v1.UploadSession
+ */
+export type UploadSession = Message<"hualala.asset.v1.UploadSession"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string org_id = 2;
+   */
+  orgId: string;
+
+  /**
+   * @generated from field: string project_id = 3;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string import_batch_id = 4;
+   */
+  importBatchId: string;
+
+  /**
+   * @generated from field: string file_name = 5;
+   */
+  fileName: string;
+
+  /**
+   * @generated from field: string checksum = 6;
+   */
+  checksum: string;
+
+  /**
+   * @generated from field: int64 size_bytes = 7;
+   */
+  sizeBytes: bigint;
+
+  /**
+   * @generated from field: uint32 retry_count = 8;
+   */
+  retryCount: number;
+
+  /**
+   * @generated from field: string status = 9;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string resume_hint = 10;
+   */
+  resumeHint: string;
+};
+
+/**
+ * Describes the message hualala.asset.v1.UploadSession.
+ * Use `create(UploadSessionSchema)` to create a new message.
+ */
+export const UploadSessionSchema: GenMessage<UploadSession> = /*@__PURE__*/
+  messageDesc(file_hualala_asset_v1_asset, 4);
+
+/**
+ * @generated from message hualala.asset.v1.UploadFile
+ */
+export type UploadFile = Message<"hualala.asset.v1.UploadFile"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string upload_session_id = 2;
+   */
+  uploadSessionId: string;
+
+  /**
+   * @generated from field: string file_name = 3;
+   */
+  fileName: string;
+
+  /**
+   * @generated from field: string mime_type = 4;
+   */
+  mimeType: string;
+
+  /**
+   * @generated from field: string checksum = 5;
+   */
+  checksum: string;
+
+  /**
+   * @generated from field: int64 size_bytes = 6;
+   */
+  sizeBytes: bigint;
+};
+
+/**
+ * Describes the message hualala.asset.v1.UploadFile.
+ * Use `create(UploadFileSchema)` to create a new message.
+ */
+export const UploadFileSchema: GenMessage<UploadFile> = /*@__PURE__*/
+  messageDesc(file_hualala_asset_v1_asset, 5);
+
+/**
+ * @generated from message hualala.asset.v1.MediaAssetVariant
+ */
+export type MediaAssetVariant = Message<"hualala.asset.v1.MediaAssetVariant"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string asset_id = 2;
+   */
+  assetId: string;
+
+  /**
+   * @generated from field: string upload_file_id = 3;
+   */
+  uploadFileId: string;
+
+  /**
+   * @generated from field: string variant_type = 4;
+   */
+  variantType: string;
+
+  /**
+   * @generated from field: string mime_type = 5;
+   */
+  mimeType: string;
+
+  /**
+   * @generated from field: uint32 width = 6;
+   */
+  width: number;
+
+  /**
+   * @generated from field: uint32 height = 7;
+   */
+  height: number;
+};
+
+/**
+ * Describes the message hualala.asset.v1.MediaAssetVariant.
+ * Use `create(MediaAssetVariantSchema)` to create a new message.
+ */
+export const MediaAssetVariantSchema: GenMessage<MediaAssetVariant> = /*@__PURE__*/
+  messageDesc(file_hualala_asset_v1_asset, 6);
+
+/**
  * @generated from message hualala.asset.v1.CreateImportBatchRequest
  */
 export type CreateImportBatchRequest = Message<"hualala.asset.v1.CreateImportBatchRequest"> & {
@@ -200,7 +351,7 @@ export type CreateImportBatchRequest = Message<"hualala.asset.v1.CreateImportBat
  * Use `create(CreateImportBatchRequestSchema)` to create a new message.
  */
 export const CreateImportBatchRequestSchema: GenMessage<CreateImportBatchRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_asset_v1_asset, 4);
+  messageDesc(file_hualala_asset_v1_asset, 7);
 
 /**
  * @generated from message hualala.asset.v1.CreateImportBatchResponse
@@ -217,7 +368,7 @@ export type CreateImportBatchResponse = Message<"hualala.asset.v1.CreateImportBa
  * Use `create(CreateImportBatchResponseSchema)` to create a new message.
  */
 export const CreateImportBatchResponseSchema: GenMessage<CreateImportBatchResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_asset_v1_asset, 5);
+  messageDesc(file_hualala_asset_v1_asset, 8);
 
 /**
  * @generated from message hualala.asset.v1.AddCandidateAssetRequest
@@ -274,7 +425,7 @@ export type AddCandidateAssetRequest = Message<"hualala.asset.v1.AddCandidateAss
  * Use `create(AddCandidateAssetRequestSchema)` to create a new message.
  */
 export const AddCandidateAssetRequestSchema: GenMessage<AddCandidateAssetRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_asset_v1_asset, 6);
+  messageDesc(file_hualala_asset_v1_asset, 9);
 
 /**
  * @generated from message hualala.asset.v1.AddCandidateAssetResponse
@@ -291,7 +442,7 @@ export type AddCandidateAssetResponse = Message<"hualala.asset.v1.AddCandidateAs
  * Use `create(AddCandidateAssetResponseSchema)` to create a new message.
  */
 export const AddCandidateAssetResponseSchema: GenMessage<AddCandidateAssetResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_asset_v1_asset, 7);
+  messageDesc(file_hualala_asset_v1_asset, 10);
 
 /**
  * @generated from message hualala.asset.v1.ListImportBatchItemsRequest
@@ -308,7 +459,7 @@ export type ListImportBatchItemsRequest = Message<"hualala.asset.v1.ListImportBa
  * Use `create(ListImportBatchItemsRequestSchema)` to create a new message.
  */
 export const ListImportBatchItemsRequestSchema: GenMessage<ListImportBatchItemsRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_asset_v1_asset, 8);
+  messageDesc(file_hualala_asset_v1_asset, 11);
 
 /**
  * @generated from message hualala.asset.v1.ListImportBatchItemsResponse
@@ -325,7 +476,7 @@ export type ListImportBatchItemsResponse = Message<"hualala.asset.v1.ListImportB
  * Use `create(ListImportBatchItemsResponseSchema)` to create a new message.
  */
 export const ListImportBatchItemsResponseSchema: GenMessage<ListImportBatchItemsResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_asset_v1_asset, 9);
+  messageDesc(file_hualala_asset_v1_asset, 12);
 
 /**
  * @generated from message hualala.asset.v1.BatchConfirmImportBatchItemsRequest
@@ -347,7 +498,7 @@ export type BatchConfirmImportBatchItemsRequest = Message<"hualala.asset.v1.Batc
  * Use `create(BatchConfirmImportBatchItemsRequestSchema)` to create a new message.
  */
 export const BatchConfirmImportBatchItemsRequestSchema: GenMessage<BatchConfirmImportBatchItemsRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_asset_v1_asset, 10);
+  messageDesc(file_hualala_asset_v1_asset, 13);
 
 /**
  * @generated from message hualala.asset.v1.BatchConfirmImportBatchItemsResponse
@@ -364,7 +515,71 @@ export type BatchConfirmImportBatchItemsResponse = Message<"hualala.asset.v1.Bat
  * Use `create(BatchConfirmImportBatchItemsResponseSchema)` to create a new message.
  */
 export const BatchConfirmImportBatchItemsResponseSchema: GenMessage<BatchConfirmImportBatchItemsResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_asset_v1_asset, 11);
+  messageDesc(file_hualala_asset_v1_asset, 14);
+
+/**
+ * @generated from message hualala.asset.v1.GetImportBatchWorkbenchRequest
+ */
+export type GetImportBatchWorkbenchRequest = Message<"hualala.asset.v1.GetImportBatchWorkbenchRequest"> & {
+  /**
+   * @generated from field: string import_batch_id = 1;
+   */
+  importBatchId: string;
+};
+
+/**
+ * Describes the message hualala.asset.v1.GetImportBatchWorkbenchRequest.
+ * Use `create(GetImportBatchWorkbenchRequestSchema)` to create a new message.
+ */
+export const GetImportBatchWorkbenchRequestSchema: GenMessage<GetImportBatchWorkbenchRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_asset_v1_asset, 15);
+
+/**
+ * @generated from message hualala.asset.v1.GetImportBatchWorkbenchResponse
+ */
+export type GetImportBatchWorkbenchResponse = Message<"hualala.asset.v1.GetImportBatchWorkbenchResponse"> & {
+  /**
+   * @generated from field: hualala.asset.v1.ImportBatch import_batch = 1;
+   */
+  importBatch?: ImportBatch;
+
+  /**
+   * @generated from field: repeated hualala.asset.v1.UploadSession upload_sessions = 2;
+   */
+  uploadSessions: UploadSession[];
+
+  /**
+   * @generated from field: repeated hualala.asset.v1.UploadFile upload_files = 3;
+   */
+  uploadFiles: UploadFile[];
+
+  /**
+   * @generated from field: repeated hualala.asset.v1.MediaAsset media_assets = 4;
+   */
+  mediaAssets: MediaAsset[];
+
+  /**
+   * @generated from field: repeated hualala.asset.v1.MediaAssetVariant media_asset_variants = 5;
+   */
+  mediaAssetVariants: MediaAssetVariant[];
+
+  /**
+   * @generated from field: repeated hualala.asset.v1.ImportBatchItem items = 6;
+   */
+  items: ImportBatchItem[];
+
+  /**
+   * @generated from field: repeated hualala.asset.v1.ShotCandidateAsset candidate_assets = 7;
+   */
+  candidateAssets: ShotCandidateAsset[];
+};
+
+/**
+ * Describes the message hualala.asset.v1.GetImportBatchWorkbenchResponse.
+ * Use `create(GetImportBatchWorkbenchResponseSchema)` to create a new message.
+ */
+export const GetImportBatchWorkbenchResponseSchema: GenMessage<GetImportBatchWorkbenchResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_asset_v1_asset, 16);
 
 /**
  * @generated from message hualala.asset.v1.ListCandidateAssetsRequest
@@ -381,7 +596,7 @@ export type ListCandidateAssetsRequest = Message<"hualala.asset.v1.ListCandidate
  * Use `create(ListCandidateAssetsRequestSchema)` to create a new message.
  */
 export const ListCandidateAssetsRequestSchema: GenMessage<ListCandidateAssetsRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_asset_v1_asset, 12);
+  messageDesc(file_hualala_asset_v1_asset, 17);
 
 /**
  * @generated from message hualala.asset.v1.ListCandidateAssetsResponse
@@ -398,7 +613,7 @@ export type ListCandidateAssetsResponse = Message<"hualala.asset.v1.ListCandidat
  * Use `create(ListCandidateAssetsResponseSchema)` to create a new message.
  */
 export const ListCandidateAssetsResponseSchema: GenMessage<ListCandidateAssetsResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_asset_v1_asset, 13);
+  messageDesc(file_hualala_asset_v1_asset, 18);
 
 /**
  * @generated from message hualala.asset.v1.GetAssetProvenanceSummaryRequest
@@ -415,7 +630,7 @@ export type GetAssetProvenanceSummaryRequest = Message<"hualala.asset.v1.GetAsse
  * Use `create(GetAssetProvenanceSummaryRequestSchema)` to create a new message.
  */
 export const GetAssetProvenanceSummaryRequestSchema: GenMessage<GetAssetProvenanceSummaryRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_asset_v1_asset, 14);
+  messageDesc(file_hualala_asset_v1_asset, 19);
 
 /**
  * @generated from message hualala.asset.v1.GetAssetProvenanceSummaryResponse
@@ -437,7 +652,7 @@ export type GetAssetProvenanceSummaryResponse = Message<"hualala.asset.v1.GetAss
  * Use `create(GetAssetProvenanceSummaryResponseSchema)` to create a new message.
  */
 export const GetAssetProvenanceSummaryResponseSchema: GenMessage<GetAssetProvenanceSummaryResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_asset_v1_asset, 15);
+  messageDesc(file_hualala_asset_v1_asset, 20);
 
 /**
  * @generated from service hualala.asset.v1.AssetService
@@ -474,6 +689,14 @@ export const AssetService: GenService<{
     methodKind: "unary";
     input: typeof BatchConfirmImportBatchItemsRequestSchema;
     output: typeof BatchConfirmImportBatchItemsResponseSchema;
+  },
+  /**
+   * @generated from rpc hualala.asset.v1.AssetService.GetImportBatchWorkbench
+   */
+  getImportBatchWorkbench: {
+    methodKind: "unary";
+    input: typeof GetImportBatchWorkbenchRequestSchema;
+    output: typeof GetImportBatchWorkbenchResponseSchema;
   },
   /**
    * @generated from rpc hualala.asset.v1.AssetService.ListCandidateAssets

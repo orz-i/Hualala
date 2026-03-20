@@ -9,6 +9,7 @@ service AssetService {
   rpc AddCandidateAsset(AddCandidateAssetRequest) returns (AddCandidateAssetResponse);
   rpc ListImportBatchItems(ListImportBatchItemsRequest) returns (ListImportBatchItemsResponse);
   rpc BatchConfirmImportBatchItems(BatchConfirmImportBatchItemsRequest) returns (BatchConfirmImportBatchItemsResponse);
+  rpc GetImportBatchWorkbench(GetImportBatchWorkbenchRequest) returns (GetImportBatchWorkbenchResponse);
   rpc ListCandidateAssets(ListCandidateAssetsRequest) returns (ListCandidateAssetsResponse);
   rpc GetAssetProvenanceSummary(GetAssetProvenanceSummaryRequest) returns (GetAssetProvenanceSummaryResponse);
 }
@@ -45,6 +46,38 @@ message ShotCandidateAsset {
   string shot_execution_id = 2;
   string asset_id = 3;
   string source_run_id = 4;
+}
+
+message UploadSession {
+  string id = 1;
+  string org_id = 2;
+  string project_id = 3;
+  string import_batch_id = 4;
+  string file_name = 5;
+  string checksum = 6;
+  int64 size_bytes = 7;
+  uint32 retry_count = 8;
+  string status = 9;
+  string resume_hint = 10;
+}
+
+message UploadFile {
+  string id = 1;
+  string upload_session_id = 2;
+  string file_name = 3;
+  string mime_type = 4;
+  string checksum = 5;
+  int64 size_bytes = 6;
+}
+
+message MediaAssetVariant {
+  string id = 1;
+  string asset_id = 2;
+  string upload_file_id = 3;
+  string variant_type = 4;
+  string mime_type = 5;
+  uint32 width = 6;
+  uint32 height = 7;
 }
 
 message CreateImportBatchRequest {
@@ -89,6 +122,20 @@ message BatchConfirmImportBatchItemsRequest {
 
 message BatchConfirmImportBatchItemsResponse {
   repeated ImportBatchItem items = 1;
+}
+
+message GetImportBatchWorkbenchRequest {
+  string import_batch_id = 1;
+}
+
+message GetImportBatchWorkbenchResponse {
+  ImportBatch import_batch = 1;
+  repeated UploadSession upload_sessions = 2;
+  repeated UploadFile upload_files = 3;
+  repeated MediaAsset media_assets = 4;
+  repeated MediaAssetVariant media_asset_variants = 5;
+  repeated ImportBatchItem items = 6;
+  repeated ShotCandidateAsset candidate_assets = 7;
 }
 
 message ListCandidateAssetsRequest {

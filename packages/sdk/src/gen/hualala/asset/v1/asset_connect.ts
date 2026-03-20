@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddCandidateAssetRequest, AddCandidateAssetResponse, BatchConfirmImportBatchItemsRequest, BatchConfirmImportBatchItemsResponse, CreateImportBatchRequest, CreateImportBatchResponse, GetAssetProvenanceSummaryRequest, GetAssetProvenanceSummaryResponse, ListCandidateAssetsRequest, ListCandidateAssetsResponse, ListImportBatchItemsRequest, ListImportBatchItemsResponse } from "./asset_pb.js";
+import { AddCandidateAssetRequest, AddCandidateAssetResponse, BatchConfirmImportBatchItemsRequest, BatchConfirmImportBatchItemsResponse, CreateImportBatchRequest, CreateImportBatchResponse, GetAssetProvenanceSummaryRequest, GetAssetProvenanceSummaryResponse, GetImportBatchWorkbenchRequest, GetImportBatchWorkbenchResponse, ListCandidateAssetsRequest, ListCandidateAssetsResponse, ListImportBatchItemsRequest, ListImportBatchItemsResponse } from "./asset_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -46,6 +46,15 @@ export const AssetService = {
       name: "BatchConfirmImportBatchItems",
       I: BatchConfirmImportBatchItemsRequest,
       O: BatchConfirmImportBatchItemsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.asset.v1.AssetService.GetImportBatchWorkbench
+     */
+    getImportBatchWorkbench: {
+      name: "GetImportBatchWorkbench",
+      I: GetImportBatchWorkbenchRequest,
+      O: GetImportBatchWorkbenchResponse,
       kind: MethodKind.Unary,
     },
     /**

@@ -90,6 +90,44 @@ func mapCandidateAsset(record asset.CandidateAsset) *assetv1.ShotCandidateAsset 
 	}
 }
 
+func mapUploadSession(record asset.UploadSession) *assetv1.UploadSession {
+	return &assetv1.UploadSession{
+		Id:            record.ID,
+		OrgId:         record.OrgID,
+		ProjectId:     record.ProjectID,
+		ImportBatchId: record.ImportBatchID,
+		FileName:      record.FileName,
+		Checksum:      record.Checksum,
+		SizeBytes:     record.SizeBytes,
+		RetryCount:    uint32(record.RetryCount),
+		Status:        record.Status,
+		ResumeHint:    record.ResumeHint,
+	}
+}
+
+func mapUploadFile(record asset.UploadFile) *assetv1.UploadFile {
+	return &assetv1.UploadFile{
+		Id:              record.ID,
+		UploadSessionId: record.UploadSessionID,
+		FileName:        record.FileName,
+		MimeType:        record.MimeType,
+		Checksum:        record.Checksum,
+		SizeBytes:       record.SizeBytes,
+	}
+}
+
+func mapMediaAssetVariant(record asset.MediaAssetVariant) *assetv1.MediaAssetVariant {
+	return &assetv1.MediaAssetVariant{
+		Id:           record.ID,
+		AssetId:      record.AssetID,
+		UploadFileId: record.UploadFileID,
+		VariantType:  record.VariantType,
+		MimeType:     record.MimeType,
+		Width:        uint32(record.Width),
+		Height:       uint32(record.Height),
+	}
+}
+
 func mapShotReview(record review.ShotReview) *reviewv1.ShotReview {
 	return &reviewv1.ShotReview{
 		Id:              record.ID,

@@ -82,6 +82,50 @@ func (h *assetHandler) BatchConfirmImportBatchItems(ctx context.Context, req *co
 	}), nil
 }
 
+func (h *assetHandler) GetImportBatchWorkbench(ctx context.Context, req *connectrpc.Request[assetv1.GetImportBatchWorkbenchRequest]) (*connectrpc.Response[assetv1.GetImportBatchWorkbenchResponse], error) {
+	record, err := h.service.GetImportBatchWorkbench(ctx, assetapp.GetImportBatchWorkbenchInput{
+		ImportBatchID: req.Msg.GetImportBatchId(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+
+	uploadSessions := make([]*assetv1.UploadSession, 0, len(record.UploadSessions))
+	for _, session := range record.UploadSessions {
+		uploadSessions = append(uploadSessions, mapUploadSession(session))
+	}
+	uploadFiles := make([]*assetv1.UploadFile, 0, len(record.UploadFiles))
+	for _, uploadFile := range record.UploadFiles {
+		uploadFiles = append(uploadFiles, mapUploadFile(uploadFile))
+	}
+	mediaAssets := make([]*assetv1.MediaAsset, 0, len(record.MediaAssets))
+	for _, mediaAsset := range record.MediaAssets {
+		mediaAssets = append(mediaAssets, mapMediaAsset(mediaAsset))
+	}
+	variants := make([]*assetv1.MediaAssetVariant, 0, len(record.MediaAssetVariants))
+	for _, variant := range record.MediaAssetVariants {
+		variants = append(variants, mapMediaAssetVariant(variant))
+	}
+	items := make([]*assetv1.ImportBatchItem, 0, len(record.Items))
+	for _, item := range record.Items {
+		items = append(items, mapImportBatchItem(item))
+	}
+	candidates := make([]*assetv1.ShotCandidateAsset, 0, len(record.CandidateAssets))
+	for _, candidate := range record.CandidateAssets {
+		candidates = append(candidates, mapCandidateAsset(candidate))
+	}
+
+	return connectrpc.NewResponse(&assetv1.GetImportBatchWorkbenchResponse{
+		ImportBatch:        mapImportBatch(record.ImportBatch),
+		UploadSessions:     uploadSessions,
+		UploadFiles:        uploadFiles,
+		MediaAssets:        mediaAssets,
+		MediaAssetVariants: variants,
+		Items:              items,
+		CandidateAssets:    candidates,
+	}), nil
+}
+
 func (h *assetHandler) ListCandidateAssets(ctx context.Context, req *connectrpc.Request[assetv1.ListCandidateAssetsRequest]) (*connectrpc.Response[assetv1.ListCandidateAssetsResponse], error) {
 	records, err := h.service.ListCandidateAssets(ctx, assetapp.ListCandidateAssetsInput{
 		ShotExecutionID: req.Msg.GetShotExecutionId(),
