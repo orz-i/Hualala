@@ -53,6 +53,10 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 		}
 
 		session := createSession(store, request.OrganizationID, request.ProjectID, request.ImportBatchID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
+		if err := store.Persist(r.Context()); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		publishUploadSessionUpdated(store, session)
 		writeSessionResponse(w, http.StatusOK, store, policyService, session)
 	})
@@ -78,6 +82,10 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 				http.NotFound(w, r)
 				return
 			}
+			if err := store.Persist(r.Context()); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 			publishUploadSessionUpdated(store, session)
 			writeSessionResponse(w, http.StatusOK, store, policyService, session)
 		case r.Method == http.MethodPost && action == "complete":
@@ -98,6 +106,10 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 			session, ok := completeSession(store, policyService, sessionID, request.ShotExecutionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.AIAnnotated, request.Width, request.Height)
 			if !ok {
 				http.NotFound(w, r)
+				return
+			}
+			if err := store.Persist(r.Context()); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			publishUploadSessionUpdated(store, session)

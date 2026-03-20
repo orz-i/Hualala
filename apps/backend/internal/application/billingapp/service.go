@@ -46,7 +46,7 @@ func NewService(store *db.MemoryStore) *Service {
 	return &Service{store: store}
 }
 
-func (s *Service) SetProjectBudget(_ context.Context, input SetProjectBudgetInput) (billing.ProjectBudget, error) {
+func (s *Service) SetProjectBudget(ctx context.Context, input SetProjectBudgetInput) (billing.ProjectBudget, error) {
 	if s == nil || s.store == nil {
 		return billing.ProjectBudget{}, errors.New("billingapp: store is required")
 	}
@@ -67,6 +67,9 @@ func (s *Service) SetProjectBudget(_ context.Context, input SetProjectBudgetInpu
 			record.LimitCents = input.LimitCents
 			record.UpdatedAt = now
 			s.store.Budgets[id] = record
+			if err := s.store.Persist(ctx); err != nil {
+				return billing.ProjectBudget{}, err
+			}
 			s.publishBudgetUpdated(record)
 			return record, nil
 		}
@@ -81,6 +84,9 @@ func (s *Service) SetProjectBudget(_ context.Context, input SetProjectBudgetInpu
 		UpdatedAt:  now,
 	}
 	s.store.Budgets[record.ID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return billing.ProjectBudget{}, err
+	}
 	s.publishBudgetUpdated(record)
 	return record, nil
 }

@@ -82,7 +82,7 @@ func NewService(store *db.MemoryStore) *Service {
 	return &Service{store: store}
 }
 
-func (s *Service) StartShotExecutionRun(_ context.Context, input StartShotExecutionRunInput) (execution.ShotExecutionRun, error) {
+func (s *Service) StartShotExecutionRun(ctx context.Context, input StartShotExecutionRunInput) (execution.ShotExecutionRun, error) {
 	if s == nil || s.store == nil {
 		return execution.ShotExecutionRun{}, errors.New("executionapp: store is required")
 	}
@@ -139,6 +139,9 @@ func (s *Service) StartShotExecutionRun(_ context.Context, input StartShotExecut
 			return execution.ShotExecutionRun{}, err
 		}
 	}
+	if err := s.store.Persist(ctx); err != nil {
+		return execution.ShotExecutionRun{}, err
+	}
 	s.publishShotExecutionUpdated(shotExecution, map[string]any{
 		"shot_execution_id": shotExecution.ID,
 		"shot_id":           shotExecution.ShotID,
@@ -180,7 +183,7 @@ func (s *Service) GetShotWorkbench(ctx context.Context, input GetShotWorkbenchIn
 	}, nil
 }
 
-func (s *Service) SelectPrimaryAsset(_ context.Context, input SelectPrimaryAssetInput) (execution.ShotExecution, error) {
+func (s *Service) SelectPrimaryAsset(ctx context.Context, input SelectPrimaryAssetInput) (execution.ShotExecution, error) {
 	record, ok := s.store.ShotExecutions[input.ShotExecutionID]
 	if !ok {
 		return execution.ShotExecution{}, errors.New("executionapp: shot execution not found")
@@ -193,6 +196,9 @@ func (s *Service) SelectPrimaryAsset(_ context.Context, input SelectPrimaryAsset
 	record.Status = "primary_selected"
 	record.UpdatedAt = time.Now().UTC()
 	s.store.ShotExecutions[record.ID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return execution.ShotExecution{}, err
+	}
 	s.publishShotExecutionUpdated(record, map[string]any{
 		"shot_execution_id": record.ID,
 		"shot_id":           record.ShotID,
@@ -235,7 +241,7 @@ func (s *Service) RunSubmissionGateChecks(_ context.Context, input RunSubmission
 	return result, nil
 }
 
-func (s *Service) SubmitShotForReview(_ context.Context, input SubmitShotForReviewInput) (execution.ShotExecution, error) {
+func (s *Service) SubmitShotForReview(ctx context.Context, input SubmitShotForReviewInput) (execution.ShotExecution, error) {
 	record, ok := s.store.ShotExecutions[input.ShotExecutionID]
 	if !ok {
 		return execution.ShotExecution{}, errors.New("executionapp: shot execution not found")
@@ -252,6 +258,9 @@ func (s *Service) SubmitShotForReview(_ context.Context, input SubmitShotForRevi
 	record.Status = "submitted_for_review"
 	record.UpdatedAt = time.Now().UTC()
 	s.store.ShotExecutions[record.ID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return execution.ShotExecution{}, err
+	}
 	s.publishShotExecutionUpdated(record, map[string]any{
 		"shot_execution_id": record.ID,
 		"shot_id":           record.ShotID,
@@ -261,7 +270,7 @@ func (s *Service) SubmitShotForReview(_ context.Context, input SubmitShotForRevi
 	return record, nil
 }
 
-func (s *Service) MarkShotReworkRequired(_ context.Context, input MarkShotReworkRequiredInput) (execution.ShotExecution, error) {
+func (s *Service) MarkShotReworkRequired(ctx context.Context, input MarkShotReworkRequiredInput) (execution.ShotExecution, error) {
 	record, ok := s.store.ShotExecutions[input.ShotExecutionID]
 	if !ok {
 		return execution.ShotExecution{}, errors.New("executionapp: shot execution not found")
@@ -269,10 +278,13 @@ func (s *Service) MarkShotReworkRequired(_ context.Context, input MarkShotRework
 	record.Status = "rework_required"
 	record.UpdatedAt = time.Now().UTC()
 	s.store.ShotExecutions[record.ID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return execution.ShotExecution{}, err
+	}
 	return record, nil
 }
 
-func (s *Service) MarkShotApprovedForUse(_ context.Context, input MarkShotApprovedForUseInput) (execution.ShotExecution, error) {
+func (s *Service) MarkShotApprovedForUse(ctx context.Context, input MarkShotApprovedForUseInput) (execution.ShotExecution, error) {
 	record, ok := s.store.ShotExecutions[input.ShotExecutionID]
 	if !ok {
 		return execution.ShotExecution{}, errors.New("executionapp: shot execution not found")
@@ -280,6 +292,9 @@ func (s *Service) MarkShotApprovedForUse(_ context.Context, input MarkShotApprov
 	record.Status = "approved_for_use"
 	record.UpdatedAt = time.Now().UTC()
 	s.store.ShotExecutions[record.ID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return execution.ShotExecution{}, err
+	}
 	return record, nil
 }
 

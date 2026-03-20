@@ -11,12 +11,11 @@ import (
 	"github.com/hualala/apps/backend/internal/application/executionapp"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
 	"github.com/hualala/apps/backend/internal/application/reviewapp"
-	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
 func TestShotExecutionFlow(t *testing.T) {
 	ctx := context.Background()
-	store := db.NewMemoryStore()
+	store := openIntegrationStore(t)
 
 	projectService := projectapp.NewService(store)
 	contentService := contentapp.NewService(store)
@@ -275,7 +274,7 @@ func TestShotExecutionFlow(t *testing.T) {
 
 func TestShotExecutionBudgetGuard(t *testing.T) {
 	ctx := context.Background()
-	store := db.NewMemoryStore()
+	store := openIntegrationStore(t)
 
 	projectService := projectapp.NewService(store)
 	contentService := contentapp.NewService(store)

@@ -17,13 +17,12 @@ import (
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/workflow"
 	connectiface "github.com/hualala/apps/backend/internal/interfaces/connect"
-	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/temporal"
 )
 
 func TestReliabilityFlow(t *testing.T) {
 	ctx := context.Background()
-	store := db.NewMemoryStore()
+	store := openIntegrationStore(t)
 	policyService := policyapp.NewService(store)
 	adapter := gatewayapp.NewFakeAdapter()
 	adapter.SetProviderFailure("seedance", errors.New("provider failed"))

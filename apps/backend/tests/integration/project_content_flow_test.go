@@ -6,12 +6,11 @@ import (
 
 	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
-	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
 func TestProjectContentFlow(t *testing.T) {
 	ctx := context.Background()
-	store := db.NewMemoryStore()
+	store := openIntegrationStore(t)
 
 	projectService := projectapp.NewService(store)
 	contentService := contentapp.NewService(store)

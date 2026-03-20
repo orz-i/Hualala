@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -19,6 +20,60 @@ type Handle struct{}
 
 func NewHandle() Handle {
 	return Handle{}
+}
+
+type SnapshotPersister interface {
+	Load(ctx context.Context) (*Snapshot, error)
+	Save(ctx context.Context, snapshot Snapshot) error
+}
+
+type Snapshot struct {
+	NextProjectID         int
+	NextEpisodeID         int
+	NextSceneID           int
+	NextShotID            int
+	NextSnapshotID        int
+	NextGroupID           int
+	NextExecutionID       int
+	NextRunID             int
+	NextImportBatchID     int
+	NextImportBatchItemID int
+	NextUploadSessionID   int
+	NextUploadFileID      int
+	NextAssetID           int
+	NextVariantID         int
+	NextCandidateID       int
+	NextReviewID          int
+	NextBudgetID          int
+	NextUsageID           int
+	NextBillingEventID    int
+	NextEvaluationRunID   int
+	NextWorkflowRunID     int
+	NextWorkflowStepID    int
+	NextGatewayRequestID  int
+
+	Projects           map[string]project.Project
+	Episodes           map[string]project.Episode
+	Scenes             map[string]content.Scene
+	Shots              map[string]content.Shot
+	Snapshots          map[string]content.Snapshot
+	ShotExecutions     map[string]execution.ShotExecution
+	ShotExecutionRuns  map[string]execution.ShotExecutionRun
+	ImportBatches      map[string]asset.ImportBatch
+	ImportBatchItems   map[string]asset.ImportBatchItem
+	UploadSessions     map[string]asset.UploadSession
+	UploadFiles        map[string]asset.UploadFile
+	MediaAssets        map[string]asset.MediaAsset
+	MediaAssetVariants map[string]asset.MediaAssetVariant
+	CandidateAssets    map[string]asset.CandidateAsset
+	Reviews            map[string]review.ShotReview
+	EvaluationRuns     map[string]review.EvaluationRun
+	Budgets            map[string]billing.ProjectBudget
+	UsageRecords       map[string]billing.UsageRecord
+	BillingEvents      map[string]billing.BillingEvent
+	WorkflowRuns       map[string]workflow.WorkflowRun
+	WorkflowSteps      map[string]workflow.WorkflowStep
+	GatewayResults     map[string]gateway.GatewayResult
 }
 
 type MemoryStore struct {
@@ -71,6 +126,7 @@ type MemoryStore struct {
 	WorkflowSteps      map[string]workflow.WorkflowStep
 	GatewayResults     map[string]gateway.GatewayResult
 	EventPublisher     *events.Publisher
+	persister          SnapshotPersister
 }
 
 func NewMemoryStore() *MemoryStore {
@@ -99,6 +155,152 @@ func NewMemoryStore() *MemoryStore {
 		GatewayResults:     make(map[string]gateway.GatewayResult),
 		EventPublisher:     events.NewPublisher(),
 	}
+}
+
+func NewPersistentMemoryStore(ctx context.Context, persister SnapshotPersister) (*MemoryStore, error) {
+	store := NewMemoryStore()
+	store.persister = persister
+	if persister == nil {
+		return store, nil
+	}
+
+	snapshot, err := persister.Load(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if snapshot == nil {
+		return store, nil
+	}
+
+	store.applySnapshot(*snapshot)
+	return store, nil
+}
+
+func (s *MemoryStore) Save(ctx context.Context) error {
+	if s == nil || s.persister == nil {
+		return nil
+	}
+	return s.persister.Save(ctx, s.snapshot())
+}
+
+func (s *MemoryStore) Persist(ctx context.Context) error {
+	return s.Save(ctx)
+}
+
+func (s *MemoryStore) snapshot() Snapshot {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return Snapshot{
+		NextProjectID:         s.nextProjectID,
+		NextEpisodeID:         s.nextEpisodeID,
+		NextSceneID:           s.nextSceneID,
+		NextShotID:            s.nextShotID,
+		NextSnapshotID:        s.nextSnapshotID,
+		NextGroupID:           s.nextGroupID,
+		NextExecutionID:       s.nextExecutionID,
+		NextRunID:             s.nextRunID,
+		NextImportBatchID:     s.nextImportBatchID,
+		NextImportBatchItemID: s.nextImportBatchItemID,
+		NextUploadSessionID:   s.nextUploadSessionID,
+		NextUploadFileID:      s.nextUploadFileID,
+		NextAssetID:           s.nextAssetID,
+		NextVariantID:         s.nextVariantID,
+		NextCandidateID:       s.nextCandidateID,
+		NextReviewID:          s.nextReviewID,
+		NextBudgetID:          s.nextBudgetID,
+		NextUsageID:           s.nextUsageID,
+		NextBillingEventID:    s.nextBillingEventID,
+		NextEvaluationRunID:   s.nextEvaluationRunID,
+		NextWorkflowRunID:     s.nextWorkflowRunID,
+		NextWorkflowStepID:    s.nextWorkflowStepID,
+		NextGatewayRequestID:  s.nextGatewayRequestID,
+		Projects:              cloneMap(s.Projects),
+		Episodes:              cloneMap(s.Episodes),
+		Scenes:                cloneMap(s.Scenes),
+		Shots:                 cloneMap(s.Shots),
+		Snapshots:             cloneMap(s.Snapshots),
+		ShotExecutions:        cloneMap(s.ShotExecutions),
+		ShotExecutionRuns:     cloneMap(s.ShotExecutionRuns),
+		ImportBatches:         cloneMap(s.ImportBatches),
+		ImportBatchItems:      cloneMap(s.ImportBatchItems),
+		UploadSessions:        cloneMap(s.UploadSessions),
+		UploadFiles:           cloneMap(s.UploadFiles),
+		MediaAssets:           cloneMap(s.MediaAssets),
+		MediaAssetVariants:    cloneMap(s.MediaAssetVariants),
+		CandidateAssets:       cloneMap(s.CandidateAssets),
+		Reviews:               cloneMap(s.Reviews),
+		EvaluationRuns:        cloneMap(s.EvaluationRuns),
+		Budgets:               cloneMap(s.Budgets),
+		UsageRecords:          cloneMap(s.UsageRecords),
+		BillingEvents:         cloneMap(s.BillingEvents),
+		WorkflowRuns:          cloneMap(s.WorkflowRuns),
+		WorkflowSteps:         cloneMap(s.WorkflowSteps),
+		GatewayResults:        cloneMap(s.GatewayResults),
+	}
+}
+
+func (s *MemoryStore) applySnapshot(snapshot Snapshot) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.nextProjectID = snapshot.NextProjectID
+	s.nextEpisodeID = snapshot.NextEpisodeID
+	s.nextSceneID = snapshot.NextSceneID
+	s.nextShotID = snapshot.NextShotID
+	s.nextSnapshotID = snapshot.NextSnapshotID
+	s.nextGroupID = snapshot.NextGroupID
+	s.nextExecutionID = snapshot.NextExecutionID
+	s.nextRunID = snapshot.NextRunID
+	s.nextImportBatchID = snapshot.NextImportBatchID
+	s.nextImportBatchItemID = snapshot.NextImportBatchItemID
+	s.nextUploadSessionID = snapshot.NextUploadSessionID
+	s.nextUploadFileID = snapshot.NextUploadFileID
+	s.nextAssetID = snapshot.NextAssetID
+	s.nextVariantID = snapshot.NextVariantID
+	s.nextCandidateID = snapshot.NextCandidateID
+	s.nextReviewID = snapshot.NextReviewID
+	s.nextBudgetID = snapshot.NextBudgetID
+	s.nextUsageID = snapshot.NextUsageID
+	s.nextBillingEventID = snapshot.NextBillingEventID
+	s.nextEvaluationRunID = snapshot.NextEvaluationRunID
+	s.nextWorkflowRunID = snapshot.NextWorkflowRunID
+	s.nextWorkflowStepID = snapshot.NextWorkflowStepID
+	s.nextGatewayRequestID = snapshot.NextGatewayRequestID
+
+	s.Projects = cloneMap(snapshot.Projects)
+	s.Episodes = cloneMap(snapshot.Episodes)
+	s.Scenes = cloneMap(snapshot.Scenes)
+	s.Shots = cloneMap(snapshot.Shots)
+	s.Snapshots = cloneMap(snapshot.Snapshots)
+	s.ShotExecutions = cloneMap(snapshot.ShotExecutions)
+	s.ShotExecutionRuns = cloneMap(snapshot.ShotExecutionRuns)
+	s.ImportBatches = cloneMap(snapshot.ImportBatches)
+	s.ImportBatchItems = cloneMap(snapshot.ImportBatchItems)
+	s.UploadSessions = cloneMap(snapshot.UploadSessions)
+	s.UploadFiles = cloneMap(snapshot.UploadFiles)
+	s.MediaAssets = cloneMap(snapshot.MediaAssets)
+	s.MediaAssetVariants = cloneMap(snapshot.MediaAssetVariants)
+	s.CandidateAssets = cloneMap(snapshot.CandidateAssets)
+	s.Reviews = cloneMap(snapshot.Reviews)
+	s.EvaluationRuns = cloneMap(snapshot.EvaluationRuns)
+	s.Budgets = cloneMap(snapshot.Budgets)
+	s.UsageRecords = cloneMap(snapshot.UsageRecords)
+	s.BillingEvents = cloneMap(snapshot.BillingEvents)
+	s.WorkflowRuns = cloneMap(snapshot.WorkflowRuns)
+	s.WorkflowSteps = cloneMap(snapshot.WorkflowSteps)
+	s.GatewayResults = cloneMap(snapshot.GatewayResults)
+}
+
+func cloneMap[T any](input map[string]T) map[string]T {
+	if len(input) == 0 {
+		return make(map[string]T)
+	}
+	cloned := make(map[string]T, len(input))
+	for key, value := range input {
+		cloned[key] = value
+	}
+	return cloned
 }
 
 func (s *MemoryStore) NextProjectID() string {

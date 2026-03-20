@@ -93,6 +93,9 @@ func (s *Service) StartWorkflow(ctx context.Context, input StartWorkflowInput) (
 		UpdatedAt:      now,
 	}
 	s.store.WorkflowRuns[run.ID] = run
+	if err := s.store.Persist(ctx); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
 	return s.dispatchWorkflow(ctx, run)
 }
 
@@ -118,7 +121,7 @@ func (s *Service) ListWorkflowRuns(_ context.Context, input ListWorkflowRunsInpu
 	return items, nil
 }
 
-func (s *Service) CancelWorkflowRun(_ context.Context, input CancelWorkflowRunInput) (workflow.WorkflowRun, error) {
+func (s *Service) CancelWorkflowRun(ctx context.Context, input CancelWorkflowRunInput) (workflow.WorkflowRun, error) {
 	record, ok := s.store.WorkflowRuns[strings.TrimSpace(input.WorkflowRunID)]
 	if !ok {
 		return workflow.WorkflowRun{}, fmt.Errorf("workflowapp: workflow run %s not found", strings.TrimSpace(input.WorkflowRunID))
@@ -126,6 +129,9 @@ func (s *Service) CancelWorkflowRun(_ context.Context, input CancelWorkflowRunIn
 	record.Status = workflow.StatusCancelled
 	record.UpdatedAt = time.Now().UTC()
 	s.store.WorkflowRuns[record.ID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
 	s.publishWorkflowUpdated(record)
 	return record, nil
 }
@@ -145,6 +151,9 @@ func (s *Service) RetryWorkflowRun(ctx context.Context, input RetryWorkflowRunIn
 	record.Status = workflow.StatusRunning
 	record.UpdatedAt = time.Now().UTC()
 	s.store.WorkflowRuns[record.ID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
 	s.publishWorkflowUpdated(record)
 	return s.executeGateway(ctx, record)
 }
@@ -153,6 +162,9 @@ func (s *Service) dispatchWorkflow(ctx context.Context, run workflow.WorkflowRun
 	run.Status = workflow.StatusRunning
 	run.UpdatedAt = time.Now().UTC()
 	s.store.WorkflowRuns[run.ID] = run
+	if err := s.store.Persist(ctx); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
 	s.publishWorkflowUpdated(run)
 	return s.executeGateway(ctx, run)
 }
@@ -173,12 +185,19 @@ func (s *Service) executeGateway(ctx context.Context, run workflow.WorkflowRun) 
 		run.LastError = err.Error()
 		run.UpdatedAt = time.Now().UTC()
 		s.store.WorkflowRuns[run.ID] = run
+		if persistErr := s.store.Persist(ctx); persistErr != nil {
+			return workflow.WorkflowRun{}, persistErr
+		}
 		s.publishWorkflowUpdated(run)
 		return run, nil
 	}
 	run.ExternalRequestID = result.ExternalRequestID
 	run.UpdatedAt = time.Now().UTC()
 	s.store.WorkflowRuns[run.ID] = run
+	if err := s.store.Persist(ctx); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
+	s.publishWorkflowUpdated(run)
 	return run, nil
 }
 

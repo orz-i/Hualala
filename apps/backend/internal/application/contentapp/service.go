@@ -69,7 +69,7 @@ func NewService(store *db.MemoryStore) *Service {
 	return &Service{store: store}
 }
 
-func (s *Service) CreateScene(_ context.Context, input CreateSceneInput) (content.Scene, error) {
+func (s *Service) CreateScene(ctx context.Context, input CreateSceneInput) (content.Scene, error) {
 	if s == nil || s.store == nil {
 		return content.Scene{}, errors.New("contentapp: store is required")
 	}
@@ -114,10 +114,13 @@ func (s *Service) CreateScene(_ context.Context, input CreateSceneInput) (conten
 	}
 
 	s.store.Scenes[scene.ID] = scene
+	if err := s.store.Persist(ctx); err != nil {
+		return content.Scene{}, err
+	}
 	return scene, nil
 }
 
-func (s *Service) CreateShot(_ context.Context, input CreateShotInput) (content.Shot, error) {
+func (s *Service) CreateShot(ctx context.Context, input CreateShotInput) (content.Shot, error) {
 	if s == nil || s.store == nil {
 		return content.Shot{}, errors.New("contentapp: store is required")
 	}
@@ -152,10 +155,13 @@ func (s *Service) CreateShot(_ context.Context, input CreateShotInput) (content.
 	}
 
 	s.store.Shots[shot.ID] = shot
+	if err := s.store.Persist(ctx); err != nil {
+		return content.Shot{}, err
+	}
 	return shot, nil
 }
 
-func (s *Service) CreateContentSnapshot(_ context.Context, input CreateContentSnapshotInput) (content.Snapshot, error) {
+func (s *Service) CreateContentSnapshot(ctx context.Context, input CreateContentSnapshotInput) (content.Snapshot, error) {
 	if strings.TrimSpace(input.OwnerType) == "" {
 		return content.Snapshot{}, errors.New("owner_type is required")
 	}
@@ -184,10 +190,13 @@ func (s *Service) CreateContentSnapshot(_ context.Context, input CreateContentSn
 	}
 
 	s.store.Snapshots[snapshot.ID] = snapshot
+	if err := s.store.Persist(ctx); err != nil {
+		return content.Snapshot{}, err
+	}
 	return snapshot, nil
 }
 
-func (s *Service) CreateLocalizedSnapshot(_ context.Context, input CreateLocalizedSnapshotInput) (content.Snapshot, error) {
+func (s *Service) CreateLocalizedSnapshot(ctx context.Context, input CreateLocalizedSnapshotInput) (content.Snapshot, error) {
 	if strings.TrimSpace(input.ContentLocale) == "" {
 		return content.Snapshot{}, errors.New("content_locale is required")
 	}
@@ -216,6 +225,9 @@ func (s *Service) CreateLocalizedSnapshot(_ context.Context, input CreateLocaliz
 	}
 
 	s.store.Snapshots[snapshot.ID] = snapshot
+	if err := s.store.Persist(ctx); err != nil {
+		return content.Snapshot{}, err
+	}
 	return snapshot, nil
 }
 
@@ -292,7 +304,7 @@ func (s *Service) GetShot(_ context.Context, input GetShotInput) (content.Shot, 
 	return shot, nil
 }
 
-func (s *Service) UpdateShotStructure(_ context.Context, input UpdateShotStructureInput) (content.Shot, error) {
+func (s *Service) UpdateShotStructure(ctx context.Context, input UpdateShotStructureInput) (content.Shot, error) {
 	if s == nil || s.store == nil {
 		return content.Shot{}, errors.New("contentapp: store is required")
 	}
@@ -312,5 +324,8 @@ func (s *Service) UpdateShotStructure(_ context.Context, input UpdateShotStructu
 	}
 	record.UpdatedAt = time.Now().UTC()
 	s.store.Shots[shotID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return content.Shot{}, err
+	}
 	return record, nil
 }

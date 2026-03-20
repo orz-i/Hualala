@@ -47,7 +47,7 @@ func NewService(store *db.MemoryStore) *Service {
 	return &Service{store: store}
 }
 
-func (s *Service) CreateProject(_ context.Context, input CreateProjectInput) (project.Project, error) {
+func (s *Service) CreateProject(ctx context.Context, input CreateProjectInput) (project.Project, error) {
 	if s == nil || s.store == nil {
 		return project.Project{}, errors.New("projectapp: store is required")
 	}
@@ -84,10 +84,13 @@ func (s *Service) CreateProject(_ context.Context, input CreateProjectInput) (pr
 	}
 
 	s.store.Projects[record.ID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return project.Project{}, err
+	}
 	return record, nil
 }
 
-func (s *Service) CreateEpisode(_ context.Context, input CreateEpisodeInput) (project.Episode, error) {
+func (s *Service) CreateEpisode(ctx context.Context, input CreateEpisodeInput) (project.Episode, error) {
 	if s == nil || s.store == nil {
 		return project.Episode{}, errors.New("projectapp: store is required")
 	}
@@ -115,6 +118,9 @@ func (s *Service) CreateEpisode(_ context.Context, input CreateEpisodeInput) (pr
 	}
 
 	s.store.Episodes[record.ID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return project.Episode{}, err
+	}
 	return record, nil
 }
 

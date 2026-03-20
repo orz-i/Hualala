@@ -52,7 +52,7 @@ func NewService(store *db.MemoryStore) *Service {
 	return &Service{store: store}
 }
 
-func (s *Service) CreateShotReview(_ context.Context, input CreateShotReviewInput) (review.ShotReview, error) {
+func (s *Service) CreateShotReview(ctx context.Context, input CreateShotReviewInput) (review.ShotReview, error) {
 	if s == nil || s.store == nil {
 		return review.ShotReview{}, errors.New("reviewapp: store is required")
 	}
@@ -78,6 +78,9 @@ func (s *Service) CreateShotReview(_ context.Context, input CreateShotReviewInpu
 		UpdatedAt:       now,
 	}
 	s.store.Reviews[record.ID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return review.ShotReview{}, err
+	}
 	s.publishReviewEvent("shot.review.created", shotExecution.OrgID, shotExecution.ProjectID, "shot_review", record.ID, map[string]any{
 		"shot_execution_id": record.ShotExecutionID,
 		"review_id":         record.ID,
@@ -87,7 +90,7 @@ func (s *Service) CreateShotReview(_ context.Context, input CreateShotReviewInpu
 	return record, nil
 }
 
-func (s *Service) CreateEvaluationRun(_ context.Context, input CreateEvaluationRunInput) (review.EvaluationRun, error) {
+func (s *Service) CreateEvaluationRun(ctx context.Context, input CreateEvaluationRunInput) (review.EvaluationRun, error) {
 	if s == nil || s.store == nil {
 		return review.EvaluationRun{}, errors.New("reviewapp: store is required")
 	}
@@ -111,6 +114,9 @@ func (s *Service) CreateEvaluationRun(_ context.Context, input CreateEvaluationR
 	}
 
 	s.store.EvaluationRuns[record.ID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return review.EvaluationRun{}, err
+	}
 	s.publishReviewEvent("shot.evaluation.created", shotExecution.OrgID, shotExecution.ProjectID, "evaluation_run", record.ID, map[string]any{
 		"shot_execution_id": record.ShotExecutionID,
 		"evaluation_run_id": record.ID,

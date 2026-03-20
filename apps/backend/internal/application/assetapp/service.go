@@ -77,7 +77,7 @@ func NewService(store *db.MemoryStore) *Service {
 	return &Service{store: store}
 }
 
-func (s *Service) CreateImportBatch(_ context.Context, input CreateImportBatchInput) (asset.ImportBatch, error) {
+func (s *Service) CreateImportBatch(ctx context.Context, input CreateImportBatchInput) (asset.ImportBatch, error) {
 	if s == nil || s.store == nil {
 		return asset.ImportBatch{}, errors.New("assetapp: store is required")
 	}
@@ -98,10 +98,13 @@ func (s *Service) CreateImportBatch(_ context.Context, input CreateImportBatchIn
 	}
 
 	s.store.ImportBatches[record.ID] = record
+	if err := s.store.Persist(ctx); err != nil {
+		return asset.ImportBatch{}, err
+	}
 	return record, nil
 }
 
-func (s *Service) AddCandidateAsset(_ context.Context, input AddCandidateAssetInput) (asset.CandidateAsset, error) {
+func (s *Service) AddCandidateAsset(ctx context.Context, input AddCandidateAssetInput) (asset.CandidateAsset, error) {
 	shotExecution, ok := s.store.ShotExecutions[input.ShotExecutionID]
 	if !ok {
 		return asset.CandidateAsset{}, errors.New("assetapp: shot execution not found")
@@ -150,6 +153,9 @@ func (s *Service) AddCandidateAsset(_ context.Context, input AddCandidateAssetIn
 	shotExecution.UpdatedAt = now
 	s.store.ShotExecutions[shotExecution.ID] = shotExecution
 
+	if err := s.store.Persist(ctx); err != nil {
+		return asset.CandidateAsset{}, err
+	}
 	return candidate, nil
 }
 
@@ -187,7 +193,7 @@ func (s *Service) ListImportBatchItems(_ context.Context, input ListImportBatchI
 	return items, nil
 }
 
-func (s *Service) BatchConfirmImportBatchItems(_ context.Context, input BatchConfirmImportBatchItemsInput) ([]asset.ImportBatchItem, error) {
+func (s *Service) BatchConfirmImportBatchItems(ctx context.Context, input BatchConfirmImportBatchItemsInput) ([]asset.ImportBatchItem, error) {
 	if strings.TrimSpace(input.ImportBatchID) == "" {
 		return nil, errors.New("assetapp: import_batch_id is required")
 	}
@@ -218,6 +224,9 @@ func (s *Service) BatchConfirmImportBatchItems(_ context.Context, input BatchCon
 		return confirmedItems[i].ID < confirmedItems[j].ID
 	})
 
+	if err := s.store.Persist(ctx); err != nil {
+		return nil, err
+	}
 	return confirmedItems, nil
 }
 
