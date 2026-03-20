@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type CSSProperties } from "react";
+import type { AdminTranslator, LocaleCode } from "../../i18n";
 
 type BudgetSnapshot = {
   projectId: string;
@@ -38,9 +39,12 @@ type ShotReviewSummary = {
 type RecentChangeSummary = {
   id: string;
   kind: "billing" | "evaluation" | "review";
-  title: string;
-  detail: string;
   tone: "info" | "success" | "warning";
+  eventType?: string;
+  amountCents?: number;
+  status?: string;
+  failedChecksCount?: number;
+  conclusion?: string;
 };
 
 export type AdminOverviewViewModel = {
@@ -60,6 +64,9 @@ type BudgetFeedback = {
 
 type AdminOverviewPageProps = {
   overview: AdminOverviewViewModel;
+  locale: LocaleCode;
+  t: AdminTranslator;
+  onLocaleChange: (locale: LocaleCode) => void;
   onUpdateBudgetLimit?: (input: { projectId: string; limitCents: number }) => void;
   budgetFeedback?: BudgetFeedback;
 };
@@ -85,6 +92,9 @@ function formatCurrency(cents: number) {
 
 export function AdminOverviewPage({
   overview,
+  locale,
+  t,
+  onLocaleChange,
   onUpdateBudgetLimit,
   budgetFeedback,
 }: AdminOverviewPageProps) {
@@ -123,6 +133,34 @@ export function AdminOverviewPage({
             color: "#1d4ed8",
           };
 
+  const renderRecentChangeTitle = (change: RecentChangeSummary) => {
+    if (change.kind === "billing") {
+      return t("changes.kind.billing");
+    }
+    if (change.kind === "evaluation") {
+      return t("changes.kind.evaluation");
+    }
+    return t("changes.kind.review");
+  };
+
+  const renderRecentChangeDetail = (change: RecentChangeSummary) => {
+    if (change.kind === "billing") {
+      return t("changes.detail.billing", {
+        eventType: change.eventType ?? "pending",
+        amount: formatCurrency(change.amountCents ?? 0),
+      });
+    }
+    if (change.kind === "evaluation") {
+      return t("changes.detail.evaluation", {
+        status: change.status ?? "pending",
+        count: change.failedChecksCount ?? 0,
+      });
+    }
+    return t("changes.detail.review", {
+      conclusion: change.conclusion ?? "pending",
+    });
+  };
+
   return (
     <main
       style={{
@@ -143,15 +181,47 @@ export function AdminOverviewPage({
         }}
       >
         <header style={panelStyle}>
-          <p style={{ margin: 0, fontSize: "0.8rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "#0f766e" }}>
-            Admin Overview
-          </p>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: "16px",
+              flexWrap: "wrap",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "0.8rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "#0f766e" }}>
+              {t("app.badge")}
+            </p>
+            <label style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}>
+              <span>{t("locale.label")}</span>
+              <select
+                data-testid="ui-locale-select"
+                value={locale}
+                onChange={(event) => {
+                  onLocaleChange(event.target.value as LocaleCode);
+                }}
+                style={{
+                  borderRadius: "12px",
+                  border: "1px solid rgba(148, 163, 184, 0.45)",
+                  padding: "8px 10px",
+                  font: "inherit",
+                  background: "#ffffff",
+                }}
+              >
+                <option value="zh-CN">{t("locale.option.zh-CN")}</option>
+                <option value="en-US">{t("locale.option.en-US")}</option>
+              </select>
+            </label>
+          </div>
           <h1 style={{ margin: "12px 0 8px", fontSize: "2rem" }}>
             {overview.budgetSnapshot.projectId}
           </h1>
           <p style={{ margin: 0, color: "#334155" }}>
-            镜头执行 <strong>{overview.reviewSummary.shotExecutionId}</strong> 当前评审结论为{" "}
-            <strong>{overview.reviewSummary.latestConclusion}</strong>
+            {t("app.summary", {
+              shotExecutionId: overview.reviewSummary.shotExecutionId,
+              latestConclusion: overview.reviewSummary.latestConclusion,
+            })}
           </p>
         </header>
 
@@ -163,13 +233,13 @@ export function AdminOverviewPage({
           }}
         >
           <article style={panelStyle}>
-            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>预算概览</h2>
-            <p style={metricStyle}>预算上限：{formatCurrency(overview.budgetSnapshot.limitCents)}</p>
-            <p style={metricStyle}>已预占：{formatCurrency(overview.budgetSnapshot.reservedCents)}</p>
-            <p style={metricStyle}>剩余额度：{formatCurrency(overview.budgetSnapshot.remainingBudgetCents)}</p>
+            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("budget.panel.title")}</h2>
+            <p style={metricStyle}>{t("budget.limit", { amount: formatCurrency(overview.budgetSnapshot.limitCents) })}</p>
+            <p style={metricStyle}>{t("budget.reserved", { amount: formatCurrency(overview.budgetSnapshot.reservedCents) })}</p>
+            <p style={metricStyle}>{t("budget.remaining", { amount: formatCurrency(overview.budgetSnapshot.remainingBudgetCents) })}</p>
             <div style={{ marginTop: "16px", display: "grid", gap: "10px" }}>
               <label htmlFor={budgetInputId} style={{ fontSize: "0.9rem", color: "#334155" }}>
-                预算上限（元）
+                {t("budget.input.label")}
               </label>
               <input
                 id={budgetInputId}
@@ -208,7 +278,7 @@ export function AdminOverviewPage({
                   });
                 }}
               >
-                更新预算
+                {t("budget.button.update")}
               </button>
               {budgetFeedback ? (
                 <p
@@ -225,19 +295,21 @@ export function AdminOverviewPage({
           </article>
 
           <article style={panelStyle}>
-            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>计费观测</h2>
-            <p style={metricStyle}>{overview.usageRecords.length} 条用量记录</p>
-            <p style={metricStyle}>{overview.billingEvents.length} 条计费事件</p>
+            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("billing.panel.title")}</h2>
+            <p style={metricStyle}>{t("billing.usageRecordsCount", { count: overview.usageRecords.length })}</p>
+            <p style={metricStyle}>{t("billing.eventsCount", { count: overview.billingEvents.length })}</p>
             <p style={metricStyle}>
-              最近事件：{overview.billingEvents[0]?.eventType ?? "pending"}
+              {t("billing.latestEvent", {
+                eventType: overview.billingEvents[0]?.eventType ?? "pending",
+              })}
             </p>
           </article>
 
           <article style={panelStyle}>
-            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>评审摘要</h2>
-            <p style={metricStyle}>结论：{overview.reviewSummary.latestConclusion}</p>
-            <p style={metricStyle}>最近评估：{latestEvaluation?.status ?? "pending"}</p>
-            <p style={metricStyle}>失败检查：{latestEvaluation?.failedChecks.length ?? 0}</p>
+            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("review.panel.title")}</h2>
+            <p style={metricStyle}>{t("review.conclusion", { conclusion: overview.reviewSummary.latestConclusion })}</p>
+            <p style={metricStyle}>{t("review.latestEvaluation", { status: latestEvaluation?.status ?? "pending" })}</p>
+            <p style={metricStyle}>{t("review.failedChecks", { count: latestEvaluation?.failedChecks.length ?? 0 })}</p>
           </article>
         </section>
 
@@ -249,7 +321,7 @@ export function AdminOverviewPage({
           }}
         >
           <article style={panelStyle}>
-            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>最近变更</h2>
+            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("changes.panel.title")}</h2>
             <div style={{ display: "grid", gap: "12px" }}>
               {overview.recentChanges.map((change) => (
                 <article
@@ -262,15 +334,15 @@ export function AdminOverviewPage({
                     ...recentChangePalette(change.tone),
                   }}
                 >
-                  <strong>{change.title}</strong>
-                  <span>{change.detail}</span>
+                  <strong>{renderRecentChangeTitle(change)}</strong>
+                  <span>{renderRecentChangeDetail(change)}</span>
                 </article>
               ))}
             </div>
           </article>
 
           <article style={panelStyle}>
-            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>用量记录</h2>
+            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("usage.panel.title")}</h2>
             <div style={{ display: "grid", gap: "12px" }}>
               {overview.usageRecords.map((record) => (
                 <article
@@ -293,7 +365,7 @@ export function AdminOverviewPage({
           </article>
 
           <article style={panelStyle}>
-            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>评审记录</h2>
+            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("reviews.panel.title")}</h2>
             <div style={{ display: "grid", gap: "12px" }}>
               {overview.shotReviews.map((review) => (
                 <article

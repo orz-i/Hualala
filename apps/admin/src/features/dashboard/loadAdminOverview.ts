@@ -68,10 +68,6 @@ function resolveBaseUrl(baseUrl?: string) {
   return "";
 }
 
-function formatCurrency(cents: number) {
-  return `${(cents / 100).toFixed(2)} 元`;
-}
-
 async function postJson<TResponse>(
   path: string,
   body: Record<string, string>,
@@ -189,49 +185,47 @@ export async function loadAdminOverview({
         ? {
             id: `billing-${billingEvents[0].id || "latest"}`,
             kind: "billing" as const,
-            title: "最近计费事件",
-            detail: `${billingEvents[0].eventType} · ${formatCurrency(billingEvents[0].amountCents)}`,
             tone: "info" as const,
+            eventType: billingEvents[0].eventType,
+            amountCents: billingEvents[0].amountCents,
           }
         : {
             id: "billing-empty",
             kind: "billing" as const,
-            title: "最近计费事件",
-            detail: "pending · 0.00 元",
             tone: "info" as const,
+            eventType: "pending",
+            amountCents: 0,
           },
       evaluationRuns[0]
         ? {
             id: `evaluation-${evaluationRuns[0].id || "latest"}`,
             kind: "evaluation" as const,
-            title: "最近评估结果",
-            detail: `${evaluationRuns[0].status} · ${evaluationRuns[0].failedChecks.length} 个失败检查`,
             tone: evaluationRuns[0].status === "passed" ? ("success" as const) : ("warning" as const),
+            status: evaluationRuns[0].status,
+            failedChecksCount: evaluationRuns[0].failedChecks.length,
           }
         : {
             id: "evaluation-empty",
             kind: "evaluation" as const,
-            title: "最近评估结果",
-            detail: "pending · 0 个失败检查",
             tone: "warning" as const,
+            status: "pending",
+            failedChecksCount: 0,
           },
       shotReviews[0]
         ? {
             id: `review-${shotReviews[0].id || "latest"}`,
             kind: "review" as const,
-            title: "最近评审结论",
-            detail: shotReviews[0].conclusion,
             tone: shotReviews[0].conclusion === "approved" ? ("success" as const) : ("warning" as const),
+            conclusion: shotReviews[0].conclusion,
           }
         : {
             id: "review-empty",
             kind: "review" as const,
-            title: "最近评审结论",
-            detail: summaryPayload.summary?.latestConclusion ?? "pending",
             tone:
               (summaryPayload.summary?.latestConclusion ?? "pending") === "approved"
                 ? ("success" as const)
                 : ("warning" as const),
+            conclusion: summaryPayload.summary?.latestConclusion ?? "pending",
           },
     ],
   };

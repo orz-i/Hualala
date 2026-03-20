@@ -12,17 +12,22 @@ test("creator smoke: shot workbench actions complete with refreshed feedback", a
 
   await expect(page.getByText("shot-exec-live-1")).toBeVisible();
   await expect(page.getByText("1 个候选素材")).toBeVisible();
+  await page.getByTestId("ui-locale-select").selectOption("en-US");
+  await expect(page.getByRole("heading", { name: "Review Outcome" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId("ui-locale-select")).toHaveValue("en-US");
+  await expect(page.getByRole("button", { name: "Run Gate Checks" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Gate 检查" }).click();
-  await expect(page.getByText("正在执行 Gate 检查")).toBeVisible();
-  await expect(page.getByText("Gate 检查已完成")).toBeVisible();
-  await expect(page.getByText("通过检查", { exact: true })).toBeVisible();
-  await expect(page.getByText("未通过检查", { exact: true })).toBeVisible();
-  await expect(page.getByText("最新评审结论：passed").first()).toBeVisible();
-  await expect(page.getByText("最近评估：passed").first()).toBeVisible();
+  await page.getByRole("button", { name: "Run Gate Checks" }).click();
+  await expect(page.getByText("Running gate checks")).toBeVisible();
+  await expect(page.getByText("Gate checks completed")).toBeVisible();
+  await expect(page.getByText("Passed checks", { exact: true })).toBeVisible();
+  await expect(page.getByText("Failed checks", { exact: true })).toBeVisible();
+  await expect(page.getByText("Latest review outcome：passed").first()).toBeVisible();
+  await expect(page.getByText("Latest evaluation：passed").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "提交评审" }).click();
-  await expect(page.getByText("提交评审已完成")).toBeVisible();
+  await page.getByRole("button", { name: "Submit for review" }).click();
+  await expect(page.getByText("Submitted for review")).toBeVisible();
   await expect(page.getByText("submitted_for_review")).toBeVisible();
 });
 

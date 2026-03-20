@@ -1,4 +1,5 @@
 import { startTransition, useEffect, useState } from "react";
+import { useLocaleState } from "../i18n";
 import {
   ImportBatchWorkbenchPage,
   type ImportBatchWorkbenchViewModel,
@@ -21,6 +22,7 @@ import {
 import { ShotWorkbenchPage, type ShotWorkbenchViewModel } from "../features/shot-workbench/ShotWorkbenchPage";
 
 export function App() {
+  const { locale, setLocale, t } = useLocaleState();
   const [shotWorkbench, setShotWorkbench] = useState<ShotWorkbenchViewModel | null>(null);
   const [importWorkbench, setImportWorkbench] = useState<ImportBatchWorkbenchViewModel | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -103,19 +105,22 @@ export function App() {
   };
 
   if (errorMessage) {
-    return <main style={{ padding: "32px" }}>工作台加载失败：{errorMessage}</main>;
+    return <main style={{ padding: "32px" }}>{t("app.error.load", { message: errorMessage })}</main>;
   }
 
   if (importWorkbench) {
     return (
       <ImportBatchWorkbenchPage
         workbench={importWorkbench}
+        locale={locale}
+        t={t}
+        onLocaleChange={setLocale}
         feedback={importActionFeedback ?? undefined}
         onConfirmMatches={async (input) => {
           startTransition(() => {
             setImportActionFeedback({
               tone: "pending",
-              message: "正在确认匹配",
+              message: t("feedback.pending.confirmMatches"),
             });
           });
           try {
@@ -124,8 +129,9 @@ export function App() {
             startTransition(() => {
               setImportActionFeedback(
                 buildImportFeedback({
+                  t,
                   tone: "success",
-                  message: "匹配确认已完成",
+                  messageKey: "feedback.success.confirmMatches",
                   latestImportBatchStatus: nextWorkbench?.importBatch.status,
                   latestShotExecutionStatus: nextWorkbench?.shotExecutions[0]?.status ?? "pending",
                   latestPrimaryAssetId: nextWorkbench?.shotExecutions[0]?.primaryAssetId,
@@ -138,7 +144,7 @@ export function App() {
             startTransition(() => {
               setImportActionFeedback({
                 tone: "error",
-                message: `匹配确认失败：${message}`,
+                message: t("feedback.error.confirmMatches", { message }),
               });
             });
           }
@@ -147,7 +153,7 @@ export function App() {
           startTransition(() => {
             setImportActionFeedback({
               tone: "pending",
-              message: "正在设为主素材",
+              message: t("feedback.pending.selectPrimary"),
             });
           });
           try {
@@ -156,8 +162,9 @@ export function App() {
             startTransition(() => {
               setImportActionFeedback(
                 buildImportFeedback({
+                  t,
                   tone: "success",
-                  message: "主素材选择已完成",
+                  messageKey: "feedback.success.selectPrimary",
                   latestImportBatchStatus: nextWorkbench?.importBatch.status,
                   latestShotExecutionStatus: nextWorkbench?.shotExecutions[0]?.status ?? "pending",
                   latestPrimaryAssetId: nextWorkbench?.shotExecutions[0]?.primaryAssetId,
@@ -170,7 +177,7 @@ export function App() {
             startTransition(() => {
               setImportActionFeedback({
                 tone: "error",
-                message: `主素材选择失败：${message}`,
+                message: t("feedback.error.selectPrimary", { message }),
               });
             });
           }
@@ -183,12 +190,15 @@ export function App() {
     return (
       <ShotWorkbenchPage
         workbench={shotWorkbench}
+        locale={locale}
+        t={t}
+        onLocaleChange={setLocale}
         feedback={shotActionFeedback ?? undefined}
         onRunSubmissionGateChecks={async (input) => {
           startTransition(() => {
             setShotActionFeedback({
               tone: "pending",
-              message: "正在执行 Gate 检查",
+              message: t("feedback.pending.runGateChecks"),
             });
           });
           try {
@@ -197,8 +207,9 @@ export function App() {
             startTransition(() => {
               setShotActionFeedback(
                 buildShotFeedback({
+                  t,
                   tone: "success",
-                  message: "Gate 检查已完成",
+                  messageKey: "feedback.success.runGateChecks",
                   passedChecks: result.passedChecks,
                   failedChecks: result.failedChecks,
                   latestConclusion: nextWorkbench.reviewSummary.latestConclusion,
@@ -212,7 +223,7 @@ export function App() {
             startTransition(() => {
               setShotActionFeedback({
                 tone: "error",
-                message: `Gate 检查失败：${message}`,
+                message: t("feedback.error.runGateChecks", { message }),
               });
             });
           }
@@ -221,7 +232,7 @@ export function App() {
           startTransition(() => {
             setShotActionFeedback({
               tone: "pending",
-              message: "正在提交评审",
+              message: t("feedback.pending.submitReview"),
             });
           });
           try {
@@ -230,8 +241,9 @@ export function App() {
             startTransition(() => {
               setShotActionFeedback(
                 buildShotFeedback({
+                  t,
                   tone: "success",
-                  message: "提交评审已完成",
+                  messageKey: "feedback.success.submitReview",
                   latestConclusion: nextWorkbench.reviewSummary.latestConclusion,
                   latestEvaluationStatus: nextWorkbench.latestEvaluationRun?.status ?? "pending",
                 }),
@@ -243,7 +255,7 @@ export function App() {
             startTransition(() => {
               setShotActionFeedback({
                 tone: "error",
-                message: `提交评审失败：${message}`,
+                message: t("feedback.error.submitReview", { message }),
               });
             });
           }
@@ -253,12 +265,19 @@ export function App() {
   }
 
   if (new URLSearchParams(window.location.search).get("importBatchId")) {
-    return <main style={{ padding: "32px" }}>正在加载导入工作台</main>;
+    return <main style={{ padding: "32px" }}>{t("app.loading.import")}</main>;
   }
 
   if (!shotWorkbench) {
-    return <main style={{ padding: "32px" }}>正在加载镜头工作台</main>;
+    return <main style={{ padding: "32px" }}>{t("app.loading.shot")}</main>;
   }
 
-  return <ShotWorkbenchPage workbench={shotWorkbench} />;
+  return (
+    <ShotWorkbenchPage
+      workbench={shotWorkbench}
+      locale={locale}
+      t={t}
+      onLocaleChange={setLocale}
+    />
+  );
 }

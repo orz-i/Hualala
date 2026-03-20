@@ -7,13 +7,13 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "test:e2e:admin": "playwright test tests/e2e/admin-smoke.spec.ts",
-    "test:e2e:creator": "playwright test tests/e2e/creator-smoke.spec.ts",
-    "test:e2e:phase1": "playwright test tests/e2e/phase1-acceptance.spec.ts",
+    "test:e2e:admin": "node tooling/scripts/run-playwright-suite.mjs admin test tests/e2e/admin-smoke.spec.ts",
+    "test:e2e:creator": "node tooling/scripts/run-playwright-suite.mjs creator test tests/e2e/creator-smoke.spec.ts",
+    "test:e2e:phase1": "node tooling/scripts/run-playwright-suite.mjs all test tests/e2e/phase1-acceptance.spec.ts",
     "dev": "turbo run dev",
     "proto:lint": "node tooling/scripts/run-buf.mjs lint",
     "proto:gen": "node tooling/scripts/run-buf.mjs generate",
-    "i18n:check": "node -e \"console.log('i18n parity placeholder')\""
+    "i18n:check": "node tooling/scripts/i18n_key_parity_check.mjs"
   },
   "devDependencies": {
     "@bufbuild/buf": "^1.66.1",

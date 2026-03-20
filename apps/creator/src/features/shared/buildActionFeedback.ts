@@ -1,4 +1,5 @@
 import type { ActionFeedbackModel, ActionFeedbackSection } from "./ActionFeedback";
+import type { CreatorMessageKey, CreatorTranslator } from "../../i18n";
 
 type FeedbackSectionInput = {
   label: string;
@@ -6,8 +7,9 @@ type FeedbackSectionInput = {
 };
 
 type BuildShotFeedbackOptions = {
+  t: CreatorTranslator;
   tone: ActionFeedbackModel["tone"];
-  message: string;
+  messageKey: CreatorMessageKey;
   passedChecks?: string[];
   failedChecks?: string[];
   latestConclusion?: string;
@@ -15,8 +17,9 @@ type BuildShotFeedbackOptions = {
 };
 
 type BuildImportFeedbackOptions = {
+  t: CreatorTranslator;
   tone: ActionFeedbackModel["tone"];
-  message: string;
+  messageKey: CreatorMessageKey;
   latestImportBatchStatus?: string;
   latestShotExecutionStatus?: string;
   latestPrimaryAssetId?: string;
@@ -41,8 +44,9 @@ export function createFeedbackSections(
 }
 
 export function buildShotFeedback({
+  t,
   tone,
-  message,
+  messageKey,
   passedChecks,
   failedChecks,
   latestConclusion,
@@ -50,30 +54,31 @@ export function buildShotFeedback({
 }: BuildShotFeedbackOptions): ActionFeedbackModel {
   return {
     tone,
-    message,
+    message: t(messageKey),
     sections: createFeedbackSections([
-      { label: "通过检查", items: passedChecks },
-      { label: "未通过检查", items: failedChecks },
-      { label: "最新评审结论", items: latestConclusion },
-      { label: "最近评估", items: latestEvaluationStatus },
+      { label: t("feedback.section.passedChecks"), items: passedChecks },
+      { label: t("feedback.section.failedChecks"), items: failedChecks },
+      { label: t("feedback.section.latestConclusion"), items: latestConclusion },
+      { label: t("feedback.section.latestEvaluation"), items: latestEvaluationStatus },
     ]),
   };
 }
 
 export function buildImportFeedback({
+  t,
   tone,
-  message,
+  messageKey,
   latestImportBatchStatus,
   latestShotExecutionStatus,
   latestPrimaryAssetId,
 }: BuildImportFeedbackOptions): ActionFeedbackModel {
   return {
     tone,
-    message,
+    message: t(messageKey),
     sections: createFeedbackSections([
-      { label: "当前批次状态", items: latestImportBatchStatus },
-      { label: "当前执行状态", items: latestShotExecutionStatus },
-      { label: "当前主素材", items: latestPrimaryAssetId || undefined },
+      { label: t("feedback.section.importBatchStatus"), items: latestImportBatchStatus },
+      { label: t("feedback.section.executionStatus"), items: latestShotExecutionStatus },
+      { label: t("feedback.section.primaryAsset"), items: latestPrimaryAssetId || undefined },
     ]),
   };
 }

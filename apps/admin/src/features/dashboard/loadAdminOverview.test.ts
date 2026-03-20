@@ -98,23 +98,22 @@ describe("loadAdminOverview", () => {
       {
         id: "billing-event-1",
         kind: "billing",
-        title: "最近计费事件",
-        detail: "budget_reserved · 180.00 元",
         tone: "info",
+        eventType: "budget_reserved",
+        amountCents: 18000,
       },
       {
         id: "evaluation-eval-1",
         kind: "evaluation",
-        title: "最近评估结果",
-        detail: "passed · 0 个失败检查",
         tone: "success",
+        status: "passed",
+        failedChecksCount: 0,
       },
       {
         id: "review-review-1",
         kind: "review",
-        title: "最近评审结论",
-        detail: "approved",
         tone: "success",
+        conclusion: "approved",
       },
     ]);
   });

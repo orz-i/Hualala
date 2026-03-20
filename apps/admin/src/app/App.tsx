@@ -1,4 +1,5 @@
 import { startTransition, useEffect, useState } from "react";
+import { useLocaleState } from "../i18n";
 import {
   AdminOverviewPage,
   type AdminOverviewViewModel,
@@ -7,6 +8,7 @@ import { loadAdminOverview } from "../features/dashboard/loadAdminOverview";
 import { updateBudgetPolicy } from "../features/dashboard/mutateBudgetPolicy";
 
 export function App() {
+  const { locale, setLocale, t } = useLocaleState();
   const [overview, setOverview] = useState<AdminOverviewViewModel | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [budgetFeedback, setBudgetFeedback] = useState<{
@@ -57,22 +59,25 @@ export function App() {
   }, [projectId, shotExecutionId]);
 
   if (errorMessage) {
-    return <main style={{ padding: "32px" }}>管理概览加载失败：{errorMessage}</main>;
+    return <main style={{ padding: "32px" }}>{t("app.error.load", { message: errorMessage })}</main>;
   }
 
   if (!overview) {
-    return <main style={{ padding: "32px" }}>正在加载管理概览</main>;
+    return <main style={{ padding: "32px" }}>{t("app.loading")}</main>;
   }
 
   return (
     <AdminOverviewPage
       overview={overview}
+      locale={locale}
+      t={t}
+      onLocaleChange={setLocale}
       budgetFeedback={budgetFeedback ?? undefined}
       onUpdateBudgetLimit={async (input) => {
         startTransition(() => {
           setBudgetFeedback({
             tone: "pending",
-            message: "正在更新预算策略",
+            message: t("budget.feedback.pending"),
           });
         });
         try {
@@ -85,7 +90,7 @@ export function App() {
           startTransition(() => {
             setBudgetFeedback({
               tone: "success",
-              message: "预算策略已更新",
+              message: t("budget.feedback.success"),
             });
           });
         } catch (error: unknown) {
@@ -94,7 +99,7 @@ export function App() {
           startTransition(() => {
             setBudgetFeedback({
               tone: "error",
-              message: `预算策略更新失败：${message}`,
+              message: t("budget.feedback.error", { message }),
             });
           });
         }

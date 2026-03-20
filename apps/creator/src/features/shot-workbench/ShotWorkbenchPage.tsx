@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { CreatorTranslator, LocaleCode } from "../../i18n";
 import { ActionFeedback, type ActionFeedbackModel } from "../shared/ActionFeedback";
 
 type CandidateAssetSummary = {
@@ -31,6 +32,9 @@ export type ShotWorkbenchViewModel = {
 
 type ShotWorkbenchPageProps = {
   workbench: ShotWorkbenchViewModel;
+  locale: LocaleCode;
+  t: CreatorTranslator;
+  onLocaleChange: (locale: LocaleCode) => void;
   onRunSubmissionGateChecks?: (input: { shotExecutionId: string }) => void;
   onSubmitShotForReview?: (input: { shotExecutionId: string }) => void;
   feedback?: ActionFeedbackModel;
@@ -53,6 +57,9 @@ const metricStyle: CSSProperties = {
 
 export function ShotWorkbenchPage({
   workbench,
+  locale,
+  t,
+  onLocaleChange,
   onRunSubmissionGateChecks,
   onSubmitShotForReview,
   feedback,
@@ -79,12 +86,45 @@ export function ShotWorkbenchPage({
         }}
       >
         <header style={panelStyle}>
-          <p style={{ margin: 0, fontSize: "0.8rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "#92400e" }}>
-            Creator Workbench
-          </p>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: "16px",
+              flexWrap: "wrap",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "0.8rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "#92400e" }}>
+              {t("shot.badge")}
+            </p>
+            <label style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}>
+              <span>{t("locale.label")}</span>
+              <select
+                data-testid="ui-locale-select"
+                value={locale}
+                onChange={(event) => {
+                  onLocaleChange(event.target.value as LocaleCode);
+                }}
+                style={{
+                  borderRadius: "12px",
+                  border: "1px solid rgba(148, 163, 184, 0.45)",
+                  padding: "8px 10px",
+                  font: "inherit",
+                  background: "#ffffff",
+                }}
+              >
+                <option value="zh-CN">{t("locale.option.zh-CN")}</option>
+                <option value="en-US">{t("locale.option.en-US")}</option>
+              </select>
+            </label>
+          </div>
           <h1 style={{ margin: "12px 0 8px", fontSize: "2rem" }}>{workbench.shotExecution.id}</h1>
           <p style={{ margin: 0, color: "#334155" }}>
-            Shot {workbench.shotExecution.shotId} 当前处于 <strong>{workbench.shotExecution.status}</strong>
+            {t("shot.header", {
+              shotId: workbench.shotExecution.shotId,
+              status: workbench.shotExecution.status,
+            })}
           </p>
           {feedback ? <ActionFeedback feedback={feedback} /> : null}
         </header>
@@ -93,24 +133,26 @@ export function ShotWorkbenchPage({
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "16px",
-          }}
-        >
-          <article style={panelStyle}>
-            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>候选素材</h2>
-            <p style={metricStyle}>{workbench.candidateAssets.length} 个候选素材</p>
-            <p style={metricStyle}>主素材：{workbench.shotExecution.primaryAssetId}</p>
-          </article>
+          gap: "16px",
+        }}
+      >
+        <article style={panelStyle}>
+          <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("shot.candidates.title")}</h2>
+          <p style={metricStyle}>{t("shot.candidates.count", { count: workbench.candidateAssets.length })}</p>
+          <p style={metricStyle}>
+            {t("shot.candidates.primaryAsset", {
+              assetId: workbench.shotExecution.primaryAssetId,
+            })}
+          </p>
+        </article>
 
-          <article style={panelStyle}>
-            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>评审结论</h2>
-            <p style={metricStyle}>
+        <article style={panelStyle}>
+          <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("shot.review.title")}</h2>
+          <p style={metricStyle}>
               <strong>{workbench.reviewSummary.latestConclusion || "pending"}</strong>
-            </p>
-            <p style={metricStyle}>
-              最近评估：<strong>{latestEvaluationStatus}</strong>
-            </p>
-            <div style={{ display: "flex", gap: "12px", marginTop: "16px", flexWrap: "wrap" }}>
+          </p>
+          <p style={metricStyle}>{t("shot.review.latestEvaluation", { status: latestEvaluationStatus })}</p>
+          <div style={{ display: "flex", gap: "12px", marginTop: "16px", flexWrap: "wrap" }}>
               <button
                 type="button"
                 style={{
@@ -130,7 +172,7 @@ export function ShotWorkbenchPage({
                   });
                 }}
               >
-                Gate 检查
+                {t("shot.actions.runGateChecks")}
               </button>
               <button
                 type="button"
@@ -151,14 +193,14 @@ export function ShotWorkbenchPage({
                   });
                 }}
               >
-                提交评审
+                {t("shot.actions.submitReview")}
               </button>
             </div>
           </article>
         </section>
 
         <section style={panelStyle}>
-          <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>候选清单</h2>
+          <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("shot.list.title")}</h2>
           <div style={{ display: "grid", gap: "12px" }}>
             {workbench.candidateAssets.map((candidate) => (
               <article

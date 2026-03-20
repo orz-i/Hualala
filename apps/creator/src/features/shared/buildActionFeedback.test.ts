@@ -3,6 +3,7 @@ import {
   buildShotFeedback,
   createFeedbackSections,
 } from "./buildActionFeedback";
+import { createTranslator } from "../../i18n";
 
 describe("buildActionFeedback", () => {
   it("omits empty sections when creating feedback sections", () => {
@@ -15,11 +16,12 @@ describe("buildActionFeedback", () => {
     ).toEqual([{ label: "有效值", items: "confirmed" }]);
   });
 
-  it("builds shot feedback with gate checks and review summary", () => {
+  it("builds shot feedback with gate checks and review summary in zh-CN", () => {
     expect(
       buildShotFeedback({
+        t: createTranslator("zh-CN"),
         tone: "success",
-        message: "Gate 检查已完成",
+        messageKey: "feedback.success.runGateChecks",
         passedChecks: ["asset_selected"],
         failedChecks: ["copyright_missing"],
         latestConclusion: "approved",
@@ -37,21 +39,22 @@ describe("buildActionFeedback", () => {
     });
   });
 
-  it("builds import feedback without redundant primary asset section", () => {
+  it("builds import feedback without redundant primary asset section in en-US", () => {
     expect(
       buildImportFeedback({
+        t: createTranslator("en-US"),
         tone: "success",
-        message: "匹配确认已完成",
+        messageKey: "feedback.success.confirmMatches",
         latestImportBatchStatus: "confirmed",
         latestShotExecutionStatus: "candidate_ready",
         latestPrimaryAssetId: "",
       }),
     ).toEqual({
       tone: "success",
-      message: "匹配确认已完成",
+      message: "Matches confirmed",
       sections: [
-        { label: "当前批次状态", items: "confirmed" },
-        { label: "当前执行状态", items: "candidate_ready" },
+        { label: "Current batch status", items: "confirmed" },
+        { label: "Current execution status", items: "candidate_ready" },
       ],
     });
   });

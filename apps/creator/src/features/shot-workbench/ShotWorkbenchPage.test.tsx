@@ -1,35 +1,41 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { createTranslator } from "../../i18n";
 import { ShotWorkbenchPage } from "./ShotWorkbenchPage";
 
 describe("ShotWorkbenchPage", () => {
+  const workbench = {
+    shotExecution: {
+      id: "shot-exec-1",
+      shotId: "shot-1",
+      status: "submitted_for_review",
+      primaryAssetId: "asset-1",
+    },
+    candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
+    reviewSummary: {
+      latestConclusion: "approved",
+    },
+    latestEvaluationRun: {
+      id: "eval-1",
+      status: "passed",
+    },
+  };
+
   it("renders shot execution summary, candidate count, review conclusion, and evaluation status", () => {
     render(
       <ShotWorkbenchPage
-        workbench={{
-          shotExecution: {
-            id: "shot-exec-1",
-            shotId: "shot-1",
-            status: "submitted_for_review",
-            primaryAssetId: "asset-1",
-          },
-          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
-          reviewSummary: {
-            latestConclusion: "approved",
-          },
-          latestEvaluationRun: {
-            id: "eval-1",
-            status: "passed",
-          },
-        }}
+        workbench={workbench}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
       />,
     );
 
     expect(screen.getByText("shot-exec-1")).toBeInTheDocument();
-    expect(screen.getByText("submitted_for_review")).toBeInTheDocument();
+    expect(screen.getByText(/submitted_for_review/)).toBeInTheDocument();
     expect(screen.getByText("1 个候选素材")).toBeInTheDocument();
     expect(screen.getByText("approved")).toBeInTheDocument();
-    expect(screen.getByText("passed")).toBeInTheDocument();
-    expect(screen.getByText("asset-1")).toBeInTheDocument();
+    expect(screen.getAllByText("最近评估：passed").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("主素材：asset-1")).toBeInTheDocument();
   });
 
   it("triggers gate check and submit review actions for the current shot execution", () => {
@@ -38,22 +44,10 @@ describe("ShotWorkbenchPage", () => {
 
     render(
       <ShotWorkbenchPage
-        workbench={{
-          shotExecution: {
-            id: "shot-exec-1",
-            shotId: "shot-1",
-            status: "candidate_ready",
-            primaryAssetId: "asset-1",
-          },
-          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
-          reviewSummary: {
-            latestConclusion: "pending",
-          },
-          latestEvaluationRun: {
-            id: "eval-1",
-            status: "passed",
-          },
-        }}
+        workbench={workbench}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
         onRunSubmissionGateChecks={onRunSubmissionGateChecks}
         onSubmitShotForReview={onSubmitShotForReview}
       />,
@@ -73,22 +67,10 @@ describe("ShotWorkbenchPage", () => {
   it("renders a success or error feedback message when provided", () => {
     const { rerender } = render(
       <ShotWorkbenchPage
-        workbench={{
-          shotExecution: {
-            id: "shot-exec-1",
-            shotId: "shot-1",
-            status: "candidate_ready",
-            primaryAssetId: "asset-1",
-          },
-          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
-          reviewSummary: {
-            latestConclusion: "pending",
-          },
-          latestEvaluationRun: {
-            id: "eval-1",
-            status: "pending",
-          },
-        }}
+        workbench={workbench}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
         feedback={{
           tone: "success",
           message: "Gate 检查已完成",
@@ -108,26 +90,14 @@ describe("ShotWorkbenchPage", () => {
     expect(screen.getByText("未通过检查")).toBeInTheDocument();
     expect(screen.getByText("copyright_missing")).toBeInTheDocument();
     expect(screen.getByText("最新评审结论：approved")).toBeInTheDocument();
-    expect(screen.getByText("最近评估：passed")).toBeInTheDocument();
+    expect(screen.getAllByText("最近评估：passed").length).toBeGreaterThanOrEqual(1);
 
     rerender(
       <ShotWorkbenchPage
-        workbench={{
-          shotExecution: {
-            id: "shot-exec-1",
-            shotId: "shot-1",
-            status: "candidate_ready",
-            primaryAssetId: "asset-1",
-          },
-          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
-          reviewSummary: {
-            latestConclusion: "pending",
-          },
-          latestEvaluationRun: {
-            id: "eval-1",
-            status: "pending",
-          },
-        }}
+        workbench={workbench}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
         feedback={{
           tone: "error",
           message: "Gate 检查失败：network down",
@@ -136,5 +106,28 @@ describe("ShotWorkbenchPage", () => {
     );
 
     expect(screen.getByText("Gate 检查失败：network down")).toBeInTheDocument();
+  });
+
+  it("switches locale and renders english labels", () => {
+    const onLocaleChange = vi.fn();
+
+    render(
+      <ShotWorkbenchPage
+        workbench={workbench}
+        locale="en-US"
+        t={createTranslator("en-US")}
+        onLocaleChange={onLocaleChange}
+      />,
+    );
+
+    expect(screen.getByText("Creator Workbench")).toBeInTheDocument();
+    expect(screen.getByText("Review Outcome")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run Gate Checks" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("ui-locale-select"), {
+      target: { value: "zh-CN" },
+    });
+
+    expect(onLocaleChange).toHaveBeenCalledWith("zh-CN");
   });
 });

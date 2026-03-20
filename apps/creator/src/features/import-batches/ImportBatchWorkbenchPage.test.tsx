@@ -1,26 +1,32 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { createTranslator } from "../../i18n";
 import { ImportBatchWorkbenchPage } from "./ImportBatchWorkbenchPage";
 
 describe("ImportBatchWorkbenchPage", () => {
+  const workbench = {
+    importBatch: {
+      id: "batch-1",
+      status: "matched_pending_confirm",
+      sourceType: "upload_session",
+    },
+    uploadSessions: [{ id: "upload-session-1", status: "completed" }],
+    items: [{ id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" }],
+    candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
+    shotExecutions: [{ id: "shot-exec-1", status: "candidate_ready", primaryAssetId: "" }],
+  };
+
   it("renders import batch status, upload progress, candidate count, and shot execution state", () => {
     render(
       <ImportBatchWorkbenchPage
-        workbench={{
-          importBatch: {
-            id: "batch-1",
-            status: "matched_pending_confirm",
-            sourceType: "upload_session",
-          },
-          uploadSessions: [{ id: "upload-session-1", status: "completed" }],
-          items: [{ id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" }],
-          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
-          shotExecutions: [{ id: "shot-exec-1", status: "candidate_ready", primaryAssetId: "" }],
-        }}
+        workbench={workbench}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
       />,
     );
 
     expect(screen.getByText("batch-1")).toBeInTheDocument();
-    expect(screen.getByText("matched_pending_confirm")).toBeInTheDocument();
+    expect(screen.getByText(/matched_pending_confirm/)).toBeInTheDocument();
     expect(screen.getByText("1 个上传会话")).toBeInTheDocument();
     expect(screen.getByText("1 个候选素材")).toBeInTheDocument();
     expect(screen.getByText("candidate_ready")).toBeInTheDocument();
@@ -32,17 +38,10 @@ describe("ImportBatchWorkbenchPage", () => {
 
     render(
       <ImportBatchWorkbenchPage
-        workbench={{
-          importBatch: {
-            id: "batch-1",
-            status: "matched_pending_confirm",
-            sourceType: "upload_session",
-          },
-          uploadSessions: [{ id: "upload-session-1", status: "completed" }],
-          items: [{ id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" }],
-          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
-          shotExecutions: [{ id: "shot-exec-1", status: "candidate_ready", primaryAssetId: "" }],
-        }}
+        workbench={workbench}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
         onConfirmMatches={onConfirmMatches}
         onSelectPrimaryAsset={onSelectPrimaryAsset}
       />,
@@ -64,17 +63,10 @@ describe("ImportBatchWorkbenchPage", () => {
   it("renders success and error feedback messages when provided", () => {
     const { rerender } = render(
       <ImportBatchWorkbenchPage
-        workbench={{
-          importBatch: {
-            id: "batch-1",
-            status: "matched_pending_confirm",
-            sourceType: "upload_session",
-          },
-          uploadSessions: [{ id: "upload-session-1", status: "completed" }],
-          items: [{ id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" }],
-          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
-          shotExecutions: [{ id: "shot-exec-1", status: "candidate_ready", primaryAssetId: "" }],
-        }}
+        workbench={workbench}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
         feedback={{
           tone: "success",
           message: "匹配确认已完成",
@@ -94,17 +86,10 @@ describe("ImportBatchWorkbenchPage", () => {
 
     rerender(
       <ImportBatchWorkbenchPage
-        workbench={{
-          importBatch: {
-            id: "batch-1",
-            status: "matched_pending_confirm",
-            sourceType: "upload_session",
-          },
-          uploadSessions: [{ id: "upload-session-1", status: "completed" }],
-          items: [{ id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" }],
-          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
-          shotExecutions: [{ id: "shot-exec-1", status: "candidate_ready", primaryAssetId: "" }],
-        }}
+        workbench={workbench}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
         feedback={{
           tone: "error",
           message: "主素材选择失败：network down",
@@ -115,5 +100,28 @@ describe("ImportBatchWorkbenchPage", () => {
     expect(screen.getByText("主素材选择失败：network down")).toHaveStyle({
       color: "#991b1b",
     });
+  });
+
+  it("switches locale and renders english import labels", () => {
+    const onLocaleChange = vi.fn();
+
+    render(
+      <ImportBatchWorkbenchPage
+        workbench={workbench}
+        locale="en-US"
+        t={createTranslator("en-US")}
+        onLocaleChange={onLocaleChange}
+      />,
+    );
+
+    expect(screen.getByText("Import Workbench")).toBeInTheDocument();
+    expect(screen.getByText("Upload Sessions")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm matches" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("ui-locale-select"), {
+      target: { value: "zh-CN" },
+    });
+
+    expect(onLocaleChange).toHaveBeenCalledWith("zh-CN");
   });
 });

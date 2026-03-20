@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { CreatorTranslator, LocaleCode } from "../../i18n";
 import { ActionFeedback, type ActionFeedbackModel } from "../shared/ActionFeedback";
 
 type ImportBatchSummary = {
@@ -39,6 +40,9 @@ export type ImportBatchWorkbenchViewModel = {
 
 type ImportBatchWorkbenchPageProps = {
   workbench: ImportBatchWorkbenchViewModel;
+  locale: LocaleCode;
+  t: CreatorTranslator;
+  onLocaleChange: (locale: LocaleCode) => void;
   onConfirmMatches?: (input: { importBatchId: string; itemIds: string[] }) => void;
   onSelectPrimaryAsset?: (input: {
     shotExecutionId: string;
@@ -64,6 +68,9 @@ const metricStyle: CSSProperties = {
 
 export function ImportBatchWorkbenchPage({
   workbench,
+  locale,
+  t,
+  onLocaleChange,
   onConfirmMatches,
   onSelectPrimaryAsset,
   feedback,
@@ -92,23 +99,55 @@ export function ImportBatchWorkbenchPage({
         }}
       >
         <header style={panelStyle}>
-          <p
+          <div
             style={{
-              margin: 0,
-              fontSize: "0.8rem",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: "#1d4ed8",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: "16px",
+              flexWrap: "wrap",
             }}
           >
-            Import Workbench
-          </p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "0.8rem",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "#1d4ed8",
+              }}
+            >
+              {t("import.badge")}
+            </p>
+            <label style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}>
+              <span>{t("locale.label")}</span>
+              <select
+                data-testid="ui-locale-select"
+                value={locale}
+                onChange={(event) => {
+                  onLocaleChange(event.target.value as LocaleCode);
+                }}
+                style={{
+                  borderRadius: "12px",
+                  border: "1px solid rgba(148, 163, 184, 0.45)",
+                  padding: "8px 10px",
+                  font: "inherit",
+                  background: "#ffffff",
+                }}
+              >
+                <option value="zh-CN">{t("locale.option.zh-CN")}</option>
+                <option value="en-US">{t("locale.option.en-US")}</option>
+              </select>
+            </label>
+          </div>
           <h1 style={{ margin: "12px 0 8px", fontSize: "2rem" }}>
             {workbench.importBatch.id}
           </h1>
           <p style={{ margin: 0, color: "#334155" }}>
-            当前状态 <strong>{workbench.importBatch.status}</strong>，来源{" "}
-            <strong>{workbench.importBatch.sourceType}</strong>
+            {t("import.header", {
+              status: workbench.importBatch.status,
+              sourceType: workbench.importBatch.sourceType,
+            })}
           </p>
           {feedback ? <ActionFeedback feedback={feedback} /> : null}
         </header>
@@ -122,20 +161,22 @@ export function ImportBatchWorkbenchPage({
         >
           <article style={panelStyle}>
             <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
-              上传会话
+              {t("import.upload.title")}
             </h2>
-            <p style={metricStyle}>{workbench.uploadSessions.length} 个上传会话</p>
+            <p style={metricStyle}>{t("import.upload.count", { count: workbench.uploadSessions.length })}</p>
             <p style={metricStyle}>
-              最近状态：<strong>{workbench.uploadSessions[0]?.status ?? "pending"}</strong>
+              {t("import.upload.latestStatus", {
+                status: workbench.uploadSessions[0]?.status ?? "pending",
+              })}
             </p>
           </article>
 
           <article style={panelStyle}>
             <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
-              素材匹配
+              {t("import.matching.title")}
             </h2>
-            <p style={metricStyle}>{workbench.candidateAssets.length} 个候选素材</p>
-            <p style={metricStyle}>{workbench.items.length} 个批次条目</p>
+            <p style={metricStyle}>{t("import.matching.candidateCount", { count: workbench.candidateAssets.length })}</p>
+            <p style={metricStyle}>{t("import.matching.itemCount", { count: workbench.items.length })}</p>
             <button
               type="button"
               style={{
@@ -157,19 +198,22 @@ export function ImportBatchWorkbenchPage({
                 });
               }}
             >
-              确认匹配
+              {t("import.actions.confirmMatches")}
             </button>
           </article>
 
           <article style={panelStyle}>
             <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
-              执行状态
+              {t("import.execution.title")}
             </h2>
             <p style={metricStyle}>
               <strong>{currentExecution?.status ?? "pending"}</strong>
             </p>
             <p style={metricStyle}>
-              主素材：{currentExecution?.primaryAssetId || "未选择"}
+              {t("import.execution.primaryAsset", {
+                assetId:
+                  currentExecution?.primaryAssetId || t("import.execution.primaryAsset.empty"),
+              })}
             </p>
             <button
               type="button"
@@ -192,7 +236,7 @@ export function ImportBatchWorkbenchPage({
                 });
               }}
             >
-              设为主素材
+              {t("import.actions.selectPrimaryAsset")}
             </button>
           </article>
         </section>
