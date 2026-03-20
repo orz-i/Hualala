@@ -14,10 +14,12 @@
 
 - 只启动 `apps/admin` 与 `apps/creator` 的 Vite dev server
 - 通过 Playwright route mock 拦截 `/hualala.*` Connect 请求
+- mock fixture 来源统一由 `tooling/scripts/demo_seed.mjs` 的 `buildPhase1DemoScenarios()` 提供
 - 不启动真实 backend，也不覆盖后端 proto/Connect 协议
 
 常用命令：
 
+- `corepack pnpm run demo:seed`
 - `corepack pnpm run test:e2e:admin`
 - `corepack pnpm run test:e2e:creator`
 - `corepack pnpm run test:e2e:phase1`

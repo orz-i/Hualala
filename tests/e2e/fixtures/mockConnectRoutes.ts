@@ -17,6 +17,12 @@ type AdminState = {
     reservedCents: number;
     remainingBudgetCents: number;
   };
+  updatedBudgetSnapshot?: {
+    projectId: string;
+    limitCents: number;
+    reservedCents: number;
+    remainingBudgetCents: number;
+  };
   usageRecords: Array<{ id: string; meter: string; amountCents: number }>;
   billingEvents: Array<{ id: string; eventType: string; amountCents: number }>;
   reviewSummary: { shotExecutionId: string; latestConclusion: string };
@@ -36,6 +42,16 @@ type CreatorShotState = {
     reviewSummary: { latestConclusion: string };
     latestEvaluationRun?: { id: string; status: string };
   };
+  afterGate?: {
+    workbench: CreatorShotState["workbench"];
+    gateResult: {
+      passedChecks: string[];
+      failedChecks: string[];
+    };
+  };
+  afterSubmit?: {
+    workbench: CreatorShotState["workbench"];
+  };
 };
 
 type CreatorImportState = {
@@ -48,6 +64,8 @@ type CreatorImportState = {
   items: Array<{ id: string; status: string; assetId: string }>;
   candidateAssets: Array<{ id: string; assetId: string }>;
   shotExecutions: Array<{ id: string; status: string; primaryAssetId: string }>;
+  afterConfirm?: Omit<CreatorImportState, "afterConfirm" | "afterSelect">;
+  afterSelect?: Omit<CreatorImportState, "afterConfirm" | "afterSelect">;
 };
 
 function jsonResponse(status: number, payload: unknown) {
@@ -102,102 +120,23 @@ function withRecentChanges(state: AdminState) {
   };
 }
 
-const adminInitialState: AdminState = {
-  budgetSnapshot: {
-    projectId: "project-live-1",
-    limitCents: 120000,
-    reservedCents: 18000,
-    remainingBudgetCents: 102000,
-  },
-  usageRecords: [{ id: "usage-1", meter: "tts", amountCents: 6000 }],
-  billingEvents: [{ id: "event-1", eventType: "budget_reserved", amountCents: 18000 }],
-  reviewSummary: {
-    shotExecutionId: "shot-exec-live-1",
-    latestConclusion: "approved",
-  },
-  evaluationRuns: [{ id: "eval-1", status: "passed", failedChecks: [] }],
-  shotReviews: [{ id: "review-1", conclusion: "approved" }],
+type Phase1DemoScenarios = {
+  admin: Record<AdminMode, AdminState>;
+  creatorShot: Record<CreatorShotMode, CreatorShotState>;
+  creatorImport: Record<CreatorImportMode, CreatorImportState>;
 };
 
-const adminUpdatedState: AdminState = {
-  ...adminInitialState,
-  budgetSnapshot: {
-    ...adminInitialState.budgetSnapshot,
-    limitCents: 150000,
-    remainingBudgetCents: 132000,
-  },
-};
+let phase1DemoScenariosPromise: Promise<Phase1DemoScenarios> | undefined;
 
-const creatorShotInitialState: CreatorShotState = {
-  workbench: {
-    shotExecution: {
-      id: "shot-exec-live-1",
-      shotId: "shot-live-1",
-      status: "candidate_ready",
-      primaryAssetId: "asset-live-1",
-    },
-    candidateAssets: [{ id: "candidate-live-1", assetId: "asset-live-1" }],
-    reviewSummary: {
-      latestConclusion: "pending",
-    },
-    latestEvaluationRun: {
-      id: "eval-live-1",
-      status: "pending",
-    },
-  },
-};
+async function loadPhase1DemoScenarios(): Promise<Phase1DemoScenarios> {
+  if (!phase1DemoScenariosPromise) {
+    phase1DemoScenariosPromise = import("../../../tooling/scripts/demo_seed.mjs").then(
+      (module) => module.buildPhase1DemoScenarios() as Phase1DemoScenarios,
+    );
+  }
 
-const creatorShotAfterGateState: CreatorShotState = {
-  workbench: {
-    ...creatorShotInitialState.workbench,
-    reviewSummary: {
-      latestConclusion: "passed",
-    },
-    latestEvaluationRun: {
-      id: "eval-live-1",
-      status: "passed",
-    },
-  },
-};
-
-const creatorShotAfterSubmitState: CreatorShotState = {
-  workbench: {
-    ...creatorShotAfterGateState.workbench,
-    shotExecution: {
-      ...creatorShotAfterGateState.workbench.shotExecution,
-      status: "submitted_for_review",
-    },
-    reviewSummary: {
-      latestConclusion: "approved",
-    },
-  },
-};
-
-const creatorImportInitialState: CreatorImportState = {
-  importBatch: {
-    id: "batch-live-1",
-    status: "matched_pending_confirm",
-    sourceType: "upload_session",
-  },
-  uploadSessions: [{ id: "upload-session-live-1", status: "completed" }],
-  items: [{ id: "item-live-1", status: "matched_pending_confirm", assetId: "asset-live-1" }],
-  candidateAssets: [{ id: "candidate-live-1", assetId: "asset-live-1" }],
-  shotExecutions: [{ id: "shot-exec-live-1", status: "candidate_ready", primaryAssetId: "" }],
-};
-
-const creatorImportAfterConfirmState: CreatorImportState = {
-  ...creatorImportInitialState,
-  importBatch: {
-    ...creatorImportInitialState.importBatch,
-    status: "confirmed",
-  },
-  items: [{ id: "item-live-1", status: "confirmed", assetId: "asset-live-1" }],
-  shotExecutions: [
-    { id: "shot-exec-live-1", status: "primary_selected", primaryAssetId: "asset-live-1" },
-  ],
-};
-
-const creatorImportAfterSelectState = clone(creatorImportAfterConfirmState);
+  return phase1DemoScenariosPromise;
+}
 
 function buildAdminPayload(pathname: string, state: AdminState) {
   switch (pathname) {
@@ -223,9 +162,14 @@ function delay(ms: number) {
 }
 
 export async function mockConnectRoutes(page: Page, scenario: MockConnectScenario) {
-  let adminState = withRecentChanges(clone(adminInitialState));
-  let creatorShotState = clone(creatorShotInitialState);
-  let creatorImportState = clone(creatorImportInitialState);
+  const phase1DemoScenarios = await loadPhase1DemoScenarios();
+  let adminState = withRecentChanges(clone(phase1DemoScenarios.admin[scenario.admin ?? "success"]));
+  let creatorShotState = clone(
+    phase1DemoScenarios.creatorShot[scenario.creatorShot ?? "success"],
+  );
+  let creatorImportState = clone(
+    phase1DemoScenarios.creatorImport[scenario.creatorImport ?? "success"],
+  );
 
   await page.route(/\/hualala\..+/, async (route: Route) => {
     const url = new URL(route.request().url());
@@ -239,15 +183,18 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
           return;
         }
 
-        adminState = withRecentChanges(clone(adminUpdatedState));
+        adminState = withRecentChanges({
+          ...clone(adminState),
+          budgetSnapshot: clone(adminState.updatedBudgetSnapshot ?? adminState.budgetSnapshot),
+        });
         await route.fulfill(
           jsonResponse(200, {
             budgetPolicy: {
               id: "budget-1",
               orgId: "org-live-1",
-              projectId: adminUpdatedState.budgetSnapshot.projectId,
-              limitCents: adminUpdatedState.budgetSnapshot.limitCents,
-              reservedCents: adminUpdatedState.budgetSnapshot.reservedCents,
+              projectId: adminState.budgetSnapshot.projectId,
+              limitCents: adminState.budgetSnapshot.limitCents,
+              reservedCents: adminState.budgetSnapshot.reservedCents,
             },
           }),
         );
@@ -273,19 +220,25 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
           await route.fulfill(jsonResponse(500, { error: "network down" }));
           return;
         }
-        creatorShotState = clone(creatorShotAfterGateState);
+        creatorShotState = {
+          ...clone(creatorShotState),
+          workbench: clone(creatorShotState.afterGate?.workbench ?? creatorShotState.workbench),
+        };
         await route.fulfill(
-          jsonResponse(200, {
-            passedChecks: ["asset_selected", "review_ready"],
-            failedChecks: ["copyright_missing"],
-          }),
+          jsonResponse(
+            200,
+            clone(creatorShotState.afterGate?.gateResult ?? { passedChecks: [], failedChecks: [] }),
+          ),
         );
         return;
       }
 
       if (pathname === "/hualala.execution.v1.ExecutionService/SubmitShotForReview") {
         await delay(120);
-        creatorShotState = clone(creatorShotAfterSubmitState);
+        creatorShotState = {
+          ...clone(creatorShotState),
+          workbench: clone(creatorShotState.afterSubmit?.workbench ?? creatorShotState.workbench),
+        };
         await route.fulfill(jsonResponse(200, {}));
         return;
       }
@@ -303,7 +256,10 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
           await route.fulfill(jsonResponse(500, { error: "network down" }));
           return;
         }
-        creatorImportState = clone(creatorImportAfterConfirmState);
+        creatorImportState = {
+          ...clone(creatorImportState),
+          ...clone(creatorImportState.afterConfirm ?? creatorImportState),
+        };
         await route.fulfill(jsonResponse(200, {}));
         return;
       }
@@ -314,7 +270,10 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
           await route.fulfill(jsonResponse(500, { error: "network down" }));
           return;
         }
-        creatorImportState = clone(creatorImportAfterSelectState);
+        creatorImportState = {
+          ...clone(creatorImportState),
+          ...clone(creatorImportState.afterSelect ?? creatorImportState),
+        };
         await route.fulfill(jsonResponse(200, {}));
         return;
       }

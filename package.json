@@ -10,6 +10,8 @@
     "test:e2e:admin": "node tooling/scripts/run-playwright-suite.mjs admin test tests/e2e/admin-smoke.spec.ts",
     "test:e2e:creator": "node tooling/scripts/run-playwright-suite.mjs creator test tests/e2e/creator-smoke.spec.ts",
     "test:e2e:phase1": "node tooling/scripts/run-playwright-suite.mjs all test tests/e2e/phase1-acceptance.spec.ts",
+    "test:tooling": "node --test tooling/scripts/demo_seed.test.mjs tooling/scripts/i18n_key_parity_check.test.mjs",
+    "demo:seed": "node tooling/scripts/demo_seed.mjs",
     "dev": "turbo run dev",
     "proto:lint": "node tooling/scripts/run-buf.mjs lint",
     "proto:gen": "node tooling/scripts/run-buf.mjs generate",
