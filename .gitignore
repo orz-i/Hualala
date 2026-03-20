@@ -1,6 +1,7 @@
 .superpowers
 .worktrees/
 .turbo/
+apps/*/dist/
 node_modules
 .bufcache
 .gocache
