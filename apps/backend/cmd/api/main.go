@@ -38,7 +38,7 @@ func main() {
 			}
 		}
 	}()
-	connectiface.RegisterRoutes(mux, connectiface.NewRouteDependencies(store))
+	connectiface.RegisterRoutes(mux, connectiface.NewRouteDependencies(connectiface.NewRuntimeDependenciesFromStore(store)))
 
 	if err := http.ListenAndServe(cfg.HTTPAddr, mux); err != nil {
 		observability.Logger().Fatal(err)

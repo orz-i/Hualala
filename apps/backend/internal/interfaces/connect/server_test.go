@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -131,7 +133,7 @@ func TestExecutionAssetReviewBillingRoutes(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, NewRouteDependencies(store))
+	RegisterRoutes(mux, NewRouteDependencies(NewRuntimeDependenciesFromStore(store)))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -356,7 +358,7 @@ func TestImportBatchWorkbenchIncludesUploadArtifacts(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, NewRouteDependencies(store))
+	RegisterRoutes(mux, NewRouteDependencies(NewRuntimeDependenciesFromStore(store)))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -484,7 +486,7 @@ func TestImportBatchWorkbenchIncludesShotExecutionState(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, NewRouteDependencies(store))
+	RegisterRoutes(mux, NewRouteDependencies(NewRuntimeDependenciesFromStore(store)))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -621,7 +623,7 @@ func TestGetShotWorkbenchIncludesCandidateAndReviewSummary(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, NewRouteDependencies(store))
+	RegisterRoutes(mux, NewRouteDependencies(NewRuntimeDependenciesFromStore(store)))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -756,4 +758,15 @@ func performConnectUploadJSONRequest(t *testing.T, server *httptest.Server, meth
 		t.Fatalf("json.Unmarshal returned error: %v", err)
 	}
 	return response
+}
+
+func TestServerRouteDependenciesDoNotExposeRawMemoryStore(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("server.go"))
+	if err != nil {
+		t.Fatalf("os.ReadFile returned error: %v", err)
+	}
+	text := string(content)
+	if strings.Contains(text, "Store            *db.MemoryStore") || strings.Contains(text, "Store *db.MemoryStore") {
+		t.Fatalf("expected RouteDependencies to avoid raw *db.MemoryStore field")
+	}
 }

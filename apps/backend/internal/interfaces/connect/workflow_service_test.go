@@ -19,7 +19,7 @@ func TestWorkflowRoutes(t *testing.T) {
 	store := db.NewMemoryStore()
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, NewRouteDependencies(store))
+	RegisterRoutes(mux, NewRouteDependencies(NewRuntimeDependenciesFromStore(store)))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 

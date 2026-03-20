@@ -20,10 +20,10 @@ func TestShotExecutionFlow(t *testing.T) {
 
 	projectService := projectapp.NewService(store)
 	contentService := contentapp.NewService(store)
-	executionService := executionapp.NewService(store)
-	assetService := assetapp.NewService(store)
-	billingService := billingapp.NewService(store)
-	reviewService := reviewapp.NewService(store)
+	executionService := executionapp.NewService(store, store, store, store, store.EventPublisher)
+	assetService := assetapp.NewService(store, store)
+	billingService := billingapp.NewService(store, store.EventPublisher)
+	reviewService := reviewapp.NewService(store, store, store.EventPublisher)
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
 		OrganizationID:          db.DefaultDevOrganizationID,
@@ -279,8 +279,8 @@ func TestShotExecutionBudgetGuard(t *testing.T) {
 
 	projectService := projectapp.NewService(store)
 	contentService := contentapp.NewService(store)
-	executionService := executionapp.NewService(store)
-	billingService := billingapp.NewService(store)
+	executionService := executionapp.NewService(store, store, store, store, store.EventPublisher)
+	billingService := billingapp.NewService(store, store.EventPublisher)
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
 		OrganizationID:          db.DefaultDevOrganizationID,

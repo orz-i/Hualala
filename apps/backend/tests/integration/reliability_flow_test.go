@@ -30,9 +30,9 @@ func TestReliabilityFlow(t *testing.T) {
 	adapter := gatewayapp.NewFakeAdapter()
 	adapter.SetProviderFailure("seedance", errors.New("provider failed"))
 	gatewayService := gatewayapp.NewService(store, adapter)
-	workflowService := workflowapp.NewService(store, temporal.NewInMemoryExecutor(gatewayService), policyService)
+	workflowService := workflowapp.NewService(store, store.EventPublisher, temporal.NewInMemoryExecutor(gatewayService), policyService)
 
-	deps := connectiface.NewRouteDependencies(store)
+	deps := connectiface.NewRouteDependencies(connectiface.NewRuntimeDependenciesFromStore(store))
 	deps.PolicyService = policyService
 	deps.GatewayService = gatewayService
 	deps.WorkflowService = workflowService

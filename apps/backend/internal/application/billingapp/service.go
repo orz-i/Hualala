@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"sort"
 	"strings"
 	"time"
 
@@ -14,7 +13,8 @@ import (
 )
 
 type Service struct {
-	store *db.MemoryStore
+	repo           db.ReviewBillingRepository
+	eventPublisher *events.Publisher
 }
 
 type SetProjectBudgetInput struct {
@@ -42,13 +42,13 @@ type BudgetSnapshot struct {
 	RemainingBudgetCents int64
 }
 
-func NewService(store *db.MemoryStore) *Service {
-	return &Service{store: store}
+func NewService(repo db.ReviewBillingRepository, eventPublisher *events.Publisher) *Service {
+	return &Service{repo: repo, eventPublisher: eventPublisher}
 }
 
 func (s *Service) SetProjectBudget(ctx context.Context, input SetProjectBudgetInput) (billing.ProjectBudget, error) {
-	if s == nil || s.store == nil {
-		return billing.ProjectBudget{}, errors.New("billingapp: store is required")
+	if s == nil || s.repo == nil {
+		return billing.ProjectBudget{}, errors.New("billingapp: repository is required")
 	}
 	if strings.TrimSpace(input.ProjectID) == "" {
 		return billing.ProjectBudget{}, errors.New("billingapp: project_id is required")
@@ -61,30 +61,28 @@ func (s *Service) SetProjectBudget(ctx context.Context, input SetProjectBudgetIn
 	}
 
 	now := time.Now().UTC()
-	for id, record := range s.store.Budgets {
-		if record.ProjectID == strings.TrimSpace(input.ProjectID) {
-			record.OrgID = strings.TrimSpace(input.OrgID)
-			record.LimitCents = input.LimitCents
-			record.UpdatedAt = now
-			s.store.Budgets[id] = record
-			if err := s.store.Persist(ctx); err != nil {
-				return billing.ProjectBudget{}, err
-			}
-			s.publishBudgetUpdated(record)
-			return record, nil
+	projectID := strings.TrimSpace(input.ProjectID)
+	orgID := strings.TrimSpace(input.OrgID)
+	if record, ok := s.repo.GetBudgetByProject(projectID); ok {
+		record.OrgID = orgID
+		record.LimitCents = input.LimitCents
+		record.UpdatedAt = now
+		if err := s.repo.SaveBudget(ctx, record); err != nil {
+			return billing.ProjectBudget{}, err
 		}
+		s.publishBudgetUpdated(record)
+		return record, nil
 	}
 
 	record := billing.ProjectBudget{
-		ID:         s.store.NextBudgetID(),
-		OrgID:      strings.TrimSpace(input.OrgID),
-		ProjectID:  strings.TrimSpace(input.ProjectID),
+		ID:         s.repo.GenerateBudgetID(),
+		OrgID:      orgID,
+		ProjectID:  projectID,
 		LimitCents: input.LimitCents,
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
-	s.store.Budgets[record.ID] = record
-	if err := s.store.Persist(ctx); err != nil {
+	if err := s.repo.SaveBudget(ctx, record); err != nil {
 		return billing.ProjectBudget{}, err
 	}
 	s.publishBudgetUpdated(record)
@@ -92,15 +90,16 @@ func (s *Service) SetProjectBudget(ctx context.Context, input SetProjectBudgetIn
 }
 
 func (s *Service) GetBudgetSnapshot(_ context.Context, input GetBudgetSnapshotInput) (BudgetSnapshot, error) {
-	for _, record := range s.store.Budgets {
-		if record.ProjectID == strings.TrimSpace(input.ProjectID) {
-			return BudgetSnapshot{
-				ProjectID:            record.ProjectID,
-				LimitCents:           record.LimitCents,
-				ReservedCents:        record.ReservedCents,
-				RemainingBudgetCents: record.LimitCents - record.ReservedCents,
-			}, nil
-		}
+	if s == nil || s.repo == nil {
+		return BudgetSnapshot{}, errors.New("billingapp: repository is required")
+	}
+	if record, ok := s.repo.GetBudgetByProject(strings.TrimSpace(input.ProjectID)); ok {
+		return BudgetSnapshot{
+			ProjectID:            record.ProjectID,
+			LimitCents:           record.LimitCents,
+			ReservedCents:        record.ReservedCents,
+			RemainingBudgetCents: record.LimitCents - record.ReservedCents,
+		}, nil
 	}
 
 	return BudgetSnapshot{
@@ -109,37 +108,21 @@ func (s *Service) GetBudgetSnapshot(_ context.Context, input GetBudgetSnapshotIn
 }
 
 func (s *Service) ListUsageRecords(_ context.Context, input ListUsageRecordsInput) ([]billing.UsageRecord, error) {
-	records := make([]billing.UsageRecord, 0)
-	for _, record := range s.store.UsageRecords {
-		if record.ProjectID == strings.TrimSpace(input.ProjectID) {
-			records = append(records, record)
-		}
+	if s == nil || s.repo == nil {
+		return nil, errors.New("billingapp: repository is required")
 	}
-
-	sort.Slice(records, func(i, j int) bool {
-		return records[i].ID < records[j].ID
-	})
-
-	return records, nil
+	return s.repo.ListUsageRecordsByProject(strings.TrimSpace(input.ProjectID)), nil
 }
 
 func (s *Service) ListBillingEvents(_ context.Context, input ListBillingEventsInput) ([]billing.BillingEvent, error) {
-	events := make([]billing.BillingEvent, 0)
-	for _, event := range s.store.BillingEvents {
-		if event.ProjectID == strings.TrimSpace(input.ProjectID) {
-			events = append(events, event)
-		}
+	if s == nil || s.repo == nil {
+		return nil, errors.New("billingapp: repository is required")
 	}
-
-	sort.Slice(events, func(i, j int) bool {
-		return events[i].ID < events[j].ID
-	})
-
-	return events, nil
+	return s.repo.ListBillingEventsByProject(strings.TrimSpace(input.ProjectID)), nil
 }
 
 func (s *Service) publishBudgetUpdated(record billing.ProjectBudget) {
-	if s == nil || s.store == nil || s.store.EventPublisher == nil {
+	if s == nil || s.eventPublisher == nil {
 		return
 	}
 	payload, err := json.Marshal(map[string]any{
@@ -151,7 +134,7 @@ func (s *Service) publishBudgetUpdated(record billing.ProjectBudget) {
 	if err != nil {
 		return
 	}
-	s.store.EventPublisher.Publish(events.Event{
+	s.eventPublisher.Publish(events.Event{
 		EventType:      "budget.updated",
 		OrganizationID: record.OrgID,
 		ProjectID:      record.ProjectID,

@@ -9,22 +9,44 @@ import (
 
 	"github.com/hualala/apps/backend/internal/application/policyapp"
 	"github.com/hualala/apps/backend/internal/domain/asset"
+	"github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
-func resetSessionStore(store *db.MemoryStore) {
-	if store == nil {
-		return
-	}
-	store.UploadSessions = map[string]asset.UploadSession{}
+type Service struct {
+	assets         db.AssetRepository
+	executions     db.ExecutionRepository
+	policy         *policyapp.Service
+	eventPublisher *events.Publisher
 }
 
-func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
-	if store == nil {
-		store = db.NewMemoryStore()
+type Dependencies struct {
+	Assets         db.AssetRepository
+	Executions     db.ExecutionRepository
+	Policy         *policyapp.Service
+	EventPublisher *events.Publisher
+}
+
+func NewService(deps Dependencies) *Service {
+	return &Service{
+		assets:         deps.Assets,
+		executions:     deps.Executions,
+		policy:         deps.Policy,
+		eventPublisher: deps.EventPublisher,
 	}
-	policyService := policyapp.NewService(store)
+}
+
+func RegisterRoutes(mux *http.ServeMux, service *Service) {
+	if service == nil {
+		store := db.NewMemoryStore()
+		service = NewService(Dependencies{
+			Assets:         store,
+			Executions:     store,
+			Policy:         policyapp.NewService(store),
+			EventPublisher: store.EventPublisher,
+		})
+	}
 
 	mux.HandleFunc("/upload/sessions", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -45,20 +67,14 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if strings.TrimSpace(request.ImportBatchID) != "" {
-			if _, ok := store.ImportBatches[strings.TrimSpace(request.ImportBatchID)]; !ok {
-				http.Error(w, "upload: import_batch_id not found", http.StatusBadRequest)
-				return
-			}
-		}
 
-		session := createSession(store, request.OrganizationID, request.ProjectID, request.ImportBatchID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
-		if err := store.Persist(r.Context()); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		session, err := service.CreateSession(r, request.OrganizationID, request.ProjectID, request.ImportBatchID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
+		if err != nil {
+			writeUploadError(w, err)
 			return
 		}
-		publishUploadSessionUpdated(store, session)
-		writeSessionResponse(w, http.StatusOK, store, policyService, session)
+		service.publishUploadSessionUpdated(session)
+		service.writeSessionResponse(w, http.StatusOK, session)
 	})
 
 	mux.HandleFunc("/upload/sessions/", func(w http.ResponseWriter, r *http.Request) {
@@ -70,24 +86,24 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 
 		switch {
 		case r.Method == http.MethodGet && action == "":
-			session, ok := getSession(store, sessionID)
+			session, ok := service.GetSession(sessionID)
 			if !ok {
 				http.NotFound(w, r)
 				return
 			}
-			writeSessionResponse(w, http.StatusOK, store, policyService, session)
+			service.writeSessionResponse(w, http.StatusOK, session)
 		case r.Method == http.MethodPost && action == "retry":
-			session, ok := retrySession(store, policyService, sessionID)
-			if !ok {
-				http.NotFound(w, r)
+			session, err := service.RetrySession(r, sessionID)
+			if err != nil {
+				if strings.Contains(err.Error(), "not found") {
+					http.NotFound(w, r)
+					return
+				}
+				writeUploadError(w, err)
 				return
 			}
-			if err := store.Persist(r.Context()); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			publishUploadSessionUpdated(store, session)
-			writeSessionResponse(w, http.StatusOK, store, policyService, session)
+			service.publishUploadSessionUpdated(session)
+			service.writeSessionResponse(w, http.StatusOK, session)
 		case r.Method == http.MethodPost && action == "complete":
 			var request struct {
 				ShotExecutionID string `json:"shot_execution_id"`
@@ -103,27 +119,36 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			session, ok := completeSession(store, policyService, sessionID, request.ShotExecutionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.AIAnnotated, request.Width, request.Height)
-			if !ok {
-				http.NotFound(w, r)
+			session, err := service.CompleteSession(r, sessionID, request.ShotExecutionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.AIAnnotated, request.Width, request.Height)
+			if err != nil {
+				if strings.Contains(err.Error(), "not found") {
+					http.NotFound(w, r)
+					return
+				}
+				writeUploadError(w, err)
 				return
 			}
-			if err := store.Persist(r.Context()); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			publishUploadSessionUpdated(store, session)
-			writeSessionResponse(w, http.StatusOK, store, policyService, session)
+			service.publishUploadSessionUpdated(session)
+			service.writeSessionResponse(w, http.StatusOK, session)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	})
 }
 
-func createSession(store *db.MemoryStore, organizationID string, projectID string, importBatchID string, fileName string, checksum string, sizeBytes int64, expiresInSeconds int64) asset.UploadSession {
+func (s *Service) CreateSession(r *http.Request, organizationID string, projectID string, importBatchID string, fileName string, checksum string, sizeBytes int64, expiresInSeconds int64) (asset.UploadSession, error) {
+	if s == nil || s.assets == nil {
+		return asset.UploadSession{}, fmt.Errorf("upload: asset repository is required")
+	}
+	if strings.TrimSpace(importBatchID) != "" {
+		if _, ok := s.assets.GetImportBatch(strings.TrimSpace(importBatchID)); !ok {
+			return asset.UploadSession{}, fmt.Errorf("upload: import_batch_id not found")
+		}
+	}
+
 	now := time.Now().UTC()
 	session := asset.UploadSession{
-		ID:            store.NextUploadSessionID(),
+		ID:            s.assets.GenerateUploadSessionID(),
 		OrgID:         organizationID,
 		ProjectID:     projectID,
 		ImportBatchID: strings.TrimSpace(importBatchID),
@@ -136,62 +161,70 @@ func createSession(store *db.MemoryStore, organizationID string, projectID strin
 		CreatedAt:     now,
 		ExpiresAt:     now.Add(time.Duration(expiresInSeconds) * time.Second),
 	}
-	store.UploadSessions[session.ID] = session
-	return session
+	if err := s.assets.SaveUploadSession(r.Context(), session); err != nil {
+		return asset.UploadSession{}, err
+	}
+	return session, nil
 }
 
-func getSession(store *db.MemoryStore, sessionID string) (asset.UploadSession, bool) {
-	session, ok := store.UploadSessions[sessionID]
-	return session, ok
-}
-
-func retrySession(store *db.MemoryStore, policy *policyapp.Service, sessionID string) (asset.UploadSession, bool) {
-	session, ok := store.UploadSessions[sessionID]
-	if !ok {
+func (s *Service) GetSession(sessionID string) (asset.UploadSession, bool) {
+	if s == nil || s.assets == nil {
 		return asset.UploadSession{}, false
 	}
-	decision := policy.EvaluateUploadResumeAllowed(session)
+	return s.assets.GetUploadSession(sessionID)
+}
+
+func (s *Service) RetrySession(r *http.Request, sessionID string) (asset.UploadSession, error) {
+	session, ok := s.GetSession(sessionID)
+	if !ok {
+		return asset.UploadSession{}, fmt.Errorf("upload: session not found")
+	}
+	decision := s.evaluateUploadResumeAllowed(session)
 	if !decision.CanRetry {
-		return asset.UploadSession{}, false
+		return asset.UploadSession{}, fmt.Errorf("upload: session cannot be retried")
 	}
 	session.RetryCount++
 	session.LastRetryAt = time.Now().UTC()
 	session.Status = sessionStatus(session)
-	session.ResumeHint = policy.EvaluateUploadResumeAllowed(session).ResumeHint
-	store.UploadSessions[sessionID] = session
-	return session, true
+	session.ResumeHint = s.evaluateUploadResumeAllowed(session).ResumeHint
+	if err := s.assets.SaveUploadSession(r.Context(), session); err != nil {
+		return asset.UploadSession{}, err
+	}
+	return session, nil
 }
 
-func completeSession(store *db.MemoryStore, policy *policyapp.Service, sessionID string, shotExecutionID string, variantType string, mimeType string, locale string, rightsStatus string, aiAnnotated bool, width int, height int) (asset.UploadSession, bool) {
-	session, ok := store.UploadSessions[sessionID]
+func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecutionID string, variantType string, mimeType string, locale string, rightsStatus string, aiAnnotated bool, width int, height int) (asset.UploadSession, error) {
+	if s == nil || s.assets == nil {
+		return asset.UploadSession{}, fmt.Errorf("upload: asset repository is required")
+	}
+
+	session, ok := s.assets.GetUploadSession(sessionID)
 	if !ok {
-		return asset.UploadSession{}, false
+		return asset.UploadSession{}, fmt.Errorf("upload: session not found")
 	}
-	if !policy.EvaluateUploadResumeAllowed(session).CanComplete {
-		return asset.UploadSession{}, false
+	if !s.evaluateUploadResumeAllowed(session).CanComplete {
+		return asset.UploadSession{}, fmt.Errorf("upload: session cannot be completed")
 	}
+
 	shotExecutionID = strings.TrimSpace(shotExecutionID)
-	var shotExecution assetLikeShotExecution
+	var shotExecution execution.ShotExecution
 	if shotExecutionID != "" {
-		record, ok := store.ShotExecutions[shotExecutionID]
+		record, ok := s.executions.GetShotExecution(shotExecutionID)
 		if !ok {
-			return asset.UploadSession{}, false
+			return asset.UploadSession{}, fmt.Errorf("upload: shot execution not found")
 		}
-		shotExecution = assetLikeShotExecution{
-			ID:        record.ID,
-			ProjectID: record.ProjectID,
-			OrgID:     record.OrgID,
-			ShotID:    record.ShotID,
-			Status:    record.Status,
-		}
+		shotExecution = record
 	}
+
 	now := time.Now().UTC()
 	session.Status = "uploaded"
 	session.ResumeHint = fmt.Sprintf("upload complete for %s", session.FileName)
-	store.UploadSessions[sessionID] = session
+	if err := s.assets.SaveUploadSession(r.Context(), session); err != nil {
+		return asset.UploadSession{}, err
+	}
 
 	mediaAsset := asset.MediaAsset{
-		ID:            store.NextMediaAssetID(),
+		ID:            s.assets.GenerateMediaAssetID(),
 		OrgID:         session.OrgID,
 		ProjectID:     session.ProjectID,
 		ImportBatchID: session.ImportBatchID,
@@ -205,10 +238,12 @@ func completeSession(store *db.MemoryStore, policy *policyapp.Service, sessionID
 	if mediaAsset.RightsStatus == "" {
 		mediaAsset.RightsStatus = "unknown"
 	}
-	store.MediaAssets[mediaAsset.ID] = mediaAsset
+	if err := s.assets.SaveMediaAsset(r.Context(), mediaAsset); err != nil {
+		return asset.UploadSession{}, err
+	}
 
 	uploadFile := asset.UploadFile{
-		ID:              store.NextUploadFileID(),
+		ID:              s.assets.GenerateUploadFileID(),
 		UploadSessionID: session.ID,
 		FileName:        session.FileName,
 		MimeType:        strings.TrimSpace(mimeType),
@@ -216,10 +251,12 @@ func completeSession(store *db.MemoryStore, policy *policyapp.Service, sessionID
 		SizeBytes:       session.SizeBytes,
 		CreatedAt:       now,
 	}
-	store.UploadFiles[uploadFile.ID] = uploadFile
+	if err := s.assets.SaveUploadFile(r.Context(), uploadFile); err != nil {
+		return asset.UploadSession{}, err
+	}
 
 	variant := asset.MediaAssetVariant{
-		ID:           store.NextMediaAssetVariantID(),
+		ID:           s.assets.GenerateMediaAssetVariantID(),
 		AssetID:      mediaAsset.ID,
 		UploadFileID: uploadFile.ID,
 		VariantType:  strings.TrimSpace(variantType),
@@ -228,31 +265,36 @@ func completeSession(store *db.MemoryStore, policy *policyapp.Service, sessionID
 		Height:       height,
 		CreatedAt:    now,
 	}
-	store.MediaAssetVariants[variant.ID] = variant
+	if err := s.assets.SaveMediaAssetVariant(r.Context(), variant); err != nil {
+		return asset.UploadSession{}, err
+	}
 
 	if strings.TrimSpace(session.ImportBatchID) != "" {
 		itemStatus := "uploaded_pending_match"
 		matchedShotID := ""
 		if shotExecutionID != "" {
 			candidate := asset.CandidateAsset{
-				ID:              store.NextCandidateAssetID(),
+				ID:              s.assets.GenerateCandidateAssetID(),
 				ShotExecutionID: shotExecutionID,
 				AssetID:         mediaAsset.ID,
 				SourceRunID:     "",
 				CreatedAt:       now,
 				UpdatedAt:       now,
 			}
-			store.CandidateAssets[candidate.ID] = candidate
+			if err := s.assets.SaveCandidateAsset(r.Context(), candidate); err != nil {
+				return asset.UploadSession{}, err
+			}
 			itemStatus = "matched_pending_confirm"
 			matchedShotID = shotExecution.ShotID
-			record := store.ShotExecutions[shotExecutionID]
-			record.Status = "candidate_ready"
-			record.UpdatedAt = now
-			store.ShotExecutions[shotExecutionID] = record
+			shotExecution.Status = "candidate_ready"
+			shotExecution.UpdatedAt = now
+			if err := s.executions.SaveShotExecution(r.Context(), shotExecution); err != nil {
+				return asset.UploadSession{}, err
+			}
 		}
 
 		item := asset.ImportBatchItem{
-			ID:            store.NextImportBatchItemID(),
+			ID:            s.assets.GenerateImportBatchItemID(),
 			ImportBatchID: session.ImportBatchID,
 			Status:        itemStatus,
 			MatchedShotID: matchedShotID,
@@ -260,23 +302,19 @@ func completeSession(store *db.MemoryStore, policy *policyapp.Service, sessionID
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}
-		store.ImportBatchItems[item.ID] = item
-		if batch, ok := store.ImportBatches[session.ImportBatchID]; ok {
+		if err := s.assets.SaveImportBatchItem(r.Context(), item); err != nil {
+			return asset.UploadSession{}, err
+		}
+		if batch, ok := s.assets.GetImportBatch(session.ImportBatchID); ok {
 			batch.Status = itemStatus
 			batch.UpdatedAt = now
-			store.ImportBatches[session.ImportBatchID] = batch
+			if err := s.assets.SaveImportBatch(r.Context(), batch); err != nil {
+				return asset.UploadSession{}, err
+			}
 		}
 	}
 
-	return session, true
-}
-
-type assetLikeShotExecution struct {
-	ID        string
-	ProjectID string
-	OrgID     string
-	ShotID    string
-	Status    string
+	return session, nil
 }
 
 func parseSessionPath(path string) (string, string) {
@@ -295,8 +333,8 @@ func parseSessionPath(path string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func writeSessionResponse(w http.ResponseWriter, statusCode int, store *db.MemoryStore, policy *policyapp.Service, session asset.UploadSession) {
-	decision := policy.EvaluateUploadResumeAllowed(session)
+func (s *Service) writeSessionResponse(w http.ResponseWriter, statusCode int, session asset.UploadSession) {
+	decision := s.evaluateUploadResumeAllowed(session)
 	response := map[string]any{
 		"session_id":      session.ID,
 		"import_batch_id": session.ImportBatchID,
@@ -307,7 +345,7 @@ func writeSessionResponse(w http.ResponseWriter, statusCode int, store *db.Memor
 		"organization":    session.OrgID,
 		"project_id":      session.ProjectID,
 	}
-	uploadFileID, assetID, variantID, candidateAssetID, shotExecutionID := findSessionArtifacts(store, session.ID)
+	uploadFileID, assetID, variantID, candidateAssetID, shotExecutionID := s.findSessionArtifacts(session.ID)
 	if uploadFileID != "" {
 		response["upload_file_id"] = uploadFileID
 	}
@@ -339,11 +377,11 @@ func sessionStatus(session asset.UploadSession) string {
 	return "pending"
 }
 
-func publishUploadSessionUpdated(store *db.MemoryStore, session asset.UploadSession) {
-	if store == nil || store.EventPublisher == nil {
+func (s *Service) publishUploadSessionUpdated(session asset.UploadSession) {
+	if s == nil || s.eventPublisher == nil {
 		return
 	}
-	decision := policyapp.NewService(store).EvaluateUploadResumeAllowed(session)
+	decision := s.evaluateUploadResumeAllowed(session)
 
 	body, err := json.Marshal(map[string]any{
 		"session_id":   session.ID,
@@ -358,7 +396,7 @@ func publishUploadSessionUpdated(store *db.MemoryStore, session asset.UploadSess
 		return
 	}
 
-	store.EventPublisher.Publish(events.Event{
+	s.eventPublisher.Publish(events.Event{
 		EventType:      "asset.upload_session.updated",
 		OrganizationID: session.OrgID,
 		ProjectID:      session.ProjectID,
@@ -368,42 +406,51 @@ func publishUploadSessionUpdated(store *db.MemoryStore, session asset.UploadSess
 	})
 }
 
-func findSessionArtifacts(store *db.MemoryStore, sessionID string) (string, string, string, string, string) {
-	if store == nil {
+func (s *Service) findSessionArtifacts(sessionID string) (string, string, string, string, string) {
+	if s == nil || s.assets == nil {
 		return "", "", "", "", ""
 	}
 
-	uploadFileID := ""
-	for _, uploadFile := range store.UploadFiles {
-		if uploadFile.UploadSessionID == sessionID {
-			uploadFileID = uploadFile.ID
-			break
-		}
+	uploadFiles := s.assets.ListUploadFilesBySessionIDs([]string{sessionID})
+	if len(uploadFiles) == 0 {
+		return "", "", "", "", ""
 	}
 
-	assetID := ""
-	variantID := ""
-	if uploadFileID != "" {
-		for _, variant := range store.MediaAssetVariants {
-			if variant.UploadFileID == uploadFileID {
-				variantID = variant.ID
-				assetID = variant.AssetID
-				break
-			}
-		}
+	uploadFileID := uploadFiles[0].ID
+	variants := s.assets.ListMediaAssetVariantsByUploadFileIDs([]string{uploadFileID})
+	if len(variants) == 0 {
+		return uploadFileID, "", "", "", ""
 	}
 
-	candidateAssetID := ""
-	shotExecutionID := ""
-	if assetID != "" {
-		for _, candidate := range store.CandidateAssets {
-			if candidate.AssetID == assetID {
-				candidateAssetID = candidate.ID
-				shotExecutionID = candidate.ShotExecutionID
-				break
-			}
-		}
+	variantID := variants[0].ID
+	assetID := variants[0].AssetID
+	candidates := s.assets.ListCandidateAssetsByAssetIDs([]string{assetID})
+	if len(candidates) == 0 {
+		return uploadFileID, assetID, variantID, "", ""
 	}
 
-	return uploadFileID, assetID, variantID, candidateAssetID, shotExecutionID
+	return uploadFileID, assetID, variantID, candidates[0].ID, candidates[0].ShotExecutionID
+}
+
+func (s *Service) evaluateUploadResumeAllowed(session asset.UploadSession) policyapp.UploadResumeDecision {
+	if s != nil && s.policy != nil {
+		return s.policy.EvaluateUploadResumeAllowed(session)
+	}
+	return policyapp.UploadResumeDecision{
+		CanRetry:    true,
+		CanComplete: strings.TrimSpace(session.Status) != "uploaded",
+		ResumeHint:  fmt.Sprintf("upload %s from byte 0", session.FileName),
+	}
+}
+
+func writeUploadError(w http.ResponseWriter, err error) {
+	if err == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if strings.Contains(err.Error(), "not found") {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	http.Error(w, err.Error(), http.StatusBadRequest)
 }

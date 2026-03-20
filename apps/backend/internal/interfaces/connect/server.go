@@ -40,26 +40,55 @@ type RouteDependencies struct {
 	WorkflowService  *workflowapp.Service
 	GatewayService   *gatewayapp.Service
 	PolicyService    *policyapp.Service
+	UploadService    *upload.Service
 	EventPublisher   *events.Publisher
-	Store            *db.MemoryStore
 }
 
-func NewRouteDependencies(store *db.MemoryStore) RouteDependencies {
-	policyService := policyapp.NewService(store)
-	gatewayService := gatewayapp.NewService(store, gatewayapp.NewFakeAdapter())
-	workflowService := workflowapp.NewService(store, temporal.NewInMemoryExecutor(gatewayService), policyService)
+type RuntimeDependencies struct {
+	ProjectContent db.ProjectContentRepository
+	Executions     db.ExecutionRepository
+	Assets         db.AssetRepository
+	ReviewBilling  db.ReviewBillingRepository
+	PolicyReader   db.PolicyReader
+	GatewayStore   db.GatewayResultStore
+	WorkflowRepo   db.WorkflowRepository
+	EventPublisher *events.Publisher
+}
+
+func NewRuntimeDependenciesFromStore(store *db.MemoryStore) RuntimeDependencies {
+	return RuntimeDependencies{
+		ProjectContent: store,
+		Executions:     store,
+		Assets:         store,
+		ReviewBilling:  store,
+		PolicyReader:   store,
+		GatewayStore:   store,
+		WorkflowRepo:   store,
+		EventPublisher: store.EventPublisher,
+	}
+}
+
+func NewRouteDependencies(runtime RuntimeDependencies) RouteDependencies {
+	policyService := policyapp.NewService(runtime.PolicyReader)
+	gatewayService := gatewayapp.NewService(runtime.GatewayStore, gatewayapp.NewFakeAdapter())
+	workflowService := workflowapp.NewService(runtime.WorkflowRepo, runtime.EventPublisher, temporal.NewInMemoryExecutor(gatewayService), policyService)
 	return RouteDependencies{
-		ExecutionService: executionapp.NewService(store),
-		AssetService:     assetapp.NewService(store),
-		ReviewService:    reviewapp.NewService(store),
-		BillingService:   billingapp.NewService(store),
-		ProjectService:   projectapp.NewService(store),
-		ContentService:   contentapp.NewService(store),
+		ExecutionService: executionapp.NewService(runtime.Executions, runtime.ProjectContent, runtime.Assets, runtime.ReviewBilling, runtime.EventPublisher),
+		AssetService:     assetapp.NewService(runtime.Assets, runtime.Executions),
+		ReviewService:    reviewapp.NewService(runtime.Executions, runtime.ReviewBilling, runtime.EventPublisher),
+		BillingService:   billingapp.NewService(runtime.ReviewBilling, runtime.EventPublisher),
+		ProjectService:   projectapp.NewService(runtime.ProjectContent),
+		ContentService:   contentapp.NewService(runtime.ProjectContent),
 		WorkflowService:  workflowService,
 		GatewayService:   gatewayService,
 		PolicyService:    policyService,
-		EventPublisher:   store.EventPublisher,
-		Store:            store,
+		UploadService: upload.NewService(upload.Dependencies{
+			Assets:         runtime.Assets,
+			Executions:     runtime.Executions,
+			Policy:         policyService,
+			EventPublisher: runtime.EventPublisher,
+		}),
+		EventPublisher: runtime.EventPublisher,
 	}
 }
 
@@ -102,5 +131,5 @@ func RegisterRoutes(mux *http.ServeMux, deps RouteDependencies) {
 		mux.Handle(path, handler)
 	}
 	sse.RegisterRoutes(mux, deps.EventPublisher)
-	upload.RegisterRoutes(mux, deps.Store)
+	upload.RegisterRoutes(mux, deps.UploadService)
 }

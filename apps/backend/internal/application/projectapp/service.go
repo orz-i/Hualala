@@ -3,7 +3,6 @@ package projectapp
 import (
 	"context"
 	"errors"
-	"sort"
 	"strings"
 	"time"
 
@@ -12,7 +11,7 @@ import (
 )
 
 type Service struct {
-	store *db.MemoryStore
+	repo db.ProjectContentRepository
 }
 
 type CreateProjectInput struct {
@@ -43,13 +42,13 @@ type ListEpisodesInput struct {
 	ProjectID string
 }
 
-func NewService(store *db.MemoryStore) *Service {
-	return &Service{store: store}
+func NewService(repo db.ProjectContentRepository) *Service {
+	return &Service{repo: repo}
 }
 
 func (s *Service) CreateProject(ctx context.Context, input CreateProjectInput) (project.Project, error) {
-	if s == nil || s.store == nil {
-		return project.Project{}, errors.New("projectapp: store is required")
+	if s == nil || s.repo == nil {
+		return project.Project{}, errors.New("projectapp: repository is required")
 	}
 	if strings.TrimSpace(input.OrganizationID) == "" {
 		return project.Project{}, errors.New("projectapp: organization_id is required")
@@ -71,7 +70,7 @@ func (s *Service) CreateProject(ctx context.Context, input CreateProjectInput) (
 		supportedContentLocales = []string{primaryContentLocale}
 	}
 	record := project.Project{
-		ID:                      s.store.NextProjectID(),
+		ID:                      s.repo.GenerateProjectID(),
 		OrganizationID:          strings.TrimSpace(input.OrganizationID),
 		OwnerUserID:             strings.TrimSpace(input.OwnerUserID),
 		Title:                   strings.TrimSpace(input.Title),
@@ -89,16 +88,15 @@ func (s *Service) CreateProject(ctx context.Context, input CreateProjectInput) (
 		record.CurrentStage = "planning"
 	}
 
-	s.store.Projects[record.ID] = record
-	if err := s.store.Persist(ctx); err != nil {
+	if err := s.repo.SaveProject(ctx, record); err != nil {
 		return project.Project{}, err
 	}
 	return record, nil
 }
 
 func (s *Service) CreateEpisode(ctx context.Context, input CreateEpisodeInput) (project.Episode, error) {
-	if s == nil || s.store == nil {
-		return project.Episode{}, errors.New("projectapp: store is required")
+	if s == nil || s.repo == nil {
+		return project.Episode{}, errors.New("projectapp: repository is required")
 	}
 	if strings.TrimSpace(input.ProjectID) == "" {
 		return project.Episode{}, errors.New("projectapp: project_id is required")
@@ -109,13 +107,13 @@ func (s *Service) CreateEpisode(ctx context.Context, input CreateEpisodeInput) (
 	if strings.TrimSpace(input.Title) == "" {
 		return project.Episode{}, errors.New("projectapp: title is required")
 	}
-	if _, ok := s.store.Projects[strings.TrimSpace(input.ProjectID)]; !ok {
+	if _, ok := s.repo.GetProject(strings.TrimSpace(input.ProjectID)); !ok {
 		return project.Episode{}, errors.New("projectapp: project not found")
 	}
 
 	now := time.Now().UTC()
 	record := project.Episode{
-		ID:        s.store.NextEpisodeID(),
+		ID:        s.repo.GenerateEpisodeID(),
 		ProjectID: strings.TrimSpace(input.ProjectID),
 		EpisodeNo: input.EpisodeNo,
 		Title:     strings.TrimSpace(input.Title),
@@ -123,22 +121,21 @@ func (s *Service) CreateEpisode(ctx context.Context, input CreateEpisodeInput) (
 		UpdatedAt: now,
 	}
 
-	s.store.Episodes[record.ID] = record
-	if err := s.store.Persist(ctx); err != nil {
+	if err := s.repo.SaveEpisode(ctx, record); err != nil {
 		return project.Episode{}, err
 	}
 	return record, nil
 }
 
 func (s *Service) GetProject(_ context.Context, input GetProjectInput) (project.Project, error) {
-	if s == nil || s.store == nil {
-		return project.Project{}, errors.New("projectapp: store is required")
+	if s == nil || s.repo == nil {
+		return project.Project{}, errors.New("projectapp: repository is required")
 	}
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
 		return project.Project{}, errors.New("projectapp: project_id is required")
 	}
-	record, ok := s.store.Projects[projectID]
+	record, ok := s.repo.GetProject(projectID)
 	if !ok {
 		return project.Project{}, errors.New("projectapp: project not found")
 	}
@@ -146,53 +143,24 @@ func (s *Service) GetProject(_ context.Context, input GetProjectInput) (project.
 }
 
 func (s *Service) ListProjects(_ context.Context, input ListProjectsInput) ([]project.Project, error) {
-	if s == nil || s.store == nil {
-		return nil, errors.New("projectapp: store is required")
+	if s == nil || s.repo == nil {
+		return nil, errors.New("projectapp: repository is required")
 	}
 	organizationID := strings.TrimSpace(input.OrganizationID)
 	if organizationID == "" {
 		return nil, errors.New("projectapp: org_id is required")
 	}
 
-	projects := make([]project.Project, 0)
-	for _, record := range s.store.Projects {
-		if record.OrganizationID == organizationID {
-			projects = append(projects, record)
-		}
-	}
-
-	sort.Slice(projects, func(i, j int) bool {
-		if projects[i].CreatedAt.Equal(projects[j].CreatedAt) {
-			return projects[i].ID < projects[j].ID
-		}
-		return projects[i].CreatedAt.Before(projects[j].CreatedAt)
-	})
-
-	return projects, nil
+	return s.repo.ListProjectsByOrganization(organizationID), nil
 }
 
 func (s *Service) ListEpisodes(_ context.Context, input ListEpisodesInput) ([]project.Episode, error) {
-	if s == nil || s.store == nil {
-		return nil, errors.New("projectapp: store is required")
+	if s == nil || s.repo == nil {
+		return nil, errors.New("projectapp: repository is required")
 	}
 	projectID := strings.TrimSpace(input.ProjectID)
 	if projectID == "" {
 		return nil, errors.New("projectapp: project_id is required")
 	}
-
-	episodes := make([]project.Episode, 0)
-	for _, record := range s.store.Episodes {
-		if record.ProjectID == projectID {
-			episodes = append(episodes, record)
-		}
-	}
-
-	sort.Slice(episodes, func(i, j int) bool {
-		if episodes[i].EpisodeNo == episodes[j].EpisodeNo {
-			return episodes[i].ID < episodes[j].ID
-		}
-		return episodes[i].EpisodeNo < episodes[j].EpisodeNo
-	})
-
-	return episodes, nil
+	return s.repo.ListEpisodesByProject(projectID), nil
 }
