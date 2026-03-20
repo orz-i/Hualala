@@ -33,7 +33,9 @@ type MemoryStore struct {
 	nextImportBatchID     int
 	nextImportBatchItemID int
 	nextUploadSessionID   int
+	nextUploadFileID      int
 	nextAssetID           int
+	nextVariantID         int
 	nextCandidateID       int
 	nextReviewID          int
 	nextBudgetID          int
@@ -41,46 +43,50 @@ type MemoryStore struct {
 	nextBillingEventID    int
 	nextEvaluationRunID   int
 
-	Projects          map[string]project.Project
-	Episodes          map[string]project.Episode
-	Scenes            map[string]content.Scene
-	Shots             map[string]content.Shot
-	Snapshots         map[string]content.Snapshot
-	ShotExecutions    map[string]execution.ShotExecution
-	ShotExecutionRuns map[string]execution.ShotExecutionRun
-	ImportBatches     map[string]asset.ImportBatch
-	ImportBatchItems  map[string]asset.ImportBatchItem
-	UploadSessions    map[string]asset.UploadSession
-	MediaAssets       map[string]asset.MediaAsset
-	CandidateAssets   map[string]asset.CandidateAsset
-	Reviews           map[string]review.ShotReview
-	EvaluationRuns    map[string]review.EvaluationRun
-	Budgets           map[string]billing.ProjectBudget
-	UsageRecords      map[string]billing.UsageRecord
-	BillingEvents     map[string]billing.BillingEvent
-	EventPublisher    *events.Publisher
+	Projects           map[string]project.Project
+	Episodes           map[string]project.Episode
+	Scenes             map[string]content.Scene
+	Shots              map[string]content.Shot
+	Snapshots          map[string]content.Snapshot
+	ShotExecutions     map[string]execution.ShotExecution
+	ShotExecutionRuns  map[string]execution.ShotExecutionRun
+	ImportBatches      map[string]asset.ImportBatch
+	ImportBatchItems   map[string]asset.ImportBatchItem
+	UploadSessions     map[string]asset.UploadSession
+	UploadFiles        map[string]asset.UploadFile
+	MediaAssets        map[string]asset.MediaAsset
+	MediaAssetVariants map[string]asset.MediaAssetVariant
+	CandidateAssets    map[string]asset.CandidateAsset
+	Reviews            map[string]review.ShotReview
+	EvaluationRuns     map[string]review.EvaluationRun
+	Budgets            map[string]billing.ProjectBudget
+	UsageRecords       map[string]billing.UsageRecord
+	BillingEvents      map[string]billing.BillingEvent
+	EventPublisher     *events.Publisher
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		Projects:          make(map[string]project.Project),
-		Episodes:          make(map[string]project.Episode),
-		Scenes:            make(map[string]content.Scene),
-		Shots:             make(map[string]content.Shot),
-		Snapshots:         make(map[string]content.Snapshot),
-		ShotExecutions:    make(map[string]execution.ShotExecution),
-		ShotExecutionRuns: make(map[string]execution.ShotExecutionRun),
-		ImportBatches:     make(map[string]asset.ImportBatch),
-		ImportBatchItems:  make(map[string]asset.ImportBatchItem),
-		UploadSessions:    make(map[string]asset.UploadSession),
-		MediaAssets:       make(map[string]asset.MediaAsset),
-		CandidateAssets:   make(map[string]asset.CandidateAsset),
-		Reviews:           make(map[string]review.ShotReview),
-		EvaluationRuns:    make(map[string]review.EvaluationRun),
-		Budgets:           make(map[string]billing.ProjectBudget),
-		UsageRecords:      make(map[string]billing.UsageRecord),
-		BillingEvents:     make(map[string]billing.BillingEvent),
-		EventPublisher:    events.NewPublisher(),
+		Projects:           make(map[string]project.Project),
+		Episodes:           make(map[string]project.Episode),
+		Scenes:             make(map[string]content.Scene),
+		Shots:              make(map[string]content.Shot),
+		Snapshots:          make(map[string]content.Snapshot),
+		ShotExecutions:     make(map[string]execution.ShotExecution),
+		ShotExecutionRuns:  make(map[string]execution.ShotExecutionRun),
+		ImportBatches:      make(map[string]asset.ImportBatch),
+		ImportBatchItems:   make(map[string]asset.ImportBatchItem),
+		UploadSessions:     make(map[string]asset.UploadSession),
+		UploadFiles:        make(map[string]asset.UploadFile),
+		MediaAssets:        make(map[string]asset.MediaAsset),
+		MediaAssetVariants: make(map[string]asset.MediaAssetVariant),
+		CandidateAssets:    make(map[string]asset.CandidateAsset),
+		Reviews:            make(map[string]review.ShotReview),
+		EvaluationRuns:     make(map[string]review.EvaluationRun),
+		Budgets:            make(map[string]billing.ProjectBudget),
+		UsageRecords:       make(map[string]billing.UsageRecord),
+		BillingEvents:      make(map[string]billing.BillingEvent),
+		EventPublisher:     events.NewPublisher(),
 	}
 }
 
@@ -139,9 +145,19 @@ func (s *MemoryStore) NextUploadSessionID() string {
 	return fmt.Sprintf("upload-session-%d", s.nextUploadSessionID)
 }
 
+func (s *MemoryStore) NextUploadFileID() string {
+	s.nextUploadFileID++
+	return fmt.Sprintf("upload-file-%d", s.nextUploadFileID)
+}
+
 func (s *MemoryStore) NextMediaAssetID() string {
 	s.nextAssetID++
 	return fmt.Sprintf("media-asset-%d", s.nextAssetID)
+}
+
+func (s *MemoryStore) NextMediaAssetVariantID() string {
+	s.nextVariantID++
+	return fmt.Sprintf("media-asset-variant-%d", s.nextVariantID)
 }
 
 func (s *MemoryStore) NextCandidateAssetID() string {

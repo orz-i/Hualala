@@ -33,6 +33,7 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 		var request struct {
 			OrganizationID   string `json:"organization_id"`
 			ProjectID        string `json:"project_id"`
+			ImportBatchID    string `json:"import_batch_id"`
 			FileName         string `json:"file_name"`
 			Checksum         string `json:"checksum"`
 			SizeBytes        int64  `json:"size_bytes"`
@@ -43,7 +44,7 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 			return
 		}
 
-		session := createSession(store, request.OrganizationID, request.ProjectID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
+		session := createSession(store, request.OrganizationID, request.ProjectID, request.ImportBatchID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
 		publishUploadSessionUpdated(store, session)
 		writeSessionResponse(w, http.StatusOK, session)
 	})
@@ -71,26 +72,48 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 			}
 			publishUploadSessionUpdated(store, session)
 			writeSessionResponse(w, http.StatusOK, session)
+		case r.Method == http.MethodPost && action == "complete":
+			var request struct {
+				VariantType  string `json:"variant_type"`
+				MimeType     string `json:"mime_type"`
+				Locale       string `json:"locale"`
+				RightsStatus string `json:"rights_status"`
+				AIAnnotated  bool   `json:"ai_annotated"`
+				Width        int    `json:"width"`
+				Height       int    `json:"height"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			session, ok := completeSession(store, sessionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.AIAnnotated, request.Width, request.Height)
+			if !ok {
+				http.NotFound(w, r)
+				return
+			}
+			publishUploadSessionUpdated(store, session)
+			writeSessionResponse(w, http.StatusOK, session)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	})
 }
 
-func createSession(store *db.MemoryStore, organizationID string, projectID string, fileName string, checksum string, sizeBytes int64, expiresInSeconds int64) asset.UploadSession {
+func createSession(store *db.MemoryStore, organizationID string, projectID string, importBatchID string, fileName string, checksum string, sizeBytes int64, expiresInSeconds int64) asset.UploadSession {
 	now := time.Now().UTC()
 	session := asset.UploadSession{
-		ID:         store.NextUploadSessionID(),
-		OrgID:      organizationID,
-		ProjectID:  projectID,
-		FileName:   fileName,
-		Checksum:   checksum,
-		SizeBytes:  sizeBytes,
-		RetryCount: 0,
-		Status:     "pending",
-		ResumeHint: fmt.Sprintf("upload %s from byte 0", fileName),
-		CreatedAt:  now,
-		ExpiresAt:  now.Add(time.Duration(expiresInSeconds) * time.Second),
+		ID:            store.NextUploadSessionID(),
+		OrgID:         organizationID,
+		ProjectID:     projectID,
+		ImportBatchID: strings.TrimSpace(importBatchID),
+		FileName:      fileName,
+		Checksum:      checksum,
+		SizeBytes:     sizeBytes,
+		RetryCount:    0,
+		Status:        "pending",
+		ResumeHint:    fmt.Sprintf("upload %s from byte 0", fileName),
+		CreatedAt:     now,
+		ExpiresAt:     now.Add(time.Duration(expiresInSeconds) * time.Second),
 	}
 	store.UploadSessions[session.ID] = session
 	return session
@@ -114,6 +137,71 @@ func retrySession(store *db.MemoryStore, sessionID string) (asset.UploadSession,
 	return session, true
 }
 
+func completeSession(store *db.MemoryStore, sessionID string, variantType string, mimeType string, locale string, rightsStatus string, aiAnnotated bool, width int, height int) (asset.UploadSession, bool) {
+	session, ok := store.UploadSessions[sessionID]
+	if !ok {
+		return asset.UploadSession{}, false
+	}
+	now := time.Now().UTC()
+	session.Status = "uploaded"
+	session.ResumeHint = fmt.Sprintf("upload complete for %s", session.FileName)
+	store.UploadSessions[sessionID] = session
+
+	mediaAsset := asset.MediaAsset{
+		ID:            store.NextMediaAssetID(),
+		OrgID:         session.OrgID,
+		ProjectID:     session.ProjectID,
+		ImportBatchID: session.ImportBatchID,
+		SourceType:    "upload_session",
+		Locale:        strings.TrimSpace(locale),
+		RightsStatus:  strings.TrimSpace(rightsStatus),
+		AIAnnotated:   aiAnnotated,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	if mediaAsset.RightsStatus == "" {
+		mediaAsset.RightsStatus = "pending"
+	}
+	store.MediaAssets[mediaAsset.ID] = mediaAsset
+
+	uploadFile := asset.UploadFile{
+		ID:              store.NextUploadFileID(),
+		UploadSessionID: session.ID,
+		FileName:        session.FileName,
+		MimeType:        strings.TrimSpace(mimeType),
+		Checksum:        session.Checksum,
+		SizeBytes:       session.SizeBytes,
+		CreatedAt:       now,
+	}
+	store.UploadFiles[uploadFile.ID] = uploadFile
+
+	variant := asset.MediaAssetVariant{
+		ID:           store.NextMediaAssetVariantID(),
+		AssetID:      mediaAsset.ID,
+		UploadFileID: uploadFile.ID,
+		VariantType:  strings.TrimSpace(variantType),
+		MimeType:     strings.TrimSpace(mimeType),
+		Width:        width,
+		Height:       height,
+		CreatedAt:    now,
+	}
+	store.MediaAssetVariants[variant.ID] = variant
+
+	if strings.TrimSpace(session.ImportBatchID) != "" {
+		item := asset.ImportBatchItem{
+			ID:            store.NextImportBatchItemID(),
+			ImportBatchID: session.ImportBatchID,
+			Status:        "uploaded_pending_match",
+			AssetID:       mediaAsset.ID,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		}
+		store.ImportBatchItems[item.ID] = item
+	}
+
+	return session, true
+}
+
 func parseSessionPath(path string) (string, string) {
 	trimmed := strings.TrimPrefix(path, "/upload/sessions/")
 	if trimmed == path || trimmed == "" {
@@ -132,13 +220,14 @@ func parseSessionPath(path string) (string, string) {
 
 func writeSessionResponse(w http.ResponseWriter, statusCode int, session asset.UploadSession) {
 	response := map[string]any{
-		"session_id":   session.ID,
-		"status":       sessionStatus(session),
-		"retry_count":  session.RetryCount,
-		"resume_hint":  sessionResumeHint(session),
-		"expires_at":   session.ExpiresAt.Format(time.RFC3339),
-		"organization": session.OrgID,
-		"project_id":   session.ProjectID,
+		"session_id":      session.ID,
+		"import_batch_id": session.ImportBatchID,
+		"status":          sessionStatus(session),
+		"retry_count":     session.RetryCount,
+		"resume_hint":     sessionResumeHint(session),
+		"expires_at":      session.ExpiresAt.Format(time.RFC3339),
+		"organization":    session.OrgID,
+		"project_id":      session.ProjectID,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -147,6 +236,9 @@ func writeSessionResponse(w http.ResponseWriter, statusCode int, session asset.U
 }
 
 func sessionStatus(session asset.UploadSession) string {
+	if strings.TrimSpace(session.Status) == "uploaded" {
+		return "uploaded"
+	}
 	if !session.ExpiresAt.After(time.Now().UTC()) {
 		return "expired"
 	}
@@ -156,6 +248,9 @@ func sessionStatus(session asset.UploadSession) string {
 func sessionResumeHint(session asset.UploadSession) string {
 	if sessionStatus(session) == "expired" {
 		return "upload session expired; create a retry session to resume upload"
+	}
+	if sessionStatus(session) == "uploaded" {
+		return fmt.Sprintf("upload complete for %s", session.FileName)
 	}
 	if session.RetryCount > 0 {
 		return fmt.Sprintf("retry from byte 0 for %s", session.FileName)

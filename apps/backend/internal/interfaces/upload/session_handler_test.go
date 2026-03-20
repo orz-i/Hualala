@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	assetdomain "github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/interfaces/sse"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
@@ -160,6 +161,78 @@ func TestUploadSessionPublishesSSEEvents(t *testing.T) {
 	}
 	if !strings.Contains(stream, `"retry_count":1`) {
 		t.Fatalf("expected retry_count 1 in SSE payload, got body %q", stream)
+	}
+}
+
+func TestCompleteUploadSessionCreatesAssetRecords(t *testing.T) {
+	store := db.NewMemoryStore()
+	resetSessionStore(store)
+	store.ImportBatches["import-batch-1"] = assetdomain.ImportBatch{
+		ID:         "import-batch-1",
+		OrgID:      "org-1",
+		ProjectID:  "project-1",
+		OperatorID: "user-1",
+		SourceType: "upload_session",
+		Status:     "pending_review",
+	}
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, store)
+
+	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
+		"organization_id":    "org-1",
+		"project_id":         "project-1",
+		"import_batch_id":    "import-batch-1",
+		"file_name":          "shot.png",
+		"checksum":           "sha256:abc123",
+		"size_bytes":         1024,
+		"expires_in_seconds": 60,
+	})
+	createResponse := decodeUploadJSONResponse(t, createRec)
+	sessionID := createResponse["session_id"].(string)
+
+	completeRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions/"+sessionID+"/complete", map[string]any{
+		"variant_type":  "original",
+		"mime_type":     "image/png",
+		"locale":        "zh-CN",
+		"rights_status": "clear",
+		"ai_annotated":  true,
+		"width":         1920,
+		"height":        1080,
+	})
+	completeResponse := decodeUploadJSONResponse(t, completeRec)
+	if got := completeResponse["status"].(string); got != "uploaded" {
+		t.Fatalf("expected uploaded session status, got %q", got)
+	}
+
+	if len(store.MediaAssets) != 1 {
+		t.Fatalf("expected 1 media asset, got %d", len(store.MediaAssets))
+	}
+	for _, mediaAsset := range store.MediaAssets {
+		if mediaAsset.ImportBatchID != "import-batch-1" {
+			t.Fatalf("expected media asset bound to import batch, got %q", mediaAsset.ImportBatchID)
+		}
+		if mediaAsset.SourceType != "upload_session" {
+			t.Fatalf("expected media asset source_type upload_session, got %q", mediaAsset.SourceType)
+		}
+		if mediaAsset.Locale != "zh-CN" {
+			t.Fatalf("expected media asset locale zh-CN, got %q", mediaAsset.Locale)
+		}
+	}
+
+	if len(store.UploadFiles) != 1 {
+		t.Fatalf("expected 1 upload file, got %d", len(store.UploadFiles))
+	}
+	if len(store.MediaAssetVariants) != 1 {
+		t.Fatalf("expected 1 media asset variant, got %d", len(store.MediaAssetVariants))
+	}
+	if len(store.ImportBatchItems) != 1 {
+		t.Fatalf("expected 1 import batch item, got %d", len(store.ImportBatchItems))
+	}
+	for _, item := range store.ImportBatchItems {
+		if item.Status != "uploaded_pending_match" {
+			t.Fatalf("expected uploaded_pending_match item status, got %q", item.Status)
+		}
 	}
 }
 

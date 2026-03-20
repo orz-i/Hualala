@@ -46,16 +46,38 @@ type ImportBatchItem struct {
 }
 
 type UploadSession struct {
-	ID          string
-	OrgID       string
-	ProjectID   string
-	FileName    string
-	Checksum    string
-	SizeBytes   int64
-	RetryCount  int
-	Status      string
-	ResumeHint  string
-	CreatedAt   time.Time
-	ExpiresAt   time.Time
-	LastRetryAt time.Time
+	ID            string
+	OrgID         string
+	ProjectID     string
+	ImportBatchID string
+	FileName      string
+	Checksum      string
+	SizeBytes     int64
+	RetryCount    int
+	Status        string
+	ResumeHint    string
+	CreatedAt     time.Time
+	ExpiresAt     time.Time
+	LastRetryAt   time.Time
+}
+
+type UploadFile struct {
+	ID              string
+	UploadSessionID string
+	FileName        string
+	MimeType        string
+	Checksum        string
+	SizeBytes       int64
+	CreatedAt       time.Time
+}
+
+type MediaAssetVariant struct {
+	ID           string
+	AssetID      string
+	UploadFileID string
+	VariantType  string
+	MimeType     string
+	Width        int
+	Height       int
+	CreatedAt    time.Time
 }
