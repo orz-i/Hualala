@@ -1,0 +1,25 @@
+{
+  "name": "hualala",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.16.0",
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "dev": "turbo run dev",
+    "proto:lint": "node tooling/scripts/run-buf.mjs lint",
+    "proto:gen": "node tooling/scripts/run-buf.mjs generate",
+    "i18n:check": "node -e \"console.log('i18n parity placeholder')\""
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.66.1",
+    "pnpm": "10.16.0",
+    "turbo": "^2.5.6"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@bufbuild/buf"
+    ]
+  }
+}
