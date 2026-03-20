@@ -2,6 +2,7 @@ package billingapp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sort"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 type Service struct {
@@ -65,6 +67,7 @@ func (s *Service) SetProjectBudget(_ context.Context, input SetProjectBudgetInpu
 			record.LimitCents = input.LimitCents
 			record.UpdatedAt = now
 			s.store.Budgets[id] = record
+			s.publishBudgetUpdated(record)
 			return record, nil
 		}
 	}
@@ -78,6 +81,7 @@ func (s *Service) SetProjectBudget(_ context.Context, input SetProjectBudgetInpu
 		UpdatedAt:  now,
 	}
 	s.store.Budgets[record.ID] = record
+	s.publishBudgetUpdated(record)
 	return record, nil
 }
 
@@ -126,4 +130,27 @@ func (s *Service) ListBillingEvents(_ context.Context, input ListBillingEventsIn
 	})
 
 	return events, nil
+}
+
+func (s *Service) publishBudgetUpdated(record billing.ProjectBudget) {
+	if s == nil || s.store == nil || s.store.EventPublisher == nil {
+		return
+	}
+	payload, err := json.Marshal(map[string]any{
+		"project_id":      record.ProjectID,
+		"limit_cents":     record.LimitCents,
+		"reserved_cents":  record.ReservedCents,
+		"remaining_cents": record.LimitCents - record.ReservedCents,
+	})
+	if err != nil {
+		return
+	}
+	s.store.EventPublisher.Publish(events.Event{
+		EventType:      "budget.updated",
+		OrganizationID: record.OrgID,
+		ProjectID:      record.ProjectID,
+		ResourceType:   "budget",
+		ResourceID:     record.ID,
+		Payload:        string(payload),
+	})
 }

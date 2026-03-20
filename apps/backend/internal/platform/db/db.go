@@ -8,8 +8,10 @@ import (
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
+	"github.com/hualala/apps/backend/internal/domain/gateway"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/review"
+	"github.com/hualala/apps/backend/internal/domain/workflow"
 	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
@@ -42,6 +44,9 @@ type MemoryStore struct {
 	nextUsageID           int
 	nextBillingEventID    int
 	nextEvaluationRunID   int
+	nextWorkflowRunID     int
+	nextWorkflowStepID    int
+	nextGatewayRequestID  int
 
 	Projects           map[string]project.Project
 	Episodes           map[string]project.Episode
@@ -62,6 +67,9 @@ type MemoryStore struct {
 	Budgets            map[string]billing.ProjectBudget
 	UsageRecords       map[string]billing.UsageRecord
 	BillingEvents      map[string]billing.BillingEvent
+	WorkflowRuns       map[string]workflow.WorkflowRun
+	WorkflowSteps      map[string]workflow.WorkflowStep
+	GatewayResults     map[string]gateway.GatewayResult
 	EventPublisher     *events.Publisher
 }
 
@@ -86,6 +94,9 @@ func NewMemoryStore() *MemoryStore {
 		Budgets:            make(map[string]billing.ProjectBudget),
 		UsageRecords:       make(map[string]billing.UsageRecord),
 		BillingEvents:      make(map[string]billing.BillingEvent),
+		WorkflowRuns:       make(map[string]workflow.WorkflowRun),
+		WorkflowSteps:      make(map[string]workflow.WorkflowStep),
+		GatewayResults:     make(map[string]gateway.GatewayResult),
 		EventPublisher:     events.NewPublisher(),
 	}
 }
@@ -188,4 +199,19 @@ func (s *MemoryStore) NextBillingEventID() string {
 func (s *MemoryStore) NextEvaluationRunID() string {
 	s.nextEvaluationRunID++
 	return fmt.Sprintf("evaluation-run-%d", s.nextEvaluationRunID)
+}
+
+func (s *MemoryStore) NextWorkflowRunID() string {
+	s.nextWorkflowRunID++
+	return fmt.Sprintf("workflow-run-%d", s.nextWorkflowRunID)
+}
+
+func (s *MemoryStore) NextWorkflowStepID() string {
+	s.nextWorkflowStepID++
+	return fmt.Sprintf("workflow-step-%d", s.nextWorkflowStepID)
+}
+
+func (s *MemoryStore) NextGatewayExternalRequestID() string {
+	s.nextGatewayRequestID++
+	return fmt.Sprintf("external-request-%d", s.nextGatewayRequestID)
 }

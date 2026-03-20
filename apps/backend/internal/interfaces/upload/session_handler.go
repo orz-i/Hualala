@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hualala/apps/backend/internal/application/policyapp"
 	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/events"
@@ -23,6 +24,7 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 	if store == nil {
 		store = db.NewMemoryStore()
 	}
+	policyService := policyapp.NewService(store)
 
 	mux.HandleFunc("/upload/sessions", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -52,7 +54,7 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 
 		session := createSession(store, request.OrganizationID, request.ProjectID, request.ImportBatchID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
 		publishUploadSessionUpdated(store, session)
-		writeSessionResponse(w, http.StatusOK, store, session)
+		writeSessionResponse(w, http.StatusOK, store, policyService, session)
 	})
 
 	mux.HandleFunc("/upload/sessions/", func(w http.ResponseWriter, r *http.Request) {
@@ -69,15 +71,15 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 				http.NotFound(w, r)
 				return
 			}
-			writeSessionResponse(w, http.StatusOK, store, session)
+			writeSessionResponse(w, http.StatusOK, store, policyService, session)
 		case r.Method == http.MethodPost && action == "retry":
-			session, ok := retrySession(store, sessionID)
+			session, ok := retrySession(store, policyService, sessionID)
 			if !ok {
 				http.NotFound(w, r)
 				return
 			}
 			publishUploadSessionUpdated(store, session)
-			writeSessionResponse(w, http.StatusOK, store, session)
+			writeSessionResponse(w, http.StatusOK, store, policyService, session)
 		case r.Method == http.MethodPost && action == "complete":
 			var request struct {
 				ShotExecutionID string `json:"shot_execution_id"`
@@ -93,13 +95,13 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			session, ok := completeSession(store, sessionID, request.ShotExecutionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.AIAnnotated, request.Width, request.Height)
+			session, ok := completeSession(store, policyService, sessionID, request.ShotExecutionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.AIAnnotated, request.Width, request.Height)
 			if !ok {
 				http.NotFound(w, r)
 				return
 			}
 			publishUploadSessionUpdated(store, session)
-			writeSessionResponse(w, http.StatusOK, store, session)
+			writeSessionResponse(w, http.StatusOK, store, policyService, session)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
@@ -131,22 +133,29 @@ func getSession(store *db.MemoryStore, sessionID string) (asset.UploadSession, b
 	return session, ok
 }
 
-func retrySession(store *db.MemoryStore, sessionID string) (asset.UploadSession, bool) {
+func retrySession(store *db.MemoryStore, policy *policyapp.Service, sessionID string) (asset.UploadSession, bool) {
 	session, ok := store.UploadSessions[sessionID]
 	if !ok {
+		return asset.UploadSession{}, false
+	}
+	decision := policy.EvaluateUploadResumeAllowed(session)
+	if !decision.CanRetry {
 		return asset.UploadSession{}, false
 	}
 	session.RetryCount++
 	session.LastRetryAt = time.Now().UTC()
 	session.Status = sessionStatus(session)
-	session.ResumeHint = sessionResumeHint(session)
+	session.ResumeHint = policy.EvaluateUploadResumeAllowed(session).ResumeHint
 	store.UploadSessions[sessionID] = session
 	return session, true
 }
 
-func completeSession(store *db.MemoryStore, sessionID string, shotExecutionID string, variantType string, mimeType string, locale string, rightsStatus string, aiAnnotated bool, width int, height int) (asset.UploadSession, bool) {
+func completeSession(store *db.MemoryStore, policy *policyapp.Service, sessionID string, shotExecutionID string, variantType string, mimeType string, locale string, rightsStatus string, aiAnnotated bool, width int, height int) (asset.UploadSession, bool) {
 	session, ok := store.UploadSessions[sessionID]
 	if !ok {
+		return asset.UploadSession{}, false
+	}
+	if !policy.EvaluateUploadResumeAllowed(session).CanComplete {
 		return asset.UploadSession{}, false
 	}
 	shotExecutionID = strings.TrimSpace(shotExecutionID)
@@ -274,13 +283,14 @@ func parseSessionPath(path string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func writeSessionResponse(w http.ResponseWriter, statusCode int, store *db.MemoryStore, session asset.UploadSession) {
+func writeSessionResponse(w http.ResponseWriter, statusCode int, store *db.MemoryStore, policy *policyapp.Service, session asset.UploadSession) {
+	decision := policy.EvaluateUploadResumeAllowed(session)
 	response := map[string]any{
 		"session_id":      session.ID,
 		"import_batch_id": session.ImportBatchID,
 		"status":          sessionStatus(session),
 		"retry_count":     session.RetryCount,
-		"resume_hint":     sessionResumeHint(session),
+		"resume_hint":     decision.ResumeHint,
 		"expires_at":      session.ExpiresAt.Format(time.RFC3339),
 		"organization":    session.OrgID,
 		"project_id":      session.ProjectID,
@@ -317,30 +327,18 @@ func sessionStatus(session asset.UploadSession) string {
 	return "pending"
 }
 
-func sessionResumeHint(session asset.UploadSession) string {
-	if sessionStatus(session) == "expired" {
-		return "upload session expired; create a retry session to resume upload"
-	}
-	if sessionStatus(session) == "uploaded" {
-		return fmt.Sprintf("upload complete for %s", session.FileName)
-	}
-	if session.RetryCount > 0 {
-		return fmt.Sprintf("retry from byte 0 for %s", session.FileName)
-	}
-	return fmt.Sprintf("upload %s from byte 0", session.FileName)
-}
-
 func publishUploadSessionUpdated(store *db.MemoryStore, session asset.UploadSession) {
 	if store == nil || store.EventPublisher == nil {
 		return
 	}
+	decision := policyapp.NewService(store).EvaluateUploadResumeAllowed(session)
 
 	body, err := json.Marshal(map[string]any{
 		"session_id":   session.ID,
 		"project_id":   session.ProjectID,
 		"status":       sessionStatus(session),
 		"retry_count":  session.RetryCount,
-		"resume_hint":  sessionResumeHint(session),
+		"resume_hint":  decision.ResumeHint,
 		"expires_at":   session.ExpiresAt.Format(time.RFC3339),
 		"organization": session.OrgID,
 	})

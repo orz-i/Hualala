@@ -9,14 +9,19 @@ import (
 	billingv1connect "github.com/hualala/apps/backend/gen/hualala/billing/v1/billingv1connect"
 	executionv1connect "github.com/hualala/apps/backend/gen/hualala/execution/v1/executionv1connect"
 	reviewv1connect "github.com/hualala/apps/backend/gen/hualala/review/v1/reviewv1connect"
+	workflowv1connect "github.com/hualala/apps/backend/gen/hualala/workflow/v1/workflowv1connect"
 	"github.com/hualala/apps/backend/internal/application/assetapp"
 	"github.com/hualala/apps/backend/internal/application/billingapp"
 	"github.com/hualala/apps/backend/internal/application/executionapp"
+	"github.com/hualala/apps/backend/internal/application/gatewayapp"
+	"github.com/hualala/apps/backend/internal/application/policyapp"
 	"github.com/hualala/apps/backend/internal/application/reviewapp"
+	"github.com/hualala/apps/backend/internal/application/workflowapp"
 	"github.com/hualala/apps/backend/internal/interfaces/sse"
 	"github.com/hualala/apps/backend/internal/interfaces/upload"
 	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/events"
+	"github.com/hualala/apps/backend/internal/platform/temporal"
 )
 
 var allowedHealthMethods = []string{http.MethodGet}
@@ -26,16 +31,25 @@ type RouteDependencies struct {
 	AssetService     *assetapp.Service
 	ReviewService    *reviewapp.Service
 	BillingService   *billingapp.Service
+	WorkflowService  *workflowapp.Service
+	GatewayService   *gatewayapp.Service
+	PolicyService    *policyapp.Service
 	EventPublisher   *events.Publisher
 	Store            *db.MemoryStore
 }
 
 func NewRouteDependencies(store *db.MemoryStore) RouteDependencies {
+	policyService := policyapp.NewService(store)
+	gatewayService := gatewayapp.NewService(store, gatewayapp.NewFakeAdapter())
+	workflowService := workflowapp.NewService(store, temporal.NewInMemoryExecutor(gatewayService), policyService)
 	return RouteDependencies{
 		ExecutionService: executionapp.NewService(store),
 		AssetService:     assetapp.NewService(store),
 		ReviewService:    reviewapp.NewService(store),
 		BillingService:   billingapp.NewService(store),
+		WorkflowService:  workflowService,
+		GatewayService:   gatewayService,
+		PolicyService:    policyService,
 		EventPublisher:   store.EventPublisher,
 		Store:            store,
 	}
@@ -65,6 +79,10 @@ func RegisterRoutes(mux *http.ServeMux, deps RouteDependencies) {
 	}
 	if deps.BillingService != nil {
 		path, handler := billingv1connect.NewBillingServiceHandler(&billingHandler{service: deps.BillingService})
+		mux.Handle(path, handler)
+	}
+	if deps.WorkflowService != nil {
+		path, handler := workflowv1connect.NewWorkflowServiceHandler(&workflowHandler{service: deps.WorkflowService})
 		mux.Handle(path, handler)
 	}
 	sse.RegisterRoutes(mux, deps.EventPublisher)
