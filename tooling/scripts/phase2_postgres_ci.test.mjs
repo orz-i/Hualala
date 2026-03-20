@@ -20,9 +20,11 @@ test("ci workflow runs backend and real acceptance against postgres", () => {
 test("repo exposes postgres developer scripts", () => {
   const packageJson = readFileSync(join(repoRoot, "package.json"), "utf8");
   const compose = readFileSync(join(repoRoot, "infra", "docker", "postgres.compose.yml"), "utf8");
+  const dockerComposeScript = readFileSync(join(repoRoot, "tooling", "scripts", "docker_compose.mjs"), "utf8");
 
-  assert.match(packageJson, /"db:up":\s*"docker compose -f infra\/docker\/postgres\.compose\.yml up -d"/);
-  assert.match(packageJson, /"db:down":\s*"docker compose -f infra\/docker\/postgres\.compose\.yml down -v"/);
+  assert.match(packageJson, /"db:up":\s*"node tooling\/scripts\/docker_compose\.mjs up -d"/);
+  assert.match(packageJson, /"db:down":\s*"node tooling\/scripts\/docker_compose\.mjs down -v"/);
   assert.match(packageJson, /"db:migrate":\s*"go run \.\/apps\/backend\/cmd\/migrate"/);
   assert.match(compose, /image:\s*postgres:16/);
+  assert.match(dockerComposeScript, /\["compose", "-f", "infra\/docker\/postgres\.compose\.yml"/);
 });
