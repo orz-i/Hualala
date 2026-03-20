@@ -121,6 +121,7 @@
 
 - `corepack pnpm run test:e2e:admin:real`
 - `corepack pnpm run test:e2e:creator:real`
+- `corepack pnpm run test:e2e:phase1:real`
 
 ## 说明
 

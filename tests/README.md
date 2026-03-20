@@ -30,6 +30,7 @@
 - `corepack pnpm run demo:seed:backend`
 - `corepack pnpm run test:e2e:admin`
 - `corepack pnpm run test:e2e:creator`
-- `corepack pnpm run test:e2e:phase1`
+- `corepack pnpm run test:e2e:phase1`：mock acceptance
 - `corepack pnpm run test:e2e:admin:real`
 - `corepack pnpm run test:e2e:creator:real`
+- `corepack pnpm run test:e2e:phase1:real`：真实 backend acceptance
