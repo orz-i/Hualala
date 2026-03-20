@@ -9,7 +9,10 @@ import { updateBudgetPolicy } from "../features/dashboard/mutateBudgetPolicy";
 export function App() {
   const [overview, setOverview] = useState<AdminOverviewViewModel | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
-  const [budgetFeedback, setBudgetFeedback] = useState("");
+  const [budgetFeedback, setBudgetFeedback] = useState<{
+    tone: "pending" | "success" | "error";
+    message: string;
+  } | null>(null);
 
   const searchParams = new URLSearchParams(window.location.search);
   const projectId = searchParams.get("projectId") ?? "project-demo-001";
@@ -64,10 +67,13 @@ export function App() {
   return (
     <AdminOverviewPage
       overview={overview}
-      budgetFeedback={budgetFeedback}
+      budgetFeedback={budgetFeedback ?? undefined}
       onUpdateBudgetLimit={async (input) => {
         startTransition(() => {
-          setBudgetFeedback("正在更新预算策略");
+          setBudgetFeedback({
+            tone: "pending",
+            message: "正在更新预算策略",
+          });
         });
         try {
           await updateBudgetPolicy({
@@ -77,13 +83,19 @@ export function App() {
           });
           await refreshOverview();
           startTransition(() => {
-            setBudgetFeedback("预算策略已更新");
+            setBudgetFeedback({
+              tone: "success",
+              message: "预算策略已更新",
+            });
           });
         } catch (error: unknown) {
           const message =
             error instanceof Error ? error.message : "admin: unknown budget update error";
           startTransition(() => {
-            setBudgetFeedback(`预算策略更新失败：${message}`);
+            setBudgetFeedback({
+              tone: "error",
+              message: `预算策略更新失败：${message}`,
+            });
           });
         }
       }}

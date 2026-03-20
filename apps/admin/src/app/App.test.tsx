@@ -124,4 +124,42 @@ describe("Admin App", () => {
     expect(await screen.findByText("预算策略已更新")).toBeInTheDocument();
     expect(screen.getByText("预算上限：1500.00 元")).toBeInTheDocument();
   });
+
+  it("keeps the current overview visible and surfaces an error when budget updates fail", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-2&shotExecutionId=shot-exec-live-2&orgId=org-live-2",
+    );
+    loadAdminOverviewMock.mockResolvedValue({
+      budgetSnapshot: {
+        projectId: "project-live-2",
+        limitCents: 120000,
+        reservedCents: 18000,
+        remainingBudgetCents: 102000,
+      },
+      usageRecords: [{ id: "usage-1", meter: "tts", amountCents: 6000 }],
+      billingEvents: [{ id: "event-1", eventType: "budget_reserved", amountCents: 18000 }],
+      reviewSummary: {
+        shotExecutionId: "shot-exec-live-2",
+        latestConclusion: "approved",
+      },
+      evaluationRuns: [{ id: "eval-1", status: "passed", failedChecks: [] }],
+      shotReviews: [{ id: "review-1", conclusion: "approved" }],
+    });
+    updateBudgetPolicyMock.mockRejectedValue(new Error("network down"));
+
+    render(<App />);
+
+    expect(await screen.findByText("project-live-2")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("预算上限（元）"), {
+      target: { value: "1500" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "更新预算" }));
+
+    expect(await screen.findByText("预算策略更新失败：network down")).toBeInTheDocument();
+    expect(screen.getByText("project-live-2")).toBeInTheDocument();
+    expect(loadAdminOverviewMock).toHaveBeenCalledTimes(1);
+  });
 });

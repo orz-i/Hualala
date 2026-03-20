@@ -217,6 +217,8 @@ describe("App", () => {
     });
 
     expect(await screen.findByText("提交评审已完成")).toBeInTheDocument();
+    expect(screen.getByText("最新评审结论：approved")).toBeInTheDocument();
+    expect(screen.getByText("最近评估：passed")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(3);

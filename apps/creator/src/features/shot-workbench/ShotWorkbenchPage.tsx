@@ -33,6 +33,8 @@ type ShotWorkbenchFeedback = {
   message: string;
   passedChecks?: string[];
   failedChecks?: string[];
+  latestConclusion?: string;
+  latestEvaluationStatus?: string;
 };
 
 type ShotWorkbenchPageProps = {
@@ -140,6 +142,12 @@ export function ShotWorkbenchPage({
                     ))}
                   </ul>
                 </div>
+              ) : null}
+              {feedback.latestConclusion ? (
+                <p style={{ margin: "10px 0 0" }}>最新评审结论：{feedback.latestConclusion}</p>
+              ) : null}
+              {feedback.latestEvaluationStatus ? (
+                <p style={{ margin: "6px 0 0" }}>最近评估：{feedback.latestEvaluationStatus}</p>
               ) : null}
             </div>
           ) : null}

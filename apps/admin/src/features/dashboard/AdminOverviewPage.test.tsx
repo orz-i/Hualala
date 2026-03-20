@@ -35,7 +35,7 @@ describe("AdminOverviewPage", () => {
   it("allows submitting a new budget limit", () => {
     const onUpdateBudgetLimit = vi.fn();
 
-    render(
+    const { rerender } = render(
       <AdminOverviewPage
         overview={{
           budgetSnapshot: {
@@ -54,6 +54,10 @@ describe("AdminOverviewPage", () => {
           shotReviews: [{ id: "review-1", conclusion: "approved" }],
         }}
         onUpdateBudgetLimit={onUpdateBudgetLimit}
+        budgetFeedback={{
+          tone: "success",
+          message: "预算策略已更新",
+        }}
       />,
     );
 
@@ -65,6 +69,37 @@ describe("AdminOverviewPage", () => {
     expect(onUpdateBudgetLimit).toHaveBeenCalledWith({
       limitCents: 150000,
       projectId: "project-live-1",
+    });
+    expect(screen.getByText("预算策略已更新")).toHaveStyle({ color: "#115e59" });
+
+    rerender(
+      <AdminOverviewPage
+        overview={{
+          budgetSnapshot: {
+            projectId: "project-live-1",
+            limitCents: 120000,
+            reservedCents: 18000,
+            remainingBudgetCents: 102000,
+          },
+          usageRecords: [{ id: "usage-1", meter: "tts", amountCents: 6000 }],
+          billingEvents: [{ id: "event-1", eventType: "budget_reserved", amountCents: 18000 }],
+          reviewSummary: {
+            shotExecutionId: "shot-exec-live-1",
+            latestConclusion: "approved",
+          },
+          evaluationRuns: [{ id: "eval-1", status: "passed", failedChecks: [] }],
+          shotReviews: [{ id: "review-1", conclusion: "approved" }],
+        }}
+        onUpdateBudgetLimit={onUpdateBudgetLimit}
+        budgetFeedback={{
+          tone: "error",
+          message: "预算策略更新失败：network down",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("预算策略更新失败：network down")).toHaveStyle({
+      color: "#991b1b",
     });
   });
 });

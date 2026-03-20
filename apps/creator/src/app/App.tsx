@@ -20,6 +20,8 @@ type ShotActionFeedback = {
   message: string;
   passedChecks?: string[];
   failedChecks?: string[];
+  latestConclusion?: string;
+  latestEvaluationStatus?: string;
 };
 
 export function App() {
@@ -97,6 +99,7 @@ export function App() {
       setShotWorkbench(nextWorkbench);
       setErrorMessage("");
     });
+    return nextWorkbench;
   };
 
   if (errorMessage) {
@@ -133,13 +136,15 @@ export function App() {
           });
           try {
             const result = await runSubmissionGateChecks(input);
-            await refreshShotWorkbench();
+            const nextWorkbench = await refreshShotWorkbench();
             startTransition(() => {
               setShotActionFeedback({
                 tone: "success",
                 message: "Gate 检查已完成",
                 passedChecks: result.passedChecks,
                 failedChecks: result.failedChecks,
+                latestConclusion: nextWorkbench.reviewSummary.latestConclusion,
+                latestEvaluationStatus: nextWorkbench.latestEvaluationRun?.status ?? "pending",
               });
             });
           } catch (error: unknown) {
@@ -162,11 +167,13 @@ export function App() {
           });
           try {
             await submitShotForReview(input);
-            await refreshShotWorkbench();
+            const nextWorkbench = await refreshShotWorkbench();
             startTransition(() => {
               setShotActionFeedback({
                 tone: "success",
                 message: "提交评审已完成",
+                latestConclusion: nextWorkbench.reviewSummary.latestConclusion,
+                latestEvaluationStatus: nextWorkbench.latestEvaluationRun?.status ?? "pending",
               });
             });
           } catch (error: unknown) {

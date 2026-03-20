@@ -94,6 +94,8 @@ describe("ShotWorkbenchPage", () => {
           message: "Gate 检查已完成",
           passedChecks: ["asset_selected"],
           failedChecks: ["copyright_missing"],
+          latestConclusion: "approved",
+          latestEvaluationStatus: "passed",
         }}
       />,
     );
@@ -103,6 +105,8 @@ describe("ShotWorkbenchPage", () => {
     expect(screen.getByText("asset_selected")).toBeInTheDocument();
     expect(screen.getByText("未通过检查")).toBeInTheDocument();
     expect(screen.getByText("copyright_missing")).toBeInTheDocument();
+    expect(screen.getByText("最新评审结论：approved")).toBeInTheDocument();
+    expect(screen.getByText("最近评估：passed")).toBeInTheDocument();
 
     rerender(
       <ShotWorkbenchPage

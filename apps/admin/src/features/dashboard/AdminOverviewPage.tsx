@@ -44,10 +44,15 @@ export type AdminOverviewViewModel = {
   shotReviews: ShotReviewSummary[];
 };
 
+type BudgetFeedback = {
+  tone: "pending" | "success" | "error";
+  message: string;
+};
+
 type AdminOverviewPageProps = {
   overview: AdminOverviewViewModel;
   onUpdateBudgetLimit?: (input: { projectId: string; limitCents: number }) => void;
-  budgetFeedback?: string;
+  budgetFeedback?: BudgetFeedback;
 };
 
 const panelStyle: CSSProperties = {
@@ -79,6 +84,12 @@ export function AdminOverviewPage({
   const [budgetLimitYuan, setBudgetLimitYuan] = useState(
     (overview.budgetSnapshot.limitCents / 100).toFixed(2),
   );
+  const budgetFeedbackPalette =
+    budgetFeedback?.tone === "error"
+      ? { color: "#991b1b" }
+      : budgetFeedback?.tone === "pending"
+        ? { color: "#92400e" }
+        : { color: "#115e59" };
 
   useEffect(() => {
     setBudgetLimitYuan((overview.budgetSnapshot.limitCents / 100).toFixed(2));
@@ -172,7 +183,15 @@ export function AdminOverviewPage({
                 更新预算
               </button>
               {budgetFeedback ? (
-                <p style={{ margin: 0, color: "#0f766e", fontSize: "0.9rem" }}>{budgetFeedback}</p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "0.9rem",
+                    ...budgetFeedbackPalette,
+                  }}
+                >
+                  {budgetFeedback.message}
+                </p>
               ) : null}
             </div>
           </article>
