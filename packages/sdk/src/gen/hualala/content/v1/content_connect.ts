@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateContentSnapshotRequest, CreateContentSnapshotResponse, CreateLocalizedSnapshotRequest, CreateLocalizedSnapshotResponse, GetSceneRequest, GetSceneResponse, GetShotRequest, GetShotResponse, ListSceneShotsRequest, ListSceneShotsResponse, ListScenesRequest, ListScenesResponse, UpdateShotStructureRequest, UpdateShotStructureResponse } from "./content_pb.js";
+import { CreateContentSnapshotRequest, CreateContentSnapshotResponse, CreateLocalizedSnapshotRequest, CreateLocalizedSnapshotResponse, CreateSceneRequest, CreateSceneResponse, CreateShotRequest, CreateShotResponse, GetSceneRequest, GetSceneResponse, GetShotRequest, GetShotResponse, ListSceneShotsRequest, ListSceneShotsResponse, ListScenesRequest, ListScenesResponse, UpdateShotStructureRequest, UpdateShotStructureResponse } from "./content_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -12,6 +12,24 @@ import { MethodKind } from "@bufbuild/protobuf";
 export const ContentService = {
   typeName: "hualala.content.v1.ContentService",
   methods: {
+    /**
+     * @generated from rpc hualala.content.v1.ContentService.CreateScene
+     */
+    createScene: {
+      name: "CreateScene",
+      I: CreateSceneRequest,
+      O: CreateSceneResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.content.v1.ContentService.CreateShot
+     */
+    createShot: {
+      name: "CreateShot",
+      I: CreateShotRequest,
+      O: CreateShotResponse,
+      kind: MethodKind.Unary,
+    },
     /**
      * @generated from rpc hualala.content.v1.ContentService.ListScenes
      */

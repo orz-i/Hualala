@@ -261,6 +261,110 @@ func (x *CreateProjectResponse) GetProject() *Project {
 	return nil
 }
 
+type CreateEpisodeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	EpisodeNumber uint32                 `protobuf:"varint,2,opt,name=episode_number,json=episodeNumber,proto3" json:"episode_number,omitempty"`
+	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateEpisodeRequest) Reset() {
+	*x = CreateEpisodeRequest{}
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateEpisodeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateEpisodeRequest) ProtoMessage() {}
+
+func (x *CreateEpisodeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateEpisodeRequest.ProtoReflect.Descriptor instead.
+func (*CreateEpisodeRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *CreateEpisodeRequest) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *CreateEpisodeRequest) GetEpisodeNumber() uint32 {
+	if x != nil {
+		return x.EpisodeNumber
+	}
+	return 0
+}
+
+func (x *CreateEpisodeRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+type CreateEpisodeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Episode       *Episode               `protobuf:"bytes,1,opt,name=episode,proto3" json:"episode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateEpisodeResponse) Reset() {
+	*x = CreateEpisodeResponse{}
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateEpisodeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateEpisodeResponse) ProtoMessage() {}
+
+func (x *CreateEpisodeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateEpisodeResponse.ProtoReflect.Descriptor instead.
+func (*CreateEpisodeResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CreateEpisodeResponse) GetEpisode() *Episode {
+	if x != nil {
+		return x.Episode
+	}
+	return nil
+}
+
 type GetProjectRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
@@ -270,7 +374,7 @@ type GetProjectRequest struct {
 
 func (x *GetProjectRequest) Reset() {
 	*x = GetProjectRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[4]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -282,7 +386,7 @@ func (x *GetProjectRequest) String() string {
 func (*GetProjectRequest) ProtoMessage() {}
 
 func (x *GetProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[4]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -295,7 +399,7 @@ func (x *GetProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProjectRequest.ProtoReflect.Descriptor instead.
 func (*GetProjectRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{4}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetProjectRequest) GetProjectId() string {
@@ -314,7 +418,7 @@ type GetProjectResponse struct {
 
 func (x *GetProjectResponse) Reset() {
 	*x = GetProjectResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[5]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -326,7 +430,7 @@ func (x *GetProjectResponse) String() string {
 func (*GetProjectResponse) ProtoMessage() {}
 
 func (x *GetProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[5]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -339,7 +443,7 @@ func (x *GetProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProjectResponse.ProtoReflect.Descriptor instead.
 func (*GetProjectResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{5}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetProjectResponse) GetProject() *Project {
@@ -358,7 +462,7 @@ type ListProjectsRequest struct {
 
 func (x *ListProjectsRequest) Reset() {
 	*x = ListProjectsRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[6]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -370,7 +474,7 @@ func (x *ListProjectsRequest) String() string {
 func (*ListProjectsRequest) ProtoMessage() {}
 
 func (x *ListProjectsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[6]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -383,7 +487,7 @@ func (x *ListProjectsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProjectsRequest.ProtoReflect.Descriptor instead.
 func (*ListProjectsRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{6}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListProjectsRequest) GetOrgId() string {
@@ -402,7 +506,7 @@ type ListProjectsResponse struct {
 
 func (x *ListProjectsResponse) Reset() {
 	*x = ListProjectsResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[7]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -414,7 +518,7 @@ func (x *ListProjectsResponse) String() string {
 func (*ListProjectsResponse) ProtoMessage() {}
 
 func (x *ListProjectsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[7]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -427,7 +531,7 @@ func (x *ListProjectsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProjectsResponse.ProtoReflect.Descriptor instead.
 func (*ListProjectsResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{7}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListProjectsResponse) GetProjects() []*Project {
@@ -446,7 +550,7 @@ type ListEpisodesRequest struct {
 
 func (x *ListEpisodesRequest) Reset() {
 	*x = ListEpisodesRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[8]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -458,7 +562,7 @@ func (x *ListEpisodesRequest) String() string {
 func (*ListEpisodesRequest) ProtoMessage() {}
 
 func (x *ListEpisodesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[8]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -471,7 +575,7 @@ func (x *ListEpisodesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEpisodesRequest.ProtoReflect.Descriptor instead.
 func (*ListEpisodesRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{8}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListEpisodesRequest) GetProjectId() string {
@@ -490,7 +594,7 @@ type ListEpisodesResponse struct {
 
 func (x *ListEpisodesResponse) Reset() {
 	*x = ListEpisodesResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[9]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -502,7 +606,7 @@ func (x *ListEpisodesResponse) String() string {
 func (*ListEpisodesResponse) ProtoMessage() {}
 
 func (x *ListEpisodesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[9]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -515,7 +619,7 @@ func (x *ListEpisodesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEpisodesResponse.ProtoReflect.Descriptor instead.
 func (*ListEpisodesResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{9}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListEpisodesResponse) GetEpisodes() []*Episode {
@@ -548,7 +652,14 @@ const file_hualala_project_v1_project_service_proto_rawDesc = "" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\"\n" +
 	"\rowner_user_id\x18\x03 \x01(\tR\vownerUserId\"N\n" +
 	"\x15CreateProjectResponse\x125\n" +
-	"\aproject\x18\x01 \x01(\v2\x1b.hualala.project.v1.ProjectR\aproject\"2\n" +
+	"\aproject\x18\x01 \x01(\v2\x1b.hualala.project.v1.ProjectR\aproject\"r\n" +
+	"\x14CreateEpisodeRequest\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x01 \x01(\tR\tprojectId\x12%\n" +
+	"\x0eepisode_number\x18\x02 \x01(\rR\repisodeNumber\x12\x14\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\"N\n" +
+	"\x15CreateEpisodeResponse\x125\n" +
+	"\aepisode\x18\x01 \x01(\v2\x1b.hualala.project.v1.EpisodeR\aepisode\"2\n" +
 	"\x11GetProjectRequest\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\"K\n" +
@@ -562,9 +673,10 @@ const file_hualala_project_v1_project_service_proto_rawDesc = "" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\"O\n" +
 	"\x14ListEpisodesResponse\x127\n" +
-	"\bepisodes\x18\x01 \x03(\v2\x1b.hualala.project.v1.EpisodeR\bepisodes2\x99\x03\n" +
+	"\bepisodes\x18\x01 \x03(\v2\x1b.hualala.project.v1.EpisodeR\bepisodes2\xff\x03\n" +
 	"\x0eProjectService\x12d\n" +
-	"\rCreateProject\x12(.hualala.project.v1.CreateProjectRequest\x1a).hualala.project.v1.CreateProjectResponse\x12[\n" +
+	"\rCreateProject\x12(.hualala.project.v1.CreateProjectRequest\x1a).hualala.project.v1.CreateProjectResponse\x12d\n" +
+	"\rCreateEpisode\x12(.hualala.project.v1.CreateEpisodeRequest\x1a).hualala.project.v1.CreateEpisodeResponse\x12[\n" +
 	"\n" +
 	"GetProject\x12%.hualala.project.v1.GetProjectRequest\x1a&.hualala.project.v1.GetProjectResponse\x12a\n" +
 	"\fListProjects\x12'.hualala.project.v1.ListProjectsRequest\x1a(.hualala.project.v1.ListProjectsResponse\x12a\n" +
@@ -583,37 +695,42 @@ func file_hualala_project_v1_project_service_proto_rawDescGZIP() []byte {
 	return file_hualala_project_v1_project_service_proto_rawDescData
 }
 
-var file_hualala_project_v1_project_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_hualala_project_v1_project_service_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_hualala_project_v1_project_service_proto_goTypes = []any{
 	(*Project)(nil),               // 0: hualala.project.v1.Project
 	(*Episode)(nil),               // 1: hualala.project.v1.Episode
 	(*CreateProjectRequest)(nil),  // 2: hualala.project.v1.CreateProjectRequest
 	(*CreateProjectResponse)(nil), // 3: hualala.project.v1.CreateProjectResponse
-	(*GetProjectRequest)(nil),     // 4: hualala.project.v1.GetProjectRequest
-	(*GetProjectResponse)(nil),    // 5: hualala.project.v1.GetProjectResponse
-	(*ListProjectsRequest)(nil),   // 6: hualala.project.v1.ListProjectsRequest
-	(*ListProjectsResponse)(nil),  // 7: hualala.project.v1.ListProjectsResponse
-	(*ListEpisodesRequest)(nil),   // 8: hualala.project.v1.ListEpisodesRequest
-	(*ListEpisodesResponse)(nil),  // 9: hualala.project.v1.ListEpisodesResponse
+	(*CreateEpisodeRequest)(nil),  // 4: hualala.project.v1.CreateEpisodeRequest
+	(*CreateEpisodeResponse)(nil), // 5: hualala.project.v1.CreateEpisodeResponse
+	(*GetProjectRequest)(nil),     // 6: hualala.project.v1.GetProjectRequest
+	(*GetProjectResponse)(nil),    // 7: hualala.project.v1.GetProjectResponse
+	(*ListProjectsRequest)(nil),   // 8: hualala.project.v1.ListProjectsRequest
+	(*ListProjectsResponse)(nil),  // 9: hualala.project.v1.ListProjectsResponse
+	(*ListEpisodesRequest)(nil),   // 10: hualala.project.v1.ListEpisodesRequest
+	(*ListEpisodesResponse)(nil),  // 11: hualala.project.v1.ListEpisodesResponse
 }
 var file_hualala_project_v1_project_service_proto_depIdxs = []int32{
-	0, // 0: hualala.project.v1.CreateProjectResponse.project:type_name -> hualala.project.v1.Project
-	0, // 1: hualala.project.v1.GetProjectResponse.project:type_name -> hualala.project.v1.Project
-	0, // 2: hualala.project.v1.ListProjectsResponse.projects:type_name -> hualala.project.v1.Project
-	1, // 3: hualala.project.v1.ListEpisodesResponse.episodes:type_name -> hualala.project.v1.Episode
-	2, // 4: hualala.project.v1.ProjectService.CreateProject:input_type -> hualala.project.v1.CreateProjectRequest
-	4, // 5: hualala.project.v1.ProjectService.GetProject:input_type -> hualala.project.v1.GetProjectRequest
-	6, // 6: hualala.project.v1.ProjectService.ListProjects:input_type -> hualala.project.v1.ListProjectsRequest
-	8, // 7: hualala.project.v1.ProjectService.ListEpisodes:input_type -> hualala.project.v1.ListEpisodesRequest
-	3, // 8: hualala.project.v1.ProjectService.CreateProject:output_type -> hualala.project.v1.CreateProjectResponse
-	5, // 9: hualala.project.v1.ProjectService.GetProject:output_type -> hualala.project.v1.GetProjectResponse
-	7, // 10: hualala.project.v1.ProjectService.ListProjects:output_type -> hualala.project.v1.ListProjectsResponse
-	9, // 11: hualala.project.v1.ProjectService.ListEpisodes:output_type -> hualala.project.v1.ListEpisodesResponse
-	8, // [8:12] is the sub-list for method output_type
-	4, // [4:8] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: hualala.project.v1.CreateProjectResponse.project:type_name -> hualala.project.v1.Project
+	1,  // 1: hualala.project.v1.CreateEpisodeResponse.episode:type_name -> hualala.project.v1.Episode
+	0,  // 2: hualala.project.v1.GetProjectResponse.project:type_name -> hualala.project.v1.Project
+	0,  // 3: hualala.project.v1.ListProjectsResponse.projects:type_name -> hualala.project.v1.Project
+	1,  // 4: hualala.project.v1.ListEpisodesResponse.episodes:type_name -> hualala.project.v1.Episode
+	2,  // 5: hualala.project.v1.ProjectService.CreateProject:input_type -> hualala.project.v1.CreateProjectRequest
+	4,  // 6: hualala.project.v1.ProjectService.CreateEpisode:input_type -> hualala.project.v1.CreateEpisodeRequest
+	6,  // 7: hualala.project.v1.ProjectService.GetProject:input_type -> hualala.project.v1.GetProjectRequest
+	8,  // 8: hualala.project.v1.ProjectService.ListProjects:input_type -> hualala.project.v1.ListProjectsRequest
+	10, // 9: hualala.project.v1.ProjectService.ListEpisodes:input_type -> hualala.project.v1.ListEpisodesRequest
+	3,  // 10: hualala.project.v1.ProjectService.CreateProject:output_type -> hualala.project.v1.CreateProjectResponse
+	5,  // 11: hualala.project.v1.ProjectService.CreateEpisode:output_type -> hualala.project.v1.CreateEpisodeResponse
+	7,  // 12: hualala.project.v1.ProjectService.GetProject:output_type -> hualala.project.v1.GetProjectResponse
+	9,  // 13: hualala.project.v1.ProjectService.ListProjects:output_type -> hualala.project.v1.ListProjectsResponse
+	11, // 14: hualala.project.v1.ProjectService.ListEpisodes:output_type -> hualala.project.v1.ListEpisodesResponse
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_hualala_project_v1_project_service_proto_init() }
@@ -627,7 +744,7 @@ func file_hualala_project_v1_project_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hualala_project_v1_project_service_proto_rawDesc), len(file_hualala_project_v1_project_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -7,14 +7,18 @@ import (
 
 	assetv1connect "github.com/hualala/apps/backend/gen/hualala/asset/v1/assetv1connect"
 	billingv1connect "github.com/hualala/apps/backend/gen/hualala/billing/v1/billingv1connect"
+	contentv1connect "github.com/hualala/apps/backend/gen/hualala/content/v1/contentv1connect"
 	executionv1connect "github.com/hualala/apps/backend/gen/hualala/execution/v1/executionv1connect"
+	projectv1connect "github.com/hualala/apps/backend/gen/hualala/project/v1/projectv1connect"
 	reviewv1connect "github.com/hualala/apps/backend/gen/hualala/review/v1/reviewv1connect"
 	workflowv1connect "github.com/hualala/apps/backend/gen/hualala/workflow/v1/workflowv1connect"
 	"github.com/hualala/apps/backend/internal/application/assetapp"
 	"github.com/hualala/apps/backend/internal/application/billingapp"
+	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/executionapp"
 	"github.com/hualala/apps/backend/internal/application/gatewayapp"
 	"github.com/hualala/apps/backend/internal/application/policyapp"
+	"github.com/hualala/apps/backend/internal/application/projectapp"
 	"github.com/hualala/apps/backend/internal/application/reviewapp"
 	"github.com/hualala/apps/backend/internal/application/workflowapp"
 	"github.com/hualala/apps/backend/internal/interfaces/sse"
@@ -31,6 +35,8 @@ type RouteDependencies struct {
 	AssetService     *assetapp.Service
 	ReviewService    *reviewapp.Service
 	BillingService   *billingapp.Service
+	ProjectService   *projectapp.Service
+	ContentService   *contentapp.Service
 	WorkflowService  *workflowapp.Service
 	GatewayService   *gatewayapp.Service
 	PolicyService    *policyapp.Service
@@ -47,6 +53,8 @@ func NewRouteDependencies(store *db.MemoryStore) RouteDependencies {
 		AssetService:     assetapp.NewService(store),
 		ReviewService:    reviewapp.NewService(store),
 		BillingService:   billingapp.NewService(store),
+		ProjectService:   projectapp.NewService(store),
+		ContentService:   contentapp.NewService(store),
 		WorkflowService:  workflowService,
 		GatewayService:   gatewayService,
 		PolicyService:    policyService,
@@ -79,6 +87,14 @@ func RegisterRoutes(mux *http.ServeMux, deps RouteDependencies) {
 	}
 	if deps.BillingService != nil {
 		path, handler := billingv1connect.NewBillingServiceHandler(&billingHandler{service: deps.BillingService})
+		mux.Handle(path, handler)
+	}
+	if deps.ProjectService != nil {
+		path, handler := projectv1connect.NewProjectServiceHandler(&projectHandler{service: deps.ProjectService})
+		mux.Handle(path, handler)
+	}
+	if deps.ContentService != nil {
+		path, handler := contentv1connect.NewContentServiceHandler(&contentHandler{service: deps.ContentService})
 		mux.Handle(path, handler)
 	}
 	if deps.WorkflowService != nil {

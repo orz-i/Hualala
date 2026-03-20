@@ -3,16 +3,71 @@ package connect
 import (
 	assetv1 "github.com/hualala/apps/backend/gen/hualala/asset/v1"
 	billingv1 "github.com/hualala/apps/backend/gen/hualala/billing/v1"
+	contentv1 "github.com/hualala/apps/backend/gen/hualala/content/v1"
 	executionv1 "github.com/hualala/apps/backend/gen/hualala/execution/v1"
+	projectv1 "github.com/hualala/apps/backend/gen/hualala/project/v1"
 	reviewv1 "github.com/hualala/apps/backend/gen/hualala/review/v1"
 	"github.com/hualala/apps/backend/internal/application/billingapp"
 	"github.com/hualala/apps/backend/internal/application/executionapp"
 	"github.com/hualala/apps/backend/internal/application/reviewapp"
 	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/domain/billing"
+	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
+	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/review"
 )
+
+func mapProject(record project.Project) *projectv1.Project {
+	return &projectv1.Project{
+		ProjectId: record.ID,
+		OrgId:     record.OrganizationID,
+		Title:     record.Title,
+		Status:    record.Status,
+	}
+}
+
+func mapEpisode(record project.Episode) *projectv1.Episode {
+	return &projectv1.Episode{
+		EpisodeId:     record.ID,
+		ProjectId:     record.ProjectID,
+		Title:         record.Title,
+		EpisodeNumber: uint32(record.EpisodeNo),
+	}
+}
+
+func mapScene(record content.Scene) *contentv1.Scene {
+	return &contentv1.Scene{
+		Id:           record.ID,
+		EpisodeId:    record.EpisodeID,
+		Code:         record.Code,
+		Title:        record.Title,
+		SourceLocale: record.SourceLocale,
+	}
+}
+
+func mapShot(record content.Shot) *contentv1.Shot {
+	return &contentv1.Shot{
+		Id:           record.ID,
+		SceneId:      record.SceneID,
+		Code:         record.Code,
+		Title:        record.Title,
+		SourceLocale: record.SourceLocale,
+	}
+}
+
+func mapContentSnapshot(record content.Snapshot) *contentv1.ContentSnapshot {
+	return &contentv1.ContentSnapshot{
+		Id:                 record.ID,
+		OwnerType:          record.OwnerType,
+		OwnerId:            record.OwnerID,
+		Locale:             record.Locale,
+		SourceSnapshotId:   record.SourceSnapshotID,
+		TranslationGroupId: record.TranslationGroupID,
+		TranslationStatus:  record.TranslationStatus,
+		Body:               record.Body,
+	}
+}
 
 func mapShotExecution(record execution.ShotExecution) *executionv1.ShotExecution {
 	return &executionv1.ShotExecution{

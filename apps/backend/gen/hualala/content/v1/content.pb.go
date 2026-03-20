@@ -273,6 +273,222 @@ func (x *ContentSnapshot) GetBody() string {
 	return ""
 }
 
+type CreateSceneRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	EpisodeId     string                 `protobuf:"bytes,2,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
+	SceneNumber   uint32                 `protobuf:"varint,3,opt,name=scene_number,json=sceneNumber,proto3" json:"scene_number,omitempty"`
+	Title         string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateSceneRequest) Reset() {
+	*x = CreateSceneRequest{}
+	mi := &file_hualala_content_v1_content_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateSceneRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateSceneRequest) ProtoMessage() {}
+
+func (x *CreateSceneRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_content_v1_content_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateSceneRequest.ProtoReflect.Descriptor instead.
+func (*CreateSceneRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CreateSceneRequest) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *CreateSceneRequest) GetEpisodeId() string {
+	if x != nil {
+		return x.EpisodeId
+	}
+	return ""
+}
+
+func (x *CreateSceneRequest) GetSceneNumber() uint32 {
+	if x != nil {
+		return x.SceneNumber
+	}
+	return 0
+}
+
+func (x *CreateSceneRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+type CreateSceneResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Scene         *Scene                 `protobuf:"bytes,1,opt,name=scene,proto3" json:"scene,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateSceneResponse) Reset() {
+	*x = CreateSceneResponse{}
+	mi := &file_hualala_content_v1_content_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateSceneResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateSceneResponse) ProtoMessage() {}
+
+func (x *CreateSceneResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_content_v1_content_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateSceneResponse.ProtoReflect.Descriptor instead.
+func (*CreateSceneResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *CreateSceneResponse) GetScene() *Scene {
+	if x != nil {
+		return x.Scene
+	}
+	return nil
+}
+
+type CreateShotRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SceneId       string                 `protobuf:"bytes,1,opt,name=scene_id,json=sceneId,proto3" json:"scene_id,omitempty"`
+	ShotNumber    uint32                 `protobuf:"varint,2,opt,name=shot_number,json=shotNumber,proto3" json:"shot_number,omitempty"`
+	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateShotRequest) Reset() {
+	*x = CreateShotRequest{}
+	mi := &file_hualala_content_v1_content_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateShotRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateShotRequest) ProtoMessage() {}
+
+func (x *CreateShotRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_content_v1_content_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateShotRequest.ProtoReflect.Descriptor instead.
+func (*CreateShotRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CreateShotRequest) GetSceneId() string {
+	if x != nil {
+		return x.SceneId
+	}
+	return ""
+}
+
+func (x *CreateShotRequest) GetShotNumber() uint32 {
+	if x != nil {
+		return x.ShotNumber
+	}
+	return 0
+}
+
+func (x *CreateShotRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+type CreateShotResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Shot          *Shot                  `protobuf:"bytes,1,opt,name=shot,proto3" json:"shot,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateShotResponse) Reset() {
+	*x = CreateShotResponse{}
+	mi := &file_hualala_content_v1_content_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateShotResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateShotResponse) ProtoMessage() {}
+
+func (x *CreateShotResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_content_v1_content_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateShotResponse.ProtoReflect.Descriptor instead.
+func (*CreateShotResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CreateShotResponse) GetShot() *Shot {
+	if x != nil {
+		return x.Shot
+	}
+	return nil
+}
+
 type ListScenesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
@@ -284,7 +500,7 @@ type ListScenesRequest struct {
 
 func (x *ListScenesRequest) Reset() {
 	*x = ListScenesRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[3]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -296,7 +512,7 @@ func (x *ListScenesRequest) String() string {
 func (*ListScenesRequest) ProtoMessage() {}
 
 func (x *ListScenesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[3]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -309,7 +525,7 @@ func (x *ListScenesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListScenesRequest.ProtoReflect.Descriptor instead.
 func (*ListScenesRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{3}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListScenesRequest) GetProjectId() string {
@@ -342,7 +558,7 @@ type ListScenesResponse struct {
 
 func (x *ListScenesResponse) Reset() {
 	*x = ListScenesResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[4]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -354,7 +570,7 @@ func (x *ListScenesResponse) String() string {
 func (*ListScenesResponse) ProtoMessage() {}
 
 func (x *ListScenesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[4]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -367,7 +583,7 @@ func (x *ListScenesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListScenesResponse.ProtoReflect.Descriptor instead.
 func (*ListScenesResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{4}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListScenesResponse) GetScenes() []*Scene {
@@ -387,7 +603,7 @@ type GetSceneRequest struct {
 
 func (x *GetSceneRequest) Reset() {
 	*x = GetSceneRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[5]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -399,7 +615,7 @@ func (x *GetSceneRequest) String() string {
 func (*GetSceneRequest) ProtoMessage() {}
 
 func (x *GetSceneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[5]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -412,7 +628,7 @@ func (x *GetSceneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSceneRequest.ProtoReflect.Descriptor instead.
 func (*GetSceneRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{5}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetSceneRequest) GetSceneId() string {
@@ -438,7 +654,7 @@ type GetSceneResponse struct {
 
 func (x *GetSceneResponse) Reset() {
 	*x = GetSceneResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[6]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -450,7 +666,7 @@ func (x *GetSceneResponse) String() string {
 func (*GetSceneResponse) ProtoMessage() {}
 
 func (x *GetSceneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[6]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -463,7 +679,7 @@ func (x *GetSceneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSceneResponse.ProtoReflect.Descriptor instead.
 func (*GetSceneResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{6}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetSceneResponse) GetScene() *Scene {
@@ -483,7 +699,7 @@ type ListSceneShotsRequest struct {
 
 func (x *ListSceneShotsRequest) Reset() {
 	*x = ListSceneShotsRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[7]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -495,7 +711,7 @@ func (x *ListSceneShotsRequest) String() string {
 func (*ListSceneShotsRequest) ProtoMessage() {}
 
 func (x *ListSceneShotsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[7]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -508,7 +724,7 @@ func (x *ListSceneShotsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSceneShotsRequest.ProtoReflect.Descriptor instead.
 func (*ListSceneShotsRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{7}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListSceneShotsRequest) GetSceneId() string {
@@ -534,7 +750,7 @@ type ListSceneShotsResponse struct {
 
 func (x *ListSceneShotsResponse) Reset() {
 	*x = ListSceneShotsResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[8]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -546,7 +762,7 @@ func (x *ListSceneShotsResponse) String() string {
 func (*ListSceneShotsResponse) ProtoMessage() {}
 
 func (x *ListSceneShotsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[8]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -559,7 +775,7 @@ func (x *ListSceneShotsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSceneShotsResponse.ProtoReflect.Descriptor instead.
 func (*ListSceneShotsResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{8}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListSceneShotsResponse) GetShots() []*Shot {
@@ -579,7 +795,7 @@ type GetShotRequest struct {
 
 func (x *GetShotRequest) Reset() {
 	*x = GetShotRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[9]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -591,7 +807,7 @@ func (x *GetShotRequest) String() string {
 func (*GetShotRequest) ProtoMessage() {}
 
 func (x *GetShotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[9]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -604,7 +820,7 @@ func (x *GetShotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetShotRequest.ProtoReflect.Descriptor instead.
 func (*GetShotRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{9}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetShotRequest) GetShotId() string {
@@ -630,7 +846,7 @@ type GetShotResponse struct {
 
 func (x *GetShotResponse) Reset() {
 	*x = GetShotResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[10]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -642,7 +858,7 @@ func (x *GetShotResponse) String() string {
 func (*GetShotResponse) ProtoMessage() {}
 
 func (x *GetShotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[10]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -655,7 +871,7 @@ func (x *GetShotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetShotResponse.ProtoReflect.Descriptor instead.
 func (*GetShotResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{10}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetShotResponse) GetShot() *Shot {
@@ -676,7 +892,7 @@ type UpdateShotStructureRequest struct {
 
 func (x *UpdateShotStructureRequest) Reset() {
 	*x = UpdateShotStructureRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[11]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -688,7 +904,7 @@ func (x *UpdateShotStructureRequest) String() string {
 func (*UpdateShotStructureRequest) ProtoMessage() {}
 
 func (x *UpdateShotStructureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[11]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -701,7 +917,7 @@ func (x *UpdateShotStructureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateShotStructureRequest.ProtoReflect.Descriptor instead.
 func (*UpdateShotStructureRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{11}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *UpdateShotStructureRequest) GetShotId() string {
@@ -734,7 +950,7 @@ type UpdateShotStructureResponse struct {
 
 func (x *UpdateShotStructureResponse) Reset() {
 	*x = UpdateShotStructureResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[12]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -746,7 +962,7 @@ func (x *UpdateShotStructureResponse) String() string {
 func (*UpdateShotStructureResponse) ProtoMessage() {}
 
 func (x *UpdateShotStructureResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[12]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -759,7 +975,7 @@ func (x *UpdateShotStructureResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateShotStructureResponse.ProtoReflect.Descriptor instead.
 func (*UpdateShotStructureResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{12}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *UpdateShotStructureResponse) GetShot() *Shot {
@@ -781,7 +997,7 @@ type CreateContentSnapshotRequest struct {
 
 func (x *CreateContentSnapshotRequest) Reset() {
 	*x = CreateContentSnapshotRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[13]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -793,7 +1009,7 @@ func (x *CreateContentSnapshotRequest) String() string {
 func (*CreateContentSnapshotRequest) ProtoMessage() {}
 
 func (x *CreateContentSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[13]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -806,7 +1022,7 @@ func (x *CreateContentSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateContentSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*CreateContentSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{13}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CreateContentSnapshotRequest) GetOwnerType() string {
@@ -846,7 +1062,7 @@ type CreateContentSnapshotResponse struct {
 
 func (x *CreateContentSnapshotResponse) Reset() {
 	*x = CreateContentSnapshotResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[14]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -858,7 +1074,7 @@ func (x *CreateContentSnapshotResponse) String() string {
 func (*CreateContentSnapshotResponse) ProtoMessage() {}
 
 func (x *CreateContentSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[14]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -871,7 +1087,7 @@ func (x *CreateContentSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateContentSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*CreateContentSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{14}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CreateContentSnapshotResponse) GetSnapshot() *ContentSnapshot {
@@ -892,7 +1108,7 @@ type CreateLocalizedSnapshotRequest struct {
 
 func (x *CreateLocalizedSnapshotRequest) Reset() {
 	*x = CreateLocalizedSnapshotRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[15]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -904,7 +1120,7 @@ func (x *CreateLocalizedSnapshotRequest) String() string {
 func (*CreateLocalizedSnapshotRequest) ProtoMessage() {}
 
 func (x *CreateLocalizedSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[15]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -917,7 +1133,7 @@ func (x *CreateLocalizedSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateLocalizedSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*CreateLocalizedSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{15}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CreateLocalizedSnapshotRequest) GetSourceSnapshotId() string {
@@ -950,7 +1166,7 @@ type CreateLocalizedSnapshotResponse struct {
 
 func (x *CreateLocalizedSnapshotResponse) Reset() {
 	*x = CreateLocalizedSnapshotResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[16]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -962,7 +1178,7 @@ func (x *CreateLocalizedSnapshotResponse) String() string {
 func (*CreateLocalizedSnapshotResponse) ProtoMessage() {}
 
 func (x *CreateLocalizedSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[16]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -975,7 +1191,7 @@ func (x *CreateLocalizedSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateLocalizedSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*CreateLocalizedSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{16}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CreateLocalizedSnapshotResponse) GetSnapshot() *ContentSnapshot {
@@ -1012,7 +1228,23 @@ const file_hualala_content_v1_content_proto_rawDesc = "" +
 	"\x12source_snapshot_id\x18\x05 \x01(\tR\x10sourceSnapshotId\x120\n" +
 	"\x14translation_group_id\x18\x06 \x01(\tR\x12translationGroupId\x12-\n" +
 	"\x12translation_status\x18\a \x01(\tR\x11translationStatus\x12\x12\n" +
-	"\x04body\x18\b \x01(\tR\x04body\"x\n" +
+	"\x04body\x18\b \x01(\tR\x04body\"\x8b\x01\n" +
+	"\x12CreateSceneRequest\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x1d\n" +
+	"\n" +
+	"episode_id\x18\x02 \x01(\tR\tepisodeId\x12!\n" +
+	"\fscene_number\x18\x03 \x01(\rR\vsceneNumber\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\"F\n" +
+	"\x13CreateSceneResponse\x12/\n" +
+	"\x05scene\x18\x01 \x01(\v2\x19.hualala.content.v1.SceneR\x05scene\"e\n" +
+	"\x11CreateShotRequest\x12\x19\n" +
+	"\bscene_id\x18\x01 \x01(\tR\asceneId\x12\x1f\n" +
+	"\vshot_number\x18\x02 \x01(\rR\n" +
+	"shotNumber\x12\x14\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\"B\n" +
+	"\x12CreateShotResponse\x12,\n" +
+	"\x04shot\x18\x01 \x01(\v2\x18.hualala.content.v1.ShotR\x04shot\"x\n" +
 	"\x11ListScenesRequest\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x1d\n" +
@@ -1055,8 +1287,11 @@ const file_hualala_content_v1_content_proto_rawDesc = "" +
 	"\x0econtent_locale\x18\x02 \x01(\tR\rcontentLocale\x12\x12\n" +
 	"\x04body\x18\x03 \x01(\tR\x04body\"b\n" +
 	"\x1fCreateLocalizedSnapshotResponse\x12?\n" +
-	"\bsnapshot\x18\x01 \x01(\v2#.hualala.content.v1.ContentSnapshotR\bsnapshot2\xfc\x05\n" +
-	"\x0eContentService\x12[\n" +
+	"\bsnapshot\x18\x01 \x01(\v2#.hualala.content.v1.ContentSnapshotR\bsnapshot2\xb9\a\n" +
+	"\x0eContentService\x12^\n" +
+	"\vCreateScene\x12&.hualala.content.v1.CreateSceneRequest\x1a'.hualala.content.v1.CreateSceneResponse\x12[\n" +
+	"\n" +
+	"CreateShot\x12%.hualala.content.v1.CreateShotRequest\x1a&.hualala.content.v1.CreateShotResponse\x12[\n" +
 	"\n" +
 	"ListScenes\x12%.hualala.content.v1.ListScenesRequest\x1a&.hualala.content.v1.ListScenesResponse\x12U\n" +
 	"\bGetScene\x12#.hualala.content.v1.GetSceneRequest\x1a$.hualala.content.v1.GetSceneResponse\x12g\n" +
@@ -1079,53 +1314,63 @@ func file_hualala_content_v1_content_proto_rawDescGZIP() []byte {
 	return file_hualala_content_v1_content_proto_rawDescData
 }
 
-var file_hualala_content_v1_content_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_hualala_content_v1_content_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_hualala_content_v1_content_proto_goTypes = []any{
 	(*Scene)(nil),                           // 0: hualala.content.v1.Scene
 	(*Shot)(nil),                            // 1: hualala.content.v1.Shot
 	(*ContentSnapshot)(nil),                 // 2: hualala.content.v1.ContentSnapshot
-	(*ListScenesRequest)(nil),               // 3: hualala.content.v1.ListScenesRequest
-	(*ListScenesResponse)(nil),              // 4: hualala.content.v1.ListScenesResponse
-	(*GetSceneRequest)(nil),                 // 5: hualala.content.v1.GetSceneRequest
-	(*GetSceneResponse)(nil),                // 6: hualala.content.v1.GetSceneResponse
-	(*ListSceneShotsRequest)(nil),           // 7: hualala.content.v1.ListSceneShotsRequest
-	(*ListSceneShotsResponse)(nil),          // 8: hualala.content.v1.ListSceneShotsResponse
-	(*GetShotRequest)(nil),                  // 9: hualala.content.v1.GetShotRequest
-	(*GetShotResponse)(nil),                 // 10: hualala.content.v1.GetShotResponse
-	(*UpdateShotStructureRequest)(nil),      // 11: hualala.content.v1.UpdateShotStructureRequest
-	(*UpdateShotStructureResponse)(nil),     // 12: hualala.content.v1.UpdateShotStructureResponse
-	(*CreateContentSnapshotRequest)(nil),    // 13: hualala.content.v1.CreateContentSnapshotRequest
-	(*CreateContentSnapshotResponse)(nil),   // 14: hualala.content.v1.CreateContentSnapshotResponse
-	(*CreateLocalizedSnapshotRequest)(nil),  // 15: hualala.content.v1.CreateLocalizedSnapshotRequest
-	(*CreateLocalizedSnapshotResponse)(nil), // 16: hualala.content.v1.CreateLocalizedSnapshotResponse
+	(*CreateSceneRequest)(nil),              // 3: hualala.content.v1.CreateSceneRequest
+	(*CreateSceneResponse)(nil),             // 4: hualala.content.v1.CreateSceneResponse
+	(*CreateShotRequest)(nil),               // 5: hualala.content.v1.CreateShotRequest
+	(*CreateShotResponse)(nil),              // 6: hualala.content.v1.CreateShotResponse
+	(*ListScenesRequest)(nil),               // 7: hualala.content.v1.ListScenesRequest
+	(*ListScenesResponse)(nil),              // 8: hualala.content.v1.ListScenesResponse
+	(*GetSceneRequest)(nil),                 // 9: hualala.content.v1.GetSceneRequest
+	(*GetSceneResponse)(nil),                // 10: hualala.content.v1.GetSceneResponse
+	(*ListSceneShotsRequest)(nil),           // 11: hualala.content.v1.ListSceneShotsRequest
+	(*ListSceneShotsResponse)(nil),          // 12: hualala.content.v1.ListSceneShotsResponse
+	(*GetShotRequest)(nil),                  // 13: hualala.content.v1.GetShotRequest
+	(*GetShotResponse)(nil),                 // 14: hualala.content.v1.GetShotResponse
+	(*UpdateShotStructureRequest)(nil),      // 15: hualala.content.v1.UpdateShotStructureRequest
+	(*UpdateShotStructureResponse)(nil),     // 16: hualala.content.v1.UpdateShotStructureResponse
+	(*CreateContentSnapshotRequest)(nil),    // 17: hualala.content.v1.CreateContentSnapshotRequest
+	(*CreateContentSnapshotResponse)(nil),   // 18: hualala.content.v1.CreateContentSnapshotResponse
+	(*CreateLocalizedSnapshotRequest)(nil),  // 19: hualala.content.v1.CreateLocalizedSnapshotRequest
+	(*CreateLocalizedSnapshotResponse)(nil), // 20: hualala.content.v1.CreateLocalizedSnapshotResponse
 }
 var file_hualala_content_v1_content_proto_depIdxs = []int32{
-	0,  // 0: hualala.content.v1.ListScenesResponse.scenes:type_name -> hualala.content.v1.Scene
-	0,  // 1: hualala.content.v1.GetSceneResponse.scene:type_name -> hualala.content.v1.Scene
-	1,  // 2: hualala.content.v1.ListSceneShotsResponse.shots:type_name -> hualala.content.v1.Shot
-	1,  // 3: hualala.content.v1.GetShotResponse.shot:type_name -> hualala.content.v1.Shot
-	1,  // 4: hualala.content.v1.UpdateShotStructureResponse.shot:type_name -> hualala.content.v1.Shot
-	2,  // 5: hualala.content.v1.CreateContentSnapshotResponse.snapshot:type_name -> hualala.content.v1.ContentSnapshot
-	2,  // 6: hualala.content.v1.CreateLocalizedSnapshotResponse.snapshot:type_name -> hualala.content.v1.ContentSnapshot
-	3,  // 7: hualala.content.v1.ContentService.ListScenes:input_type -> hualala.content.v1.ListScenesRequest
-	5,  // 8: hualala.content.v1.ContentService.GetScene:input_type -> hualala.content.v1.GetSceneRequest
-	7,  // 9: hualala.content.v1.ContentService.ListSceneShots:input_type -> hualala.content.v1.ListSceneShotsRequest
-	9,  // 10: hualala.content.v1.ContentService.GetShot:input_type -> hualala.content.v1.GetShotRequest
-	11, // 11: hualala.content.v1.ContentService.UpdateShotStructure:input_type -> hualala.content.v1.UpdateShotStructureRequest
-	13, // 12: hualala.content.v1.ContentService.CreateContentSnapshot:input_type -> hualala.content.v1.CreateContentSnapshotRequest
-	15, // 13: hualala.content.v1.ContentService.CreateLocalizedSnapshot:input_type -> hualala.content.v1.CreateLocalizedSnapshotRequest
-	4,  // 14: hualala.content.v1.ContentService.ListScenes:output_type -> hualala.content.v1.ListScenesResponse
-	6,  // 15: hualala.content.v1.ContentService.GetScene:output_type -> hualala.content.v1.GetSceneResponse
-	8,  // 16: hualala.content.v1.ContentService.ListSceneShots:output_type -> hualala.content.v1.ListSceneShotsResponse
-	10, // 17: hualala.content.v1.ContentService.GetShot:output_type -> hualala.content.v1.GetShotResponse
-	12, // 18: hualala.content.v1.ContentService.UpdateShotStructure:output_type -> hualala.content.v1.UpdateShotStructureResponse
-	14, // 19: hualala.content.v1.ContentService.CreateContentSnapshot:output_type -> hualala.content.v1.CreateContentSnapshotResponse
-	16, // 20: hualala.content.v1.ContentService.CreateLocalizedSnapshot:output_type -> hualala.content.v1.CreateLocalizedSnapshotResponse
-	14, // [14:21] is the sub-list for method output_type
-	7,  // [7:14] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	0,  // 0: hualala.content.v1.CreateSceneResponse.scene:type_name -> hualala.content.v1.Scene
+	1,  // 1: hualala.content.v1.CreateShotResponse.shot:type_name -> hualala.content.v1.Shot
+	0,  // 2: hualala.content.v1.ListScenesResponse.scenes:type_name -> hualala.content.v1.Scene
+	0,  // 3: hualala.content.v1.GetSceneResponse.scene:type_name -> hualala.content.v1.Scene
+	1,  // 4: hualala.content.v1.ListSceneShotsResponse.shots:type_name -> hualala.content.v1.Shot
+	1,  // 5: hualala.content.v1.GetShotResponse.shot:type_name -> hualala.content.v1.Shot
+	1,  // 6: hualala.content.v1.UpdateShotStructureResponse.shot:type_name -> hualala.content.v1.Shot
+	2,  // 7: hualala.content.v1.CreateContentSnapshotResponse.snapshot:type_name -> hualala.content.v1.ContentSnapshot
+	2,  // 8: hualala.content.v1.CreateLocalizedSnapshotResponse.snapshot:type_name -> hualala.content.v1.ContentSnapshot
+	3,  // 9: hualala.content.v1.ContentService.CreateScene:input_type -> hualala.content.v1.CreateSceneRequest
+	5,  // 10: hualala.content.v1.ContentService.CreateShot:input_type -> hualala.content.v1.CreateShotRequest
+	7,  // 11: hualala.content.v1.ContentService.ListScenes:input_type -> hualala.content.v1.ListScenesRequest
+	9,  // 12: hualala.content.v1.ContentService.GetScene:input_type -> hualala.content.v1.GetSceneRequest
+	11, // 13: hualala.content.v1.ContentService.ListSceneShots:input_type -> hualala.content.v1.ListSceneShotsRequest
+	13, // 14: hualala.content.v1.ContentService.GetShot:input_type -> hualala.content.v1.GetShotRequest
+	15, // 15: hualala.content.v1.ContentService.UpdateShotStructure:input_type -> hualala.content.v1.UpdateShotStructureRequest
+	17, // 16: hualala.content.v1.ContentService.CreateContentSnapshot:input_type -> hualala.content.v1.CreateContentSnapshotRequest
+	19, // 17: hualala.content.v1.ContentService.CreateLocalizedSnapshot:input_type -> hualala.content.v1.CreateLocalizedSnapshotRequest
+	4,  // 18: hualala.content.v1.ContentService.CreateScene:output_type -> hualala.content.v1.CreateSceneResponse
+	6,  // 19: hualala.content.v1.ContentService.CreateShot:output_type -> hualala.content.v1.CreateShotResponse
+	8,  // 20: hualala.content.v1.ContentService.ListScenes:output_type -> hualala.content.v1.ListScenesResponse
+	10, // 21: hualala.content.v1.ContentService.GetScene:output_type -> hualala.content.v1.GetSceneResponse
+	12, // 22: hualala.content.v1.ContentService.ListSceneShots:output_type -> hualala.content.v1.ListSceneShotsResponse
+	14, // 23: hualala.content.v1.ContentService.GetShot:output_type -> hualala.content.v1.GetShotResponse
+	16, // 24: hualala.content.v1.ContentService.UpdateShotStructure:output_type -> hualala.content.v1.UpdateShotStructureResponse
+	18, // 25: hualala.content.v1.ContentService.CreateContentSnapshot:output_type -> hualala.content.v1.CreateContentSnapshotResponse
+	20, // 26: hualala.content.v1.ContentService.CreateLocalizedSnapshot:output_type -> hualala.content.v1.CreateLocalizedSnapshotResponse
+	18, // [18:27] is the sub-list for method output_type
+	9,  // [9:18] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_hualala_content_v1_content_proto_init() }
@@ -1139,7 +1384,7 @@ func file_hualala_content_v1_content_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hualala_content_v1_content_proto_rawDesc), len(file_hualala_content_v1_content_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

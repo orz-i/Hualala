@@ -33,6 +33,12 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// ContentServiceCreateSceneProcedure is the fully-qualified name of the ContentService's
+	// CreateScene RPC.
+	ContentServiceCreateSceneProcedure = "/hualala.content.v1.ContentService/CreateScene"
+	// ContentServiceCreateShotProcedure is the fully-qualified name of the ContentService's CreateShot
+	// RPC.
+	ContentServiceCreateShotProcedure = "/hualala.content.v1.ContentService/CreateShot"
 	// ContentServiceListScenesProcedure is the fully-qualified name of the ContentService's ListScenes
 	// RPC.
 	ContentServiceListScenesProcedure = "/hualala.content.v1.ContentService/ListScenes"
@@ -56,6 +62,8 @@ const (
 
 // ContentServiceClient is a client for the hualala.content.v1.ContentService service.
 type ContentServiceClient interface {
+	CreateScene(context.Context, *connect.Request[v1.CreateSceneRequest]) (*connect.Response[v1.CreateSceneResponse], error)
+	CreateShot(context.Context, *connect.Request[v1.CreateShotRequest]) (*connect.Response[v1.CreateShotResponse], error)
 	ListScenes(context.Context, *connect.Request[v1.ListScenesRequest]) (*connect.Response[v1.ListScenesResponse], error)
 	GetScene(context.Context, *connect.Request[v1.GetSceneRequest]) (*connect.Response[v1.GetSceneResponse], error)
 	ListSceneShots(context.Context, *connect.Request[v1.ListSceneShotsRequest]) (*connect.Response[v1.ListSceneShotsResponse], error)
@@ -76,6 +84,18 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	contentServiceMethods := v1.File_hualala_content_v1_content_proto.Services().ByName("ContentService").Methods()
 	return &contentServiceClient{
+		createScene: connect.NewClient[v1.CreateSceneRequest, v1.CreateSceneResponse](
+			httpClient,
+			baseURL+ContentServiceCreateSceneProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("CreateScene")),
+			connect.WithClientOptions(opts...),
+		),
+		createShot: connect.NewClient[v1.CreateShotRequest, v1.CreateShotResponse](
+			httpClient,
+			baseURL+ContentServiceCreateShotProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("CreateShot")),
+			connect.WithClientOptions(opts...),
+		),
 		listScenes: connect.NewClient[v1.ListScenesRequest, v1.ListScenesResponse](
 			httpClient,
 			baseURL+ContentServiceListScenesProcedure,
@@ -123,6 +143,8 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // contentServiceClient implements ContentServiceClient.
 type contentServiceClient struct {
+	createScene             *connect.Client[v1.CreateSceneRequest, v1.CreateSceneResponse]
+	createShot              *connect.Client[v1.CreateShotRequest, v1.CreateShotResponse]
 	listScenes              *connect.Client[v1.ListScenesRequest, v1.ListScenesResponse]
 	getScene                *connect.Client[v1.GetSceneRequest, v1.GetSceneResponse]
 	listSceneShots          *connect.Client[v1.ListSceneShotsRequest, v1.ListSceneShotsResponse]
@@ -130,6 +152,16 @@ type contentServiceClient struct {
 	updateShotStructure     *connect.Client[v1.UpdateShotStructureRequest, v1.UpdateShotStructureResponse]
 	createContentSnapshot   *connect.Client[v1.CreateContentSnapshotRequest, v1.CreateContentSnapshotResponse]
 	createLocalizedSnapshot *connect.Client[v1.CreateLocalizedSnapshotRequest, v1.CreateLocalizedSnapshotResponse]
+}
+
+// CreateScene calls hualala.content.v1.ContentService.CreateScene.
+func (c *contentServiceClient) CreateScene(ctx context.Context, req *connect.Request[v1.CreateSceneRequest]) (*connect.Response[v1.CreateSceneResponse], error) {
+	return c.createScene.CallUnary(ctx, req)
+}
+
+// CreateShot calls hualala.content.v1.ContentService.CreateShot.
+func (c *contentServiceClient) CreateShot(ctx context.Context, req *connect.Request[v1.CreateShotRequest]) (*connect.Response[v1.CreateShotResponse], error) {
+	return c.createShot.CallUnary(ctx, req)
 }
 
 // ListScenes calls hualala.content.v1.ContentService.ListScenes.
@@ -169,6 +201,8 @@ func (c *contentServiceClient) CreateLocalizedSnapshot(ctx context.Context, req 
 
 // ContentServiceHandler is an implementation of the hualala.content.v1.ContentService service.
 type ContentServiceHandler interface {
+	CreateScene(context.Context, *connect.Request[v1.CreateSceneRequest]) (*connect.Response[v1.CreateSceneResponse], error)
+	CreateShot(context.Context, *connect.Request[v1.CreateShotRequest]) (*connect.Response[v1.CreateShotResponse], error)
 	ListScenes(context.Context, *connect.Request[v1.ListScenesRequest]) (*connect.Response[v1.ListScenesResponse], error)
 	GetScene(context.Context, *connect.Request[v1.GetSceneRequest]) (*connect.Response[v1.GetSceneResponse], error)
 	ListSceneShots(context.Context, *connect.Request[v1.ListSceneShotsRequest]) (*connect.Response[v1.ListSceneShotsResponse], error)
@@ -185,6 +219,18 @@ type ContentServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	contentServiceMethods := v1.File_hualala_content_v1_content_proto.Services().ByName("ContentService").Methods()
+	contentServiceCreateSceneHandler := connect.NewUnaryHandler(
+		ContentServiceCreateSceneProcedure,
+		svc.CreateScene,
+		connect.WithSchema(contentServiceMethods.ByName("CreateScene")),
+		connect.WithHandlerOptions(opts...),
+	)
+	contentServiceCreateShotHandler := connect.NewUnaryHandler(
+		ContentServiceCreateShotProcedure,
+		svc.CreateShot,
+		connect.WithSchema(contentServiceMethods.ByName("CreateShot")),
+		connect.WithHandlerOptions(opts...),
+	)
 	contentServiceListScenesHandler := connect.NewUnaryHandler(
 		ContentServiceListScenesProcedure,
 		svc.ListScenes,
@@ -229,6 +275,10 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 	)
 	return "/hualala.content.v1.ContentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case ContentServiceCreateSceneProcedure:
+			contentServiceCreateSceneHandler.ServeHTTP(w, r)
+		case ContentServiceCreateShotProcedure:
+			contentServiceCreateShotHandler.ServeHTTP(w, r)
 		case ContentServiceListScenesProcedure:
 			contentServiceListScenesHandler.ServeHTTP(w, r)
 		case ContentServiceGetSceneProcedure:
@@ -251,6 +301,14 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 
 // UnimplementedContentServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedContentServiceHandler struct{}
+
+func (UnimplementedContentServiceHandler) CreateScene(context.Context, *connect.Request[v1.CreateSceneRequest]) (*connect.Response[v1.CreateSceneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.content.v1.ContentService.CreateScene is not implemented"))
+}
+
+func (UnimplementedContentServiceHandler) CreateShot(context.Context, *connect.Request[v1.CreateShotRequest]) (*connect.Response[v1.CreateShotResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.content.v1.ContentService.CreateShot is not implemented"))
+}
 
 func (UnimplementedContentServiceHandler) ListScenes(context.Context, *connect.Request[v1.ListScenesRequest]) (*connect.Response[v1.ListScenesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.content.v1.ContentService.ListScenes is not implemented"))

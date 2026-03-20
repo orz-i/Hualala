@@ -51,8 +51,18 @@ type ListSceneShotsInput struct {
 	SceneID string
 }
 
+type GetSceneInput struct {
+	SceneID string
+}
+
 type GetShotInput struct {
 	ShotID string
+}
+
+type UpdateShotStructureInput struct {
+	ShotID        string
+	Title         string
+	ContentLocale string
 }
 
 func NewService(store *db.MemoryStore) *Service {
@@ -60,21 +70,47 @@ func NewService(store *db.MemoryStore) *Service {
 }
 
 func (s *Service) CreateScene(_ context.Context, input CreateSceneInput) (content.Scene, error) {
+	if s == nil || s.store == nil {
+		return content.Scene{}, errors.New("contentapp: store is required")
+	}
+	projectID := strings.TrimSpace(input.ProjectID)
+	episodeID := strings.TrimSpace(input.EpisodeID)
+	title := strings.TrimSpace(input.Title)
+	if projectID == "" {
+		return content.Scene{}, errors.New("contentapp: project_id is required")
+	}
+	if episodeID == "" {
+		return content.Scene{}, errors.New("contentapp: episode_id is required")
+	}
+	if title == "" {
+		return content.Scene{}, errors.New("contentapp: title is required")
+	}
 	if input.SceneNo <= 0 {
-		return content.Scene{}, errors.New("scene_no must be greater than 0")
+		return content.Scene{}, errors.New("contentapp: scene_no must be greater than 0")
+	}
+	projectRecord, ok := s.store.Projects[projectID]
+	if !ok {
+		return content.Scene{}, errors.New("contentapp: project not found")
+	}
+	if _, ok := s.store.Episodes[episodeID]; !ok {
+		return content.Scene{}, errors.New("contentapp: episode not found")
 	}
 
 	now := time.Now().UTC()
 
 	scene := content.Scene{
-		ID:        s.store.NextSceneID(),
-		ProjectID: input.ProjectID,
-		EpisodeID: input.EpisodeID,
-		SceneNo:   input.SceneNo,
-		Code:      fmt.Sprintf("SCENE-%03d", input.SceneNo),
-		Title:     input.Title,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:           s.store.NextSceneID(),
+		ProjectID:    projectID,
+		EpisodeID:    episodeID,
+		SceneNo:      input.SceneNo,
+		Code:         fmt.Sprintf("SCENE-%03d", input.SceneNo),
+		Title:        title,
+		SourceLocale: strings.TrimSpace(projectRecord.PrimaryContentLocale),
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+	if scene.SourceLocale == "" {
+		scene.SourceLocale = "zh-CN"
 	}
 
 	s.store.Scenes[scene.ID] = scene
@@ -82,23 +118,34 @@ func (s *Service) CreateScene(_ context.Context, input CreateSceneInput) (conten
 }
 
 func (s *Service) CreateShot(_ context.Context, input CreateShotInput) (content.Shot, error) {
+	if s == nil || s.store == nil {
+		return content.Shot{}, errors.New("contentapp: store is required")
+	}
+	sceneID := strings.TrimSpace(input.SceneID)
+	title := strings.TrimSpace(input.Title)
+	if sceneID == "" {
+		return content.Shot{}, errors.New("contentapp: scene_id is required")
+	}
+	if title == "" {
+		return content.Shot{}, errors.New("contentapp: title is required")
+	}
 	if input.ShotNo <= 0 {
-		return content.Shot{}, errors.New("shot_no must be greater than 0")
+		return content.Shot{}, errors.New("contentapp: shot_no must be greater than 0")
 	}
 
 	now := time.Now().UTC()
 
-	scene, ok := s.store.Scenes[input.SceneID]
+	scene, ok := s.store.Scenes[sceneID]
 	if !ok {
-		return content.Shot{}, fmt.Errorf("scene %q not found", input.SceneID)
+		return content.Shot{}, fmt.Errorf("contentapp: scene %q not found", sceneID)
 	}
 
 	shot := content.Shot{
 		ID:           s.store.NextShotID(),
-		SceneID:      input.SceneID,
+		SceneID:      sceneID,
 		ShotNo:       input.ShotNo,
 		Code:         fmt.Sprintf("%s-SHOT-%03d", scene.Code, input.ShotNo),
-		Title:        input.Title,
+		Title:        title,
 		SourceLocale: scene.SourceLocale,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -173,6 +220,9 @@ func (s *Service) CreateLocalizedSnapshot(_ context.Context, input CreateLocaliz
 }
 
 func (s *Service) ListScenes(_ context.Context, input ListScenesInput) ([]content.Scene, error) {
+	if s == nil || s.store == nil {
+		return nil, errors.New("contentapp: store is required")
+	}
 	scenes := make([]content.Scene, 0)
 	for _, scene := range s.store.Scenes {
 		if scene.ProjectID == input.ProjectID && scene.EpisodeID == input.EpisodeID {
@@ -190,7 +240,25 @@ func (s *Service) ListScenes(_ context.Context, input ListScenesInput) ([]conten
 	return scenes, nil
 }
 
+func (s *Service) GetScene(_ context.Context, input GetSceneInput) (content.Scene, error) {
+	if s == nil || s.store == nil {
+		return content.Scene{}, errors.New("contentapp: store is required")
+	}
+	sceneID := strings.TrimSpace(input.SceneID)
+	if sceneID == "" {
+		return content.Scene{}, errors.New("contentapp: scene_id is required")
+	}
+	record, ok := s.store.Scenes[sceneID]
+	if !ok {
+		return content.Scene{}, fmt.Errorf("contentapp: scene %q not found", sceneID)
+	}
+	return record, nil
+}
+
 func (s *Service) ListSceneShots(_ context.Context, input ListSceneShotsInput) ([]content.Shot, error) {
+	if s == nil || s.store == nil {
+		return nil, errors.New("contentapp: store is required")
+	}
 	shots := make([]content.Shot, 0)
 	for _, shot := range s.store.Shots {
 		if shot.SceneID == input.SceneID {
@@ -209,10 +277,40 @@ func (s *Service) ListSceneShots(_ context.Context, input ListSceneShotsInput) (
 }
 
 func (s *Service) GetShot(_ context.Context, input GetShotInput) (content.Shot, error) {
-	shot, ok := s.store.Shots[input.ShotID]
+	if s == nil || s.store == nil {
+		return content.Shot{}, errors.New("contentapp: store is required")
+	}
+	shotID := strings.TrimSpace(input.ShotID)
+	if shotID == "" {
+		return content.Shot{}, errors.New("contentapp: shot_id is required")
+	}
+	shot, ok := s.store.Shots[shotID]
 	if !ok {
-		return content.Shot{}, fmt.Errorf("shot %q not found", input.ShotID)
+		return content.Shot{}, fmt.Errorf("contentapp: shot %q not found", shotID)
 	}
 
 	return shot, nil
+}
+
+func (s *Service) UpdateShotStructure(_ context.Context, input UpdateShotStructureInput) (content.Shot, error) {
+	if s == nil || s.store == nil {
+		return content.Shot{}, errors.New("contentapp: store is required")
+	}
+	shotID := strings.TrimSpace(input.ShotID)
+	if shotID == "" {
+		return content.Shot{}, errors.New("contentapp: shot_id is required")
+	}
+	record, ok := s.store.Shots[shotID]
+	if !ok {
+		return content.Shot{}, fmt.Errorf("contentapp: shot %q not found", shotID)
+	}
+	if title := strings.TrimSpace(input.Title); title != "" {
+		record.Title = title
+	}
+	if locale := strings.TrimSpace(input.ContentLocale); locale != "" {
+		record.SourceLocale = locale
+	}
+	record.UpdatedAt = time.Now().UTC()
+	s.store.Shots[shotID] = record
+	return record, nil
 }

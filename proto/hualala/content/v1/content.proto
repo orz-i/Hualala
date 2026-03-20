@@ -5,6 +5,8 @@ package hualala.content.v1;
 option go_package = "github.com/hualala/apps/backend/gen/hualala/content/v1;contentv1";
 
 service ContentService {
+  rpc CreateScene(CreateSceneRequest) returns (CreateSceneResponse);
+  rpc CreateShot(CreateShotRequest) returns (CreateShotResponse);
   rpc ListScenes(ListScenesRequest) returns (ListScenesResponse);
   rpc GetScene(GetSceneRequest) returns (GetSceneResponse);
   rpc ListSceneShots(ListSceneShotsRequest) returns (ListSceneShotsResponse);
@@ -39,6 +41,27 @@ message ContentSnapshot {
   string translation_group_id = 6;
   string translation_status = 7;
   string body = 8;
+}
+
+message CreateSceneRequest {
+  string project_id = 1;
+  string episode_id = 2;
+  uint32 scene_number = 3;
+  string title = 4;
+}
+
+message CreateSceneResponse {
+  Scene scene = 1;
+}
+
+message CreateShotRequest {
+  string scene_id = 1;
+  uint32 shot_number = 2;
+  string title = 3;
+}
+
+message CreateShotResponse {
+  Shot shot = 1;
 }
 
 message ListScenesRequest {

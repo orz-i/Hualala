@@ -21,6 +21,12 @@ import {
 } from "../features/shared/buildActionFeedback";
 import { ShotWorkbenchPage, type ShotWorkbenchViewModel } from "../features/shot-workbench/ShotWorkbenchPage";
 
+function waitForFeedbackPaint() {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, 0);
+  });
+}
+
 export function App() {
   const { locale, setLocale, t } = useLocaleState();
   const [shotWorkbench, setShotWorkbench] = useState<ShotWorkbenchViewModel | null>(null);
@@ -124,6 +130,7 @@ export function App() {
             });
           });
           try {
+            await waitForFeedbackPaint();
             await confirmImportBatchItems(input);
             const nextWorkbench = await refreshImportWorkbench();
             startTransition(() => {
@@ -157,6 +164,7 @@ export function App() {
             });
           });
           try {
+            await waitForFeedbackPaint();
             await selectPrimaryAssetForImportBatch(input);
             const nextWorkbench = await refreshImportWorkbench();
             startTransition(() => {
@@ -202,6 +210,7 @@ export function App() {
             });
           });
           try {
+            await waitForFeedbackPaint();
             const result = await runSubmissionGateChecks(input);
             const nextWorkbench = await refreshShotWorkbench();
             startTransition(() => {
@@ -236,6 +245,7 @@ export function App() {
             });
           });
           try {
+            await waitForFeedbackPaint();
             await submitShotForReview(input);
             const nextWorkbench = await refreshShotWorkbench();
             startTransition(() => {

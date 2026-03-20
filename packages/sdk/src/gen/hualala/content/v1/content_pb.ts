@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hualala/content/v1/content.proto.
  */
 export const file_hualala_content_v1_content: GenFile = /*@__PURE__*/
-  fileDesc("CiBodWFsYWxhL2NvbnRlbnQvdjEvY29udGVudC5wcm90bxISaHVhbGFsYS5jb250ZW50LnYxIlsKBVNjZW5lEgoKAmlkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSDAoEY29kZRgDIAEoCRINCgV0aXRsZRgEIAEoCRIVCg1zb3VyY2VfbG9jYWxlGAUgASgJIlgKBFNob3QSCgoCaWQYASABKAkSEAoIc2NlbmVfaWQYAiABKAkSDAoEY29kZRgDIAEoCRINCgV0aXRsZRgEIAEoCRIVCg1zb3VyY2VfbG9jYWxlGAUgASgJIrcBCg9Db250ZW50U25hcHNob3QSCgoCaWQYASABKAkSEgoKb3duZXJfdHlwZRgCIAEoCRIQCghvd25lcl9pZBgDIAEoCRIOCgZsb2NhbGUYBCABKAkSGgoSc291cmNlX3NuYXBzaG90X2lkGAUgASgJEhwKFHRyYW5zbGF0aW9uX2dyb3VwX2lkGAYgASgJEhoKEnRyYW5zbGF0aW9uX3N0YXR1cxgHIAEoCRIMCgRib2R5GAggASgJIlMKEUxpc3RTY2VuZXNSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSEgoKZXBpc29kZV9pZBgCIAEoCRIWCg5kaXNwbGF5X2xvY2FsZRgDIAEoCSI/ChJMaXN0U2NlbmVzUmVzcG9uc2USKQoGc2NlbmVzGAEgAygLMhkuaHVhbGFsYS5jb250ZW50LnYxLlNjZW5lIjsKD0dldFNjZW5lUmVxdWVzdBIQCghzY2VuZV9pZBgBIAEoCRIWCg5kaXNwbGF5X2xvY2FsZRgCIAEoCSI8ChBHZXRTY2VuZVJlc3BvbnNlEigKBXNjZW5lGAEgASgLMhkuaHVhbGFsYS5jb250ZW50LnYxLlNjZW5lIkEKFUxpc3RTY2VuZVNob3RzUmVxdWVzdBIQCghzY2VuZV9pZBgBIAEoCRIWCg5kaXNwbGF5X2xvY2FsZRgCIAEoCSJBChZMaXN0U2NlbmVTaG90c1Jlc3BvbnNlEicKBXNob3RzGAEgAygLMhguaHVhbGFsYS5jb250ZW50LnYxLlNob3QiOQoOR2V0U2hvdFJlcXVlc3QSDwoHc2hvdF9pZBgBIAEoCRIWCg5kaXNwbGF5X2xvY2FsZRgCIAEoCSI5Cg9HZXRTaG90UmVzcG9uc2USJgoEc2hvdBgBIAEoCzIYLmh1YWxhbGEuY29udGVudC52MS5TaG90IlQKGlVwZGF0ZVNob3RTdHJ1Y3R1cmVSZXF1ZXN0Eg8KB3Nob3RfaWQYASABKAkSDQoFdGl0bGUYAiABKAkSFgoOY29udGVudF9sb2NhbGUYAyABKAkiRQobVXBkYXRlU2hvdFN0cnVjdHVyZVJlc3BvbnNlEiYKBHNob3QYASABKAsyGC5odWFsYWxhLmNvbnRlbnQudjEuU2hvdCJqChxDcmVhdGVDb250ZW50U25hcHNob3RSZXF1ZXN0EhIKCm93bmVyX3R5cGUYASABKAkSEAoIb3duZXJfaWQYAiABKAkSFgoOY29udGVudF9sb2NhbGUYAyABKAkSDAoEYm9keRgEIAEoCSJWCh1DcmVhdGVDb250ZW50U25hcHNob3RSZXNwb25zZRI1CghzbmFwc2hvdBgBIAEoCzIjLmh1YWxhbGEuY29udGVudC52MS5Db250ZW50U25hcHNob3QiYgoeQ3JlYXRlTG9jYWxpemVkU25hcHNob3RSZXF1ZXN0EhoKEnNvdXJjZV9zbmFwc2hvdF9pZBgBIAEoCRIWCg5jb250ZW50X2xvY2FsZRgCIAEoCRIMCgRib2R5GAMgASgJIlgKH0NyZWF0ZUxvY2FsaXplZFNuYXBzaG90UmVzcG9uc2USNQoIc25hcHNob3QYASABKAsyIy5odWFsYWxhLmNvbnRlbnQudjEuQ29udGVudFNuYXBzaG90MvwFCg5Db250ZW50U2VydmljZRJbCgpMaXN0U2NlbmVzEiUuaHVhbGFsYS5jb250ZW50LnYxLkxpc3RTY2VuZXNSZXF1ZXN0GiYuaHVhbGFsYS5jb250ZW50LnYxLkxpc3RTY2VuZXNSZXNwb25zZRJVCghHZXRTY2VuZRIjLmh1YWxhbGEuY29udGVudC52MS5HZXRTY2VuZVJlcXVlc3QaJC5odWFsYWxhLmNvbnRlbnQudjEuR2V0U2NlbmVSZXNwb25zZRJnCg5MaXN0U2NlbmVTaG90cxIpLmh1YWxhbGEuY29udGVudC52MS5MaXN0U2NlbmVTaG90c1JlcXVlc3QaKi5odWFsYWxhLmNvbnRlbnQudjEuTGlzdFNjZW5lU2hvdHNSZXNwb25zZRJSCgdHZXRTaG90EiIuaHVhbGFsYS5jb250ZW50LnYxLkdldFNob3RSZXF1ZXN0GiMuaHVhbGFsYS5jb250ZW50LnYxLkdldFNob3RSZXNwb25zZRJ2ChNVcGRhdGVTaG90U3RydWN0dXJlEi4uaHVhbGFsYS5jb250ZW50LnYxLlVwZGF0ZVNob3RTdHJ1Y3R1cmVSZXF1ZXN0Gi8uaHVhbGFsYS5jb250ZW50LnYxLlVwZGF0ZVNob3RTdHJ1Y3R1cmVSZXNwb25zZRJ8ChVDcmVhdGVDb250ZW50U25hcHNob3QSMC5odWFsYWxhLmNvbnRlbnQudjEuQ3JlYXRlQ29udGVudFNuYXBzaG90UmVxdWVzdBoxLmh1YWxhbGEuY29udGVudC52MS5DcmVhdGVDb250ZW50U25hcHNob3RSZXNwb25zZRKCAQoXQ3JlYXRlTG9jYWxpemVkU25hcHNob3QSMi5odWFsYWxhLmNvbnRlbnQudjEuQ3JlYXRlTG9jYWxpemVkU25hcHNob3RSZXF1ZXN0GjMuaHVhbGFsYS5jb250ZW50LnYxLkNyZWF0ZUxvY2FsaXplZFNuYXBzaG90UmVzcG9uc2VC0gEKFmNvbS5odWFsYWxhLmNvbnRlbnQudjFCDENvbnRlbnRQcm90b1ABWkBnaXRodWIuY29tL2h1YWxhbGEvYXBwcy9iYWNrZW5kL2dlbi9odWFsYWxhL2NvbnRlbnQvdjE7Y29udGVudHYxogIDSENYqgISSHVhbGFsYS5Db250ZW50LlYxygISSHVhbGFsYVxDb250ZW50XFYx4gIeSHVhbGFsYVxDb250ZW50XFYxXEdQQk1ldGFkYXRh6gIUSHVhbGFsYTo6Q29udGVudDo6VjFiBnByb3RvMw");
+  fileDesc("CiBodWFsYWxhL2NvbnRlbnQvdjEvY29udGVudC5wcm90bxISaHVhbGFsYS5jb250ZW50LnYxIlsKBVNjZW5lEgoKAmlkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSDAoEY29kZRgDIAEoCRINCgV0aXRsZRgEIAEoCRIVCg1zb3VyY2VfbG9jYWxlGAUgASgJIlgKBFNob3QSCgoCaWQYASABKAkSEAoIc2NlbmVfaWQYAiABKAkSDAoEY29kZRgDIAEoCRINCgV0aXRsZRgEIAEoCRIVCg1zb3VyY2VfbG9jYWxlGAUgASgJIrcBCg9Db250ZW50U25hcHNob3QSCgoCaWQYASABKAkSEgoKb3duZXJfdHlwZRgCIAEoCRIQCghvd25lcl9pZBgDIAEoCRIOCgZsb2NhbGUYBCABKAkSGgoSc291cmNlX3NuYXBzaG90X2lkGAUgASgJEhwKFHRyYW5zbGF0aW9uX2dyb3VwX2lkGAYgASgJEhoKEnRyYW5zbGF0aW9uX3N0YXR1cxgHIAEoCRIMCgRib2R5GAggASgJImEKEkNyZWF0ZVNjZW5lUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSFAoMc2NlbmVfbnVtYmVyGAMgASgNEg0KBXRpdGxlGAQgASgJIj8KE0NyZWF0ZVNjZW5lUmVzcG9uc2USKAoFc2NlbmUYASABKAsyGS5odWFsYWxhLmNvbnRlbnQudjEuU2NlbmUiSQoRQ3JlYXRlU2hvdFJlcXVlc3QSEAoIc2NlbmVfaWQYASABKAkSEwoLc2hvdF9udW1iZXIYAiABKA0SDQoFdGl0bGUYAyABKAkiPAoSQ3JlYXRlU2hvdFJlc3BvbnNlEiYKBHNob3QYASABKAsyGC5odWFsYWxhLmNvbnRlbnQudjEuU2hvdCJTChFMaXN0U2NlbmVzUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSFgoOZGlzcGxheV9sb2NhbGUYAyABKAkiPwoSTGlzdFNjZW5lc1Jlc3BvbnNlEikKBnNjZW5lcxgBIAMoCzIZLmh1YWxhbGEuY29udGVudC52MS5TY2VuZSI7Cg9HZXRTY2VuZVJlcXVlc3QSEAoIc2NlbmVfaWQYASABKAkSFgoOZGlzcGxheV9sb2NhbGUYAiABKAkiPAoQR2V0U2NlbmVSZXNwb25zZRIoCgVzY2VuZRgBIAEoCzIZLmh1YWxhbGEuY29udGVudC52MS5TY2VuZSJBChVMaXN0U2NlbmVTaG90c1JlcXVlc3QSEAoIc2NlbmVfaWQYASABKAkSFgoOZGlzcGxheV9sb2NhbGUYAiABKAkiQQoWTGlzdFNjZW5lU2hvdHNSZXNwb25zZRInCgVzaG90cxgBIAMoCzIYLmh1YWxhbGEuY29udGVudC52MS5TaG90IjkKDkdldFNob3RSZXF1ZXN0Eg8KB3Nob3RfaWQYASABKAkSFgoOZGlzcGxheV9sb2NhbGUYAiABKAkiOQoPR2V0U2hvdFJlc3BvbnNlEiYKBHNob3QYASABKAsyGC5odWFsYWxhLmNvbnRlbnQudjEuU2hvdCJUChpVcGRhdGVTaG90U3RydWN0dXJlUmVxdWVzdBIPCgdzaG90X2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEhYKDmNvbnRlbnRfbG9jYWxlGAMgASgJIkUKG1VwZGF0ZVNob3RTdHJ1Y3R1cmVSZXNwb25zZRImCgRzaG90GAEgASgLMhguaHVhbGFsYS5jb250ZW50LnYxLlNob3QiagocQ3JlYXRlQ29udGVudFNuYXBzaG90UmVxdWVzdBISCgpvd25lcl90eXBlGAEgASgJEhAKCG93bmVyX2lkGAIgASgJEhYKDmNvbnRlbnRfbG9jYWxlGAMgASgJEgwKBGJvZHkYBCABKAkiVgodQ3JlYXRlQ29udGVudFNuYXBzaG90UmVzcG9uc2USNQoIc25hcHNob3QYASABKAsyIy5odWFsYWxhLmNvbnRlbnQudjEuQ29udGVudFNuYXBzaG90ImIKHkNyZWF0ZUxvY2FsaXplZFNuYXBzaG90UmVxdWVzdBIaChJzb3VyY2Vfc25hcHNob3RfaWQYASABKAkSFgoOY29udGVudF9sb2NhbGUYAiABKAkSDAoEYm9keRgDIAEoCSJYCh9DcmVhdGVMb2NhbGl6ZWRTbmFwc2hvdFJlc3BvbnNlEjUKCHNuYXBzaG90GAEgASgLMiMuaHVhbGFsYS5jb250ZW50LnYxLkNvbnRlbnRTbmFwc2hvdDK5BwoOQ29udGVudFNlcnZpY2USXgoLQ3JlYXRlU2NlbmUSJi5odWFsYWxhLmNvbnRlbnQudjEuQ3JlYXRlU2NlbmVSZXF1ZXN0GicuaHVhbGFsYS5jb250ZW50LnYxLkNyZWF0ZVNjZW5lUmVzcG9uc2USWwoKQ3JlYXRlU2hvdBIlLmh1YWxhbGEuY29udGVudC52MS5DcmVhdGVTaG90UmVxdWVzdBomLmh1YWxhbGEuY29udGVudC52MS5DcmVhdGVTaG90UmVzcG9uc2USWwoKTGlzdFNjZW5lcxIlLmh1YWxhbGEuY29udGVudC52MS5MaXN0U2NlbmVzUmVxdWVzdBomLmh1YWxhbGEuY29udGVudC52MS5MaXN0U2NlbmVzUmVzcG9uc2USVQoIR2V0U2NlbmUSIy5odWFsYWxhLmNvbnRlbnQudjEuR2V0U2NlbmVSZXF1ZXN0GiQuaHVhbGFsYS5jb250ZW50LnYxLkdldFNjZW5lUmVzcG9uc2USZwoOTGlzdFNjZW5lU2hvdHMSKS5odWFsYWxhLmNvbnRlbnQudjEuTGlzdFNjZW5lU2hvdHNSZXF1ZXN0GiouaHVhbGFsYS5jb250ZW50LnYxLkxpc3RTY2VuZVNob3RzUmVzcG9uc2USUgoHR2V0U2hvdBIiLmh1YWxhbGEuY29udGVudC52MS5HZXRTaG90UmVxdWVzdBojLmh1YWxhbGEuY29udGVudC52MS5HZXRTaG90UmVzcG9uc2USdgoTVXBkYXRlU2hvdFN0cnVjdHVyZRIuLmh1YWxhbGEuY29udGVudC52MS5VcGRhdGVTaG90U3RydWN0dXJlUmVxdWVzdBovLmh1YWxhbGEuY29udGVudC52MS5VcGRhdGVTaG90U3RydWN0dXJlUmVzcG9uc2USfAoVQ3JlYXRlQ29udGVudFNuYXBzaG90EjAuaHVhbGFsYS5jb250ZW50LnYxLkNyZWF0ZUNvbnRlbnRTbmFwc2hvdFJlcXVlc3QaMS5odWFsYWxhLmNvbnRlbnQudjEuQ3JlYXRlQ29udGVudFNuYXBzaG90UmVzcG9uc2USggEKF0NyZWF0ZUxvY2FsaXplZFNuYXBzaG90EjIuaHVhbGFsYS5jb250ZW50LnYxLkNyZWF0ZUxvY2FsaXplZFNuYXBzaG90UmVxdWVzdBozLmh1YWxhbGEuY29udGVudC52MS5DcmVhdGVMb2NhbGl6ZWRTbmFwc2hvdFJlc3BvbnNlQtIBChZjb20uaHVhbGFsYS5jb250ZW50LnYxQgxDb250ZW50UHJvdG9QAVpAZ2l0aHViLmNvbS9odWFsYWxhL2FwcHMvYmFja2VuZC9nZW4vaHVhbGFsYS9jb250ZW50L3YxO2NvbnRlbnR2MaICA0hDWKoCEkh1YWxhbGEuQ29udGVudC5WMcoCEkh1YWxhbGFcQ29udGVudFxWMeICHkh1YWxhbGFcQ29udGVudFxWMVxHUEJNZXRhZGF0YeoCFEh1YWxhbGE6OkNvbnRlbnQ6OlYxYgZwcm90bzM");
 
 /**
  * @generated from message hualala.content.v1.Scene
@@ -139,6 +139,99 @@ export const ContentSnapshotSchema: GenMessage<ContentSnapshot> = /*@__PURE__*/
   messageDesc(file_hualala_content_v1_content, 2);
 
 /**
+ * @generated from message hualala.content.v1.CreateSceneRequest
+ */
+export type CreateSceneRequest = Message<"hualala.content.v1.CreateSceneRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string episode_id = 2;
+   */
+  episodeId: string;
+
+  /**
+   * @generated from field: uint32 scene_number = 3;
+   */
+  sceneNumber: number;
+
+  /**
+   * @generated from field: string title = 4;
+   */
+  title: string;
+};
+
+/**
+ * Describes the message hualala.content.v1.CreateSceneRequest.
+ * Use `create(CreateSceneRequestSchema)` to create a new message.
+ */
+export const CreateSceneRequestSchema: GenMessage<CreateSceneRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_content_v1_content, 3);
+
+/**
+ * @generated from message hualala.content.v1.CreateSceneResponse
+ */
+export type CreateSceneResponse = Message<"hualala.content.v1.CreateSceneResponse"> & {
+  /**
+   * @generated from field: hualala.content.v1.Scene scene = 1;
+   */
+  scene?: Scene;
+};
+
+/**
+ * Describes the message hualala.content.v1.CreateSceneResponse.
+ * Use `create(CreateSceneResponseSchema)` to create a new message.
+ */
+export const CreateSceneResponseSchema: GenMessage<CreateSceneResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_content_v1_content, 4);
+
+/**
+ * @generated from message hualala.content.v1.CreateShotRequest
+ */
+export type CreateShotRequest = Message<"hualala.content.v1.CreateShotRequest"> & {
+  /**
+   * @generated from field: string scene_id = 1;
+   */
+  sceneId: string;
+
+  /**
+   * @generated from field: uint32 shot_number = 2;
+   */
+  shotNumber: number;
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title: string;
+};
+
+/**
+ * Describes the message hualala.content.v1.CreateShotRequest.
+ * Use `create(CreateShotRequestSchema)` to create a new message.
+ */
+export const CreateShotRequestSchema: GenMessage<CreateShotRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_content_v1_content, 5);
+
+/**
+ * @generated from message hualala.content.v1.CreateShotResponse
+ */
+export type CreateShotResponse = Message<"hualala.content.v1.CreateShotResponse"> & {
+  /**
+   * @generated from field: hualala.content.v1.Shot shot = 1;
+   */
+  shot?: Shot;
+};
+
+/**
+ * Describes the message hualala.content.v1.CreateShotResponse.
+ * Use `create(CreateShotResponseSchema)` to create a new message.
+ */
+export const CreateShotResponseSchema: GenMessage<CreateShotResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_content_v1_content, 6);
+
+/**
  * @generated from message hualala.content.v1.ListScenesRequest
  */
 export type ListScenesRequest = Message<"hualala.content.v1.ListScenesRequest"> & {
@@ -163,7 +256,7 @@ export type ListScenesRequest = Message<"hualala.content.v1.ListScenesRequest"> 
  * Use `create(ListScenesRequestSchema)` to create a new message.
  */
 export const ListScenesRequestSchema: GenMessage<ListScenesRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 3);
+  messageDesc(file_hualala_content_v1_content, 7);
 
 /**
  * @generated from message hualala.content.v1.ListScenesResponse
@@ -180,7 +273,7 @@ export type ListScenesResponse = Message<"hualala.content.v1.ListScenesResponse"
  * Use `create(ListScenesResponseSchema)` to create a new message.
  */
 export const ListScenesResponseSchema: GenMessage<ListScenesResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 4);
+  messageDesc(file_hualala_content_v1_content, 8);
 
 /**
  * @generated from message hualala.content.v1.GetSceneRequest
@@ -202,7 +295,7 @@ export type GetSceneRequest = Message<"hualala.content.v1.GetSceneRequest"> & {
  * Use `create(GetSceneRequestSchema)` to create a new message.
  */
 export const GetSceneRequestSchema: GenMessage<GetSceneRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 5);
+  messageDesc(file_hualala_content_v1_content, 9);
 
 /**
  * @generated from message hualala.content.v1.GetSceneResponse
@@ -219,7 +312,7 @@ export type GetSceneResponse = Message<"hualala.content.v1.GetSceneResponse"> & 
  * Use `create(GetSceneResponseSchema)` to create a new message.
  */
 export const GetSceneResponseSchema: GenMessage<GetSceneResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 6);
+  messageDesc(file_hualala_content_v1_content, 10);
 
 /**
  * @generated from message hualala.content.v1.ListSceneShotsRequest
@@ -241,7 +334,7 @@ export type ListSceneShotsRequest = Message<"hualala.content.v1.ListSceneShotsRe
  * Use `create(ListSceneShotsRequestSchema)` to create a new message.
  */
 export const ListSceneShotsRequestSchema: GenMessage<ListSceneShotsRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 7);
+  messageDesc(file_hualala_content_v1_content, 11);
 
 /**
  * @generated from message hualala.content.v1.ListSceneShotsResponse
@@ -258,7 +351,7 @@ export type ListSceneShotsResponse = Message<"hualala.content.v1.ListSceneShotsR
  * Use `create(ListSceneShotsResponseSchema)` to create a new message.
  */
 export const ListSceneShotsResponseSchema: GenMessage<ListSceneShotsResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 8);
+  messageDesc(file_hualala_content_v1_content, 12);
 
 /**
  * @generated from message hualala.content.v1.GetShotRequest
@@ -280,7 +373,7 @@ export type GetShotRequest = Message<"hualala.content.v1.GetShotRequest"> & {
  * Use `create(GetShotRequestSchema)` to create a new message.
  */
 export const GetShotRequestSchema: GenMessage<GetShotRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 9);
+  messageDesc(file_hualala_content_v1_content, 13);
 
 /**
  * @generated from message hualala.content.v1.GetShotResponse
@@ -297,7 +390,7 @@ export type GetShotResponse = Message<"hualala.content.v1.GetShotResponse"> & {
  * Use `create(GetShotResponseSchema)` to create a new message.
  */
 export const GetShotResponseSchema: GenMessage<GetShotResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 10);
+  messageDesc(file_hualala_content_v1_content, 14);
 
 /**
  * @generated from message hualala.content.v1.UpdateShotStructureRequest
@@ -324,7 +417,7 @@ export type UpdateShotStructureRequest = Message<"hualala.content.v1.UpdateShotS
  * Use `create(UpdateShotStructureRequestSchema)` to create a new message.
  */
 export const UpdateShotStructureRequestSchema: GenMessage<UpdateShotStructureRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 11);
+  messageDesc(file_hualala_content_v1_content, 15);
 
 /**
  * @generated from message hualala.content.v1.UpdateShotStructureResponse
@@ -341,7 +434,7 @@ export type UpdateShotStructureResponse = Message<"hualala.content.v1.UpdateShot
  * Use `create(UpdateShotStructureResponseSchema)` to create a new message.
  */
 export const UpdateShotStructureResponseSchema: GenMessage<UpdateShotStructureResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 12);
+  messageDesc(file_hualala_content_v1_content, 16);
 
 /**
  * @generated from message hualala.content.v1.CreateContentSnapshotRequest
@@ -373,7 +466,7 @@ export type CreateContentSnapshotRequest = Message<"hualala.content.v1.CreateCon
  * Use `create(CreateContentSnapshotRequestSchema)` to create a new message.
  */
 export const CreateContentSnapshotRequestSchema: GenMessage<CreateContentSnapshotRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 13);
+  messageDesc(file_hualala_content_v1_content, 17);
 
 /**
  * @generated from message hualala.content.v1.CreateContentSnapshotResponse
@@ -390,7 +483,7 @@ export type CreateContentSnapshotResponse = Message<"hualala.content.v1.CreateCo
  * Use `create(CreateContentSnapshotResponseSchema)` to create a new message.
  */
 export const CreateContentSnapshotResponseSchema: GenMessage<CreateContentSnapshotResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 14);
+  messageDesc(file_hualala_content_v1_content, 18);
 
 /**
  * @generated from message hualala.content.v1.CreateLocalizedSnapshotRequest
@@ -417,7 +510,7 @@ export type CreateLocalizedSnapshotRequest = Message<"hualala.content.v1.CreateL
  * Use `create(CreateLocalizedSnapshotRequestSchema)` to create a new message.
  */
 export const CreateLocalizedSnapshotRequestSchema: GenMessage<CreateLocalizedSnapshotRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 15);
+  messageDesc(file_hualala_content_v1_content, 19);
 
 /**
  * @generated from message hualala.content.v1.CreateLocalizedSnapshotResponse
@@ -434,12 +527,28 @@ export type CreateLocalizedSnapshotResponse = Message<"hualala.content.v1.Create
  * Use `create(CreateLocalizedSnapshotResponseSchema)` to create a new message.
  */
 export const CreateLocalizedSnapshotResponseSchema: GenMessage<CreateLocalizedSnapshotResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_content_v1_content, 16);
+  messageDesc(file_hualala_content_v1_content, 20);
 
 /**
  * @generated from service hualala.content.v1.ContentService
  */
 export const ContentService: GenService<{
+  /**
+   * @generated from rpc hualala.content.v1.ContentService.CreateScene
+   */
+  createScene: {
+    methodKind: "unary";
+    input: typeof CreateSceneRequestSchema;
+    output: typeof CreateSceneResponseSchema;
+  },
+  /**
+   * @generated from rpc hualala.content.v1.ContentService.CreateShot
+   */
+  createShot: {
+    methodKind: "unary";
+    input: typeof CreateShotRequestSchema;
+    output: typeof CreateShotResponseSchema;
+  },
   /**
    * @generated from rpc hualala.content.v1.ContentService.ListScenes
    */

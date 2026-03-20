@@ -7,6 +7,12 @@ import {
 import { loadAdminOverview } from "../features/dashboard/loadAdminOverview";
 import { updateBudgetPolicy } from "../features/dashboard/mutateBudgetPolicy";
 
+function waitForFeedbackPaint() {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, 0);
+  });
+}
+
 export function App() {
   const { locale, setLocale, t } = useLocaleState();
   const [overview, setOverview] = useState<AdminOverviewViewModel | null>(null);
@@ -81,6 +87,7 @@ export function App() {
           });
         });
         try {
+          await waitForFeedbackPaint();
           await updateBudgetPolicy({
             orgId,
             projectId: input.projectId,

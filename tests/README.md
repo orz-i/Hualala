@@ -17,9 +17,19 @@
 - mock fixture 来源统一由 `tooling/scripts/demo_seed.mjs` 的 `buildPhase1DemoScenarios()` 提供
 - 不启动真实 backend，也不覆盖后端 proto/Connect 协议
 
+真实联调 smoke 则额外：
+
+- 启动 `apps/backend` 内存态服务
+- 通过 `apps/admin` / `apps/creator` 的 Vite proxy 把 `/hualala.*`、`/upload/*`、`/sse/*` 代理到 `http://127.0.0.1:8080`
+- 使用 `tooling/scripts/backend_seed.mjs` 通过真实公共 API 注入联调数据
+- 不复用 mock fixture 常量
+
 常用命令：
 
 - `corepack pnpm run demo:seed`
+- `corepack pnpm run demo:seed:backend`
 - `corepack pnpm run test:e2e:admin`
 - `corepack pnpm run test:e2e:creator`
 - `corepack pnpm run test:e2e:phase1`
+- `corepack pnpm run test:e2e:admin:real`
+- `corepack pnpm run test:e2e:creator:real`

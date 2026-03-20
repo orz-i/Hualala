@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 const [target, ...args] = process.argv.slice(2);
 
 if (!target) {
-  console.error("Usage: node tooling/scripts/run-playwright-suite.mjs <admin|creator|all> [playwright args...]");
+  console.error("Usage: node tooling/scripts/run-playwright-suite.mjs <admin|creator|all|admin-real|creator-real|all-real> [playwright args...]");
   process.exit(1);
 }
 

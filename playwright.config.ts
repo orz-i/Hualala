@@ -2,7 +2,14 @@ import { defineConfig } from "@playwright/test";
 
 const serverTarget = process.env.PW_SERVER_TARGET ?? "all";
 
-const webServers = [
+const backendServer = {
+  command: "node tooling/scripts/run-backend-dev.mjs",
+  url: "http://127.0.0.1:8080/healthz",
+  reuseExistingServer: true,
+  timeout: 120_000,
+};
+
+const frontendServers = [
   {
     command:
       "corepack pnpm --filter @hualala/admin exec vite --host 127.0.0.1 --port 4173 --strictPort",
@@ -21,14 +28,26 @@ const webServers = [
 
 function resolveWebServers() {
   if (serverTarget === "admin") {
-    return webServers.slice(0, 1);
+    return frontendServers.slice(0, 1);
   }
 
   if (serverTarget === "creator") {
-    return webServers.slice(1);
+    return frontendServers.slice(1);
   }
 
-  return webServers;
+  if (serverTarget === "admin-real") {
+    return [backendServer, frontendServers[0]];
+  }
+
+  if (serverTarget === "creator-real") {
+    return [backendServer, frontendServers[1]];
+  }
+
+  if (serverTarget === "all-real") {
+    return [backendServer, ...frontendServers];
+  }
+
+  return frontendServers;
 }
 
 export default defineConfig({

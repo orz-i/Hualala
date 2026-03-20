@@ -36,6 +36,9 @@ const (
 	// ProjectServiceCreateProjectProcedure is the fully-qualified name of the ProjectService's
 	// CreateProject RPC.
 	ProjectServiceCreateProjectProcedure = "/hualala.project.v1.ProjectService/CreateProject"
+	// ProjectServiceCreateEpisodeProcedure is the fully-qualified name of the ProjectService's
+	// CreateEpisode RPC.
+	ProjectServiceCreateEpisodeProcedure = "/hualala.project.v1.ProjectService/CreateEpisode"
 	// ProjectServiceGetProjectProcedure is the fully-qualified name of the ProjectService's GetProject
 	// RPC.
 	ProjectServiceGetProjectProcedure = "/hualala.project.v1.ProjectService/GetProject"
@@ -50,6 +53,7 @@ const (
 // ProjectServiceClient is a client for the hualala.project.v1.ProjectService service.
 type ProjectServiceClient interface {
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
+	CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error)
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
@@ -70,6 +74,12 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+ProjectServiceCreateProjectProcedure,
 			connect.WithSchema(projectServiceMethods.ByName("CreateProject")),
+			connect.WithClientOptions(opts...),
+		),
+		createEpisode: connect.NewClient[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse](
+			httpClient,
+			baseURL+ProjectServiceCreateEpisodeProcedure,
+			connect.WithSchema(projectServiceMethods.ByName("CreateEpisode")),
 			connect.WithClientOptions(opts...),
 		),
 		getProject: connect.NewClient[v1.GetProjectRequest, v1.GetProjectResponse](
@@ -96,6 +106,7 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 // projectServiceClient implements ProjectServiceClient.
 type projectServiceClient struct {
 	createProject *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
+	createEpisode *connect.Client[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse]
 	getProject    *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
 	listProjects  *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
 	listEpisodes  *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
@@ -104,6 +115,11 @@ type projectServiceClient struct {
 // CreateProject calls hualala.project.v1.ProjectService.CreateProject.
 func (c *projectServiceClient) CreateProject(ctx context.Context, req *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error) {
 	return c.createProject.CallUnary(ctx, req)
+}
+
+// CreateEpisode calls hualala.project.v1.ProjectService.CreateEpisode.
+func (c *projectServiceClient) CreateEpisode(ctx context.Context, req *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error) {
+	return c.createEpisode.CallUnary(ctx, req)
 }
 
 // GetProject calls hualala.project.v1.ProjectService.GetProject.
@@ -124,6 +140,7 @@ func (c *projectServiceClient) ListEpisodes(ctx context.Context, req *connect.Re
 // ProjectServiceHandler is an implementation of the hualala.project.v1.ProjectService service.
 type ProjectServiceHandler interface {
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
+	CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error)
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
@@ -140,6 +157,12 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		ProjectServiceCreateProjectProcedure,
 		svc.CreateProject,
 		connect.WithSchema(projectServiceMethods.ByName("CreateProject")),
+		connect.WithHandlerOptions(opts...),
+	)
+	projectServiceCreateEpisodeHandler := connect.NewUnaryHandler(
+		ProjectServiceCreateEpisodeProcedure,
+		svc.CreateEpisode,
+		connect.WithSchema(projectServiceMethods.ByName("CreateEpisode")),
 		connect.WithHandlerOptions(opts...),
 	)
 	projectServiceGetProjectHandler := connect.NewUnaryHandler(
@@ -164,6 +187,8 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		switch r.URL.Path {
 		case ProjectServiceCreateProjectProcedure:
 			projectServiceCreateProjectHandler.ServeHTTP(w, r)
+		case ProjectServiceCreateEpisodeProcedure:
+			projectServiceCreateEpisodeHandler.ServeHTTP(w, r)
 		case ProjectServiceGetProjectProcedure:
 			projectServiceGetProjectHandler.ServeHTTP(w, r)
 		case ProjectServiceListProjectsProcedure:
@@ -181,6 +206,10 @@ type UnimplementedProjectServiceHandler struct{}
 
 func (UnimplementedProjectServiceHandler) CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.CreateProject is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) CreateEpisode(context.Context, *connect.Request[v1.CreateEpisodeRequest]) (*connect.Response[v1.CreateEpisodeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.CreateEpisode is not implemented"))
 }
 
 func (UnimplementedProjectServiceHandler) GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error) {

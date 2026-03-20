@@ -6,6 +6,7 @@ option go_package = "github.com/hualala/apps/backend/gen/hualala/project/v1;proj
 
 service ProjectService {
   rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+  rpc CreateEpisode(CreateEpisodeRequest) returns (CreateEpisodeResponse);
   rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
   rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
   rpc ListEpisodes(ListEpisodesRequest) returns (ListEpisodesResponse);
@@ -33,6 +34,16 @@ message CreateProjectRequest {
 
 message CreateProjectResponse {
   Project project = 1;
+}
+
+message CreateEpisodeRequest {
+  string project_id = 1;
+  uint32 episode_number = 2;
+  string title = 3;
+}
+
+message CreateEpisodeResponse {
+  Episode episode = 1;
 }
 
 message GetProjectRequest {

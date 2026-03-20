@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateProjectRequest, CreateProjectResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListProjectsRequest, ListProjectsResponse } from "./project_service_pb.js";
+import { CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListProjectsRequest, ListProjectsResponse } from "./project_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -19,6 +19,15 @@ export const ProjectService = {
       name: "CreateProject",
       I: CreateProjectRequest,
       O: CreateProjectResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.project.v1.ProjectService.CreateEpisode
+     */
+    createEpisode: {
+      name: "CreateEpisode",
+      I: CreateEpisodeRequest,
+      O: CreateEpisodeResponse,
       kind: MethodKind.Unary,
     },
     /**
