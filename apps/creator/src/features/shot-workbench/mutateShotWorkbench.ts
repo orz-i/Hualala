@@ -4,6 +4,16 @@ type ShotWorkbenchMutationInput = {
   fetchFn?: typeof fetch;
 };
 
+type RunSubmissionGateChecksResponse = {
+  passedChecks?: string[];
+  failedChecks?: string[];
+};
+
+export type SubmissionGateCheckResult = {
+  passedChecks: string[];
+  failedChecks: string[];
+};
+
 function trimTrailingSlash(value: string) {
   return value.endsWith("/") ? value.slice(0, -1) : value;
 }
@@ -29,7 +39,7 @@ export async function runSubmissionGateChecks({
   shotExecutionId,
   baseUrl,
   fetchFn = fetch,
-}: ShotWorkbenchMutationInput): Promise<void> {
+}: ShotWorkbenchMutationInput): Promise<SubmissionGateCheckResult> {
   const response = await fetchFn(
     `${resolveBaseUrl(baseUrl)}/hualala.execution.v1.ExecutionService/RunSubmissionGateChecks`,
     {
@@ -45,6 +55,11 @@ export async function runSubmissionGateChecks({
   );
 
   await assertConnectOk(response, "creator: failed to run submission gate checks");
+  const payload = (await response.json()) as RunSubmissionGateChecksResponse;
+  return {
+    passedChecks: payload.passedChecks ?? [],
+    failedChecks: payload.failedChecks ?? [],
+  };
 }
 
 export async function submitShotForReview({

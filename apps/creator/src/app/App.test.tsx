@@ -35,7 +35,7 @@ const submitShotForReviewMock = vi.mocked(submitShotForReview);
 
 describe("App", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it("prefers importBatchId from search params, loads the import workbench, and renders the live data", async () => {
@@ -170,7 +170,10 @@ describe("App", () => {
         status: "passed",
       },
     });
-    runSubmissionGateChecksMock.mockResolvedValue(undefined);
+    runSubmissionGateChecksMock.mockResolvedValue({
+      passedChecks: ["asset_selected", "review_ready"],
+      failedChecks: ["copyright_missing"],
+    });
     submitShotForReviewMock.mockResolvedValue(undefined);
 
     render(<App />);
@@ -197,6 +200,9 @@ describe("App", () => {
     });
 
     expect(await screen.findByText("Gate 检查已完成")).toBeInTheDocument();
+    expect(screen.getByText("asset_selected")).toBeInTheDocument();
+    expect(screen.getByText("review_ready")).toBeInTheDocument();
+    expect(screen.getByText("copyright_missing")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getAllByText("passed")).toHaveLength(2);

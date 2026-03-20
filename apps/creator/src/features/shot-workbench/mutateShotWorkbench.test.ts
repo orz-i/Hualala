@@ -3,12 +3,18 @@ import { runSubmissionGateChecks, submitShotForReview } from "./mutateShotWorkbe
 describe("mutateShotWorkbench", () => {
   it("posts gate checks with connect protocol headers", async () => {
     const fetchFn = vi.fn().mockResolvedValue(
-      new Response(null, {
+      new Response(
+        JSON.stringify({
+          passedChecks: ["asset_selected", "review_ready"],
+          failedChecks: ["copyright_missing"],
+        }),
+        {
         status: 200,
-      }),
+        },
+      ),
     );
 
-    await runSubmissionGateChecks({
+    const result = await runSubmissionGateChecks({
       shotExecutionId: "shot-exec-1",
       baseUrl: "http://localhost:8080/",
       fetchFn,
@@ -27,6 +33,10 @@ describe("mutateShotWorkbench", () => {
         }),
       },
     );
+    expect(result).toEqual({
+      passedChecks: ["asset_selected", "review_ready"],
+      failedChecks: ["copyright_missing"],
+    });
   });
 
   it("posts submit review with connect protocol headers", async () => {

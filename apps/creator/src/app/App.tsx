@@ -18,6 +18,8 @@ import { ShotWorkbenchPage, type ShotWorkbenchViewModel } from "../features/shot
 type ShotActionFeedback = {
   tone: "success" | "error" | "pending";
   message: string;
+  passedChecks?: string[];
+  failedChecks?: string[];
 };
 
 export function App() {
@@ -130,12 +132,14 @@ export function App() {
             });
           });
           try {
-            await runSubmissionGateChecks(input);
+            const result = await runSubmissionGateChecks(input);
             await refreshShotWorkbench();
             startTransition(() => {
               setShotActionFeedback({
                 tone: "success",
                 message: "Gate 检查已完成",
+                passedChecks: result.passedChecks,
+                failedChecks: result.failedChecks,
               });
             });
           } catch (error: unknown) {

@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useId, useState, type CSSProperties } from "react";
 
 type BudgetSnapshot = {
   projectId: string;
@@ -46,6 +46,8 @@ export type AdminOverviewViewModel = {
 
 type AdminOverviewPageProps = {
   overview: AdminOverviewViewModel;
+  onUpdateBudgetLimit?: (input: { projectId: string; limitCents: number }) => void;
+  budgetFeedback?: string;
 };
 
 const panelStyle: CSSProperties = {
@@ -67,8 +69,20 @@ function formatCurrency(cents: number) {
   return `${(cents / 100).toFixed(2)} 元`;
 }
 
-export function AdminOverviewPage({ overview }: AdminOverviewPageProps) {
+export function AdminOverviewPage({
+  overview,
+  onUpdateBudgetLimit,
+  budgetFeedback,
+}: AdminOverviewPageProps) {
   const latestEvaluation = overview.evaluationRuns[0];
+  const budgetInputId = useId();
+  const [budgetLimitYuan, setBudgetLimitYuan] = useState(
+    (overview.budgetSnapshot.limitCents / 100).toFixed(2),
+  );
+
+  useEffect(() => {
+    setBudgetLimitYuan((overview.budgetSnapshot.limitCents / 100).toFixed(2));
+  }, [overview.budgetSnapshot.limitCents]);
 
   return (
     <main
@@ -114,6 +128,53 @@ export function AdminOverviewPage({ overview }: AdminOverviewPageProps) {
             <p style={metricStyle}>预算上限：{formatCurrency(overview.budgetSnapshot.limitCents)}</p>
             <p style={metricStyle}>已预占：{formatCurrency(overview.budgetSnapshot.reservedCents)}</p>
             <p style={metricStyle}>剩余额度：{formatCurrency(overview.budgetSnapshot.remainingBudgetCents)}</p>
+            <div style={{ marginTop: "16px", display: "grid", gap: "10px" }}>
+              <label htmlFor={budgetInputId} style={{ fontSize: "0.9rem", color: "#334155" }}>
+                预算上限（元）
+              </label>
+              <input
+                id={budgetInputId}
+                type="number"
+                min="0"
+                step="0.01"
+                value={budgetLimitYuan}
+                onChange={(event) => {
+                  setBudgetLimitYuan(event.target.value);
+                }}
+                style={{
+                  borderRadius: "12px",
+                  border: "1px solid rgba(148, 163, 184, 0.45)",
+                  padding: "10px 12px",
+                  font: "inherit",
+                }}
+              />
+              <button
+                type="button"
+                style={{
+                  border: 0,
+                  borderRadius: "999px",
+                  padding: "10px 16px",
+                  background: "#0f766e",
+                  color: "#ecfeff",
+                  cursor: "pointer",
+                  justifySelf: "start",
+                }}
+                onClick={() => {
+                  if (!onUpdateBudgetLimit) {
+                    return;
+                  }
+                  onUpdateBudgetLimit({
+                    projectId: overview.budgetSnapshot.projectId,
+                    limitCents: Math.round(Number(budgetLimitYuan || "0") * 100),
+                  });
+                }}
+              >
+                更新预算
+              </button>
+              {budgetFeedback ? (
+                <p style={{ margin: 0, color: "#0f766e", fontSize: "0.9rem" }}>{budgetFeedback}</p>
+              ) : null}
+            </div>
           </article>
 
           <article style={panelStyle}>

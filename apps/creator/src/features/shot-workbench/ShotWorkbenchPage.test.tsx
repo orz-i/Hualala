@@ -92,11 +92,17 @@ describe("ShotWorkbenchPage", () => {
         feedback={{
           tone: "success",
           message: "Gate 检查已完成",
+          passedChecks: ["asset_selected"],
+          failedChecks: ["copyright_missing"],
         }}
       />,
     );
 
     expect(screen.getByText("Gate 检查已完成")).toBeInTheDocument();
+    expect(screen.getByText("通过检查")).toBeInTheDocument();
+    expect(screen.getByText("asset_selected")).toBeInTheDocument();
+    expect(screen.getByText("未通过检查")).toBeInTheDocument();
+    expect(screen.getByText("copyright_missing")).toBeInTheDocument();
 
     rerender(
       <ShotWorkbenchPage

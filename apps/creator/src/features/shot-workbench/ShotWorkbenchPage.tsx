@@ -31,6 +31,8 @@ export type ShotWorkbenchViewModel = {
 type ShotWorkbenchFeedback = {
   tone: "success" | "error" | "pending";
   message: string;
+  passedChecks?: string[];
+  failedChecks?: string[];
 };
 
 type ShotWorkbenchPageProps = {
@@ -109,7 +111,7 @@ export function ShotWorkbenchPage({
             Shot {workbench.shotExecution.shotId} 当前处于 <strong>{workbench.shotExecution.status}</strong>
           </p>
           {feedback ? (
-            <p
+            <div
               style={{
                 margin: "16px 0 0",
                 padding: "10px 14px",
@@ -118,8 +120,28 @@ export function ShotWorkbenchPage({
                 ...feedbackPalette,
               }}
             >
-              {feedback.message}
-            </p>
+              <p style={{ margin: 0 }}>{feedback.message}</p>
+              {feedback.passedChecks && feedback.passedChecks.length > 0 ? (
+                <div style={{ marginTop: "10px" }}>
+                  <strong>通过检查</strong>
+                  <ul style={{ margin: "6px 0 0", paddingLeft: "20px" }}>
+                    {feedback.passedChecks.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {feedback.failedChecks && feedback.failedChecks.length > 0 ? (
+                <div style={{ marginTop: "10px" }}>
+                  <strong>未通过检查</strong>
+                  <ul style={{ margin: "6px 0 0", paddingLeft: "20px" }}>
+                    {feedback.failedChecks.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
           ) : null}
         </header>
 
