@@ -12,7 +12,19 @@ import (
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/review"
 	"github.com/hualala/apps/backend/internal/domain/workflow"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
+
+type RuntimeStore interface {
+	ProjectContentRepository
+	ExecutionRepository
+	AssetRepository
+	ReviewBillingRepository
+	PolicyReader
+	GatewayResultStore
+	WorkflowRepository
+	Publisher() *events.Publisher
+}
 
 type ProjectContentRepository interface {
 	GenerateProjectID() string

@@ -10,4 +10,5 @@ func TestMemoryStoreImplementsPhase2Repositories(t *testing.T) {
 	var _ PolicyReader = (*MemoryStore)(nil)
 	var _ GatewayResultStore = (*MemoryStore)(nil)
 	var _ WorkflowRepository = (*MemoryStore)(nil)
+	var _ RuntimeStore = (*MemoryStore)(nil)
 }

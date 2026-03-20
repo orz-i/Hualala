@@ -27,7 +27,7 @@ func openIntegrationStore(t *testing.T) *db.MemoryStore {
 	if err != nil {
 		t.Fatalf("ResolveMigrationsDir returned error: %v", err)
 	}
-	store, closeFn, err := db.OpenStore(context.Background(), db.OpenStoreOptions{
+	runtimeStore, closeFn, err := db.OpenStore(context.Background(), db.OpenStoreOptions{
 		Driver:        cfg.DBDriver,
 		DatabaseURL:   cfg.DatabaseURL,
 		AutoMigrate:   cfg.AutoMigrate,
@@ -36,6 +36,10 @@ func openIntegrationStore(t *testing.T) *db.MemoryStore {
 	})
 	if err != nil {
 		t.Fatalf("OpenStore returned error: %v", err)
+	}
+	store, ok := runtimeStore.(*db.MemoryStore)
+	if !ok {
+		t.Fatalf("OpenStore returned %T, want *db.MemoryStore", runtimeStore)
 	}
 
 	t.Cleanup(func() {

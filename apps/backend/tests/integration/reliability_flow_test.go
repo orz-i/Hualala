@@ -33,7 +33,7 @@ func TestReliabilityFlow(t *testing.T) {
 	gatewayService := gatewayapp.NewService(store, adapter)
 	workflowService := workflowapp.NewService(store, store.EventPublisher, temporal.NewInMemoryExecutor(gatewayService), policyService)
 
-	services := runtime.NewServiceSet(runtime.NewRepositorySet(store))
+	services := runtime.NewFactory(store).Services()
 	services.PolicyService = policyService
 	services.GatewayService = gatewayService
 	services.WorkflowService = workflowService

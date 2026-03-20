@@ -25,7 +25,7 @@ type PostgresPersister struct {
 	storeKey string
 }
 
-func OpenStore(ctx context.Context, options OpenStoreOptions) (*MemoryStore, func() error, error) {
+func OpenStore(ctx context.Context, options OpenStoreOptions) (RuntimeStore, func() error, error) {
 	switch options.Driver {
 	case "", "memory":
 		return NewMemoryStore(), func() error { return nil }, nil

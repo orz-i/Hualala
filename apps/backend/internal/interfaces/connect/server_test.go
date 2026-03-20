@@ -778,6 +778,20 @@ func TestServerRouteDependenciesDoNotExposeRawMemoryStore(t *testing.T) {
 	}
 }
 
+func TestCmdAPIAvoidsRepositorySetConstruction(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("..", "..", "..", "cmd", "api", "main.go"))
+	if err != nil {
+		t.Fatalf("os.ReadFile returned error: %v", err)
+	}
+	text := string(content)
+	if strings.Contains(text, "runtime.NewRepositorySet(") {
+		t.Fatalf("expected cmd/api to construct runtime dependencies via factory, not runtime.NewRepositorySet")
+	}
+	if strings.Contains(text, "*db.MemoryStore") {
+		t.Fatalf("expected cmd/api to avoid raw *db.MemoryStore dependency")
+	}
+}
+
 func newRouteDependenciesFromStore(store *db.MemoryStore) RouteDependencies {
-	return NewRouteDependencies(runtime.NewServiceSet(runtime.NewRepositorySet(store)))
+	return NewRouteDependencies(runtime.NewFactory(store).Services())
 }

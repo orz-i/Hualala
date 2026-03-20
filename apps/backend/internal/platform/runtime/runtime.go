@@ -41,23 +41,32 @@ type ServiceSet struct {
 	EventPublisher   *events.Publisher
 }
 
-func NewRepositorySet(store *db.MemoryStore) RepositorySet {
-	if store == nil {
+type Factory struct {
+	store db.RuntimeStore
+}
+
+func NewFactory(store db.RuntimeStore) Factory {
+	return Factory{store: store}
+}
+
+func (f Factory) Repositories() RepositorySet {
+	if f.store == nil {
 		return RepositorySet{}
 	}
 	return RepositorySet{
-		ProjectContent: store,
-		Executions:     store,
-		Assets:         store,
-		ReviewBilling:  store,
-		PolicyReader:   store,
-		GatewayStore:   store,
-		WorkflowRepo:   store,
-		EventPublisher: store.EventPublisher,
+		ProjectContent: f.store,
+		Executions:     f.store,
+		Assets:         f.store,
+		ReviewBilling:  f.store,
+		PolicyReader:   f.store,
+		GatewayStore:   f.store,
+		WorkflowRepo:   f.store,
+		EventPublisher: f.store.Publisher(),
 	}
 }
 
-func NewServiceSet(repos RepositorySet) ServiceSet {
+func (f Factory) Services() ServiceSet {
+	repos := f.Repositories()
 	policyService := policyapp.NewService(repos.PolicyReader)
 	gatewayService := gatewayapp.NewService(repos.GatewayStore, gatewayapp.NewFakeAdapter())
 	workflowService := workflowapp.NewService(repos.WorkflowRepo, repos.EventPublisher, temporal.NewInMemoryExecutor(gatewayService), policyService)

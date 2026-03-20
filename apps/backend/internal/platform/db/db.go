@@ -196,6 +196,13 @@ func (s *MemoryStore) Persist(ctx context.Context) error {
 	return s.Save(ctx)
 }
 
+func (s *MemoryStore) Publisher() *events.Publisher {
+	if s == nil {
+		return nil
+	}
+	return s.EventPublisher
+}
+
 func (s *MemoryStore) snapshot() Snapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
