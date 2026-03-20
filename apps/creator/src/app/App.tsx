@@ -1,25 +1,48 @@
+import { startTransition, useEffect, useState } from "react";
+import { loadShotWorkbench } from "../features/shot-workbench/loadShotWorkbench";
 import { ShotWorkbenchPage, type ShotWorkbenchViewModel } from "../features/shot-workbench/ShotWorkbenchPage";
 
-const demoWorkbench: ShotWorkbenchViewModel = {
-  shotExecution: {
-    id: "shot-exec-demo-001",
-    shotId: "shot-demo-001",
-    status: "submitted_for_review",
-    primaryAssetId: "asset-demo-001",
-  },
-  candidateAssets: [
-    { id: "candidate-demo-001", assetId: "asset-demo-001" },
-    { id: "candidate-demo-002", assetId: "asset-demo-002" },
-  ],
-  reviewSummary: {
-    latestConclusion: "approved",
-  },
-  latestEvaluationRun: {
-    id: "eval-demo-001",
-    status: "passed",
-  },
-};
-
 export function App() {
-  return <ShotWorkbenchPage workbench={demoWorkbench} />;
+  const [workbench, setWorkbench] = useState<ShotWorkbenchViewModel | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    const shotId = new URLSearchParams(window.location.search).get("shotId") ?? "shot-demo-001";
+    let cancelled = false;
+
+    loadShotWorkbench({ shotId })
+      .then((nextWorkbench) => {
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setWorkbench(nextWorkbench);
+          setErrorMessage("");
+        });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        const message = error instanceof Error ? error.message : "creator: unknown workbench error";
+        startTransition(() => {
+          setErrorMessage(message);
+          setWorkbench(null);
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (errorMessage) {
+    return <main style={{ padding: "32px" }}>镜头工作台加载失败：{errorMessage}</main>;
+  }
+
+  if (!workbench) {
+    return <main style={{ padding: "32px" }}>正在加载镜头工作台</main>;
+  }
+
+  return <ShotWorkbenchPage workbench={workbench} />;
 }
