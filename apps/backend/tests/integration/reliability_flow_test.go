@@ -129,15 +129,15 @@ func TestReliabilityFlow(t *testing.T) {
 	}
 
 	store.Budgets["budget-1"] = billing.ProjectBudget{
-		ID:            "budget-1",
+		ID:            store.NextBudgetID(),
 		OrgID:         project.OrganizationID,
-		ProjectID:     "project-budget-1",
+		ProjectID:     project.ID,
 		LimitCents:    100,
 		ReservedCents: 90,
 	}
 	_, err = workflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
-		OrganizationID:     "org-1",
-		ProjectID:          "project-budget-1",
+		OrganizationID:     project.OrganizationID,
+		ProjectID:          project.ID,
 		WorkflowType:       "asset.import",
 		ResourceID:         "batch-budget-1",
 		Provider:           "seedance",

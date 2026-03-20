@@ -3,7 +3,7 @@ package integration
 import (
 	"context"
 	"fmt"
-	"path/filepath"
+	"os"
 	"testing"
 
 	"github.com/hualala/apps/backend/internal/platform/config"
@@ -19,11 +19,19 @@ func openIntegrationStore(t *testing.T) *db.MemoryStore {
 			t.Fatalf("EnsureDevBootstrapWithURL returned error: %v", err)
 		}
 	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+	migrationsDir, err := db.ResolveMigrationsDir(cwd)
+	if err != nil {
+		t.Fatalf("ResolveMigrationsDir returned error: %v", err)
+	}
 	store, closeFn, err := db.OpenStore(context.Background(), db.OpenStoreOptions{
 		Driver:        cfg.DBDriver,
 		DatabaseURL:   cfg.DatabaseURL,
 		AutoMigrate:   cfg.AutoMigrate,
-		MigrationsDir: filepath.Join("infra", "migrations"),
+		MigrationsDir: migrationsDir,
 		StoreKey:      fmt.Sprintf("integration-%s", t.Name()),
 	})
 	if err != nil {

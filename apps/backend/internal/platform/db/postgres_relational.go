@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -973,7 +974,26 @@ func (p *PostgresPersister) saveProjectsEpisodesScenesShotsSnapshots(ctx context
 		}
 	}
 
+	snapshotRecords := make([]content.Snapshot, 0, len(snapshot.Snapshots))
 	for _, record := range snapshot.Snapshots {
+		snapshotRecords = append(snapshotRecords, record)
+	}
+	sort.Slice(snapshotRecords, func(i, j int) bool {
+		leftSource := strings.TrimSpace(snapshotRecords[i].SourceSnapshotID)
+		rightSource := strings.TrimSpace(snapshotRecords[j].SourceSnapshotID)
+		if leftSource == "" && rightSource != "" {
+			return true
+		}
+		if leftSource != "" && rightSource == "" {
+			return false
+		}
+		if snapshotRecords[i].CreatedAt.Equal(snapshotRecords[j].CreatedAt) {
+			return snapshotRecords[i].ID < snapshotRecords[j].ID
+		}
+		return snapshotRecords[i].CreatedAt.Before(snapshotRecords[j].CreatedAt)
+	})
+
+	for _, record := range snapshotRecords {
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO content_snapshots (
 				id, resource_type, resource_id, snapshot_kind, locale, translation_group_id,
@@ -1151,6 +1171,10 @@ func (p *PostgresPersister) saveExecutionsAssetsReviewBilling(ctx context.Contex
 		if !ok {
 			continue
 		}
+		failedChecks := record.FailedChecks
+		if failedChecks == nil {
+			failedChecks = []string{}
+		}
 		summaryText, err := jsonString(evaluationSummaryPayload{
 			PassedChecks: record.PassedChecks,
 			FailedChecks: record.FailedChecks,
@@ -1164,7 +1188,7 @@ func (p *PostgresPersister) saveExecutionsAssetsReviewBilling(ctx context.Contex
 				evaluation_type, status, result_summary, failure_codes, started_at, completed_at,
 				created_at, updated_at
 			) VALUES ($1, $2, $3, $4, $5, 'submission_gate', $6, $7::jsonb, $8, $9, $10, $11, $12)
-		`, record.ID, shotExecution.OrgID, shotExecution.ProjectID, record.ShotExecutionID, nullableUUID(shotExecution.CurrentRunID), defaultString(record.Status, "passed"), summaryText, pq.Array(record.FailedChecks), record.CreatedAt, record.CreatedAt, record.CreatedAt, record.UpdatedAt); err != nil {
+		`, record.ID, shotExecution.OrgID, shotExecution.ProjectID, record.ShotExecutionID, nullableUUID(shotExecution.CurrentRunID), defaultString(record.Status, "passed"), summaryText, pq.Array(failedChecks), record.CreatedAt, record.CreatedAt, record.CreatedAt, record.UpdatedAt); err != nil {
 			return nil, nil, fmt.Errorf("db: insert evaluation run %s: %w", record.ID, err)
 		}
 	}
