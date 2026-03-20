@@ -23,6 +23,17 @@ type DevBootstrapResult struct {
 	MembershipID   string `json:"membership_id"`
 }
 
+func devRolePermissionCodes() []string {
+	return []string{
+		"session.read",
+		"user.preferences.write",
+		"org.members.read",
+		"org.roles.read",
+		"org.members.write",
+		"org.settings.write",
+	}
+}
+
 func (r DevBootstrapResult) JSON() string {
 	body, _ := json.Marshal(r)
 	return string(body)
@@ -55,14 +66,15 @@ func EnsureDevBootstrap(ctx context.Context, handle *sql.DB) (DevBootstrapResult
 	}
 
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO users (id, email, display_name, preferred_ui_locale)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO users (id, email, display_name, preferred_ui_locale, timezone)
+		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (id) DO UPDATE
 		SET email = EXCLUDED.email,
 		    display_name = EXCLUDED.display_name,
 		    preferred_ui_locale = EXCLUDED.preferred_ui_locale,
+		    timezone = EXCLUDED.timezone,
 		    updated_at = now()
-	`, DefaultDevUserID, "dev-user@hualala.local", "Development Operator", "zh-CN"); err != nil {
+	`, DefaultDevUserID, "dev-user@hualala.local", "Development Operator", "zh-CN", "Asia/Shanghai"); err != nil {
 		return DevBootstrapResult{}, fmt.Errorf("db: upsert user: %w", err)
 	}
 
@@ -89,6 +101,19 @@ func EnsureDevBootstrap(ctx context.Context, handle *sql.DB) (DevBootstrapResult
 		    updated_at = now()
 	`, DefaultDevMembershipID, DefaultDevOrganizationID, DefaultDevUserID, DefaultDevRoleID, "active"); err != nil {
 		return DevBootstrapResult{}, fmt.Errorf("db: upsert membership: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM role_permissions WHERE role_id = $1`, DefaultDevRoleID); err != nil {
+		return DevBootstrapResult{}, fmt.Errorf("db: clear role permissions: %w", err)
+	}
+	for _, permissionCode := range devRolePermissionCodes() {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO role_permissions (role_id, permission_code)
+			VALUES ($1, $2)
+			ON CONFLICT (role_id, permission_code) DO NOTHING
+		`, DefaultDevRoleID, permissionCode); err != nil {
+			return DevBootstrapResult{}, fmt.Errorf("db: insert role permission %s: %w", permissionCode, err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

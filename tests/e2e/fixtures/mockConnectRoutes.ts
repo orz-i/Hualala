@@ -28,6 +28,26 @@ type AdminState = {
   reviewSummary: { shotExecutionId: string; latestConclusion: string };
   evaluationRuns: Array<{ id: string; status: string; failedChecks: string[] }>;
   shotReviews: Array<{ id: string; conclusion: string }>;
+  governance: {
+    currentSession: {
+      sessionId: string;
+      orgId: string;
+      userId: string;
+      locale: string;
+    };
+    userPreferences: {
+      userId: string;
+      displayLocale: string;
+      timezone: string;
+    };
+    members: Array<{ memberId: string; orgId: string; userId: string; roleId: string }>;
+    roles: Array<{ roleId: string; orgId: string; code: string; displayName: string }>;
+    orgLocaleSettings: {
+      orgId: string;
+      defaultLocale: string;
+      supportedLocales: string[];
+    };
+  };
 };
 
 type CreatorShotState = {
@@ -78,6 +98,40 @@ function jsonResponse(status: number, payload: unknown) {
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function withGovernance(state: Omit<AdminState, "governance"> & Partial<Pick<AdminState, "governance">>) {
+  if (state.governance) {
+    return state as AdminState;
+  }
+
+  const orgId = "org-live-1";
+  const userId = "user-live-1";
+  const locale = "zh-CN";
+
+  return {
+    ...state,
+    governance: {
+      currentSession: {
+        sessionId: `dev:${orgId}:${userId}`,
+        orgId,
+        userId,
+        locale,
+      },
+      userPreferences: {
+        userId,
+        displayLocale: locale,
+        timezone: "Asia/Shanghai",
+      },
+      members: [{ memberId: "member-1", orgId, userId, roleId: "role-admin" }],
+      roles: [{ roleId: "role-admin", orgId, code: "admin", displayName: "Administrator" }],
+      orgLocaleSettings: {
+        orgId,
+        defaultLocale: locale,
+        supportedLocales: [locale],
+      },
+    },
+  };
 }
 
 function formatCurrency(cents: number) {
@@ -140,6 +194,19 @@ async function loadPhase1DemoScenarios(): Promise<Phase1DemoScenarios> {
 
 function buildAdminPayload(pathname: string, state: AdminState) {
   switch (pathname) {
+    case "/hualala.auth.v1.AuthService/GetCurrentSession":
+      return {
+        session: {
+          sessionId: state.governance.currentSession.sessionId,
+          orgId: state.governance.currentSession.orgId,
+          userId: state.governance.currentSession.userId,
+          locale: state.governance.currentSession.locale,
+        },
+      };
+    case "/hualala.org.v1.OrgService/ListMembers":
+      return { members: state.governance.members };
+    case "/hualala.org.v1.OrgService/ListRoles":
+      return { roles: state.governance.roles };
     case "/hualala.billing.v1.BillingService/GetBudgetSnapshot":
       return { budgetSnapshot: state.budgetSnapshot };
     case "/hualala.billing.v1.BillingService/ListUsageRecords":
@@ -163,7 +230,9 @@ function delay(ms: number) {
 
 export async function mockConnectRoutes(page: Page, scenario: MockConnectScenario) {
   const phase1DemoScenarios = await loadPhase1DemoScenarios();
-  let adminState = withRecentChanges(clone(phase1DemoScenarios.admin[scenario.admin ?? "success"]));
+  let adminState = withRecentChanges(
+    withGovernance(clone(phase1DemoScenarios.admin[scenario.admin ?? "success"])),
+  );
   let creatorShotState = clone(
     phase1DemoScenarios.creatorShot[scenario.creatorShot ?? "success"],
   );
@@ -196,6 +265,97 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
               limitCents: adminState.budgetSnapshot.limitCents,
               reservedCents: adminState.budgetSnapshot.reservedCents,
             },
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.auth.v1.AuthService/UpdateUserPreferences") {
+        const body = route.request().postDataJSON() as {
+          displayLocale?: string;
+          timezone?: string;
+          userId?: string;
+        };
+        adminState = withRecentChanges({
+          ...clone(adminState),
+          governance: {
+            ...clone(adminState.governance),
+            currentSession: {
+              ...clone(adminState.governance.currentSession),
+              locale: body.displayLocale ?? adminState.governance.currentSession.locale,
+            },
+            userPreferences: {
+              userId: body.userId ?? adminState.governance.userPreferences.userId,
+              displayLocale:
+                body.displayLocale ?? adminState.governance.userPreferences.displayLocale,
+              timezone: body.timezone ?? adminState.governance.userPreferences.timezone,
+            },
+            orgLocaleSettings: {
+              ...clone(adminState.governance.orgLocaleSettings),
+              defaultLocale:
+                body.displayLocale ?? adminState.governance.orgLocaleSettings.defaultLocale,
+              supportedLocales: [
+                body.displayLocale ?? adminState.governance.orgLocaleSettings.defaultLocale,
+              ],
+            },
+          },
+        });
+        await route.fulfill(
+          jsonResponse(200, {
+            preferences: clone(adminState.governance.userPreferences),
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.org.v1.OrgService/UpdateMemberRole") {
+        const body = route.request().postDataJSON() as {
+          memberId?: string;
+          roleId?: string;
+        };
+        adminState = withRecentChanges({
+          ...clone(adminState),
+          governance: {
+            ...clone(adminState.governance),
+            members: adminState.governance.members.map((member) =>
+              member.memberId === body.memberId
+                ? { ...member, roleId: body.roleId ?? member.roleId }
+                : member,
+            ),
+          },
+        });
+        const updatedMember = adminState.governance.members.find(
+          (member) => member.memberId === body.memberId,
+        );
+        await route.fulfill(jsonResponse(200, { member: updatedMember }));
+        return;
+      }
+
+      if (pathname === "/hualala.org.v1.OrgService/UpdateOrgLocaleSettings") {
+        const body = route.request().postDataJSON() as {
+          defaultLocale?: string;
+        };
+        adminState = withRecentChanges({
+          ...clone(adminState),
+          governance: {
+            ...clone(adminState.governance),
+            currentSession: {
+              ...clone(adminState.governance.currentSession),
+              locale: body.defaultLocale ?? adminState.governance.currentSession.locale,
+            },
+            orgLocaleSettings: {
+              orgId: adminState.governance.orgLocaleSettings.orgId,
+              defaultLocale:
+                body.defaultLocale ?? adminState.governance.orgLocaleSettings.defaultLocale,
+              supportedLocales: [
+                body.defaultLocale ?? adminState.governance.orgLocaleSettings.defaultLocale,
+              ],
+            },
+          },
+        });
+        await route.fulfill(
+          jsonResponse(200, {
+            localeSettings: clone(adminState.governance.orgLocaleSettings),
           }),
         );
         return;

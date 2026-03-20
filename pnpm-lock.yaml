@@ -23,6 +23,9 @@ importers:
 
   apps/admin:
     dependencies:
+      '@hualala/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       react:
         specifier: ^19.1.0
         version: 19.2.4
@@ -91,6 +94,19 @@ importers:
       vite:
         specifier: ^7.0.6
         version: 7.3.1
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(jsdom@26.1.0)
+
+  packages/sdk:
+    dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.11.0
+        version: 2.11.0
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(jsdom@26.1.0)
@@ -236,6 +252,9 @@ packages:
     resolution: {integrity: sha512-TelMLptEDfdcl8D+WjKQLzGGYKAwOSVjCPJ21L9X9xT7KZHigTAhHP5idrTCtXKHHPPQB6Sq12wVnhWgFQ9s7w==}
     engines: {node: '>=12'}
     hasBin: true
+
+  '@bufbuild/protobuf@2.11.0':
+    resolution: {integrity: sha512-sBXGT13cpmPR5BMgHE6UEEfEaShh5Ror6rfN3yEK5si7QVrtZg8LEPQb0VVhiLRUslD2yLnXtnRzG035J/mZXQ==}
 
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
@@ -1350,6 +1369,8 @@ snapshots:
       '@bufbuild/buf-linux-x64': 1.66.1
       '@bufbuild/buf-win32-arm64': 1.66.1
       '@bufbuild/buf-win32-x64': 1.66.1
+
+  '@bufbuild/protobuf@2.11.0': {}
 
   '@csstools/color-helpers@5.1.0': {}
 

@@ -7,10 +7,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hualala/apps/backend/internal/domain/asset"
+	"github.com/hualala/apps/backend/internal/domain/auth"
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/domain/gateway"
+	"github.com/hualala/apps/backend/internal/domain/org"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/review"
 	"github.com/hualala/apps/backend/internal/domain/workflow"
@@ -53,6 +55,11 @@ type Snapshot struct {
 	NextWorkflowStepID    int
 	NextGatewayRequestID  int
 
+	Organizations      map[string]org.Organization
+	Users              map[string]auth.User
+	Roles              map[string]org.Role
+	Memberships        map[string]org.Member
+	RolePermissions    map[string][]string
 	Projects           map[string]project.Project
 	Episodes           map[string]project.Episode
 	Scenes             map[string]content.Scene
@@ -104,6 +111,11 @@ type MemoryStore struct {
 	nextWorkflowStepID    int
 	nextGatewayRequestID  int
 
+	Organizations      map[string]org.Organization
+	Users              map[string]auth.User
+	Roles              map[string]org.Role
+	Memberships        map[string]org.Member
+	RolePermissions    map[string][]string
 	Projects           map[string]project.Project
 	Episodes           map[string]project.Episode
 	Scenes             map[string]content.Scene
@@ -133,6 +145,11 @@ type MemoryStore struct {
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
+		Organizations:      make(map[string]org.Organization),
+		Users:              make(map[string]auth.User),
+		Roles:              make(map[string]org.Role),
+		Memberships:        make(map[string]org.Member),
+		RolePermissions:    make(map[string][]string),
 		Projects:           make(map[string]project.Project),
 		Episodes:           make(map[string]project.Episode),
 		Scenes:             make(map[string]content.Scene),
@@ -231,6 +248,11 @@ func (s *MemoryStore) snapshot() Snapshot {
 		NextWorkflowRunID:     s.nextWorkflowRunID,
 		NextWorkflowStepID:    s.nextWorkflowStepID,
 		NextGatewayRequestID:  s.nextGatewayRequestID,
+		Organizations:         cloneMap(s.Organizations),
+		Users:                 cloneMap(s.Users),
+		Roles:                 cloneMap(s.Roles),
+		Memberships:           cloneMap(s.Memberships),
+		RolePermissions:       cloneStringSliceMap(s.RolePermissions),
 		Projects:              cloneMap(s.Projects),
 		Episodes:              cloneMap(s.Episodes),
 		Scenes:                cloneMap(s.Scenes),
@@ -284,6 +306,11 @@ func (s *MemoryStore) applySnapshot(snapshot Snapshot) {
 	s.nextWorkflowStepID = snapshot.NextWorkflowStepID
 	s.nextGatewayRequestID = snapshot.NextGatewayRequestID
 
+	s.Organizations = cloneMap(snapshot.Organizations)
+	s.Users = cloneMap(snapshot.Users)
+	s.Roles = cloneMap(snapshot.Roles)
+	s.Memberships = cloneMap(snapshot.Memberships)
+	s.RolePermissions = cloneStringSliceMap(snapshot.RolePermissions)
 	s.Projects = cloneMap(snapshot.Projects)
 	s.Episodes = cloneMap(snapshot.Episodes)
 	s.Scenes = cloneMap(snapshot.Scenes)
@@ -315,6 +342,17 @@ func cloneMap[T any](input map[string]T) map[string]T {
 	cloned := make(map[string]T, len(input))
 	for key, value := range input {
 		cloned[key] = value
+	}
+	return cloned
+}
+
+func cloneStringSliceMap(input map[string][]string) map[string][]string {
+	if len(input) == 0 {
+		return make(map[string][]string)
+	}
+	cloned := make(map[string][]string, len(input))
+	for key, value := range input {
+		cloned[key] = append([]string(nil), value...)
 	}
 	return cloned
 }

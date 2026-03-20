@@ -129,6 +129,10 @@ func asConnectError(err error) error {
 	}
 	lower := strings.ToLower(err.Error())
 	switch {
+	case strings.Contains(lower, "unauthenticated"):
+		return connectrpc.NewError(connectrpc.CodeUnauthenticated, err)
+	case strings.Contains(lower, "permission denied"), strings.Contains(lower, "forbidden"):
+		return connectrpc.NewError(connectrpc.CodePermissionDenied, err)
 	case strings.Contains(lower, "not found"):
 		return connectrpc.NewError(connectrpc.CodeNotFound, err)
 	case strings.Contains(lower, "required"), strings.Contains(lower, "greater than 0"), strings.Contains(lower, "budget exceeded"), strings.Contains(lower, "failed"):

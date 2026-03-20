@@ -5,10 +5,12 @@ import (
 	"sort"
 
 	"github.com/hualala/apps/backend/internal/domain/asset"
+	"github.com/hualala/apps/backend/internal/domain/auth"
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/domain/gateway"
+	"github.com/hualala/apps/backend/internal/domain/org"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/review"
 	"github.com/hualala/apps/backend/internal/domain/workflow"
@@ -16,6 +18,7 @@ import (
 )
 
 type RuntimeStore interface {
+	AuthOrgRepository
 	ProjectContentRepository
 	ExecutionRepository
 	AssetRepository
@@ -24,6 +27,26 @@ type RuntimeStore interface {
 	GatewayResultStore
 	WorkflowRepository
 	Publisher() *events.Publisher
+}
+
+type AuthOrgRepository interface {
+	GetOrganization(orgID string) (org.Organization, bool)
+	SaveOrganization(ctx context.Context, record org.Organization) error
+
+	GetUser(userID string) (auth.User, bool)
+	SaveUser(ctx context.Context, record auth.User) error
+
+	GetMembership(memberID string) (org.Member, bool)
+	FindMembership(orgID string, userID string) (org.Member, bool)
+	ListMembersByOrganization(orgID string) []org.Member
+	SaveMembership(ctx context.Context, record org.Member) error
+
+	GetRole(roleID string) (org.Role, bool)
+	ListRolesByOrganization(orgID string) []org.Role
+	SaveRole(ctx context.Context, record org.Role) error
+
+	ListRolePermissions(roleID string) []string
+	ReplaceRolePermissions(ctx context.Context, roleID string, permissions []string) error
 }
 
 type ProjectContentRepository interface {
@@ -170,6 +193,81 @@ func (s *MemoryStore) GenerateBillingEventID() string      { return s.NextBillin
 func (s *MemoryStore) GenerateWorkflowRunID() string       { return s.NextWorkflowRunID() }
 func (s *MemoryStore) GenerateGatewayExternalRequestID() string {
 	return s.NextGatewayExternalRequestID()
+}
+
+func (s *MemoryStore) GetOrganization(orgID string) (org.Organization, bool) {
+	record, ok := s.Organizations[orgID]
+	return record, ok
+}
+
+func (s *MemoryStore) SaveOrganization(ctx context.Context, record org.Organization) error {
+	return s.save(ctx, func() { s.Organizations[record.ID] = record })
+}
+
+func (s *MemoryStore) GetUser(userID string) (auth.User, bool) {
+	record, ok := s.Users[userID]
+	return record, ok
+}
+
+func (s *MemoryStore) SaveUser(ctx context.Context, record auth.User) error {
+	return s.save(ctx, func() { s.Users[record.ID] = record })
+}
+
+func (s *MemoryStore) GetMembership(memberID string) (org.Member, bool) {
+	record, ok := s.Memberships[memberID]
+	return record, ok
+}
+
+func (s *MemoryStore) FindMembership(orgID string, userID string) (org.Member, bool) {
+	for _, record := range s.Memberships {
+		if record.OrgID == orgID && record.UserID == userID {
+			return record, true
+		}
+	}
+	return org.Member{}, false
+}
+
+func (s *MemoryStore) ListMembersByOrganization(orgID string) []org.Member {
+	items := make([]org.Member, 0)
+	for _, record := range s.Memberships {
+		if record.OrgID == orgID {
+			items = append(items, record)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items
+}
+
+func (s *MemoryStore) SaveMembership(ctx context.Context, record org.Member) error {
+	return s.save(ctx, func() { s.Memberships[record.ID] = record })
+}
+
+func (s *MemoryStore) GetRole(roleID string) (org.Role, bool) {
+	record, ok := s.Roles[roleID]
+	return record, ok
+}
+
+func (s *MemoryStore) ListRolesByOrganization(orgID string) []org.Role {
+	items := make([]org.Role, 0)
+	for _, record := range s.Roles {
+		if record.OrgID == orgID {
+			items = append(items, record)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items
+}
+
+func (s *MemoryStore) SaveRole(ctx context.Context, record org.Role) error {
+	return s.save(ctx, func() { s.Roles[record.ID] = record })
+}
+
+func (s *MemoryStore) ListRolePermissions(roleID string) []string {
+	return append([]string(nil), s.RolePermissions[roleID]...)
+}
+
+func (s *MemoryStore) ReplaceRolePermissions(ctx context.Context, roleID string, permissions []string) error {
+	return s.save(ctx, func() { s.RolePermissions[roleID] = append([]string(nil), permissions...) })
 }
 
 func (s *MemoryStore) SaveProject(ctx context.Context, record project.Project) error {
