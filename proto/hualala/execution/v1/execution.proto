@@ -17,10 +17,12 @@ service ExecutionService {
 
 message ShotExecution {
   string id = 1;
-  string shot_id = 2;
-  string status = 3;
-  string primary_asset_id = 4;
-  string current_run_id = 5;
+  string org_id = 2;
+  string project_id = 3;
+  string shot_id = 4;
+  string status = 5;
+  string primary_asset_id = 6;
+  string current_run_id = 7;
 }
 
 message ShotExecutionRun {
@@ -28,6 +30,8 @@ message ShotExecutionRun {
   string shot_execution_id = 2;
   string status = 3;
   uint32 run_number = 4;
+  string trigger_type = 5;
+  string operator_id = 6;
 }
 
 message ShotWorkbench {
@@ -63,6 +67,10 @@ message ListShotExecutionRunsResponse {
 message StartShotExecutionRunRequest {
   string shot_id = 1;
   string operator_id = 2;
+  string project_id = 3;
+  string org_id = 4;
+  string trigger_type = 5;
+  int64 estimated_cost_cents = 6;
 }
 
 message StartShotExecutionRunResponse {

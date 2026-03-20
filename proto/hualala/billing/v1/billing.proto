@@ -13,27 +13,35 @@ service BillingService {
 
 message BudgetSnapshot {
   string project_id = 1;
-  string currency_code = 2;
-  string remaining_budget = 3;
+  int64 limit_cents = 2;
+  int64 reserved_cents = 3;
+  int64 remaining_budget_cents = 4;
 }
 
 message UsageRecord {
   string id = 1;
   string shot_execution_run_id = 2;
-  string model_profile_id = 3;
-  string total_cost = 4;
+  string shot_execution_id = 3;
+  string meter = 4;
+  int64 amount_cents = 5;
+  string project_id = 6;
 }
 
 message BillingEvent {
   string id = 1;
   string event_type = 2;
   string project_id = 3;
+  string shot_execution_id = 4;
+  string shot_execution_run_id = 5;
+  int64 amount_cents = 6;
 }
 
 message BudgetPolicy {
   string id = 1;
-  string project_id = 2;
-  string policy_mode = 3;
+  string org_id = 2;
+  string project_id = 3;
+  int64 limit_cents = 4;
+  int64 reserved_cents = 5;
 }
 
 message GetBudgetSnapshotRequest {
@@ -62,7 +70,8 @@ message ListBillingEventsResponse {
 
 message UpdateBudgetPolicyRequest {
   string project_id = 1;
-  string policy_mode = 2;
+  string org_id = 2;
+  int64 limit_cents = 3;
 }
 
 message UpdateBudgetPolicyResponse {

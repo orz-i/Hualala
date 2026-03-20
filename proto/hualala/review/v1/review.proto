@@ -6,6 +6,7 @@ option go_package = "github.com/hualala/apps/backend/gen/hualala/review/v1;revie
 
 service ReviewService {
   rpc ListEvaluationRuns(ListEvaluationRunsRequest) returns (ListEvaluationRunsResponse);
+  rpc CreateEvaluationRun(CreateEvaluationRunRequest) returns (CreateEvaluationRunResponse);
   rpc ListShotReviews(ListShotReviewsRequest) returns (ListShotReviewsResponse);
   rpc CreateShotReview(CreateShotReviewRequest) returns (CreateShotReviewResponse);
   rpc GetShotReviewSummary(GetShotReviewSummaryRequest) returns (GetShotReviewSummaryResponse);
@@ -13,8 +14,10 @@ service ReviewService {
 
 message EvaluationRun {
   string id = 1;
-  string shot_execution_run_id = 2;
-  string status = 3;
+  string shot_execution_id = 2;
+  repeated string passed_checks = 3;
+  repeated string failed_checks = 4;
+  string status = 5;
 }
 
 message ShotReview {
@@ -31,11 +34,21 @@ message ShotReviewSummary {
 }
 
 message ListEvaluationRunsRequest {
-  string shot_execution_run_id = 1;
+  string shot_execution_id = 1;
 }
 
 message ListEvaluationRunsResponse {
   repeated EvaluationRun evaluation_runs = 1;
+}
+
+message CreateEvaluationRunRequest {
+  string shot_execution_id = 1;
+  repeated string passed_checks = 2;
+  repeated string failed_checks = 3;
+}
+
+message CreateEvaluationRunResponse {
+  EvaluationRun evaluation_run = 1;
 }
 
 message ListShotReviewsRequest {

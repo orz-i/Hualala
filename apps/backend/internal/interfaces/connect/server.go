@@ -1,14 +1,14 @@
 package connect
 
 import (
-	"context"
-	"encoding/json"
-	"errors"
 	"net/http"
-	"strings"
 
 	"slices"
 
+	assetv1connect "github.com/hualala/apps/backend/gen/hualala/asset/v1/assetv1connect"
+	billingv1connect "github.com/hualala/apps/backend/gen/hualala/billing/v1/billingv1connect"
+	executionv1connect "github.com/hualala/apps/backend/gen/hualala/execution/v1/executionv1connect"
+	reviewv1connect "github.com/hualala/apps/backend/gen/hualala/review/v1/reviewv1connect"
 	"github.com/hualala/apps/backend/internal/application/assetapp"
 	"github.com/hualala/apps/backend/internal/application/billingapp"
 	"github.com/hualala/apps/backend/internal/application/executionapp"
@@ -46,45 +46,22 @@ func RegisterRoutes(mux *http.ServeMux, deps RouteDependencies) {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	registerExecutionRoutes(mux, deps)
-	registerAssetRoutes(mux, deps)
-	registerReviewRoutes(mux, deps)
-	registerBillingRoutes(mux, deps)
+	if deps.ExecutionService != nil {
+		path, handler := executionv1connect.NewExecutionServiceHandler(&executionHandler{service: deps.ExecutionService})
+		mux.Handle(path, handler)
+	}
+	if deps.AssetService != nil {
+		path, handler := assetv1connect.NewAssetServiceHandler(&assetHandler{service: deps.AssetService})
+		mux.Handle(path, handler)
+	}
+	if deps.ReviewService != nil {
+		path, handler := reviewv1connect.NewReviewServiceHandler(&reviewHandler{service: deps.ReviewService})
+		mux.Handle(path, handler)
+	}
+	if deps.BillingService != nil {
+		path, handler := billingv1connect.NewBillingServiceHandler(&billingHandler{service: deps.BillingService})
+		mux.Handle(path, handler)
+	}
 	sse.RegisterRoutes(mux)
 	upload.RegisterRoutes(mux)
-}
-
-func decodeJSONBody[T any](r *http.Request) (T, error) {
-	var payload T
-	if r.Body == nil {
-		return payload, nil
-	}
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		return payload, err
-	}
-	return payload, nil
-}
-
-func writeJSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
-}
-
-func requireMethod(w http.ResponseWriter, r *http.Request, method string) bool {
-	if r.Method != method {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return false
-	}
-	return true
-}
-
-func writeError(w http.ResponseWriter, err error) {
-	status := http.StatusInternalServerError
-	if errors.Is(err, context.Canceled) || strings.Contains(strings.ToLower(err.Error()), "required") || strings.Contains(strings.ToLower(err.Error()), "not found") || strings.Contains(strings.ToLower(err.Error()), "budget exceeded") || strings.Contains(strings.ToLower(err.Error()), "failed") {
-		status = http.StatusBadRequest
-	}
-	writeJSON(w, status, map[string]any{
-		"error": err.Error(),
-	})
 }

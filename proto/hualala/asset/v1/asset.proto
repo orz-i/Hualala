@@ -6,6 +6,7 @@ option go_package = "github.com/hualala/apps/backend/gen/hualala/asset/v1;assetv
 
 service AssetService {
   rpc CreateImportBatch(CreateImportBatchRequest) returns (CreateImportBatchResponse);
+  rpc AddCandidateAsset(AddCandidateAssetRequest) returns (AddCandidateAssetResponse);
   rpc ListImportBatchItems(ListImportBatchItemsRequest) returns (ListImportBatchItemsResponse);
   rpc BatchConfirmImportBatchItems(BatchConfirmImportBatchItemsRequest) returns (BatchConfirmImportBatchItemsResponse);
   rpc ListCandidateAssets(ListCandidateAssetsRequest) returns (ListCandidateAssetsResponse);
@@ -14,8 +15,11 @@ service AssetService {
 
 message ImportBatch {
   string id = 1;
-  string project_id = 2;
-  string status = 3;
+  string org_id = 2;
+  string project_id = 3;
+  string operator_id = 4;
+  string source_type = 5;
+  string status = 6;
 }
 
 message ImportBatchItem {
@@ -30,21 +34,43 @@ message MediaAsset {
   string project_id = 2;
   string source_type = 3;
   string rights_status = 4;
+  string import_batch_id = 5;
+  string locale = 6;
+  bool ai_annotated = 7;
 }
 
 message ShotCandidateAsset {
   string id = 1;
   string shot_execution_id = 2;
   string asset_id = 3;
+  string source_run_id = 4;
 }
 
 message CreateImportBatchRequest {
   string project_id = 1;
   string operator_id = 2;
+  string org_id = 3;
+  string source_type = 4;
 }
 
 message CreateImportBatchResponse {
   ImportBatch import_batch = 1;
+}
+
+message AddCandidateAssetRequest {
+  string shot_execution_id = 1;
+  string project_id = 2;
+  string org_id = 3;
+  string import_batch_id = 4;
+  string source_run_id = 5;
+  string source_type = 6;
+  string asset_locale = 7;
+  string rights_status = 8;
+  bool ai_annotated = 9;
+}
+
+message AddCandidateAssetResponse {
+  ShotCandidateAsset asset = 1;
 }
 
 message ListImportBatchItemsRequest {

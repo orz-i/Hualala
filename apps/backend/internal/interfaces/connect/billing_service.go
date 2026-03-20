@@ -1,109 +1,73 @@
 package connect
 
 import (
-	"net/http"
+	"context"
 
+	connectrpc "connectrpc.com/connect"
+	billingv1 "github.com/hualala/apps/backend/gen/hualala/billing/v1"
+	billingv1connect "github.com/hualala/apps/backend/gen/hualala/billing/v1/billingv1connect"
 	"github.com/hualala/apps/backend/internal/application/billingapp"
 )
 
-func registerBillingRoutes(mux *http.ServeMux, deps RouteDependencies) {
-	if deps.BillingService == nil {
-		return
+type billingHandler struct {
+	billingv1connect.UnimplementedBillingServiceHandler
+	service *billingapp.Service
+}
+
+func (h *billingHandler) GetBudgetSnapshot(ctx context.Context, req *connectrpc.Request[billingv1.GetBudgetSnapshotRequest]) (*connectrpc.Response[billingv1.GetBudgetSnapshotResponse], error) {
+	record, err := h.service.GetBudgetSnapshot(ctx, billingapp.GetBudgetSnapshotInput{
+		ProjectID: req.Msg.GetProjectId(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
 	}
+	return connectrpc.NewResponse(&billingv1.GetBudgetSnapshotResponse{
+		BudgetSnapshot: mapBudgetSnapshot(record),
+	}), nil
+}
 
-	mux.HandleFunc("/connect/hualala.billing.v1.BillingService/UpdateBudgetPolicy", func(w http.ResponseWriter, r *http.Request) {
-		if !requireMethod(w, r, http.MethodPost) {
-			return
-		}
-
-		input, err := decodeJSONBody[billingapp.SetProjectBudgetInput](r)
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-		record, err := deps.BillingService.SetProjectBudget(r.Context(), input)
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{
-			"id":             record.ID,
-			"org_id":         record.OrgID,
-			"project_id":     record.ProjectID,
-			"limit_cents":    record.LimitCents,
-			"reserved_cents": record.ReservedCents,
-		})
+func (h *billingHandler) ListUsageRecords(ctx context.Context, req *connectrpc.Request[billingv1.ListUsageRecordsRequest]) (*connectrpc.Response[billingv1.ListUsageRecordsResponse], error) {
+	records, err := h.service.ListUsageRecords(ctx, billingapp.ListUsageRecordsInput{
+		ProjectID: req.Msg.GetProjectId(),
 	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	items := make([]*billingv1.UsageRecord, 0, len(records))
+	for _, record := range records {
+		items = append(items, mapUsageRecord(record))
+	}
+	return connectrpc.NewResponse(&billingv1.ListUsageRecordsResponse{
+		UsageRecords: items,
+	}), nil
+}
 
-	mux.HandleFunc("/connect/hualala.billing.v1.BillingService/GetBudgetSnapshot", func(w http.ResponseWriter, r *http.Request) {
-		if !requireMethod(w, r, http.MethodGet) {
-			return
-		}
-
-		record, err := deps.BillingService.GetBudgetSnapshot(r.Context(), billingapp.GetBudgetSnapshotInput{
-			ProjectID: r.URL.Query().Get("project_id"),
-		})
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{
-			"project_id":             record.ProjectID,
-			"limit_cents":            record.LimitCents,
-			"reserved_cents":         record.ReservedCents,
-			"remaining_budget_cents": record.RemainingBudgetCents,
-		})
+func (h *billingHandler) ListBillingEvents(ctx context.Context, req *connectrpc.Request[billingv1.ListBillingEventsRequest]) (*connectrpc.Response[billingv1.ListBillingEventsResponse], error) {
+	records, err := h.service.ListBillingEvents(ctx, billingapp.ListBillingEventsInput{
+		ProjectID: req.Msg.GetProjectId(),
 	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	items := make([]*billingv1.BillingEvent, 0, len(records))
+	for _, record := range records {
+		items = append(items, mapBillingEvent(record))
+	}
+	return connectrpc.NewResponse(&billingv1.ListBillingEventsResponse{
+		BillingEvents: items,
+	}), nil
+}
 
-	mux.HandleFunc("/connect/hualala.billing.v1.BillingService/ListUsageRecords", func(w http.ResponseWriter, r *http.Request) {
-		if !requireMethod(w, r, http.MethodGet) {
-			return
-		}
-
-		records, err := deps.BillingService.ListUsageRecords(r.Context(), billingapp.ListUsageRecordsInput{
-			ProjectID: r.URL.Query().Get("project_id"),
-		})
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-		items := make([]map[string]any, 0, len(records))
-		for _, record := range records {
-			items = append(items, map[string]any{
-				"id":                    record.ID,
-				"project_id":            record.ProjectID,
-				"shot_execution_id":     record.ShotExecutionID,
-				"shot_execution_run_id": record.ShotExecutionRunID,
-				"meter":                 record.Meter,
-				"amount_cents":          record.AmountCents,
-			})
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"usage_records": items})
+func (h *billingHandler) UpdateBudgetPolicy(ctx context.Context, req *connectrpc.Request[billingv1.UpdateBudgetPolicyRequest]) (*connectrpc.Response[billingv1.UpdateBudgetPolicyResponse], error) {
+	record, err := h.service.SetProjectBudget(ctx, billingapp.SetProjectBudgetInput{
+		ProjectID:  req.Msg.GetProjectId(),
+		OrgID:      req.Msg.GetOrgId(),
+		LimitCents: req.Msg.GetLimitCents(),
 	})
-
-	mux.HandleFunc("/connect/hualala.billing.v1.BillingService/ListBillingEvents", func(w http.ResponseWriter, r *http.Request) {
-		if !requireMethod(w, r, http.MethodGet) {
-			return
-		}
-
-		records, err := deps.BillingService.ListBillingEvents(r.Context(), billingapp.ListBillingEventsInput{
-			ProjectID: r.URL.Query().Get("project_id"),
-		})
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-		items := make([]map[string]any, 0, len(records))
-		for _, record := range records {
-			items = append(items, map[string]any{
-				"id":                    record.ID,
-				"event_type":            record.EventType,
-				"project_id":            record.ProjectID,
-				"shot_execution_id":     record.ShotExecutionID,
-				"shot_execution_run_id": record.ShotExecutionRunID,
-				"amount_cents":          record.AmountCents,
-			})
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"billing_events": items})
-	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&billingv1.UpdateBudgetPolicyResponse{
+		BudgetPolicy: mapBudgetPolicy(record),
+	}), nil
 }

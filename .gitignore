@@ -5,7 +5,8 @@ node_modules
 .bufcache
 .gocache
 .gotmp
-gen
+/gen/
+apps/backend/gen/github.com/
 _tmp_*
 playwright-report
 test-results

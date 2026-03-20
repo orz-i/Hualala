@@ -1,87 +1,79 @@
 package connect
 
 import (
-	"net/http"
+	"context"
 
+	connectrpc "connectrpc.com/connect"
+	assetv1 "github.com/hualala/apps/backend/gen/hualala/asset/v1"
+	assetv1connect "github.com/hualala/apps/backend/gen/hualala/asset/v1/assetv1connect"
 	"github.com/hualala/apps/backend/internal/application/assetapp"
 )
 
-func registerAssetRoutes(mux *http.ServeMux, deps RouteDependencies) {
-	if deps.AssetService == nil {
-		return
+type assetHandler struct {
+	assetv1connect.UnimplementedAssetServiceHandler
+	service *assetapp.Service
+}
+
+func (h *assetHandler) CreateImportBatch(ctx context.Context, req *connectrpc.Request[assetv1.CreateImportBatchRequest]) (*connectrpc.Response[assetv1.CreateImportBatchResponse], error) {
+	record, err := h.service.CreateImportBatch(ctx, assetapp.CreateImportBatchInput{
+		ProjectID:  req.Msg.GetProjectId(),
+		OrgID:      req.Msg.GetOrgId(),
+		OperatorID: req.Msg.GetOperatorId(),
+		SourceType: req.Msg.GetSourceType(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
 	}
+	return connectrpc.NewResponse(&assetv1.CreateImportBatchResponse{
+		ImportBatch: mapImportBatch(record),
+	}), nil
+}
 
-	mux.HandleFunc("/connect/hualala.asset.v1.AssetService/CreateImportBatch", func(w http.ResponseWriter, r *http.Request) {
-		if !requireMethod(w, r, http.MethodPost) {
-			return
-		}
-
-		input, err := decodeJSONBody[assetapp.CreateImportBatchInput](r)
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-		record, err := deps.AssetService.CreateImportBatch(r.Context(), input)
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-		writeJSON(w, http.StatusOK, mapImportBatch(record))
+func (h *assetHandler) AddCandidateAsset(ctx context.Context, req *connectrpc.Request[assetv1.AddCandidateAssetRequest]) (*connectrpc.Response[assetv1.AddCandidateAssetResponse], error) {
+	record, err := h.service.AddCandidateAsset(ctx, assetapp.AddCandidateAssetInput{
+		ShotExecutionID: req.Msg.GetShotExecutionId(),
+		ProjectID:       req.Msg.GetProjectId(),
+		OrgID:           req.Msg.GetOrgId(),
+		ImportBatchID:   req.Msg.GetImportBatchId(),
+		SourceRunID:     req.Msg.GetSourceRunId(),
+		SourceType:      req.Msg.GetSourceType(),
+		AssetLocale:     req.Msg.GetAssetLocale(),
+		RightsStatus:    req.Msg.GetRightsStatus(),
+		AIAnnotated:     req.Msg.GetAiAnnotated(),
 	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&assetv1.AddCandidateAssetResponse{
+		Asset: mapCandidateAsset(record),
+	}), nil
+}
 
-	mux.HandleFunc("/connect/hualala.asset.v1.AssetService/AddCandidateAsset", func(w http.ResponseWriter, r *http.Request) {
-		if !requireMethod(w, r, http.MethodPost) {
-			return
-		}
-
-		input, err := decodeJSONBody[assetapp.AddCandidateAssetInput](r)
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-		record, err := deps.AssetService.AddCandidateAsset(r.Context(), input)
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-		writeJSON(w, http.StatusOK, mapCandidateAsset(record))
+func (h *assetHandler) ListCandidateAssets(ctx context.Context, req *connectrpc.Request[assetv1.ListCandidateAssetsRequest]) (*connectrpc.Response[assetv1.ListCandidateAssetsResponse], error) {
+	records, err := h.service.ListCandidateAssets(ctx, assetapp.ListCandidateAssetsInput{
+		ShotExecutionID: req.Msg.GetShotExecutionId(),
 	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	assets := make([]*assetv1.ShotCandidateAsset, 0, len(records))
+	for _, record := range records {
+		assets = append(assets, mapCandidateAsset(record))
+	}
+	return connectrpc.NewResponse(&assetv1.ListCandidateAssetsResponse{
+		Assets: assets,
+	}), nil
+}
 
-	mux.HandleFunc("/connect/hualala.asset.v1.AssetService/ListCandidateAssets", func(w http.ResponseWriter, r *http.Request) {
-		if !requireMethod(w, r, http.MethodGet) {
-			return
-		}
-
-		records, err := deps.AssetService.ListCandidateAssets(r.Context(), assetapp.ListCandidateAssetsInput{
-			ShotExecutionID: r.URL.Query().Get("shot_execution_id"),
-		})
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-
-		assets := make([]map[string]any, 0, len(records))
-		for _, record := range records {
-			assets = append(assets, mapCandidateAsset(record))
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"assets": assets})
+func (h *assetHandler) GetAssetProvenanceSummary(ctx context.Context, req *connectrpc.Request[assetv1.GetAssetProvenanceSummaryRequest]) (*connectrpc.Response[assetv1.GetAssetProvenanceSummaryResponse], error) {
+	record, err := h.service.GetAssetProvenanceSummary(ctx, assetapp.GetAssetProvenanceSummaryInput{
+		AssetID: req.Msg.GetAssetId(),
 	})
-
-	mux.HandleFunc("/connect/hualala.asset.v1.AssetService/GetAssetProvenanceSummary", func(w http.ResponseWriter, r *http.Request) {
-		if !requireMethod(w, r, http.MethodGet) {
-			return
-		}
-
-		record, err := deps.AssetService.GetAssetProvenanceSummary(r.Context(), assetapp.GetAssetProvenanceSummaryInput{
-			AssetID: r.URL.Query().Get("asset_id"),
-		})
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{
-			"asset":              mapMediaAsset(record.Asset),
-			"provenance_summary": record.ProvenanceSummary,
-		})
-	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&assetv1.GetAssetProvenanceSummaryResponse{
+		Asset:             mapMediaAsset(record.Asset),
+		ProvenanceSummary: record.ProvenanceSummary,
+	}), nil
 }
