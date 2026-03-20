@@ -16,14 +16,14 @@ import (
 
 func TestShotExecutionFlow(t *testing.T) {
 	ctx := context.Background()
-	store := openIntegrationStore(t)
+	fixture := openIntegrationFixture(t)
 
-	projectService := projectapp.NewService(store)
-	contentService := contentapp.NewService(store)
-	executionService := executionapp.NewService(store, store, store, store, store.EventPublisher)
-	assetService := assetapp.NewService(store, store)
-	billingService := billingapp.NewService(store, store.EventPublisher)
-	reviewService := reviewapp.NewService(store, store, store.EventPublisher)
+	projectService := fixture.Services.ProjectService
+	contentService := fixture.Services.ContentService
+	executionService := fixture.Services.ExecutionService
+	assetService := fixture.Services.AssetService
+	billingService := fixture.Services.BillingService
+	reviewService := fixture.Services.ReviewService
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
 		OrganizationID:          db.DefaultDevOrganizationID,
@@ -275,12 +275,12 @@ func TestShotExecutionFlow(t *testing.T) {
 
 func TestShotExecutionBudgetGuard(t *testing.T) {
 	ctx := context.Background()
-	store := openIntegrationStore(t)
+	fixture := openIntegrationFixture(t)
 
-	projectService := projectapp.NewService(store)
-	contentService := contentapp.NewService(store)
-	executionService := executionapp.NewService(store, store, store, store, store.EventPublisher)
-	billingService := billingapp.NewService(store, store.EventPublisher)
+	projectService := fixture.Services.ProjectService
+	contentService := fixture.Services.ContentService
+	executionService := fixture.Services.ExecutionService
+	billingService := fixture.Services.BillingService
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
 		OrganizationID:          db.DefaultDevOrganizationID,

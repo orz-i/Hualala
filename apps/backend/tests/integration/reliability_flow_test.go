@@ -12,38 +12,26 @@ import (
 	"time"
 
 	"github.com/hualala/apps/backend/internal/application/gatewayapp"
-	"github.com/hualala/apps/backend/internal/application/policyapp"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
 	"github.com/hualala/apps/backend/internal/application/workflowapp"
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/workflow"
-	connectiface "github.com/hualala/apps/backend/internal/interfaces/connect"
 	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/runtime"
-	"github.com/hualala/apps/backend/internal/platform/temporal"
 )
 
 func TestReliabilityFlow(t *testing.T) {
 	ctx := context.Background()
-	store := openIntegrationStore(t)
-	projectService := projectapp.NewService(store)
-	policyService := policyapp.NewService(store)
+	fixture := openIntegrationFixture(t)
+	projectService := fixture.Services.ProjectService
 	adapter := gatewayapp.NewFakeAdapter()
 	adapter.SetProviderFailure("seedance", errors.New("provider failed"))
-	gatewayService := gatewayapp.NewService(store, adapter)
-	workflowService := workflowapp.NewService(store, store.EventPublisher, temporal.NewInMemoryExecutor(gatewayService), policyService)
-
-	services := runtime.NewFactory(store).Services()
-	services.PolicyService = policyService
-	services.GatewayService = gatewayService
-	services.WorkflowService = workflowService
-	services.UploadService = connectiface.NewRouteDependencies(services).UploadService
-	deps := connectiface.NewRouteDependencies(services)
-
-	mux := http.NewServeMux()
-	connectiface.RegisterRoutes(mux, deps)
-	server := httptest.NewServer(mux)
-	defer server.Close()
+	policyService, gatewayService, workflowService := fixture.NewWorkflowServices(adapter)
+	server := fixture.NewHTTPServer(t, func(services *runtime.ServiceSet) {
+		services.PolicyService = policyService
+		services.GatewayService = gatewayService
+		services.WorkflowService = workflowService
+	})
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
 		OrganizationID:          db.DefaultDevOrganizationID,
@@ -72,7 +60,7 @@ func TestReliabilityFlow(t *testing.T) {
 		t.Fatalf("expected failed workflow status, got %q", got)
 	}
 
-	events := store.EventPublisher.List(project.OrganizationID, project.ID, "")
+	events := fixture.ListProjectEvents(project.OrganizationID, project.ID)
 	if len(events) < 2 {
 		t.Fatalf("expected workflow running and failed events, got %d", len(events))
 	}
@@ -115,11 +103,11 @@ func TestReliabilityFlow(t *testing.T) {
 	if successRun.ExternalRequestID == "" {
 		t.Fatalf("expected external_request_id for successful workflow")
 	}
-	record := store.WorkflowRuns[successRun.ID]
-	record.Status = "failed"
-	record.LastError = "transient provider failure"
-	record.UpdatedAt = time.Now().UTC()
-	store.WorkflowRuns[successRun.ID] = record
+	fixture.ForceWorkflowRunState(t, successRun.ID, func(record *workflow.WorkflowRun) {
+		record.Status = "failed"
+		record.LastError = "transient provider failure"
+		record.UpdatedAt = time.Now().UTC()
+	})
 
 	replayed, err := workflowService.RetryWorkflowRun(ctx, workflowapp.RetryWorkflowRunInput{
 		WorkflowRunID: successRun.ID,
@@ -131,13 +119,12 @@ func TestReliabilityFlow(t *testing.T) {
 		t.Fatalf("expected stable external_request_id %q, got %q", successRun.ExternalRequestID, got)
 	}
 
-	store.Budgets["budget-1"] = billing.ProjectBudget{
-		ID:            store.NextBudgetID(),
+	fixture.SeedBudget(t, billing.ProjectBudget{
 		OrgID:         project.OrganizationID,
 		ProjectID:     project.ID,
 		LimitCents:    100,
 		ReservedCents: 90,
-	}
+	})
 	_, err = workflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
 		OrganizationID:     project.OrganizationID,
 		ProjectID:          project.ID,
@@ -182,7 +169,7 @@ func TestReliabilityFlow(t *testing.T) {
 		t.Fatalf("expected expired resume hint, got %q", got)
 	}
 
-	allEvents := store.EventPublisher.List(project.OrganizationID, project.ID, "")
+	allEvents := fixture.ListProjectEvents(project.OrganizationID, project.ID)
 	if len(allEvents) < 4 {
 		t.Fatalf("expected workflow and upload events, got %d", len(allEvents))
 	}

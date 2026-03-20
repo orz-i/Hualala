@@ -11,10 +11,10 @@ import (
 
 func TestProjectContentFlow(t *testing.T) {
 	ctx := context.Background()
-	store := openIntegrationStore(t)
+	fixture := openIntegrationFixture(t)
 
-	projectService := projectapp.NewService(store)
-	contentService := contentapp.NewService(store)
+	projectService := fixture.Services.ProjectService
+	contentService := fixture.Services.ContentService
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
 		OrganizationID:          db.DefaultDevOrganizationID,
