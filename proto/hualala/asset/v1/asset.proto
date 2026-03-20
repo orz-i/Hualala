@@ -80,6 +80,14 @@ message MediaAssetVariant {
   uint32 height = 7;
 }
 
+message ImportBatchShotExecution {
+  string id = 1;
+  string shot_id = 2;
+  string status = 3;
+  string primary_asset_id = 4;
+  string current_run_id = 5;
+}
+
 message CreateImportBatchRequest {
   string project_id = 1;
   string operator_id = 2;
@@ -136,6 +144,7 @@ message GetImportBatchWorkbenchResponse {
   repeated MediaAssetVariant media_asset_variants = 5;
   repeated ImportBatchItem items = 6;
   repeated ShotCandidateAsset candidate_assets = 7;
+  repeated ImportBatchShotExecution shot_executions = 8;
 }
 
 message ListCandidateAssetsRequest {

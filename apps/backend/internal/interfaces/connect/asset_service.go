@@ -114,6 +114,10 @@ func (h *assetHandler) GetImportBatchWorkbench(ctx context.Context, req *connect
 	for _, candidate := range record.CandidateAssets {
 		candidates = append(candidates, mapCandidateAsset(candidate))
 	}
+	shotExecutions := make([]*assetv1.ImportBatchShotExecution, 0, len(record.ShotExecutions))
+	for _, shotExecution := range record.ShotExecutions {
+		shotExecutions = append(shotExecutions, mapImportBatchShotExecution(shotExecution))
+	}
 
 	return connectrpc.NewResponse(&assetv1.GetImportBatchWorkbenchResponse{
 		ImportBatch:        mapImportBatch(record.ImportBatch),
@@ -123,6 +127,7 @@ func (h *assetHandler) GetImportBatchWorkbench(ctx context.Context, req *connect
 		MediaAssetVariants: variants,
 		Items:              items,
 		CandidateAssets:    candidates,
+		ShotExecutions:     shotExecutions,
 	}), nil
 }
 

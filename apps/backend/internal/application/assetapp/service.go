@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hualala/apps/backend/internal/domain/asset"
+	"github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
@@ -69,6 +70,7 @@ type ImportBatchWorkbench struct {
 	MediaAssetVariants []asset.MediaAssetVariant
 	Items              []asset.ImportBatchItem
 	CandidateAssets    []asset.CandidateAsset
+	ShotExecutions     []execution.ShotExecution
 }
 
 func NewService(store *db.MemoryStore) *Service {
@@ -241,6 +243,7 @@ func (s *Service) GetImportBatchWorkbench(_ context.Context, input GetImportBatc
 		MediaAssetVariants: make([]asset.MediaAssetVariant, 0),
 		Items:              make([]asset.ImportBatchItem, 0),
 		CandidateAssets:    make([]asset.CandidateAsset, 0),
+		ShotExecutions:     make([]execution.ShotExecution, 0),
 	}
 
 	sessionIDs := make(map[string]struct{})
@@ -283,6 +286,17 @@ func (s *Service) GetImportBatchWorkbench(_ context.Context, input GetImportBatc
 			workbench.CandidateAssets = append(workbench.CandidateAssets, candidate)
 		}
 	}
+	shotExecutionIDs := make(map[string]struct{})
+	for _, candidate := range workbench.CandidateAssets {
+		if candidate.ShotExecutionID != "" {
+			shotExecutionIDs[candidate.ShotExecutionID] = struct{}{}
+		}
+	}
+	for _, shotExecution := range s.store.ShotExecutions {
+		if _, ok := shotExecutionIDs[shotExecution.ID]; ok {
+			workbench.ShotExecutions = append(workbench.ShotExecutions, shotExecution)
+		}
+	}
 
 	sort.Slice(workbench.UploadSessions, func(i, j int) bool { return workbench.UploadSessions[i].ID < workbench.UploadSessions[j].ID })
 	sort.Slice(workbench.UploadFiles, func(i, j int) bool { return workbench.UploadFiles[i].ID < workbench.UploadFiles[j].ID })
@@ -290,6 +304,7 @@ func (s *Service) GetImportBatchWorkbench(_ context.Context, input GetImportBatc
 	sort.Slice(workbench.MediaAssetVariants, func(i, j int) bool { return workbench.MediaAssetVariants[i].ID < workbench.MediaAssetVariants[j].ID })
 	sort.Slice(workbench.Items, func(i, j int) bool { return workbench.Items[i].ID < workbench.Items[j].ID })
 	sort.Slice(workbench.CandidateAssets, func(i, j int) bool { return workbench.CandidateAssets[i].ID < workbench.CandidateAssets[j].ID })
+	sort.Slice(workbench.ShotExecutions, func(i, j int) bool { return workbench.ShotExecutions[i].ID < workbench.ShotExecutions[j].ID })
 
 	return workbench, nil
 }

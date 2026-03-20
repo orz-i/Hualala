@@ -128,6 +128,16 @@ func mapMediaAssetVariant(record asset.MediaAssetVariant) *assetv1.MediaAssetVar
 	}
 }
 
+func mapImportBatchShotExecution(record execution.ShotExecution) *assetv1.ImportBatchShotExecution {
+	return &assetv1.ImportBatchShotExecution{
+		Id:             record.ID,
+		ShotId:         record.ShotID,
+		Status:         record.Status,
+		PrimaryAssetId: record.PrimaryAssetID,
+		CurrentRunId:   record.CurrentRunID,
+	}
+}
+
 func mapShotReview(record review.ShotReview) *reviewv1.ShotReview {
 	return &reviewv1.ShotReview{
 		Id:              record.ID,
