@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { ShotWorkbenchPage } from "./ShotWorkbenchPage";
 
 describe("ShotWorkbenchPage", () => {
@@ -30,5 +30,43 @@ describe("ShotWorkbenchPage", () => {
     expect(screen.getByText("approved")).toBeInTheDocument();
     expect(screen.getByText("passed")).toBeInTheDocument();
     expect(screen.getByText("asset-1")).toBeInTheDocument();
+  });
+
+  it("triggers gate check and submit review actions for the current shot execution", () => {
+    const onRunSubmissionGateChecks = vi.fn();
+    const onSubmitShotForReview = vi.fn();
+
+    render(
+      <ShotWorkbenchPage
+        workbench={{
+          shotExecution: {
+            id: "shot-exec-1",
+            shotId: "shot-1",
+            status: "candidate_ready",
+            primaryAssetId: "asset-1",
+          },
+          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
+          reviewSummary: {
+            latestConclusion: "pending",
+          },
+          latestEvaluationRun: {
+            id: "eval-1",
+            status: "passed",
+          },
+        }}
+        onRunSubmissionGateChecks={onRunSubmissionGateChecks}
+        onSubmitShotForReview={onSubmitShotForReview}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Gate 检查" }));
+    fireEvent.click(screen.getByRole("button", { name: "提交评审" }));
+
+    expect(onRunSubmissionGateChecks).toHaveBeenCalledWith({
+      shotExecutionId: "shot-exec-1",
+    });
+    expect(onSubmitShotForReview).toHaveBeenCalledWith({
+      shotExecutionId: "shot-exec-1",
+    });
   });
 });

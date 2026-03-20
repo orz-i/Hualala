@@ -30,6 +30,8 @@ export type ShotWorkbenchViewModel = {
 
 type ShotWorkbenchPageProps = {
   workbench: ShotWorkbenchViewModel;
+  onRunSubmissionGateChecks?: (input: { shotExecutionId: string }) => void;
+  onSubmitShotForReview?: (input: { shotExecutionId: string }) => void;
 };
 
 const panelStyle: CSSProperties = {
@@ -47,7 +49,11 @@ const metricStyle: CSSProperties = {
   color: "#475569",
 };
 
-export function ShotWorkbenchPage({ workbench }: ShotWorkbenchPageProps) {
+export function ShotWorkbenchPage({
+  workbench,
+  onRunSubmissionGateChecks,
+  onSubmitShotForReview,
+}: ShotWorkbenchPageProps) {
   const latestEvaluationStatus = workbench.latestEvaluationRun?.status ?? "pending";
 
   return (
@@ -100,6 +106,50 @@ export function ShotWorkbenchPage({ workbench }: ShotWorkbenchPageProps) {
             <p style={metricStyle}>
               最近评估：<strong>{latestEvaluationStatus}</strong>
             </p>
+            <div style={{ display: "flex", gap: "12px", marginTop: "16px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                style={{
+                  border: 0,
+                  borderRadius: "999px",
+                  padding: "10px 16px",
+                  background: "#b45309",
+                  color: "#fffbeb",
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  if (!onRunSubmissionGateChecks) {
+                    return;
+                  }
+                  onRunSubmissionGateChecks({
+                    shotExecutionId: workbench.shotExecution.id,
+                  });
+                }}
+              >
+                Gate 检查
+              </button>
+              <button
+                type="button"
+                style={{
+                  border: 0,
+                  borderRadius: "999px",
+                  padding: "10px 16px",
+                  background: "#0f766e",
+                  color: "#ecfeff",
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  if (!onSubmitShotForReview) {
+                    return;
+                  }
+                  onSubmitShotForReview({
+                    shotExecutionId: workbench.shotExecution.id,
+                  });
+                }}
+              >
+                提交评审
+              </button>
+            </div>
           </article>
         </section>
 

@@ -9,6 +9,10 @@ import {
   selectPrimaryAssetForImportBatch,
 } from "../features/import-batches/mutateImportBatchWorkbench";
 import { loadShotWorkbench } from "../features/shot-workbench/loadShotWorkbench";
+import {
+  runSubmissionGateChecks,
+  submitShotForReview,
+} from "../features/shot-workbench/mutateShotWorkbench";
 import { ShotWorkbenchPage, type ShotWorkbenchViewModel } from "../features/shot-workbench/ShotWorkbenchPage";
 
 export function App() {
@@ -78,6 +82,15 @@ export function App() {
     });
   };
 
+  const refreshShotWorkbench = async () => {
+    const shotId = new URLSearchParams(window.location.search).get("shotId") ?? "shot-demo-001";
+    const nextWorkbench = await loadShotWorkbench({ shotId });
+    startTransition(() => {
+      setShotWorkbench(nextWorkbench);
+      setErrorMessage("");
+    });
+  };
+
   if (errorMessage) {
     return <main style={{ padding: "32px" }}>工作台加载失败：{errorMessage}</main>;
   }
@@ -99,7 +112,19 @@ export function App() {
   }
 
   if (shotWorkbench) {
-    return <ShotWorkbenchPage workbench={shotWorkbench} />;
+    return (
+      <ShotWorkbenchPage
+        workbench={shotWorkbench}
+        onRunSubmissionGateChecks={async (input) => {
+          await runSubmissionGateChecks(input);
+          await refreshShotWorkbench();
+        }}
+        onSubmitShotForReview={async (input) => {
+          await submitShotForReview(input);
+          await refreshShotWorkbench();
+        }}
+      />
+    );
   }
 
   if (new URLSearchParams(window.location.search).get("importBatchId")) {

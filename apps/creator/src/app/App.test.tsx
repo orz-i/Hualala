@@ -6,6 +6,10 @@ import {
   confirmImportBatchItems,
   selectPrimaryAssetForImportBatch,
 } from "../features/import-batches/mutateImportBatchWorkbench";
+import {
+  runSubmissionGateChecks,
+  submitShotForReview,
+} from "../features/shot-workbench/mutateShotWorkbench";
 
 vi.mock("../features/shot-workbench/loadShotWorkbench", () => ({
   loadShotWorkbench: vi.fn(),
@@ -17,11 +21,17 @@ vi.mock("../features/import-batches/mutateImportBatchWorkbench", () => ({
   confirmImportBatchItems: vi.fn(),
   selectPrimaryAssetForImportBatch: vi.fn(),
 }));
+vi.mock("../features/shot-workbench/mutateShotWorkbench", () => ({
+  runSubmissionGateChecks: vi.fn(),
+  submitShotForReview: vi.fn(),
+}));
 
 const loadShotWorkbenchMock = vi.mocked(loadShotWorkbench);
 const loadImportBatchWorkbenchMock = vi.mocked(loadImportBatchWorkbench);
 const confirmImportBatchItemsMock = vi.mocked(confirmImportBatchItems);
 const selectPrimaryAssetForImportBatchMock = vi.mocked(selectPrimaryAssetForImportBatch);
+const runSubmissionGateChecksMock = vi.mocked(runSubmissionGateChecks);
+const submitShotForReviewMock = vi.mocked(submitShotForReview);
 
 describe("App", () => {
   it("prefers importBatchId from search params, loads the import workbench, and renders the live data", async () => {
@@ -108,7 +118,39 @@ describe("App", () => {
 
   it("reads shotId from search params, loads the workbench, and renders the live data", async () => {
     window.history.pushState({}, "", "/?shotId=shot-live-1");
-    loadShotWorkbenchMock.mockResolvedValue({
+    loadShotWorkbenchMock.mockResolvedValueOnce({
+      shotExecution: {
+        id: "shot-exec-live-1",
+        shotId: "shot-live-1",
+        status: "candidate_ready",
+        primaryAssetId: "asset-live-1",
+      },
+      candidateAssets: [{ id: "candidate-live-1", assetId: "asset-live-1" }],
+      reviewSummary: {
+        latestConclusion: "pending",
+      },
+      latestEvaluationRun: {
+        id: "eval-live-1",
+        status: "pending",
+      },
+    });
+    loadShotWorkbenchMock.mockResolvedValueOnce({
+      shotExecution: {
+        id: "shot-exec-live-1",
+        shotId: "shot-live-1",
+        status: "candidate_ready",
+        primaryAssetId: "asset-live-1",
+      },
+      candidateAssets: [{ id: "candidate-live-1", assetId: "asset-live-1" }],
+      reviewSummary: {
+        latestConclusion: "passed",
+      },
+      latestEvaluationRun: {
+        id: "eval-live-1",
+        status: "passed",
+      },
+    });
+    loadShotWorkbenchMock.mockResolvedValueOnce({
       shotExecution: {
         id: "shot-exec-live-1",
         shotId: "shot-live-1",
@@ -124,6 +166,8 @@ describe("App", () => {
         status: "passed",
       },
     });
+    runSubmissionGateChecksMock.mockResolvedValue(undefined);
+    submitShotForReviewMock.mockResolvedValue(undefined);
 
     render(<App />);
 
@@ -138,6 +182,32 @@ describe("App", () => {
     });
 
     expect(await screen.findByText("shot-exec-live-1")).toBeInTheDocument();
-    expect(screen.getByText("approved")).toBeInTheDocument();
+    expect(screen.getAllByText("pending")).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Gate 检查" }));
+
+    await waitFor(() => {
+      expect(runSubmissionGateChecksMock).toHaveBeenCalledWith({
+        shotExecutionId: "shot-exec-live-1",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("passed")).toHaveLength(2);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "提交评审" }));
+
+    await waitFor(() => {
+      expect(submitShotForReviewMock).toHaveBeenCalledWith({
+        shotExecutionId: "shot-exec-live-1",
+      });
+    });
+
+    await waitFor(() => {
+      expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(3);
+    });
+
+    expect(await screen.findByText("submitted_for_review")).toBeInTheDocument();
   });
 });
