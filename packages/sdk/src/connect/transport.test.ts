@@ -47,4 +47,18 @@ describe("sdk transport", () => {
     }>("/hualala.auth.v1.AuthService/GetCurrentSession", {});
     expect(result.session?.sessionId).toBe("dev:org-1:user-1");
   });
+
+  it("returns an empty object for successful unary calls with an empty body", async () => {
+    const client = createHualalaClient({
+      baseUrl: "http://127.0.0.1:8080/",
+      fetchFn: async () => new Response(null, { status: 200 }),
+    });
+
+    const result = await client.unary<Record<string, never>>(
+      "/hualala.execution.v1.ExecutionService/SubmitShotForReview",
+      { shotExecutionId: "shot-exec-1" },
+    );
+
+    expect(result).toEqual({});
+  });
 });

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ADMIN_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { loadAdminOverview } from "../features/dashboard/loadAdminOverview";
 import { loadGovernancePanel } from "../features/dashboard/loadGovernancePanel";
@@ -8,6 +8,7 @@ import {
   updateOrgLocaleSettings,
   updateUserPreferences,
 } from "../features/dashboard/mutateGovernance";
+import { subscribeAdminRecentChanges } from "../features/dashboard/subscribeRecentChanges";
 import { App } from "./App";
 
 vi.mock("../features/dashboard/loadAdminOverview", () => ({
@@ -24,6 +25,9 @@ vi.mock("../features/dashboard/mutateGovernance", () => ({
   updateMemberRole: vi.fn(),
   updateOrgLocaleSettings: vi.fn(),
 }));
+vi.mock("../features/dashboard/subscribeRecentChanges", () => ({
+  subscribeAdminRecentChanges: vi.fn(),
+}));
 
 const loadAdminOverviewMock = vi.mocked(loadAdminOverview);
 const loadGovernancePanelMock = vi.mocked(loadGovernancePanel);
@@ -31,6 +35,7 @@ const updateBudgetPolicyMock = vi.mocked(updateBudgetPolicy);
 const updateUserPreferencesMock = vi.mocked(updateUserPreferences);
 const updateMemberRoleMock = vi.mocked(updateMemberRole);
 const updateOrgLocaleSettingsMock = vi.mocked(updateOrgLocaleSettings);
+const subscribeAdminRecentChangesMock = vi.mocked(subscribeAdminRecentChanges);
 
 function createOverview(projectId: string, shotExecutionId: string, limitCents = 120000) {
   return {
@@ -101,6 +106,7 @@ describe("Admin App", () => {
     vi.resetAllMocks();
     window.localStorage.clear();
     window.localStorage.setItem(ADMIN_UI_LOCALE_STORAGE_KEY, "zh-CN");
+    subscribeAdminRecentChangesMock.mockReturnValue(() => {});
   });
 
   it("reads projectId and shotExecutionId from search params, then renders the live overview", async () => {
@@ -131,9 +137,63 @@ describe("Admin App", () => {
 
     expect(await screen.findByText("project-live-1")).toBeInTheDocument();
     expect(screen.getByText("当前会话")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(subscribeAdminRecentChangesMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "org-demo-001",
+          projectId: "project-live-1",
+          onChange: expect.any(Function),
+        }),
+      );
+    });
     expect(screen.getAllByText("approved").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("最近评估：passed")).toBeInTheDocument();
     expect(screen.getByText("1 条计费事件")).toBeInTheDocument();
+  });
+
+  it("applies live recent change updates without reloading the whole overview", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-5&shotExecutionId=shot-exec-live-5&orgId=org-live-5",
+    );
+    loadAdminOverviewMock.mockResolvedValue(createOverview("project-live-5", "shot-exec-live-5"));
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-5", "user-live-5"));
+
+    let onChange: ((change: {
+      id: string;
+      kind: "billing" | "evaluation" | "review";
+      tone: "info" | "success" | "warning";
+      eventType?: string;
+      amountCents?: number;
+      status?: string;
+      failedChecksCount?: number;
+      conclusion?: string;
+    }) => void) | null = null;
+    subscribeAdminRecentChangesMock.mockImplementation((options) => {
+      onChange = options.onChange;
+      return () => {};
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("project-live-5")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(subscribeAdminRecentChangesMock).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      onChange?.({
+        id: "billing-live-1",
+        kind: "billing",
+        tone: "info",
+        eventType: "budget.updated",
+        amountCents: 25000,
+      });
+    });
+
+    expect(await screen.findByText("budget.updated · 250.00 元")).toBeInTheDocument();
+    expect(loadAdminOverviewMock).toHaveBeenCalledTimes(1);
   });
 
   it("updates the budget policy and refreshes the overview", async () => {

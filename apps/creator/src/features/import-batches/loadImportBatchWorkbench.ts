@@ -1,9 +1,12 @@
+import { createAssetClient, type HualalaFetch } from "@hualala/sdk";
 import type { ImportBatchWorkbenchViewModel } from "./ImportBatchWorkbenchPage";
 
 type LoadImportBatchWorkbenchOptions = {
   importBatchId: string;
+  orgId?: string;
+  userId?: string;
   baseUrl?: string;
-  fetchFn?: typeof fetch;
+  fetchFn?: HualalaFetch;
 };
 
 type GetImportBatchWorkbenchResponse = {
@@ -32,46 +35,24 @@ type GetImportBatchWorkbenchResponse = {
   }>;
 };
 
-function trimTrailingSlash(value: string) {
-  return value.endsWith("/") ? value.slice(0, -1) : value;
-}
-
-function resolveBaseUrl(baseUrl?: string) {
-  if (baseUrl && baseUrl.trim() !== "") {
-    return trimTrailingSlash(baseUrl.trim());
-  }
-  if (typeof window !== "undefined" && window.location.origin) {
-    return trimTrailingSlash(window.location.origin);
-  }
-  return "";
-}
-
 export async function loadImportBatchWorkbench({
   importBatchId,
+  orgId,
+  userId,
   baseUrl,
   fetchFn = fetch,
 }: LoadImportBatchWorkbenchOptions): Promise<ImportBatchWorkbenchViewModel> {
-  const response = await fetchFn(
-    `${resolveBaseUrl(baseUrl)}/hualala.asset.v1.AssetService/GetImportBatchWorkbench`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Connect-Protocol-Version": "1",
-      },
-      body: JSON.stringify({
-        importBatchId,
-      }),
+  const client = createAssetClient({
+    baseUrl,
+    fetchFn,
+    identity: {
+      orgId,
+      userId,
     },
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `creator: failed to load import batch workbench (${response.status})`,
-    );
-  }
-
-  const payload = (await response.json()) as GetImportBatchWorkbenchResponse;
+  });
+  const payload = (await client.getImportBatchWorkbench({
+    importBatchId,
+  })) as GetImportBatchWorkbenchResponse;
   if (!payload.importBatch?.id) {
     throw new Error("creator: import batch workbench payload is incomplete");
   }

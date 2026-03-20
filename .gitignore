@@ -2,6 +2,7 @@
 .worktrees/
 .turbo/
 apps/*/dist/
+packages/*/dist/
 node_modules
 .bufcache
 .gocache

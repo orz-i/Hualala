@@ -1,6 +1,8 @@
 package upload
 
 import (
+	"bufio"
+	"context"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -10,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hualala/apps/backend/internal/application/policyapp"
 	assetdomain "github.com/hualala/apps/backend/internal/domain/asset"
@@ -144,19 +147,30 @@ func TestUploadSessionPublishesSSEEvents(t *testing.T) {
 		t.Fatalf("expected retry_count 1 after retry, got %.0f", got)
 	}
 
-	sseReq := httptest.NewRequest(http.MethodGet, "/sse/events?organization_id=org-1&project_id=project-1", nil)
-	sseRec := httptest.NewRecorder()
-	mux.ServeHTTP(sseRec, sseReq)
+	server := httptest.NewServer(mux)
+	defer server.Close()
 
-	if sseRec.Code != http.StatusOK {
-		t.Fatalf("expected SSE status 200, got %d", sseRec.Code)
-	}
-
-	body, err := io.ReadAll(sseRec.Body)
+	sseCtx, cancelSSE := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelSSE()
+	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id=org-1&project_id=project-1", nil)
 	if err != nil {
-		t.Fatalf("io.ReadAll returned error: %v", err)
+		t.Fatalf("http.NewRequestWithContext returned error: %v", err)
 	}
-	stream := string(body)
+	sseResp, err := server.Client().Do(sseReq)
+	if err != nil {
+		t.Fatalf("server.Client().Do returned error: %v", err)
+	}
+	defer sseResp.Body.Close()
+
+	if sseResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected SSE status 200, got %d", sseResp.StatusCode)
+	}
+
+	stream := readUploadEventStreamUntil(t, sseResp.Body, cancelSSE,
+		"event: asset.upload_session.updated",
+		`"session_id":"`+sessionID+`"`,
+		`"retry_count":1`,
+	)
 	if !strings.Contains(stream, "event: asset.upload_session.updated") {
 		t.Fatalf("expected upload session SSE event, got body %q", stream)
 	}
@@ -165,6 +179,41 @@ func TestUploadSessionPublishesSSEEvents(t *testing.T) {
 	}
 	if !strings.Contains(stream, `"retry_count":1`) {
 		t.Fatalf("expected retry_count 1 in SSE payload, got body %q", stream)
+	}
+}
+
+func readUploadEventStreamUntil(t *testing.T, body io.ReadCloser, cancel context.CancelFunc, markers ...string) string {
+	t.Helper()
+	defer cancel()
+
+	reader := bufio.NewReader(body)
+	var stream strings.Builder
+	deadline := time.After(2 * time.Second)
+
+	for {
+		select {
+		case <-deadline:
+			t.Fatalf("timed out waiting for SSE markers %v in stream %q", markers, stream.String())
+		default:
+		}
+
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			t.Fatalf("ReadString returned error before all markers arrived: %v (stream=%q)", err, stream.String())
+		}
+		stream.WriteString(line)
+
+		current := stream.String()
+		allFound := true
+		for _, marker := range markers {
+			if !strings.Contains(current, marker) {
+				allFound = false
+				break
+			}
+		}
+		if allFound {
+			return current
+		}
 	}
 }
 
