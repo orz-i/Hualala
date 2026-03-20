@@ -33,4 +33,9 @@
 - `corepack pnpm run test:e2e:phase1`：mock acceptance
 - `corepack pnpm run test:e2e:admin:real`
 - `corepack pnpm run test:e2e:creator:real`
-- `corepack pnpm run test:e2e:phase1:real`：真实 backend acceptance
+- `corepack pnpm run test:e2e:phase1:real`：CI 级真实 backend acceptance
+
+其中：
+
+- `test:e2e:phase1` 是 CI 中的 mock acceptance 门
+- `test:e2e:phase1:real` 是 CI 中的真实 backend acceptance 门
