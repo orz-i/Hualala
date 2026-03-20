@@ -33,7 +33,11 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           git fetch origin "${{ github.base_ref }}" --depth=1
-          node tooling/scripts/run-buf.mjs breaking --against ".git#branch=origin/${{ github.base_ref }}"
+          if git ls-tree -r --name-only "origin/${{ github.base_ref }}" -- proto | grep -E '\.proto$' > /dev/null; then
+            node tooling/scripts/run-buf.mjs breaking --against ".git#branch=origin/${{ github.base_ref }}"
+          else
+            echo "Skipping buf breaking: origin/${{ github.base_ref }} has no .proto files"
+          fi
 
       - name: I18n parity
         run: corepack pnpm run i18n:check
