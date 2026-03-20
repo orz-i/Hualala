@@ -203,6 +203,11 @@ func completeSession(store *db.MemoryStore, sessionID string, variantType string
 			UpdatedAt:     now,
 		}
 		store.ImportBatchItems[item.ID] = item
+		if batch, ok := store.ImportBatches[session.ImportBatchID]; ok {
+			batch.Status = "uploaded_pending_match"
+			batch.UpdatedAt = now
+			store.ImportBatches[session.ImportBatchID] = batch
+		}
 	}
 
 	return session, true

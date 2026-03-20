@@ -234,6 +234,9 @@ func TestCompleteUploadSessionCreatesAssetRecords(t *testing.T) {
 			t.Fatalf("expected uploaded_pending_match item status, got %q", item.Status)
 		}
 	}
+	if got := store.ImportBatches["import-batch-1"].Status; got != "uploaded_pending_match" {
+		t.Fatalf("expected import batch status uploaded_pending_match, got %q", got)
+	}
 }
 
 func TestCreateUploadSessionRejectsUnknownImportBatch(t *testing.T) {
