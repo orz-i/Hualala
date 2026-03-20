@@ -2,21 +2,68 @@ package connect
 
 import (
 	assetv1 "github.com/hualala/apps/backend/gen/hualala/asset/v1"
+	authv1 "github.com/hualala/apps/backend/gen/hualala/auth/v1"
 	billingv1 "github.com/hualala/apps/backend/gen/hualala/billing/v1"
 	contentv1 "github.com/hualala/apps/backend/gen/hualala/content/v1"
 	executionv1 "github.com/hualala/apps/backend/gen/hualala/execution/v1"
+	orgv1 "github.com/hualala/apps/backend/gen/hualala/org/v1"
 	projectv1 "github.com/hualala/apps/backend/gen/hualala/project/v1"
 	reviewv1 "github.com/hualala/apps/backend/gen/hualala/review/v1"
 	"github.com/hualala/apps/backend/internal/application/billingapp"
 	"github.com/hualala/apps/backend/internal/application/executionapp"
 	"github.com/hualala/apps/backend/internal/application/reviewapp"
 	"github.com/hualala/apps/backend/internal/domain/asset"
+	"github.com/hualala/apps/backend/internal/domain/auth"
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
+	"github.com/hualala/apps/backend/internal/domain/org"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/review"
 )
+
+func mapSession(record auth.Session) *authv1.Session {
+	return &authv1.Session{
+		SessionId: record.SessionID,
+		UserId:    record.UserID,
+		OrgId:     record.OrgID,
+		Locale:    record.Locale,
+	}
+}
+
+func mapUserPreferences(record auth.UserPreferences) *authv1.UserPreferences {
+	return &authv1.UserPreferences{
+		UserId:        record.UserID,
+		DisplayLocale: record.DisplayLocale,
+		Timezone:      record.Timezone,
+	}
+}
+
+func mapOrgMember(record org.Member) *orgv1.Member {
+	return &orgv1.Member{
+		MemberId: record.ID,
+		OrgId:    record.OrgID,
+		UserId:   record.UserID,
+		RoleId:   record.RoleID,
+	}
+}
+
+func mapOrgRole(record org.Role) *orgv1.Role {
+	return &orgv1.Role{
+		RoleId:      record.ID,
+		OrgId:       record.OrgID,
+		Code:        record.Code,
+		DisplayName: record.DisplayName,
+	}
+}
+
+func mapOrgLocaleSettings(record org.OrgLocaleSettings) *orgv1.OrgLocaleSettings {
+	return &orgv1.OrgLocaleSettings{
+		OrgId:            record.OrgID,
+		DefaultLocale:    record.DefaultLocale,
+		SupportedLocales: append([]string(nil), record.SupportedLocales...),
+	}
+}
 
 func mapProject(record project.Project) *projectv1.Project {
 	return &projectv1.Project{

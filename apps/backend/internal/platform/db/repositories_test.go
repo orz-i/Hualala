@@ -3,6 +3,7 @@ package db
 import "testing"
 
 func TestMemoryStoreImplementsPhase2Repositories(t *testing.T) {
+	var _ AuthOrgRepository = (*MemoryStore)(nil)
 	var _ ProjectContentRepository = (*MemoryStore)(nil)
 	var _ ExecutionRepository = (*MemoryStore)(nil)
 	var _ AssetRepository = (*MemoryStore)(nil)

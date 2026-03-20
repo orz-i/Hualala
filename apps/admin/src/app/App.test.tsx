@@ -1,18 +1,36 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ADMIN_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { loadAdminOverview } from "../features/dashboard/loadAdminOverview";
+import { loadGovernancePanel } from "../features/dashboard/loadGovernancePanel";
 import { updateBudgetPolicy } from "../features/dashboard/mutateBudgetPolicy";
+import {
+  updateMemberRole,
+  updateOrgLocaleSettings,
+  updateUserPreferences,
+} from "../features/dashboard/mutateGovernance";
 import { App } from "./App";
 
 vi.mock("../features/dashboard/loadAdminOverview", () => ({
   loadAdminOverview: vi.fn(),
 }));
+vi.mock("../features/dashboard/loadGovernancePanel", () => ({
+  loadGovernancePanel: vi.fn(),
+}));
 vi.mock("../features/dashboard/mutateBudgetPolicy", () => ({
   updateBudgetPolicy: vi.fn(),
 }));
+vi.mock("../features/dashboard/mutateGovernance", () => ({
+  updateUserPreferences: vi.fn(),
+  updateMemberRole: vi.fn(),
+  updateOrgLocaleSettings: vi.fn(),
+}));
 
 const loadAdminOverviewMock = vi.mocked(loadAdminOverview);
+const loadGovernancePanelMock = vi.mocked(loadGovernancePanel);
 const updateBudgetPolicyMock = vi.mocked(updateBudgetPolicy);
+const updateUserPreferencesMock = vi.mocked(updateUserPreferences);
+const updateMemberRoleMock = vi.mocked(updateMemberRole);
+const updateOrgLocaleSettingsMock = vi.mocked(updateOrgLocaleSettings);
 
 function createOverview(projectId: string, shotExecutionId: string, limitCents = 120000) {
   return {
@@ -55,6 +73,29 @@ function createOverview(projectId: string, shotExecutionId: string, limitCents =
   };
 }
 
+function createGovernance(orgId: string, userId: string, locale = "zh-CN") {
+  return {
+    currentSession: {
+      sessionId: `dev:${orgId}:${userId}`,
+      orgId,
+      userId,
+      locale,
+    },
+    userPreferences: {
+      userId,
+      displayLocale: locale,
+      timezone: "Asia/Shanghai",
+    },
+    members: [{ memberId: "member-1", orgId, userId, roleId: "role-admin" }],
+    roles: [{ roleId: "role-admin", orgId, code: "admin", displayName: "Administrator" }],
+    orgLocaleSettings: {
+      orgId,
+      defaultLocale: locale,
+      supportedLocales: [locale],
+    },
+  };
+}
+
 describe("Admin App", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -69,6 +110,7 @@ describe("Admin App", () => {
       "/?projectId=project-live-1&shotExecutionId=shot-exec-live-1",
     );
     loadAdminOverviewMock.mockResolvedValue(createOverview("project-live-1", "shot-exec-live-1"));
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-demo-001", "22222222-2222-2222-2222-222222222222"));
 
     render(<App />);
 
@@ -80,8 +122,15 @@ describe("Admin App", () => {
         shotExecutionId: "shot-exec-live-1",
       });
     });
+    await waitFor(() => {
+      expect(loadGovernancePanelMock).toHaveBeenCalledWith({
+        orgId: undefined,
+        userId: undefined,
+      });
+    });
 
     expect(await screen.findByText("project-live-1")).toBeInTheDocument();
+    expect(screen.getByText("当前会话")).toBeInTheDocument();
     expect(screen.getAllByText("approved").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("最近评估：passed")).toBeInTheDocument();
     expect(screen.getByText("1 条计费事件")).toBeInTheDocument();
@@ -97,6 +146,7 @@ describe("Admin App", () => {
     loadAdminOverviewMock.mockResolvedValueOnce(
       createOverview("project-live-1", "shot-exec-live-1", 150000),
     );
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-1", "user-live-1"));
     updateBudgetPolicyMock.mockResolvedValue({
       id: "budget-1",
       orgId: "org-live-1",
@@ -133,6 +183,7 @@ describe("Admin App", () => {
       "/?projectId=project-live-2&shotExecutionId=shot-exec-live-2&orgId=org-live-2",
     );
     loadAdminOverviewMock.mockResolvedValue(createOverview("project-live-2", "shot-exec-live-2"));
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-2", "user-live-2"));
     updateBudgetPolicyMock.mockRejectedValue(new Error("network down"));
 
     render(<App />);
@@ -159,6 +210,7 @@ describe("Admin App", () => {
     loadAdminOverviewMock.mockResolvedValueOnce(
       createOverview("project-live-3", "shot-exec-live-3", 150000),
     );
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-3", "user-live-3"));
     updateBudgetPolicyMock.mockResolvedValue({
       id: "budget-1",
       orgId: "org-live-3",
@@ -185,5 +237,81 @@ describe("Admin App", () => {
 
     expect(await screen.findByText("Budget policy updated")).toBeInTheDocument();
     expect(screen.getByText("Budget limit: 1500.00 元")).toBeInTheDocument();
+  });
+
+  it("loads governance data from orgId and userId query params, then updates preferences and org locale", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-4&shotExecutionId=shot-exec-live-4&orgId=org-live-4&userId=user-live-4",
+    );
+    loadAdminOverviewMock.mockResolvedValue(createOverview("project-live-4", "shot-exec-live-4"));
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-4", "user-live-4"));
+    updateUserPreferencesMock.mockResolvedValue({
+      userId: "user-live-4",
+      displayLocale: "en-US",
+      timezone: "America/Los_Angeles",
+    });
+    updateOrgLocaleSettingsMock.mockResolvedValue({
+      orgId: "org-live-4",
+      defaultLocale: "en-US",
+      supportedLocales: ["en-US"],
+    });
+    updateMemberRoleMock.mockResolvedValue({
+      memberId: "member-1",
+      orgId: "org-live-4",
+      userId: "user-live-4",
+      roleId: "role-admin",
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("project-live-4")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(loadGovernancePanelMock).toHaveBeenCalledWith({
+        orgId: "org-live-4",
+        userId: "user-live-4",
+      });
+    });
+
+    fireEvent.change(screen.getByLabelText("显示语言"), {
+      target: { value: "en-US" },
+    });
+    fireEvent.change(screen.getByLabelText("时区"), {
+      target: { value: "America/Los_Angeles" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "更新偏好" }));
+
+    await waitFor(() => {
+      expect(updateUserPreferencesMock).toHaveBeenCalledWith({
+        orgId: "org-live-4",
+        userId: "user-live-4",
+        displayLocale: "en-US",
+        timezone: "America/Los_Angeles",
+      });
+    });
+
+    fireEvent.change(screen.getByLabelText("组织默认语言"), {
+      target: { value: "en-US" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "更新组织语言" }));
+
+    await waitFor(() => {
+      expect(updateOrgLocaleSettingsMock).toHaveBeenCalledWith({
+        orgId: "org-live-4",
+        userId: "user-live-4",
+        defaultLocale: "en-US",
+      });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "更新成员角色" }));
+    await waitFor(() => {
+      expect(updateMemberRoleMock).toHaveBeenCalledWith({
+        orgId: "org-live-4",
+        userId: "user-live-4",
+        memberId: "member-1",
+        roleId: "role-admin",
+      });
+    });
   });
 });

@@ -31,5 +31,18 @@
   "changes.detail.evaluation": "{status} · {count} 个失败检查",
   "changes.detail.review": "{conclusion}",
   "usage.panel.title": "用量记录",
-  "reviews.panel.title": "评审记录"
+  "reviews.panel.title": "评审记录",
+  "governance.session.title": "当前会话",
+  "governance.session.idLabel": "会话 ID",
+  "governance.session.orgId": "组织 ID：{orgId}",
+  "governance.session.userId": "用户 ID：{userId}",
+  "governance.session.locale": "当前语言：{locale}",
+  "governance.preferences.displayLocale": "显示语言",
+  "governance.preferences.timezone": "时区",
+  "governance.preferences.update": "更新偏好",
+  "governance.org.title": "组织成员与语言设置",
+  "governance.members.update": "更新成员角色",
+  "governance.locale.defaultLocale": "组织默认语言",
+  "governance.locale.supportedLocales": "支持语言：{locales}",
+  "governance.locale.update": "更新组织语言"
 }

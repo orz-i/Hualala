@@ -6,16 +6,20 @@ import (
 	"slices"
 
 	assetv1connect "github.com/hualala/apps/backend/gen/hualala/asset/v1/assetv1connect"
+	authv1connect "github.com/hualala/apps/backend/gen/hualala/auth/v1/authv1connect"
 	billingv1connect "github.com/hualala/apps/backend/gen/hualala/billing/v1/billingv1connect"
 	contentv1connect "github.com/hualala/apps/backend/gen/hualala/content/v1/contentv1connect"
 	executionv1connect "github.com/hualala/apps/backend/gen/hualala/execution/v1/executionv1connect"
+	orgv1connect "github.com/hualala/apps/backend/gen/hualala/org/v1/orgv1connect"
 	projectv1connect "github.com/hualala/apps/backend/gen/hualala/project/v1/projectv1connect"
 	reviewv1connect "github.com/hualala/apps/backend/gen/hualala/review/v1/reviewv1connect"
 	workflowv1connect "github.com/hualala/apps/backend/gen/hualala/workflow/v1/workflowv1connect"
 	"github.com/hualala/apps/backend/internal/application/assetapp"
+	"github.com/hualala/apps/backend/internal/application/authapp"
 	"github.com/hualala/apps/backend/internal/application/billingapp"
 	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/executionapp"
+	"github.com/hualala/apps/backend/internal/application/orgapp"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
 	"github.com/hualala/apps/backend/internal/application/reviewapp"
 	"github.com/hualala/apps/backend/internal/application/workflowapp"
@@ -28,6 +32,8 @@ import (
 var allowedHealthMethods = []string{http.MethodGet}
 
 type RouteDependencies struct {
+	AuthService      *authapp.Service
+	OrgService       *orgapp.Service
 	ExecutionService *executionapp.Service
 	AssetService     *assetapp.Service
 	ReviewService    *reviewapp.Service
@@ -41,6 +47,8 @@ type RouteDependencies struct {
 
 func NewRouteDependencies(services runtime.ServiceSet) RouteDependencies {
 	return RouteDependencies{
+		AuthService:      services.AuthService,
+		OrgService:       services.OrgService,
 		ExecutionService: services.ExecutionService,
 		AssetService:     services.AssetService,
 		ReviewService:    services.ReviewService,
@@ -65,6 +73,14 @@ func RegisterRoutes(mux *http.ServeMux, deps RouteDependencies) {
 
 	if deps.ExecutionService != nil {
 		path, handler := executionv1connect.NewExecutionServiceHandler(&executionHandler{service: deps.ExecutionService})
+		mux.Handle(path, handler)
+	}
+	if deps.AuthService != nil {
+		path, handler := authv1connect.NewAuthServiceHandler(&authHandler{service: deps.AuthService})
+		mux.Handle(path, handler)
+	}
+	if deps.OrgService != nil {
+		path, handler := orgv1connect.NewOrgServiceHandler(&orgHandler{service: deps.OrgService})
 		mux.Handle(path, handler)
 	}
 	if deps.AssetService != nil {

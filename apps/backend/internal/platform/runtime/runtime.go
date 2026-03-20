@@ -2,21 +2,25 @@ package runtime
 
 import (
 	"github.com/hualala/apps/backend/internal/application/assetapp"
+	"github.com/hualala/apps/backend/internal/application/authapp"
 	"github.com/hualala/apps/backend/internal/application/billingapp"
 	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/executionapp"
 	"github.com/hualala/apps/backend/internal/application/gatewayapp"
+	"github.com/hualala/apps/backend/internal/application/orgapp"
 	"github.com/hualala/apps/backend/internal/application/policyapp"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
 	"github.com/hualala/apps/backend/internal/application/reviewapp"
 	"github.com/hualala/apps/backend/internal/application/workflowapp"
 	"github.com/hualala/apps/backend/internal/interfaces/upload"
+	"github.com/hualala/apps/backend/internal/platform/authz"
 	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/events"
 	"github.com/hualala/apps/backend/internal/platform/temporal"
 )
 
 type RepositorySet struct {
+	AuthOrg        db.AuthOrgRepository
 	ProjectContent db.ProjectContentRepository
 	Executions     db.ExecutionRepository
 	Assets         db.AssetRepository
@@ -28,6 +32,8 @@ type RepositorySet struct {
 }
 
 type ServiceSet struct {
+	AuthService      *authapp.Service
+	OrgService       *orgapp.Service
 	ExecutionService *executionapp.Service
 	AssetService     *assetapp.Service
 	ReviewService    *reviewapp.Service
@@ -54,6 +60,7 @@ func (f Factory) Repositories() RepositorySet {
 		return RepositorySet{}
 	}
 	return RepositorySet{
+		AuthOrg:        f.store,
 		ProjectContent: f.store,
 		Executions:     f.store,
 		Assets:         f.store,
@@ -67,11 +74,14 @@ func (f Factory) Repositories() RepositorySet {
 
 func (f Factory) Services() ServiceSet {
 	repos := f.Repositories()
+	authorizer := authz.NewAuthorizer(repos.AuthOrg)
 	policyService := policyapp.NewService(repos.PolicyReader)
 	gatewayService := gatewayapp.NewService(repos.GatewayStore, gatewayapp.NewFakeAdapter())
 	workflowService := workflowapp.NewService(repos.WorkflowRepo, repos.EventPublisher, temporal.NewInMemoryExecutor(gatewayService), policyService)
 
 	return ServiceSet{
+		AuthService:      authapp.NewService(repos.AuthOrg, authorizer),
+		OrgService:       orgapp.NewService(repos.AuthOrg, authorizer),
 		ExecutionService: executionapp.NewService(repos.Executions, repos.ProjectContent, repos.Assets, repos.ReviewBilling, repos.EventPublisher),
 		AssetService:     assetapp.NewService(repos.Assets, repos.Executions),
 		ReviewService:    reviewapp.NewService(repos.Executions, repos.ReviewBilling, repos.EventPublisher),

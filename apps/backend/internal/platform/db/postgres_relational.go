@@ -11,9 +11,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hualala/apps/backend/internal/domain/asset"
+	"github.com/hualala/apps/backend/internal/domain/auth"
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
+	"github.com/hualala/apps/backend/internal/domain/org"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/review"
 	"github.com/lib/pq"
@@ -194,6 +196,9 @@ func reviewedAtForItem(record asset.ImportBatchItem) time.Time {
 }
 
 func (p *PostgresPersister) loadRelationalSnapshot(ctx context.Context, snapshot *Snapshot) error {
+	if err := p.loadAuthOrg(ctx, snapshot); err != nil {
+		return err
+	}
 	if err := p.loadProjectsEpisodesScenesShotsSnapshots(ctx, snapshot); err != nil {
 		return err
 	}
@@ -207,6 +212,107 @@ func (p *PostgresPersister) loadRelationalSnapshot(ctx context.Context, snapshot
 	if err := p.loadBillingAndReview(ctx, snapshot, runExecutionMap); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (p *PostgresPersister) loadAuthOrg(ctx context.Context, snapshot *Snapshot) error {
+	organizationRows, err := p.db.QueryContext(ctx, `
+		SELECT id::text, slug, display_name, default_ui_locale, default_content_locale
+		FROM organizations
+	`)
+	if err != nil {
+		return fmt.Errorf("db: load organizations: %w", err)
+	}
+	defer organizationRows.Close()
+	for organizationRows.Next() {
+		var record org.Organization
+		if err := organizationRows.Scan(&record.ID, &record.Slug, &record.DisplayName, &record.DefaultUILocale, &record.DefaultContentLocale); err != nil {
+			return fmt.Errorf("db: scan organization: %w", err)
+		}
+		snapshot.Organizations[record.ID] = record
+	}
+	if err := organizationRows.Err(); err != nil {
+		return fmt.Errorf("db: iterate organizations: %w", err)
+	}
+
+	userRows, err := p.db.QueryContext(ctx, `
+		SELECT id::text, email, display_name, preferred_ui_locale, COALESCE(timezone, '')
+		FROM users
+	`)
+	if err != nil {
+		return fmt.Errorf("db: load users: %w", err)
+	}
+	defer userRows.Close()
+	for userRows.Next() {
+		var record auth.User
+		if err := userRows.Scan(&record.ID, &record.Email, &record.DisplayName, &record.PreferredUILocale, &record.Timezone); err != nil {
+			return fmt.Errorf("db: scan user: %w", err)
+		}
+		snapshot.Users[record.ID] = record
+	}
+	if err := userRows.Err(); err != nil {
+		return fmt.Errorf("db: iterate users: %w", err)
+	}
+
+	roleRows, err := p.db.QueryContext(ctx, `
+		SELECT id::text, organization_id::text, role_code, display_name
+		FROM roles
+	`)
+	if err != nil {
+		return fmt.Errorf("db: load roles: %w", err)
+	}
+	defer roleRows.Close()
+	for roleRows.Next() {
+		var record org.Role
+		if err := roleRows.Scan(&record.ID, &record.OrgID, &record.Code, &record.DisplayName); err != nil {
+			return fmt.Errorf("db: scan role: %w", err)
+		}
+		snapshot.Roles[record.ID] = record
+	}
+	if err := roleRows.Err(); err != nil {
+		return fmt.Errorf("db: iterate roles: %w", err)
+	}
+
+	memberRows, err := p.db.QueryContext(ctx, `
+		SELECT id::text, organization_id::text, user_id::text, COALESCE(role_id::text, ''), membership_status
+		FROM memberships
+	`)
+	if err != nil {
+		return fmt.Errorf("db: load memberships: %w", err)
+	}
+	defer memberRows.Close()
+	for memberRows.Next() {
+		var record org.Member
+		if err := memberRows.Scan(&record.ID, &record.OrgID, &record.UserID, &record.RoleID, &record.Status); err != nil {
+			return fmt.Errorf("db: scan membership: %w", err)
+		}
+		snapshot.Memberships[record.ID] = record
+	}
+	if err := memberRows.Err(); err != nil {
+		return fmt.Errorf("db: iterate memberships: %w", err)
+	}
+
+	permissionRows, err := p.db.QueryContext(ctx, `
+		SELECT role_id::text, permission_code
+		FROM role_permissions
+		ORDER BY role_id, permission_code
+	`)
+	if err != nil {
+		return fmt.Errorf("db: load role permissions: %w", err)
+	}
+	defer permissionRows.Close()
+	for permissionRows.Next() {
+		var roleID string
+		var permissionCode string
+		if err := permissionRows.Scan(&roleID, &permissionCode); err != nil {
+			return fmt.Errorf("db: scan role permission: %w", err)
+		}
+		snapshot.RolePermissions[roleID] = append(snapshot.RolePermissions[roleID], permissionCode)
+	}
+	if err := permissionRows.Err(); err != nil {
+		return fmt.Errorf("db: iterate role permissions: %w", err)
+	}
+
 	return nil
 }
 
@@ -876,6 +982,9 @@ func (p *PostgresPersister) saveRelationalSnapshot(ctx context.Context, tx *sql.
 	if err := clearMainTables(ctx, tx); err != nil {
 		return err
 	}
+	if err := p.saveAuthOrg(ctx, tx, snapshot); err != nil {
+		return err
+	}
 	if err := p.saveProjectsEpisodesScenesShotsSnapshots(ctx, tx, snapshot); err != nil {
 		return err
 	}
@@ -886,6 +995,87 @@ func (p *PostgresPersister) saveRelationalSnapshot(ctx context.Context, tx *sql.
 	if err := p.saveBillingEvents(ctx, tx, snapshot, usageIDsByRun, budgetIDsByProject); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (p *PostgresPersister) saveAuthOrg(ctx context.Context, tx *sql.Tx, snapshot Snapshot) error {
+	for _, record := range snapshot.Organizations {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO organizations (
+				id, slug, display_name, default_ui_locale, default_content_locale, created_at, updated_at
+			) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+			ON CONFLICT (id) DO UPDATE
+			SET slug = EXCLUDED.slug,
+			    display_name = EXCLUDED.display_name,
+			    default_ui_locale = EXCLUDED.default_ui_locale,
+			    default_content_locale = EXCLUDED.default_content_locale,
+			    updated_at = NOW()
+		`, record.ID, record.Slug, record.DisplayName, record.DefaultUILocale, record.DefaultContentLocale); err != nil {
+			return fmt.Errorf("db: upsert organization %s: %w", record.ID, err)
+		}
+	}
+
+	for _, record := range snapshot.Users {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO users (
+				id, email, display_name, preferred_ui_locale, timezone, created_at, updated_at
+			) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+			ON CONFLICT (id) DO UPDATE
+			SET email = EXCLUDED.email,
+			    display_name = EXCLUDED.display_name,
+			    preferred_ui_locale = EXCLUDED.preferred_ui_locale,
+			    timezone = EXCLUDED.timezone,
+			    updated_at = NOW()
+		`, record.ID, record.Email, record.DisplayName, record.PreferredUILocale, emptyToNil(record.Timezone)); err != nil {
+			return fmt.Errorf("db: upsert user %s: %w", record.ID, err)
+		}
+	}
+
+	for _, record := range snapshot.Roles {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO roles (
+				id, organization_id, role_code, display_name, created_at, updated_at
+			) VALUES ($1, $2, $3, $4, NOW(), NOW())
+			ON CONFLICT (id) DO UPDATE
+			SET organization_id = EXCLUDED.organization_id,
+			    role_code = EXCLUDED.role_code,
+			    display_name = EXCLUDED.display_name,
+			    updated_at = NOW()
+		`, record.ID, record.OrgID, record.Code, record.DisplayName); err != nil {
+			return fmt.Errorf("db: upsert role %s: %w", record.ID, err)
+		}
+	}
+
+	for _, record := range snapshot.Memberships {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO memberships (
+				id, organization_id, user_id, role_id, membership_status, joined_at, created_at, updated_at
+			) VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), NOW())
+			ON CONFLICT (id) DO UPDATE
+			SET organization_id = EXCLUDED.organization_id,
+			    user_id = EXCLUDED.user_id,
+			    role_id = EXCLUDED.role_id,
+			    membership_status = EXCLUDED.membership_status,
+			    updated_at = NOW()
+		`, record.ID, record.OrgID, record.UserID, nullableUUID(record.RoleID), defaultString(record.Status, "active")); err != nil {
+			return fmt.Errorf("db: upsert membership %s: %w", record.ID, err)
+		}
+	}
+
+	for roleID, permissionCodes := range snapshot.RolePermissions {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM role_permissions WHERE role_id = $1`, roleID); err != nil {
+			return fmt.Errorf("db: clear role permissions %s: %w", roleID, err)
+		}
+		for _, permissionCode := range permissionCodes {
+			if _, err := tx.ExecContext(ctx, `
+				INSERT INTO role_permissions (role_id, permission_code, created_at)
+				VALUES ($1, $2, NOW())
+			`, roleID, permissionCode); err != nil {
+				return fmt.Errorf("db: insert role permission %s/%s: %w", roleID, permissionCode, err)
+			}
+		}
+	}
+
 	return nil
 }
 
