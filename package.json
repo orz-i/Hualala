@@ -7,6 +7,9 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:e2e:admin": "playwright test tests/e2e/admin-smoke.spec.ts",
+    "test:e2e:creator": "playwright test tests/e2e/creator-smoke.spec.ts",
+    "test:e2e:phase1": "playwright test tests/e2e/phase1-acceptance.spec.ts",
     "dev": "turbo run dev",
     "proto:lint": "node tooling/scripts/run-buf.mjs lint",
     "proto:gen": "node tooling/scripts/run-buf.mjs generate",
@@ -14,6 +17,7 @@
   },
   "devDependencies": {
     "@bufbuild/buf": "^1.66.1",
+    "@playwright/test": "^1.58.2",
     "pnpm": "10.16.0",
     "turbo": "^2.5.6"
   },
