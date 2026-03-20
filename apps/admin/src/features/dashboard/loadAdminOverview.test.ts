@@ -94,5 +94,28 @@ describe("loadAdminOverview", () => {
     expect(result.reviewSummary.latestConclusion).toBe("approved");
     expect(result.billingEvents).toHaveLength(1);
     expect(result.evaluationRuns[0]?.status).toBe("passed");
+    expect(result.recentChanges).toEqual([
+      {
+        id: "billing-event-1",
+        kind: "billing",
+        title: "最近计费事件",
+        detail: "budget_reserved · 180.00 元",
+        tone: "info",
+      },
+      {
+        id: "evaluation-eval-1",
+        kind: "evaluation",
+        title: "最近评估结果",
+        detail: "passed · 0 个失败检查",
+        tone: "success",
+      },
+      {
+        id: "review-review-1",
+        kind: "review",
+        title: "最近评审结论",
+        detail: "approved",
+        tone: "success",
+      },
+    ]);
   });
 });

@@ -20,6 +20,29 @@ describe("AdminOverviewPage", () => {
           },
           evaluationRuns: [{ id: "eval-1", status: "passed", failedChecks: [] }],
           shotReviews: [{ id: "review-1", conclusion: "approved" }],
+          recentChanges: [
+            {
+              id: "billing-event-1",
+              kind: "billing",
+              title: "最近计费事件",
+              detail: "budget_reserved · 180.00 元",
+              tone: "info",
+            },
+            {
+              id: "evaluation-eval-1",
+              kind: "evaluation",
+              title: "最近评估结果",
+              detail: "passed · 0 个失败检查",
+              tone: "success",
+            },
+            {
+              id: "review-review-1",
+              kind: "review",
+              title: "最近评审结论",
+              detail: "approved",
+              tone: "success",
+            },
+          ],
         }}
       />,
     );
@@ -30,10 +53,12 @@ describe("AdminOverviewPage", () => {
     expect(screen.getByText("1 条计费事件")).toBeInTheDocument();
     expect(screen.getAllByText("approved").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("最近评估：passed")).toBeInTheDocument();
-    expect(screen.getByText("最近变更摘要")).toBeInTheDocument();
-    expect(screen.getByText("最近计费事件：budget_reserved · 180.00 元")).toBeInTheDocument();
-    expect(screen.getByText("最近评估结果：passed · 0 个失败检查")).toBeInTheDocument();
-    expect(screen.getByText("最近评审结论：approved")).toBeInTheDocument();
+    expect(screen.getByText("最近变更")).toBeInTheDocument();
+    expect(screen.getByText("最近计费事件")).toBeInTheDocument();
+    expect(screen.getByText("budget_reserved · 180.00 元")).toBeInTheDocument();
+    expect(screen.getByText("最近评估结果")).toBeInTheDocument();
+    expect(screen.getByText("passed · 0 个失败检查")).toBeInTheDocument();
+    expect(screen.getByText("最近评审结论")).toBeInTheDocument();
   });
 
   it("allows submitting a new budget limit", () => {
@@ -56,6 +81,29 @@ describe("AdminOverviewPage", () => {
           },
           evaluationRuns: [{ id: "eval-1", status: "passed", failedChecks: [] }],
           shotReviews: [{ id: "review-1", conclusion: "approved" }],
+          recentChanges: [
+            {
+              id: "billing-event-1",
+              kind: "billing",
+              title: "最近计费事件",
+              detail: "budget_reserved · 180.00 元",
+              tone: "info",
+            },
+            {
+              id: "evaluation-eval-1",
+              kind: "evaluation",
+              title: "最近评估结果",
+              detail: "passed · 0 个失败检查",
+              tone: "success",
+            },
+            {
+              id: "review-review-1",
+              kind: "review",
+              title: "最近评审结论",
+              detail: "approved",
+              tone: "success",
+            },
+          ],
         }}
         onUpdateBudgetLimit={onUpdateBudgetLimit}
         budgetFeedback={{
@@ -93,6 +141,29 @@ describe("AdminOverviewPage", () => {
           },
           evaluationRuns: [{ id: "eval-1", status: "passed", failedChecks: [] }],
           shotReviews: [{ id: "review-1", conclusion: "approved" }],
+          recentChanges: [
+            {
+              id: "billing-event-1",
+              kind: "billing",
+              title: "最近计费事件",
+              detail: "budget_reserved · 180.00 元",
+              tone: "info",
+            },
+            {
+              id: "evaluation-eval-1",
+              kind: "evaluation",
+              title: "最近评估结果",
+              detail: "passed · 0 个失败检查",
+              tone: "success",
+            },
+            {
+              id: "review-review-1",
+              kind: "review",
+              title: "最近评审结论",
+              detail: "approved",
+              tone: "success",
+            },
+          ],
         }}
         onUpdateBudgetLimit={onUpdateBudgetLimit}
         budgetFeedback={{

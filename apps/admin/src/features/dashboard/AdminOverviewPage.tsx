@@ -35,6 +35,14 @@ type ShotReviewSummary = {
   conclusion: string;
 };
 
+type RecentChangeSummary = {
+  id: string;
+  kind: "billing" | "evaluation" | "review";
+  title: string;
+  detail: string;
+  tone: "info" | "success" | "warning";
+};
+
 export type AdminOverviewViewModel = {
   budgetSnapshot: BudgetSnapshot;
   usageRecords: UsageRecordSummary[];
@@ -42,6 +50,7 @@ export type AdminOverviewViewModel = {
   reviewSummary: ReviewSummary;
   evaluationRuns: EvaluationRunSummary[];
   shotReviews: ShotReviewSummary[];
+  recentChanges: RecentChangeSummary[];
 };
 
 type BudgetFeedback = {
@@ -80,8 +89,6 @@ export function AdminOverviewPage({
   budgetFeedback,
 }: AdminOverviewPageProps) {
   const latestEvaluation = overview.evaluationRuns[0];
-  const latestBillingEvent = overview.billingEvents[0];
-  const latestShotReview = overview.shotReviews[0];
   const budgetInputId = useId();
   const [budgetLimitYuan, setBudgetLimitYuan] = useState(
     (overview.budgetSnapshot.limitCents / 100).toFixed(2),
@@ -96,6 +103,25 @@ export function AdminOverviewPage({
   useEffect(() => {
     setBudgetLimitYuan((overview.budgetSnapshot.limitCents / 100).toFixed(2));
   }, [overview.budgetSnapshot.limitCents]);
+
+  const recentChangePalette = (tone: RecentChangeSummary["tone"]) =>
+    tone === "success"
+      ? {
+          background: "rgba(15, 118, 110, 0.08)",
+          borderLeft: "4px solid #0f766e",
+          color: "#115e59",
+        }
+      : tone === "warning"
+        ? {
+            background: "rgba(245, 158, 11, 0.12)",
+            borderLeft: "4px solid #b45309",
+            color: "#92400e",
+          }
+        : {
+            background: "rgba(59, 130, 246, 0.1)",
+            borderLeft: "4px solid #2563eb",
+            color: "#1d4ed8",
+          };
 
   return (
     <main
@@ -223,20 +249,23 @@ export function AdminOverviewPage({
           }}
         >
           <article style={panelStyle}>
-            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>最近变更摘要</h2>
+            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>最近变更</h2>
             <div style={{ display: "grid", gap: "12px" }}>
-              <p style={metricStyle}>
-                最近计费事件：{latestBillingEvent?.eventType ?? "pending"} ·{" "}
-                {formatCurrency(latestBillingEvent?.amountCents ?? 0)}
-              </p>
-              <p style={metricStyle}>
-                最近评估结果：{latestEvaluation?.status ?? "pending"} ·{" "}
-                {latestEvaluation?.failedChecks.length ?? 0} 个失败检查
-              </p>
-              <p style={metricStyle}>
-                最近评审结论：
-                {latestShotReview?.conclusion ?? overview.reviewSummary.latestConclusion}
-              </p>
+              {overview.recentChanges.map((change) => (
+                <article
+                  key={change.id}
+                  style={{
+                    display: "grid",
+                    gap: "4px",
+                    padding: "14px 16px",
+                    borderRadius: "14px",
+                    ...recentChangePalette(change.tone),
+                  }}
+                >
+                  <strong>{change.title}</strong>
+                  <span>{change.detail}</span>
+                </article>
+              ))}
             </div>
           </article>
 

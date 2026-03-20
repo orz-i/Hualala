@@ -13,29 +13,12 @@ import {
   runSubmissionGateChecks,
   submitShotForReview,
 } from "../features/shot-workbench/mutateShotWorkbench";
-import type {
-  ActionFeedbackModel,
-  ActionFeedbackSection,
-} from "../features/shared/ActionFeedback";
+import type { ActionFeedbackModel } from "../features/shared/ActionFeedback";
+import {
+  buildImportFeedback,
+  buildShotFeedback,
+} from "../features/shared/buildActionFeedback";
 import { ShotWorkbenchPage, type ShotWorkbenchViewModel } from "../features/shot-workbench/ShotWorkbenchPage";
-
-function createFeedbackSections(
-  entries: Array<{ label: string; items?: string[] | string | undefined }>,
-): ActionFeedbackSection[] {
-  return entries.flatMap((entry): ActionFeedbackSection[] => {
-    if (entry.items === undefined) {
-      return [];
-    }
-
-    if (Array.isArray(entry.items)) {
-      return entry.items.length > 0 ? [{ label: entry.label, items: entry.items }] : [];
-    }
-
-    return entry.items.trim() !== ""
-      ? [{ label: entry.label, items: entry.items }]
-      : [];
-  });
-}
 
 export function App() {
   const [shotWorkbench, setShotWorkbench] = useState<ShotWorkbenchViewModel | null>(null);
@@ -139,21 +122,15 @@ export function App() {
             await confirmImportBatchItems(input);
             const nextWorkbench = await refreshImportWorkbench();
             startTransition(() => {
-              setImportActionFeedback({
-                tone: "success",
-                message: "匹配确认已完成",
-                sections: createFeedbackSections([
-                  { label: "当前批次状态", items: nextWorkbench?.importBatch.status },
-                  {
-                    label: "当前执行状态",
-                    items: nextWorkbench?.shotExecutions[0]?.status ?? "pending",
-                  },
-                  {
-                    label: "当前主素材",
-                    items: nextWorkbench?.shotExecutions[0]?.primaryAssetId || undefined,
-                  },
-                ]),
-              });
+              setImportActionFeedback(
+                buildImportFeedback({
+                  tone: "success",
+                  message: "匹配确认已完成",
+                  latestImportBatchStatus: nextWorkbench?.importBatch.status,
+                  latestShotExecutionStatus: nextWorkbench?.shotExecutions[0]?.status ?? "pending",
+                  latestPrimaryAssetId: nextWorkbench?.shotExecutions[0]?.primaryAssetId,
+                }),
+              );
             });
           } catch (error: unknown) {
             const message =
@@ -177,21 +154,15 @@ export function App() {
             await selectPrimaryAssetForImportBatch(input);
             const nextWorkbench = await refreshImportWorkbench();
             startTransition(() => {
-              setImportActionFeedback({
-                tone: "success",
-                message: "主素材选择已完成",
-                sections: createFeedbackSections([
-                  { label: "当前批次状态", items: nextWorkbench?.importBatch.status },
-                  {
-                    label: "当前执行状态",
-                    items: nextWorkbench?.shotExecutions[0]?.status ?? "pending",
-                  },
-                  {
-                    label: "当前主素材",
-                    items: nextWorkbench?.shotExecutions[0]?.primaryAssetId || undefined,
-                  },
-                ]),
-              });
+              setImportActionFeedback(
+                buildImportFeedback({
+                  tone: "success",
+                  message: "主素材选择已完成",
+                  latestImportBatchStatus: nextWorkbench?.importBatch.status,
+                  latestShotExecutionStatus: nextWorkbench?.shotExecutions[0]?.status ?? "pending",
+                  latestPrimaryAssetId: nextWorkbench?.shotExecutions[0]?.primaryAssetId,
+                }),
+              );
             });
           } catch (error: unknown) {
             const message =
@@ -224,19 +195,16 @@ export function App() {
             const result = await runSubmissionGateChecks(input);
             const nextWorkbench = await refreshShotWorkbench();
             startTransition(() => {
-              setShotActionFeedback({
-                tone: "success",
-                message: "Gate 检查已完成",
-                sections: createFeedbackSections([
-                  { label: "通过检查", items: result.passedChecks },
-                  { label: "未通过检查", items: result.failedChecks },
-                  { label: "最新评审结论", items: nextWorkbench.reviewSummary.latestConclusion },
-                  {
-                    label: "最近评估",
-                    items: nextWorkbench.latestEvaluationRun?.status ?? "pending",
-                  },
-                ]),
-              });
+              setShotActionFeedback(
+                buildShotFeedback({
+                  tone: "success",
+                  message: "Gate 检查已完成",
+                  passedChecks: result.passedChecks,
+                  failedChecks: result.failedChecks,
+                  latestConclusion: nextWorkbench.reviewSummary.latestConclusion,
+                  latestEvaluationStatus: nextWorkbench.latestEvaluationRun?.status ?? "pending",
+                }),
+              );
             });
           } catch (error: unknown) {
             const message =
@@ -260,17 +228,14 @@ export function App() {
             await submitShotForReview(input);
             const nextWorkbench = await refreshShotWorkbench();
             startTransition(() => {
-              setShotActionFeedback({
-                tone: "success",
-                message: "提交评审已完成",
-                sections: createFeedbackSections([
-                  { label: "最新评审结论", items: nextWorkbench.reviewSummary.latestConclusion },
-                  {
-                    label: "最近评估",
-                    items: nextWorkbench.latestEvaluationRun?.status ?? "pending",
-                  },
-                ]),
-              });
+              setShotActionFeedback(
+                buildShotFeedback({
+                  tone: "success",
+                  message: "提交评审已完成",
+                  latestConclusion: nextWorkbench.reviewSummary.latestConclusion,
+                  latestEvaluationStatus: nextWorkbench.latestEvaluationRun?.status ?? "pending",
+                }),
+              );
             });
           } catch (error: unknown) {
             const message =
