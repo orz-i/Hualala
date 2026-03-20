@@ -9,6 +9,7 @@ import (
 
 	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 func resetSessionStore(store *db.MemoryStore) {
@@ -43,6 +44,7 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 		}
 
 		session := createSession(store, request.OrganizationID, request.ProjectID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
+		publishUploadSessionUpdated(store, session)
 		writeSessionResponse(w, http.StatusOK, session)
 	})
 
@@ -67,6 +69,7 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 				http.NotFound(w, r)
 				return
 			}
+			publishUploadSessionUpdated(store, session)
 			writeSessionResponse(w, http.StatusOK, session)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -158,4 +161,32 @@ func sessionResumeHint(session asset.UploadSession) string {
 		return fmt.Sprintf("retry from byte 0 for %s", session.FileName)
 	}
 	return fmt.Sprintf("upload %s from byte 0", session.FileName)
+}
+
+func publishUploadSessionUpdated(store *db.MemoryStore, session asset.UploadSession) {
+	if store == nil || store.EventPublisher == nil {
+		return
+	}
+
+	body, err := json.Marshal(map[string]any{
+		"session_id":   session.ID,
+		"project_id":   session.ProjectID,
+		"status":       sessionStatus(session),
+		"retry_count":  session.RetryCount,
+		"resume_hint":  sessionResumeHint(session),
+		"expires_at":   session.ExpiresAt.Format(time.RFC3339),
+		"organization": session.OrgID,
+	})
+	if err != nil {
+		return
+	}
+
+	store.EventPublisher.Publish(events.Event{
+		EventType:      "asset.upload_session.updated",
+		OrganizationID: session.OrgID,
+		ProjectID:      session.ProjectID,
+		ResourceType:   "upload_session",
+		ResourceID:     session.ID,
+		Payload:        string(body),
+	})
 }

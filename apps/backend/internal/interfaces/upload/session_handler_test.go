@@ -3,11 +3,13 @@ package upload
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/hualala/apps/backend/internal/interfaces/sse"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
@@ -108,6 +110,56 @@ func TestUploadSessionsAreScopedToStore(t *testing.T) {
 
 	if statusRec.Code != http.StatusNotFound {
 		t.Fatalf("expected store-scoped session to be missing from another store, got %d with body %s", statusRec.Code, statusRec.Body.String())
+	}
+}
+
+func TestUploadSessionPublishesSSEEvents(t *testing.T) {
+	store := db.NewMemoryStore()
+	resetSessionStore(store)
+	store.EventPublisher.Reset()
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, store)
+	sse.RegisterRoutes(mux, store.EventPublisher)
+
+	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
+		"organization_id":    "org-1",
+		"project_id":         "project-1",
+		"file_name":          "shot.png",
+		"checksum":           "sha256:abc123",
+		"size_bytes":         1024,
+		"expires_in_seconds": 60,
+	})
+	createResponse := decodeUploadJSONResponse(t, createRec)
+	sessionID := createResponse["session_id"].(string)
+
+	retryRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions/"+sessionID+"/retry", nil)
+	retryResponse := decodeUploadJSONResponse(t, retryRec)
+	if got := retryResponse["retry_count"].(float64); got != 1 {
+		t.Fatalf("expected retry_count 1 after retry, got %.0f", got)
+	}
+
+	sseReq := httptest.NewRequest(http.MethodGet, "/sse/events?organization_id=org-1&project_id=project-1", nil)
+	sseRec := httptest.NewRecorder()
+	mux.ServeHTTP(sseRec, sseReq)
+
+	if sseRec.Code != http.StatusOK {
+		t.Fatalf("expected SSE status 200, got %d", sseRec.Code)
+	}
+
+	body, err := io.ReadAll(sseRec.Body)
+	if err != nil {
+		t.Fatalf("io.ReadAll returned error: %v", err)
+	}
+	stream := string(body)
+	if !strings.Contains(stream, "event: asset.upload_session.updated") {
+		t.Fatalf("expected upload session SSE event, got body %q", stream)
+	}
+	if !strings.Contains(stream, `"session_id":"`+sessionID+`"`) {
+		t.Fatalf("expected upload session id in SSE payload, got body %q", stream)
+	}
+	if !strings.Contains(stream, `"retry_count":1`) {
+		t.Fatalf("expected retry_count 1 in SSE payload, got body %q", stream)
 	}
 }
 
