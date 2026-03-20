@@ -1,5 +1,9 @@
 # AI 剧集生成平台 Phase 1 Implementation Plan
 
+> **Archive status (2026-03-20):** Phase 1 已完成并合并到 `master`。当前仓库的权威状态说明见 `docs/reports/2026-03-20-phase1-closeout.md`，当前文件保留为实施过程归档，不再代表“仍在执行中的任务清单”。
+>
+> **Completion snapshot:** Task 7 稳定性链路、Task 10 的 mock + real acceptance，以及 CI 中的 `e2e` / `e2e_real` 门都已落地；未逐项回填的 checkbox 应视为历史执行痕迹，而不是当前未完成项。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 基于最终设计文档，在绿地仓库中搭建 AI 剧集生成平台 Phase 1 的可演示生产闭环，覆盖项目建模、双语内容快照、镜头执行、素材导入、审核、预算与审计基础能力。
