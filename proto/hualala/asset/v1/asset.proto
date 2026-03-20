@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package hualala.asset.v1;
+
+option go_package = "github.com/hualala/apps/backend/gen/hualala/asset/v1;assetv1";
+
+service AssetService {
+  rpc CreateImportBatch(CreateImportBatchRequest) returns (CreateImportBatchResponse);
+  rpc ListImportBatchItems(ListImportBatchItemsRequest) returns (ListImportBatchItemsResponse);
+  rpc BatchConfirmImportBatchItems(BatchConfirmImportBatchItemsRequest) returns (BatchConfirmImportBatchItemsResponse);
+  rpc ListCandidateAssets(ListCandidateAssetsRequest) returns (ListCandidateAssetsResponse);
+  rpc GetAssetProvenanceSummary(GetAssetProvenanceSummaryRequest) returns (GetAssetProvenanceSummaryResponse);
+}
+
+message ImportBatch {
+  string id = 1;
+  string project_id = 2;
+  string status = 3;
+}
+
+message ImportBatchItem {
+  string id = 1;
+  string import_batch_id = 2;
+  string status = 3;
+  string matched_shot_id = 4;
+}
+
+message MediaAsset {
+  string id = 1;
+  string project_id = 2;
+  string source_type = 3;
+  string rights_status = 4;
+}
+
+message ShotCandidateAsset {
+  string id = 1;
+  string shot_execution_id = 2;
+  string asset_id = 3;
+}
+
+message CreateImportBatchRequest {
+  string project_id = 1;
+  string operator_id = 2;
+}
+
+message CreateImportBatchResponse {
+  ImportBatch import_batch = 1;
+}
+
+message ListImportBatchItemsRequest {
+  string import_batch_id = 1;
+}
+
+message ListImportBatchItemsResponse {
+  repeated ImportBatchItem items = 1;
+}
+
+message BatchConfirmImportBatchItemsRequest {
+  string import_batch_id = 1;
+  repeated string item_ids = 2;
+}
+
+message BatchConfirmImportBatchItemsResponse {
+  repeated ImportBatchItem items = 1;
+}
+
+message ListCandidateAssetsRequest {
+  string shot_execution_id = 1;
+}
+
+message ListCandidateAssetsResponse {
+  repeated ShotCandidateAsset assets = 1;
+}
+
+message GetAssetProvenanceSummaryRequest {
+  string asset_id = 1;
+}
+
+message GetAssetProvenanceSummaryResponse {
+  MediaAsset asset = 1;
+  string provenance_summary = 2;
+}

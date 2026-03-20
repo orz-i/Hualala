@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package hualala.content.v1;
+
+option go_package = "github.com/hualala/apps/backend/gen/hualala/content/v1;contentv1";
+
+service ContentService {
+  rpc ListScenes(ListScenesRequest) returns (ListScenesResponse);
+  rpc GetScene(GetSceneRequest) returns (GetSceneResponse);
+  rpc ListSceneShots(ListSceneShotsRequest) returns (ListSceneShotsResponse);
+  rpc GetShot(GetShotRequest) returns (GetShotResponse);
+  rpc UpdateShotStructure(UpdateShotStructureRequest) returns (UpdateShotStructureResponse);
+  rpc CreateContentSnapshot(CreateContentSnapshotRequest) returns (CreateContentSnapshotResponse);
+  rpc CreateLocalizedSnapshot(CreateLocalizedSnapshotRequest) returns (CreateLocalizedSnapshotResponse);
+}
+
+message Scene {
+  string id = 1;
+  string episode_id = 2;
+  string code = 3;
+  string title = 4;
+  string source_locale = 5;
+}
+
+message Shot {
+  string id = 1;
+  string scene_id = 2;
+  string code = 3;
+  string title = 4;
+  string source_locale = 5;
+}
+
+message ContentSnapshot {
+  string id = 1;
+  string owner_type = 2;
+  string owner_id = 3;
+  string locale = 4;
+  string source_snapshot_id = 5;
+  string translation_group_id = 6;
+  string translation_status = 7;
+  string body = 8;
+}
+
+message ListScenesRequest {
+  string project_id = 1;
+  string episode_id = 2;
+  string display_locale = 3;
+}
+
+message ListScenesResponse {
+  repeated Scene scenes = 1;
+}
+
+message GetSceneRequest {
+  string scene_id = 1;
+  string display_locale = 2;
+}
+
+message GetSceneResponse {
+  Scene scene = 1;
+}
+
+message ListSceneShotsRequest {
+  string scene_id = 1;
+  string display_locale = 2;
+}
+
+message ListSceneShotsResponse {
+  repeated Shot shots = 1;
+}
+
+message GetShotRequest {
+  string shot_id = 1;
+  string display_locale = 2;
+}
+
+message GetShotResponse {
+  Shot shot = 1;
+}
+
+message UpdateShotStructureRequest {
+  string shot_id = 1;
+  string title = 2;
+  string content_locale = 3;
+}
+
+message UpdateShotStructureResponse {
+  Shot shot = 1;
+}
+
+message CreateContentSnapshotRequest {
+  string owner_type = 1;
+  string owner_id = 2;
+  string content_locale = 3;
+  string body = 4;
+}
+
+message CreateContentSnapshotResponse {
+  ContentSnapshot snapshot = 1;
+}
+
+message CreateLocalizedSnapshotRequest {
+  string source_snapshot_id = 1;
+  string content_locale = 2;
+  string body = 3;
+}
+
+message CreateLocalizedSnapshotResponse {
+  ContentSnapshot snapshot = 1;
+}
