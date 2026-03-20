@@ -49,6 +49,39 @@ func (h *assetHandler) AddCandidateAsset(ctx context.Context, req *connectrpc.Re
 	}), nil
 }
 
+func (h *assetHandler) ListImportBatchItems(ctx context.Context, req *connectrpc.Request[assetv1.ListImportBatchItemsRequest]) (*connectrpc.Response[assetv1.ListImportBatchItemsResponse], error) {
+	records, err := h.service.ListImportBatchItems(ctx, assetapp.ListImportBatchItemsInput{
+		ImportBatchID: req.Msg.GetImportBatchId(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	items := make([]*assetv1.ImportBatchItem, 0, len(records))
+	for _, record := range records {
+		items = append(items, mapImportBatchItem(record))
+	}
+	return connectrpc.NewResponse(&assetv1.ListImportBatchItemsResponse{
+		Items: items,
+	}), nil
+}
+
+func (h *assetHandler) BatchConfirmImportBatchItems(ctx context.Context, req *connectrpc.Request[assetv1.BatchConfirmImportBatchItemsRequest]) (*connectrpc.Response[assetv1.BatchConfirmImportBatchItemsResponse], error) {
+	records, err := h.service.BatchConfirmImportBatchItems(ctx, assetapp.BatchConfirmImportBatchItemsInput{
+		ImportBatchID: req.Msg.GetImportBatchId(),
+		ItemIDs:       req.Msg.GetItemIds(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	items := make([]*assetv1.ImportBatchItem, 0, len(records))
+	for _, record := range records {
+		items = append(items, mapImportBatchItem(record))
+	}
+	return connectrpc.NewResponse(&assetv1.BatchConfirmImportBatchItemsResponse{
+		Items: items,
+	}), nil
+}
+
 func (h *assetHandler) ListCandidateAssets(ctx context.Context, req *connectrpc.Request[assetv1.ListCandidateAssetsRequest]) (*connectrpc.Response[assetv1.ListCandidateAssetsResponse], error) {
 	records, err := h.service.ListCandidateAssets(ctx, assetapp.ListCandidateAssetsInput{
 		ShotExecutionID: req.Msg.GetShotExecutionId(),

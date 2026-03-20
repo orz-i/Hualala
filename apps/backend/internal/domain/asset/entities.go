@@ -34,3 +34,13 @@ type CandidateAsset struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
+
+type ImportBatchItem struct {
+	ID            string
+	ImportBatchID string
+	Status        string
+	MatchedShotID string
+	AssetID       string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}

@@ -21,22 +21,23 @@ func NewHandle() Handle {
 type MemoryStore struct {
 	mu sync.RWMutex
 
-	nextProjectID       int
-	nextEpisodeID       int
-	nextSceneID         int
-	nextShotID          int
-	nextSnapshotID      int
-	nextGroupID         int
-	nextExecutionID     int
-	nextRunID           int
-	nextImportBatchID   int
-	nextAssetID         int
-	nextCandidateID     int
-	nextReviewID        int
-	nextBudgetID        int
-	nextUsageID         int
-	nextBillingEventID  int
-	nextEvaluationRunID int
+	nextProjectID         int
+	nextEpisodeID         int
+	nextSceneID           int
+	nextShotID            int
+	nextSnapshotID        int
+	nextGroupID           int
+	nextExecutionID       int
+	nextRunID             int
+	nextImportBatchID     int
+	nextImportBatchItemID int
+	nextAssetID           int
+	nextCandidateID       int
+	nextReviewID          int
+	nextBudgetID          int
+	nextUsageID           int
+	nextBillingEventID    int
+	nextEvaluationRunID   int
 
 	Projects          map[string]project.Project
 	Episodes          map[string]project.Episode
@@ -46,6 +47,7 @@ type MemoryStore struct {
 	ShotExecutions    map[string]execution.ShotExecution
 	ShotExecutionRuns map[string]execution.ShotExecutionRun
 	ImportBatches     map[string]asset.ImportBatch
+	ImportBatchItems  map[string]asset.ImportBatchItem
 	MediaAssets       map[string]asset.MediaAsset
 	CandidateAssets   map[string]asset.CandidateAsset
 	Reviews           map[string]review.ShotReview
@@ -65,6 +67,7 @@ func NewMemoryStore() *MemoryStore {
 		ShotExecutions:    make(map[string]execution.ShotExecution),
 		ShotExecutionRuns: make(map[string]execution.ShotExecutionRun),
 		ImportBatches:     make(map[string]asset.ImportBatch),
+		ImportBatchItems:  make(map[string]asset.ImportBatchItem),
 		MediaAssets:       make(map[string]asset.MediaAsset),
 		CandidateAssets:   make(map[string]asset.CandidateAsset),
 		Reviews:           make(map[string]review.ShotReview),
@@ -118,6 +121,11 @@ func (s *MemoryStore) NextShotExecutionRunID() string {
 func (s *MemoryStore) NextImportBatchID() string {
 	s.nextImportBatchID++
 	return fmt.Sprintf("import-batch-%d", s.nextImportBatchID)
+}
+
+func (s *MemoryStore) NextImportBatchItemID() string {
+	s.nextImportBatchItemID++
+	return fmt.Sprintf("import-batch-item-%d", s.nextImportBatchItemID)
 }
 
 func (s *MemoryStore) NextMediaAssetID() string {

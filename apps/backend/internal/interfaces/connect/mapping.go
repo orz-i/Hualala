@@ -59,6 +59,15 @@ func mapImportBatch(record asset.ImportBatch) *assetv1.ImportBatch {
 	}
 }
 
+func mapImportBatchItem(record asset.ImportBatchItem) *assetv1.ImportBatchItem {
+	return &assetv1.ImportBatchItem{
+		Id:            record.ID,
+		ImportBatchId: record.ImportBatchID,
+		Status:        record.Status,
+		MatchedShotId: record.MatchedShotID,
+	}
+}
+
 func mapMediaAsset(record asset.MediaAsset) *assetv1.MediaAsset {
 	return &assetv1.MediaAsset{
 		Id:            record.ID,
