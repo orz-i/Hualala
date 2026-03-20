@@ -13,6 +13,8 @@ import {
   updateOrgLocaleSettings,
   updateUserPreferences,
 } from "../features/dashboard/mutateGovernance";
+import { subscribeAdminRecentChanges } from "../features/dashboard/subscribeRecentChanges";
+import type { RecentChangeSummary } from "../features/dashboard/AdminOverviewPage";
 
 function waitForFeedbackPaint() {
   return new Promise((resolve) => {
@@ -47,6 +49,25 @@ function buildFallbackGovernance(orgId?: string, userId?: string): AdminGovernan
   };
 }
 
+function mergeRecentChanges(
+  current: RecentChangeSummary[],
+  nextChange: RecentChangeSummary,
+): RecentChangeSummary[] {
+  const order: Array<RecentChangeSummary["kind"]> = ["billing", "evaluation", "review"];
+  const fallbackIndex = order.indexOf(nextChange.kind);
+  const currentIndex = current.findIndex((change) => change.kind === nextChange.kind);
+  const targetIndex = currentIndex >= 0 ? currentIndex : fallbackIndex;
+  const next = [...current];
+
+  if (targetIndex >= 0 && targetIndex < next.length) {
+    next[targetIndex] = nextChange;
+    return next;
+  }
+
+  next.push(nextChange);
+  return next;
+}
+
 export function App() {
   const { locale, setLocale, t } = useLocaleState();
   const [overview, setOverview] = useState<AdminOverviewViewModel | null>(null);
@@ -62,6 +83,7 @@ export function App() {
   const shotExecutionId = searchParams.get("shotExecutionId") ?? "shot-exec-demo-001";
   const orgId = searchParams.get("orgId") ?? undefined;
   const userId = searchParams.get("userId") ?? undefined;
+  const subscriptionOrgId = orgId ?? governance?.currentSession.orgId;
 
   const refreshOverview = async () => {
     const nextOverview = await loadAdminOverview({ projectId, shotExecutionId });
@@ -124,6 +146,30 @@ export function App() {
       cancelled = true;
     };
   }, [orgId, projectId, shotExecutionId, userId]);
+
+  useEffect(() => {
+    if (!overview || !subscriptionOrgId) {
+      return;
+    }
+
+    return subscribeAdminRecentChanges({
+      organizationId: subscriptionOrgId,
+      projectId,
+      onChange: (change) => {
+        startTransition(() => {
+          setOverview((current) => {
+            if (!current) {
+              return current;
+            }
+            return {
+              ...current,
+              recentChanges: mergeRecentChanges(current.recentChanges, change),
+            };
+          });
+        });
+      },
+    });
+  }, [overview ? "ready" : "idle", projectId, subscriptionOrgId]);
 
   if (errorMessage) {
     return <main style={{ padding: "32px" }}>{t("app.error.load", { message: errorMessage })}</main>;

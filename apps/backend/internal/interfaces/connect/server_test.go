@@ -1,6 +1,7 @@
 package connect
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	connectrpc "connectrpc.com/connect"
 	assetv1 "github.com/hualala/apps/backend/gen/hualala/asset/v1"
@@ -63,6 +65,29 @@ func TestRegisterRoutes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.target == "/sse/events" {
+				server := httptest.NewServer(mux)
+				defer server.Close()
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				req, err := http.NewRequestWithContext(ctx, tc.method, server.URL+tc.target, bytes.NewReader(tc.body))
+				if err != nil {
+					t.Fatalf("http.NewRequestWithContext returned error: %v", err)
+				}
+				if tc.contentType != "" {
+					req.Header.Set("Content-Type", tc.contentType)
+				}
+				resp, err := server.Client().Do(req)
+				if err != nil {
+					t.Fatalf("server.Client().Do returned error: %v", err)
+				}
+				defer resp.Body.Close()
+				if resp.StatusCode != tc.expectedStatus {
+					t.Fatalf("expected status %d, got %d", tc.expectedStatus, resp.StatusCode)
+				}
+				return
+			}
+
 			req := httptest.NewRequest(tc.method, tc.target, bytes.NewReader(tc.body))
 			if tc.contentType != "" {
 				req.Header.Set("Content-Type", tc.contentType)
@@ -307,6 +332,9 @@ func TestExecutionAssetReviewBillingRoutes(t *testing.T) {
 	}
 
 	sseReq, err := http.NewRequest(http.MethodGet, server.URL+"/sse/events?organization_id="+project.OrganizationID+"&project_id="+project.ID, nil)
+	sseCtx, cancelSSE := context.WithTimeout(ctx, 2*time.Second)
+	defer cancelSSE()
+	sseReq, err = http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id="+project.OrganizationID+"&project_id="+project.ID, nil)
 	if err != nil {
 		t.Fatalf("http.NewRequest returned error: %v", err)
 	}
@@ -323,11 +351,12 @@ func TestExecutionAssetReviewBillingRoutes(t *testing.T) {
 		t.Fatalf("expected SSE content type, got %q", got)
 	}
 
-	sseBody, err := io.ReadAll(sseResp.Body)
-	if err != nil {
-		t.Fatalf("io.ReadAll returned error: %v", err)
-	}
-	body := string(sseBody)
+	body := readEventStreamUntil(t, sseResp.Body, cancelSSE,
+		"event: shot.execution.updated",
+		`"status":"submitted_for_review"`,
+		"event: shot.review.created",
+		`"conclusion":"approved"`,
+	)
 	if !strings.Contains(body, "event: shot.execution.updated") {
 		t.Fatalf("expected execution SSE event, got body %q", body)
 	}
@@ -339,6 +368,41 @@ func TestExecutionAssetReviewBillingRoutes(t *testing.T) {
 	}
 	if !strings.Contains(body, `"conclusion":"approved"`) {
 		t.Fatalf("expected approved review SSE payload, got body %q", body)
+	}
+}
+
+func readEventStreamUntil(t *testing.T, body io.ReadCloser, cancel context.CancelFunc, markers ...string) string {
+	t.Helper()
+	defer cancel()
+
+	reader := bufio.NewReader(body)
+	var stream strings.Builder
+	deadline := time.After(2 * time.Second)
+
+	for {
+		select {
+		case <-deadline:
+			t.Fatalf("timed out waiting for SSE markers %v in stream %q", markers, stream.String())
+		default:
+		}
+
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			t.Fatalf("ReadString returned error before all markers arrived: %v (stream=%q)", err, stream.String())
+		}
+		stream.WriteString(line)
+
+		current := stream.String()
+		allFound := true
+		for _, marker := range markers {
+			if !strings.Contains(current, marker) {
+				allFound = false
+				break
+			}
+		}
+		if allFound {
+			return current
+		}
 	}
 }
 

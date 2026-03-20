@@ -3,9 +3,12 @@ package sse
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/hualala/apps/backend/internal/platform/events"
 )
+
+const defaultHeartbeatInterval = 15 * time.Second
 
 func resetEventStore(publisher *events.Publisher) {
 	if publisher != nil {
@@ -20,6 +23,10 @@ func publishEvent(publisher *events.Publisher, event events.Event) {
 }
 
 func RegisterRoutes(mux *http.ServeMux, publisher *events.Publisher) {
+	registerRoutesWithHeartbeatInterval(mux, publisher, defaultHeartbeatInterval)
+}
+
+func registerRoutesWithHeartbeatInterval(mux *http.ServeMux, publisher *events.Publisher, heartbeatInterval time.Duration) {
 	if publisher == nil {
 		publisher = events.NewPublisher()
 	}
@@ -33,16 +40,40 @@ func RegisterRoutes(mux *http.ServeMux, publisher *events.Publisher) {
 		organizationID := r.URL.Query().Get("organization_id")
 		projectID := r.URL.Query().Get("project_id")
 		lastEventID := r.Header.Get("Last-Event-ID")
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "sse: streaming unsupported", http.StatusInternalServerError)
+			return
+		}
 
 		w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
 		w.WriteHeader(http.StatusOK)
+		flusher.Flush()
 
 		for _, event := range listReplayEvents(publisher, organizationID, projectID, lastEventID) {
-			_, _ = fmt.Fprintf(w, "id: %s\n", event.ID)
-			_, _ = fmt.Fprintf(w, "event: %s\n", event.EventType)
-			_, _ = fmt.Fprintf(w, "data: %s\n\n", event.Payload)
+			writeEvent(w, event)
+			flusher.Flush()
+		}
+
+		stream, unsubscribe := publisher.Subscribe(organizationID, projectID)
+		defer unsubscribe()
+
+		ticker := time.NewTicker(heartbeatInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-r.Context().Done():
+				return
+			case event := <-stream:
+				writeEvent(w, event)
+				flusher.Flush()
+			case <-ticker.C:
+				_, _ = fmt.Fprint(w, ": keep-alive\n\n")
+				flusher.Flush()
+			}
 		}
 	})
 }
@@ -52,4 +83,10 @@ func listReplayEvents(publisher *events.Publisher, organizationID string, projec
 		return nil
 	}
 	return publisher.List(organizationID, projectID, lastEventID)
+}
+
+func writeEvent(w http.ResponseWriter, event events.Event) {
+	_, _ = fmt.Fprintf(w, "id: %s\n", event.ID)
+	_, _ = fmt.Fprintf(w, "event: %s\n", event.EventType)
+	_, _ = fmt.Fprintf(w, "data: %s\n\n", event.Payload)
 }

@@ -1,4 +1,5 @@
 import { withIdentityHeaders, type DevIdentity } from "./identity";
+import { createSSEClient } from "../sse/client";
 
 export type HualalaFetch = typeof fetch;
 
@@ -33,6 +34,7 @@ export type HualalaClient = {
   baseUrl: string;
   identity: DevIdentity;
   unary<TResponse>(path: string, body: Record<string, unknown>, label?: string): Promise<TResponse>;
+  sse: ReturnType<typeof createSSEClient>;
 };
 
 export function createHualalaClient(options: HualalaClientOptions = {}): HualalaClient {
@@ -43,6 +45,11 @@ export function createHualalaClient(options: HualalaClientOptions = {}): Hualala
   return {
     baseUrl,
     identity,
+    sse: createSSEClient({
+      baseUrl,
+      fetchFn,
+      identity,
+    }),
     async unary<TResponse>(path: string, body: Record<string, unknown>, label = `sdk: failed to call ${path}`) {
       const response = await fetchFn(`${baseUrl}${path}`, {
         method: "POST",
@@ -57,7 +64,11 @@ export function createHualalaClient(options: HualalaClientOptions = {}): Hualala
       });
 
       await assertConnectOk(response, label);
-      return (await response.json()) as TResponse;
+      const text = await response.text();
+      if (text.trim() === "") {
+        return {} as TResponse;
+      }
+      return JSON.parse(text) as TResponse;
     },
   };
 }

@@ -1,54 +1,54 @@
+import { createAssetClient, createExecutionClient } from "@hualala/sdk";
 import {
   confirmImportBatchItems,
   selectPrimaryAssetForImportBatch,
 } from "./mutateImportBatchWorkbench";
 
+vi.mock("@hualala/sdk", () => ({
+  createAssetClient: vi.fn(),
+  createExecutionClient: vi.fn(),
+}));
+
 describe("mutateImportBatchWorkbench", () => {
-  it("posts BatchConfirmImportBatchItems to the real connect endpoint", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-    });
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("confirms import batch items via the sdk asset client", async () => {
+    const batchConfirmImportBatchItemsMock = vi.fn().mockResolvedValue({});
+    vi.mocked(createAssetClient).mockReturnValue({
+      batchConfirmImportBatchItems: batchConfirmImportBatchItemsMock,
+    } as never);
 
     await confirmImportBatchItems({
       importBatchId: "batch-1",
       itemIds: ["item-1"],
       baseUrl: "http://127.0.0.1:8080",
-      fetchFn: fetchMock,
+      fetchFn: vi.fn(),
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8080/hualala.asset.v1.AssetService/BatchConfirmImportBatchItems",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          importBatchId: "batch-1",
-          itemIds: ["item-1"],
-        }),
-      }),
-    );
+    expect(batchConfirmImportBatchItemsMock).toHaveBeenCalledWith({
+      importBatchId: "batch-1",
+      itemIds: ["item-1"],
+    });
   });
 
-  it("posts SelectPrimaryAsset to the real connect endpoint", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-    });
+  it("selects primary asset via the sdk execution client", async () => {
+    const selectPrimaryAssetMock = vi.fn().mockResolvedValue({});
+    vi.mocked(createExecutionClient).mockReturnValue({
+      selectPrimaryAsset: selectPrimaryAssetMock,
+    } as never);
 
     await selectPrimaryAssetForImportBatch({
       shotExecutionId: "shot-exec-1",
       assetId: "asset-1",
       baseUrl: "http://127.0.0.1:8080",
-      fetchFn: fetchMock,
+      fetchFn: vi.fn(),
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8080/hualala.execution.v1.ExecutionService/SelectPrimaryAsset",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          shotExecutionId: "shot-exec-1",
-          assetId: "asset-1",
-        }),
-      }),
-    );
+    expect(selectPrimaryAssetMock).toHaveBeenCalledWith({
+      shotExecutionId: "shot-exec-1",
+      assetId: "asset-1",
+    });
   });
 });

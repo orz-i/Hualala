@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -175,7 +176,9 @@ func TestReliabilityFlow(t *testing.T) {
 	}
 	lastEventID := allEvents[0].ID
 
-	sseReq, err := http.NewRequest(http.MethodGet, server.URL+"/sse/events?organization_id="+project.OrganizationID+"&project_id="+project.ID, nil)
+	sseCtx, cancelSSE := context.WithTimeout(ctx, 2*time.Second)
+	defer cancelSSE()
+	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id="+project.OrganizationID+"&project_id="+project.ID, nil)
 	if err != nil {
 		t.Fatalf("http.NewRequest returned error: %v", err)
 	}
@@ -185,16 +188,50 @@ func TestReliabilityFlow(t *testing.T) {
 		t.Fatalf("SSE request returned error: %v", err)
 	}
 	defer sseResp.Body.Close()
-	sseBody, err := io.ReadAll(sseResp.Body)
-	if err != nil {
-		t.Fatalf("io.ReadAll returned error: %v", err)
-	}
-	stream := string(sseBody)
+	stream := readReliabilityEventStreamUntil(t, sseResp.Body, cancelSSE,
+		"event: workflow.updated",
+		"event: asset.upload_session.updated",
+	)
 	if !strings.Contains(stream, "event: workflow.updated") {
 		t.Fatalf("expected workflow.updated in replay stream, got %q", stream)
 	}
 	if !strings.Contains(stream, "event: asset.upload_session.updated") {
 		t.Fatalf("expected asset.upload_session.updated in replay stream, got %q", stream)
+	}
+}
+
+func readReliabilityEventStreamUntil(t *testing.T, body io.ReadCloser, cancel context.CancelFunc, markers ...string) string {
+	t.Helper()
+	defer cancel()
+
+	reader := bufio.NewReader(body)
+	var stream strings.Builder
+	deadline := time.After(2 * time.Second)
+
+	for {
+		select {
+		case <-deadline:
+			t.Fatalf("timed out waiting for SSE markers %v in stream %q", markers, stream.String())
+		default:
+		}
+
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			t.Fatalf("ReadString returned error before all markers arrived: %v (stream=%q)", err, stream.String())
+		}
+		stream.WriteString(line)
+
+		current := stream.String()
+		allFound := true
+		for _, marker := range markers {
+			if !strings.Contains(current, marker) {
+				allFound = false
+				break
+			}
+		}
+		if allFound {
+			return current
+		}
 	}
 }
 

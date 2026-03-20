@@ -120,6 +120,7 @@ func (s *Service) CreateEvaluationRun(ctx context.Context, input CreateEvaluatio
 		"shot_execution_id": record.ShotExecutionID,
 		"evaluation_run_id": record.ID,
 		"status":            record.Status,
+		"failed_checks_count": len(record.FailedChecks),
 	})
 	return record, nil
 }

@@ -127,6 +127,7 @@ func (s *Service) publishBudgetUpdated(record billing.ProjectBudget) {
 	}
 	payload, err := json.Marshal(map[string]any{
 		"project_id":      record.ProjectID,
+		"amount_cents":    record.LimitCents,
 		"limit_cents":     record.LimitCents,
 		"reserved_cents":  record.ReservedCents,
 		"remaining_cents": record.LimitCents - record.ReservedCents,

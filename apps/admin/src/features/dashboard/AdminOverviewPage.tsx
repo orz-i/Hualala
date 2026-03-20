@@ -37,7 +37,7 @@ type ShotReviewSummary = {
   conclusion: string;
 };
 
-type RecentChangeSummary = {
+export type RecentChangeSummary = {
   id: string;
   kind: "billing" | "evaluation" | "review";
   tone: "info" | "success" | "warning";
