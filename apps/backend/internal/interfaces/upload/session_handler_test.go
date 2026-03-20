@@ -236,6 +236,36 @@ func TestCompleteUploadSessionCreatesAssetRecords(t *testing.T) {
 	}
 }
 
+func TestCreateUploadSessionRejectsUnknownImportBatch(t *testing.T) {
+	store := db.NewMemoryStore()
+	resetSessionStore(store)
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, store)
+
+	reqBody, err := json.Marshal(map[string]any{
+		"organization_id":    "org-1",
+		"project_id":         "project-1",
+		"import_batch_id":    "missing-batch",
+		"file_name":          "shot.png",
+		"checksum":           "sha256:abc123",
+		"size_bytes":         1024,
+		"expires_in_seconds": 60,
+	})
+	if err != nil {
+		t.Fatalf("json.Marshal returned error: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/upload/sessions", bytes.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400 for unknown import batch, got %d with body %s", rec.Code, rec.Body.String())
+	}
+}
+
 func performUploadJSONRequest(t *testing.T, mux *http.ServeMux, method string, target string, body any) *httptest.ResponseRecorder {
 	t.Helper()
 

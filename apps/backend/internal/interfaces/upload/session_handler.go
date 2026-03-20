@@ -43,6 +43,12 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		if strings.TrimSpace(request.ImportBatchID) != "" {
+			if _, ok := store.ImportBatches[strings.TrimSpace(request.ImportBatchID)]; !ok {
+				http.Error(w, "upload: import_batch_id not found", http.StatusBadRequest)
+				return
+			}
+		}
 
 		session := createSession(store, request.OrganizationID, request.ProjectID, request.ImportBatchID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
 		publishUploadSessionUpdated(store, session)
