@@ -52,7 +52,7 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 
 		session := createSession(store, request.OrganizationID, request.ProjectID, request.ImportBatchID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
 		publishUploadSessionUpdated(store, session)
-		writeSessionResponse(w, http.StatusOK, session)
+		writeSessionResponse(w, http.StatusOK, store, session)
 	})
 
 	mux.HandleFunc("/upload/sessions/", func(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +69,7 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 				http.NotFound(w, r)
 				return
 			}
-			writeSessionResponse(w, http.StatusOK, session)
+			writeSessionResponse(w, http.StatusOK, store, session)
 		case r.Method == http.MethodPost && action == "retry":
 			session, ok := retrySession(store, sessionID)
 			if !ok {
@@ -77,7 +77,7 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 				return
 			}
 			publishUploadSessionUpdated(store, session)
-			writeSessionResponse(w, http.StatusOK, session)
+			writeSessionResponse(w, http.StatusOK, store, session)
 		case r.Method == http.MethodPost && action == "complete":
 			var request struct {
 				ShotExecutionID string `json:"shot_execution_id"`
@@ -99,7 +99,7 @@ func RegisterRoutes(mux *http.ServeMux, store *db.MemoryStore) {
 				return
 			}
 			publishUploadSessionUpdated(store, session)
-			writeSessionResponse(w, http.StatusOK, session)
+			writeSessionResponse(w, http.StatusOK, store, session)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
@@ -274,7 +274,7 @@ func parseSessionPath(path string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func writeSessionResponse(w http.ResponseWriter, statusCode int, session asset.UploadSession) {
+func writeSessionResponse(w http.ResponseWriter, statusCode int, store *db.MemoryStore, session asset.UploadSession) {
 	response := map[string]any{
 		"session_id":      session.ID,
 		"import_batch_id": session.ImportBatchID,
@@ -284,6 +284,22 @@ func writeSessionResponse(w http.ResponseWriter, statusCode int, session asset.U
 		"expires_at":      session.ExpiresAt.Format(time.RFC3339),
 		"organization":    session.OrgID,
 		"project_id":      session.ProjectID,
+	}
+	uploadFileID, assetID, variantID, candidateAssetID, shotExecutionID := findSessionArtifacts(store, session.ID)
+	if uploadFileID != "" {
+		response["upload_file_id"] = uploadFileID
+	}
+	if assetID != "" {
+		response["asset_id"] = assetID
+	}
+	if variantID != "" {
+		response["variant_id"] = variantID
+	}
+	if candidateAssetID != "" {
+		response["candidate_asset_id"] = candidateAssetID
+	}
+	if shotExecutionID != "" {
+		response["shot_execution_id"] = shotExecutionID
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -340,4 +356,44 @@ func publishUploadSessionUpdated(store *db.MemoryStore, session asset.UploadSess
 		ResourceID:     session.ID,
 		Payload:        string(body),
 	})
+}
+
+func findSessionArtifacts(store *db.MemoryStore, sessionID string) (string, string, string, string, string) {
+	if store == nil {
+		return "", "", "", "", ""
+	}
+
+	uploadFileID := ""
+	for _, uploadFile := range store.UploadFiles {
+		if uploadFile.UploadSessionID == sessionID {
+			uploadFileID = uploadFile.ID
+			break
+		}
+	}
+
+	assetID := ""
+	variantID := ""
+	if uploadFileID != "" {
+		for _, variant := range store.MediaAssetVariants {
+			if variant.UploadFileID == uploadFileID {
+				variantID = variant.ID
+				assetID = variant.AssetID
+				break
+			}
+		}
+	}
+
+	candidateAssetID := ""
+	shotExecutionID := ""
+	if assetID != "" {
+		for _, candidate := range store.CandidateAssets {
+			if candidate.AssetID == assetID {
+				candidateAssetID = candidate.ID
+				shotExecutionID = candidate.ShotExecutionID
+				break
+			}
+		}
+	}
+
+	return uploadFileID, assetID, variantID, candidateAssetID, shotExecutionID
 }

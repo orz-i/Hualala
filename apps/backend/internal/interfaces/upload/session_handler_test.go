@@ -205,6 +205,15 @@ func TestCompleteUploadSessionCreatesAssetRecords(t *testing.T) {
 	if got := completeResponse["status"].(string); got != "uploaded" {
 		t.Fatalf("expected uploaded session status, got %q", got)
 	}
+	if got := completeResponse["asset_id"].(string); got == "" {
+		t.Fatalf("expected asset_id in upload complete response, got empty")
+	}
+	if got := completeResponse["upload_file_id"].(string); got == "" {
+		t.Fatalf("expected upload_file_id in upload complete response, got empty")
+	}
+	if got := completeResponse["variant_id"].(string); got == "" {
+		t.Fatalf("expected variant_id in upload complete response, got empty")
+	}
 
 	if len(store.MediaAssets) != 1 {
 		t.Fatalf("expected 1 media asset, got %d", len(store.MediaAssets))
@@ -317,6 +326,12 @@ func TestCompleteUploadSessionCanAttachCandidateToShotExecution(t *testing.T) {
 	completeResponse := decodeUploadJSONResponse(t, completeRec)
 	if got := completeResponse["status"].(string); got != "uploaded" {
 		t.Fatalf("expected uploaded session status, got %q", got)
+	}
+	if got := completeResponse["candidate_asset_id"].(string); got == "" {
+		t.Fatalf("expected candidate_asset_id in upload complete response, got empty")
+	}
+	if got := completeResponse["shot_execution_id"].(string); got != "shot-execution-1" {
+		t.Fatalf("expected shot_execution_id shot-execution-1, got %q", got)
 	}
 
 	if len(store.CandidateAssets) != 1 {
