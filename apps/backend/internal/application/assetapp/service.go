@@ -3,6 +3,8 @@ package assetapp
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -15,22 +17,35 @@ type Service struct {
 }
 
 type CreateImportBatchInput struct {
-	ProjectID  string
-	OrgID      string
-	OperatorID string
-	SourceType string
+	ProjectID  string `json:"project_id"`
+	OrgID      string `json:"org_id"`
+	OperatorID string `json:"operator_id"`
+	SourceType string `json:"source_type"`
 }
 
 type AddCandidateAssetInput struct {
+	ShotExecutionID string `json:"shot_execution_id"`
+	ProjectID       string `json:"project_id"`
+	OrgID           string `json:"org_id"`
+	ImportBatchID   string `json:"import_batch_id"`
+	SourceRunID     string `json:"source_run_id"`
+	SourceType      string `json:"source_type"`
+	AssetLocale     string `json:"asset_locale"`
+	RightsStatus    string `json:"rights_status"`
+	AIAnnotated     bool   `json:"ai_annotated"`
+}
+
+type ListCandidateAssetsInput struct {
 	ShotExecutionID string
-	ProjectID       string
-	OrgID           string
-	ImportBatchID   string
-	SourceRunID     string
-	SourceType      string
-	AssetLocale     string
-	RightsStatus    string
-	AIAnnotated     bool
+}
+
+type GetAssetProvenanceSummaryInput struct {
+	AssetID string
+}
+
+type AssetProvenanceSummary struct {
+	Asset             asset.MediaAsset
+	ProvenanceSummary string
 }
 
 func NewService(store *db.MemoryStore) *Service {
@@ -100,4 +115,31 @@ func (s *Service) AddCandidateAsset(_ context.Context, input AddCandidateAssetIn
 	s.store.ShotExecutions[shotExecution.ID] = shotExecution
 
 	return candidate, nil
+}
+
+func (s *Service) ListCandidateAssets(_ context.Context, input ListCandidateAssetsInput) ([]asset.CandidateAsset, error) {
+	candidates := make([]asset.CandidateAsset, 0)
+	for _, candidate := range s.store.CandidateAssets {
+		if candidate.ShotExecutionID == input.ShotExecutionID {
+			candidates = append(candidates, candidate)
+		}
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].ID < candidates[j].ID
+	})
+
+	return candidates, nil
+}
+
+func (s *Service) GetAssetProvenanceSummary(_ context.Context, input GetAssetProvenanceSummaryInput) (AssetProvenanceSummary, error) {
+	record, ok := s.store.MediaAssets[input.AssetID]
+	if !ok {
+		return AssetProvenanceSummary{}, errors.New("assetapp: asset not found")
+	}
+
+	return AssetProvenanceSummary{
+		Asset:             record,
+		ProvenanceSummary: fmt.Sprintf("source_type=%s import_batch_id=%s rights_status=%s", record.SourceType, record.ImportBatchID, record.RightsStatus),
+	}, nil
 }

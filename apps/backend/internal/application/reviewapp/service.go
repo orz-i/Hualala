@@ -3,6 +3,7 @@ package reviewapp
 import (
 	"context"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -15,16 +16,34 @@ type Service struct {
 }
 
 type CreateShotReviewInput struct {
-	ShotExecutionID string
-	Conclusion      string
-	CommentLocale   string
-	Comment         string
+	ShotExecutionID string `json:"shot_execution_id"`
+	Conclusion      string `json:"conclusion"`
+	CommentLocale   string `json:"comment_locale"`
+	Comment         string `json:"comment"`
 }
 
 type CreateEvaluationRunInput struct {
+	ShotExecutionID string   `json:"shot_execution_id"`
+	PassedChecks    []string `json:"passed_checks"`
+	FailedChecks    []string `json:"failed_checks"`
+}
+
+type ListEvaluationRunsInput struct {
 	ShotExecutionID string
-	PassedChecks    []string
-	FailedChecks    []string
+}
+
+type ListShotReviewsInput struct {
+	ShotExecutionID string
+}
+
+type GetShotReviewSummaryInput struct {
+	ShotExecutionID string
+}
+
+type ShotReviewSummary struct {
+	ShotExecutionID  string
+	LatestConclusion string
+	LatestReviewID   string
 }
 
 func NewService(store *db.MemoryStore) *Service {
@@ -83,4 +102,55 @@ func (s *Service) CreateEvaluationRun(_ context.Context, input CreateEvaluationR
 
 	s.store.EvaluationRuns[record.ID] = record
 	return record, nil
+}
+
+func (s *Service) ListEvaluationRuns(_ context.Context, input ListEvaluationRunsInput) ([]review.EvaluationRun, error) {
+	runs := make([]review.EvaluationRun, 0)
+	for _, run := range s.store.EvaluationRuns {
+		if run.ShotExecutionID == input.ShotExecutionID {
+			runs = append(runs, run)
+		}
+	}
+
+	sort.Slice(runs, func(i, j int) bool {
+		return runs[i].ID < runs[j].ID
+	})
+
+	return runs, nil
+}
+
+func (s *Service) ListShotReviews(_ context.Context, input ListShotReviewsInput) ([]review.ShotReview, error) {
+	records := make([]review.ShotReview, 0)
+	for _, record := range s.store.Reviews {
+		if record.ShotExecutionID == input.ShotExecutionID {
+			records = append(records, record)
+		}
+	}
+
+	sort.Slice(records, func(i, j int) bool {
+		return records[i].ID < records[j].ID
+	})
+
+	return records, nil
+}
+
+func (s *Service) GetShotReviewSummary(ctx context.Context, input GetShotReviewSummaryInput) (ShotReviewSummary, error) {
+	reviews, err := s.ListShotReviews(ctx, ListShotReviewsInput{
+		ShotExecutionID: input.ShotExecutionID,
+	})
+	if err != nil {
+		return ShotReviewSummary{}, err
+	}
+	if len(reviews) == 0 {
+		return ShotReviewSummary{
+			ShotExecutionID: input.ShotExecutionID,
+		}, nil
+	}
+
+	lastReview := reviews[len(reviews)-1]
+	return ShotReviewSummary{
+		ShotExecutionID:  input.ShotExecutionID,
+		LatestConclusion: lastReview.Conclusion,
+		LatestReviewID:   lastReview.ID,
+	}, nil
 }

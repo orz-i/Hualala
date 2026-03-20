@@ -18,42 +18,51 @@ type Service struct {
 }
 
 type StartShotExecutionRunInput struct {
-	ShotID             string
-	OperatorID         string
-	ProjectID          string
-	OrgID              string
-	TriggerType        string
-	EstimatedCostCents int64
+	ShotID             string `json:"shot_id"`
+	OperatorID         string `json:"operator_id"`
+	ProjectID          string `json:"project_id"`
+	OrgID              string `json:"org_id"`
+	TriggerType        string `json:"trigger_type"`
+	EstimatedCostCents int64  `json:"estimated_cost_cents"`
 }
 
 type GetShotExecutionInput struct {
-	ShotExecutionID string
+	ShotExecutionID string `json:"shot_execution_id"`
+}
+
+type GetShotWorkbenchInput struct {
+	ShotID string
 }
 
 type SelectPrimaryAssetInput struct {
-	ShotExecutionID string
-	AssetID         string
+	ShotExecutionID string `json:"shot_execution_id"`
+	AssetID         string `json:"asset_id"`
 }
 
 type RunSubmissionGateChecksInput struct {
-	ShotExecutionID string
+	ShotExecutionID string `json:"shot_execution_id"`
 }
 
 type SubmitShotForReviewInput struct {
-	ShotExecutionID string
+	ShotExecutionID string `json:"shot_execution_id"`
 }
 
 type MarkShotReworkRequiredInput struct {
-	ShotExecutionID string
-	Reason          string
+	ShotExecutionID string `json:"shot_execution_id"`
+	Reason          string `json:"reason"`
 }
 
 type MarkShotApprovedForUseInput struct {
-	ShotExecutionID string
+	ShotExecutionID string `json:"shot_execution_id"`
 }
 
 type ListShotExecutionRunsInput struct {
-	ShotExecutionID string
+	ShotExecutionID string `json:"shot_execution_id"`
+}
+
+type ShotWorkbench struct {
+	ShotExecution execution.ShotExecution
+	Runs          []execution.ShotExecutionRun
 }
 
 func NewService(store *db.MemoryStore) *Service {
@@ -127,6 +136,25 @@ func (s *Service) GetShotExecution(_ context.Context, input GetShotExecutionInpu
 		return execution.ShotExecution{}, errors.New("executionapp: shot execution not found")
 	}
 	return record, nil
+}
+
+func (s *Service) GetShotWorkbench(ctx context.Context, input GetShotWorkbenchInput) (ShotWorkbench, error) {
+	record, ok := s.findExecutionByShotID(input.ShotID)
+	if !ok {
+		return ShotWorkbench{}, errors.New("executionapp: shot execution not found")
+	}
+
+	runs, err := s.ListShotExecutionRuns(ctx, ListShotExecutionRunsInput{
+		ShotExecutionID: record.ID,
+	})
+	if err != nil {
+		return ShotWorkbench{}, err
+	}
+
+	return ShotWorkbench{
+		ShotExecution: record,
+		Runs:          runs,
+	}, nil
 }
 
 func (s *Service) SelectPrimaryAsset(_ context.Context, input SelectPrimaryAssetInput) (execution.ShotExecution, error) {
