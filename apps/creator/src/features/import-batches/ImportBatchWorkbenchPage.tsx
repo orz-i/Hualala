@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { ActionFeedback, type ActionFeedbackModel } from "../shared/ActionFeedback";
 
 type ImportBatchSummary = {
   id: string;
@@ -36,14 +37,6 @@ export type ImportBatchWorkbenchViewModel = {
   shotExecutions: ShotExecutionSummary[];
 };
 
-type ImportBatchWorkbenchFeedback = {
-  tone: "success" | "error" | "pending";
-  message: string;
-  latestImportBatchStatus?: string;
-  latestShotExecutionStatus?: string;
-  latestPrimaryAssetId?: string;
-};
-
 type ImportBatchWorkbenchPageProps = {
   workbench: ImportBatchWorkbenchViewModel;
   onConfirmMatches?: (input: { importBatchId: string; itemIds: string[] }) => void;
@@ -51,7 +44,7 @@ type ImportBatchWorkbenchPageProps = {
     shotExecutionId: string;
     assetId: string;
   }) => void;
-  feedback?: ImportBatchWorkbenchFeedback;
+  feedback?: ActionFeedbackModel;
 };
 
 const panelStyle: CSSProperties = {
@@ -78,24 +71,6 @@ export function ImportBatchWorkbenchPage({
   const currentExecution = workbench.shotExecutions[0];
   const currentItem = workbench.items[0];
   const currentCandidate = workbench.candidateAssets[0];
-  const feedbackPalette =
-    feedback?.tone === "error"
-      ? {
-          background: "rgba(239, 68, 68, 0.12)",
-          border: "1px solid rgba(220, 38, 38, 0.24)",
-          color: "#991b1b",
-        }
-      : feedback?.tone === "pending"
-        ? {
-            background: "rgba(245, 158, 11, 0.12)",
-            border: "1px solid rgba(180, 83, 9, 0.22)",
-            color: "#92400e",
-          }
-        : {
-            background: "rgba(15, 118, 110, 0.12)",
-            border: "1px solid rgba(13, 148, 136, 0.2)",
-            color: "#115e59",
-          };
 
   return (
     <main
@@ -135,34 +110,7 @@ export function ImportBatchWorkbenchPage({
             当前状态 <strong>{workbench.importBatch.status}</strong>，来源{" "}
             <strong>{workbench.importBatch.sourceType}</strong>
           </p>
-          {feedback ? (
-            <div
-              style={{
-                margin: "16px 0 0",
-                padding: "10px 14px",
-                borderRadius: "14px",
-                fontSize: "0.95rem",
-                ...feedbackPalette,
-              }}
-            >
-              <p style={{ margin: 0 }}>{feedback.message}</p>
-              {feedback.latestImportBatchStatus ? (
-                <p style={{ margin: "10px 0 0" }}>
-                  当前批次状态：{feedback.latestImportBatchStatus}
-                </p>
-              ) : null}
-              {feedback.latestShotExecutionStatus ? (
-                <p style={{ margin: "6px 0 0" }}>
-                  当前执行状态：{feedback.latestShotExecutionStatus}
-                </p>
-              ) : null}
-              {feedback.latestPrimaryAssetId ? (
-                <p style={{ margin: "6px 0 0" }}>
-                  当前主素材：{feedback.latestPrimaryAssetId}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
+          {feedback ? <ActionFeedback feedback={feedback} /> : null}
         </header>
 
         <section

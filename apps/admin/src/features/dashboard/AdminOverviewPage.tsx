@@ -80,6 +80,8 @@ export function AdminOverviewPage({
   budgetFeedback,
 }: AdminOverviewPageProps) {
   const latestEvaluation = overview.evaluationRuns[0];
+  const latestBillingEvent = overview.billingEvents[0];
+  const latestShotReview = overview.shotReviews[0];
   const budgetInputId = useId();
   const [budgetLimitYuan, setBudgetLimitYuan] = useState(
     (overview.budgetSnapshot.limitCents / 100).toFixed(2),
@@ -220,6 +222,24 @@ export function AdminOverviewPage({
             gap: "16px",
           }}
         >
+          <article style={panelStyle}>
+            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>最近变更摘要</h2>
+            <div style={{ display: "grid", gap: "12px" }}>
+              <p style={metricStyle}>
+                最近计费事件：{latestBillingEvent?.eventType ?? "pending"} ·{" "}
+                {formatCurrency(latestBillingEvent?.amountCents ?? 0)}
+              </p>
+              <p style={metricStyle}>
+                最近评估结果：{latestEvaluation?.status ?? "pending"} ·{" "}
+                {latestEvaluation?.failedChecks.length ?? 0} 个失败检查
+              </p>
+              <p style={metricStyle}>
+                最近评审结论：
+                {latestShotReview?.conclusion ?? overview.reviewSummary.latestConclusion}
+              </p>
+            </div>
+          </article>
+
           <article style={panelStyle}>
             <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>用量记录</h2>
             <div style={{ display: "grid", gap: "12px" }}>

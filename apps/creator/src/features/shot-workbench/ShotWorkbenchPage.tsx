@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { ActionFeedback, type ActionFeedbackModel } from "../shared/ActionFeedback";
 
 type CandidateAssetSummary = {
   id: string;
@@ -28,20 +29,11 @@ export type ShotWorkbenchViewModel = {
   latestEvaluationRun?: EvaluationRunSummary;
 };
 
-type ShotWorkbenchFeedback = {
-  tone: "success" | "error" | "pending";
-  message: string;
-  passedChecks?: string[];
-  failedChecks?: string[];
-  latestConclusion?: string;
-  latestEvaluationStatus?: string;
-};
-
 type ShotWorkbenchPageProps = {
   workbench: ShotWorkbenchViewModel;
   onRunSubmissionGateChecks?: (input: { shotExecutionId: string }) => void;
   onSubmitShotForReview?: (input: { shotExecutionId: string }) => void;
-  feedback?: ShotWorkbenchFeedback;
+  feedback?: ActionFeedbackModel;
 };
 
 const panelStyle: CSSProperties = {
@@ -66,24 +58,6 @@ export function ShotWorkbenchPage({
   feedback,
 }: ShotWorkbenchPageProps) {
   const latestEvaluationStatus = workbench.latestEvaluationRun?.status ?? "pending";
-  const feedbackPalette =
-    feedback?.tone === "error"
-      ? {
-          background: "rgba(239, 68, 68, 0.12)",
-          border: "1px solid rgba(220, 38, 38, 0.24)",
-          color: "#991b1b",
-        }
-      : feedback?.tone === "pending"
-        ? {
-            background: "rgba(245, 158, 11, 0.12)",
-            border: "1px solid rgba(180, 83, 9, 0.22)",
-            color: "#92400e",
-          }
-        : {
-            background: "rgba(15, 118, 110, 0.12)",
-            border: "1px solid rgba(13, 148, 136, 0.2)",
-            color: "#115e59",
-          };
 
   return (
     <main
@@ -112,45 +86,7 @@ export function ShotWorkbenchPage({
           <p style={{ margin: 0, color: "#334155" }}>
             Shot {workbench.shotExecution.shotId} 当前处于 <strong>{workbench.shotExecution.status}</strong>
           </p>
-          {feedback ? (
-            <div
-              style={{
-                margin: "16px 0 0",
-                padding: "10px 14px",
-                borderRadius: "14px",
-                fontSize: "0.95rem",
-                ...feedbackPalette,
-              }}
-            >
-              <p style={{ margin: 0 }}>{feedback.message}</p>
-              {feedback.passedChecks && feedback.passedChecks.length > 0 ? (
-                <div style={{ marginTop: "10px" }}>
-                  <strong>通过检查</strong>
-                  <ul style={{ margin: "6px 0 0", paddingLeft: "20px" }}>
-                    {feedback.passedChecks.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {feedback.failedChecks && feedback.failedChecks.length > 0 ? (
-                <div style={{ marginTop: "10px" }}>
-                  <strong>未通过检查</strong>
-                  <ul style={{ margin: "6px 0 0", paddingLeft: "20px" }}>
-                    {feedback.failedChecks.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {feedback.latestConclusion ? (
-                <p style={{ margin: "10px 0 0" }}>最新评审结论：{feedback.latestConclusion}</p>
-              ) : null}
-              {feedback.latestEvaluationStatus ? (
-                <p style={{ margin: "6px 0 0" }}>最近评估：{feedback.latestEvaluationStatus}</p>
-              ) : null}
-            </div>
-          ) : null}
+          {feedback ? <ActionFeedback feedback={feedback} /> : null}
         </header>
 
         <section

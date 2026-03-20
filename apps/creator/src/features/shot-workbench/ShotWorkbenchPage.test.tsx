@@ -92,10 +92,12 @@ describe("ShotWorkbenchPage", () => {
         feedback={{
           tone: "success",
           message: "Gate 检查已完成",
-          passedChecks: ["asset_selected"],
-          failedChecks: ["copyright_missing"],
-          latestConclusion: "approved",
-          latestEvaluationStatus: "passed",
+          sections: [
+            { label: "通过检查", items: ["asset_selected"] },
+            { label: "未通过检查", items: ["copyright_missing"] },
+            { label: "最新评审结论", items: "approved" },
+            { label: "最近评估", items: "passed" },
+          ],
         }}
       />,
     );

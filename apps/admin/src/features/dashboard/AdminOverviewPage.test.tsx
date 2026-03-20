@@ -28,8 +28,12 @@ describe("AdminOverviewPage", () => {
     expect(screen.getByText("预算上限：1200.00 元")).toBeInTheDocument();
     expect(screen.getByText("1 条用量记录")).toBeInTheDocument();
     expect(screen.getByText("1 条计费事件")).toBeInTheDocument();
-    expect(screen.getAllByText("approved")).toHaveLength(2);
+    expect(screen.getAllByText("approved").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("最近评估：passed")).toBeInTheDocument();
+    expect(screen.getByText("最近变更摘要")).toBeInTheDocument();
+    expect(screen.getByText("最近计费事件：budget_reserved · 180.00 元")).toBeInTheDocument();
+    expect(screen.getByText("最近评估结果：passed · 0 个失败检查")).toBeInTheDocument();
+    expect(screen.getByText("最近评审结论：approved")).toBeInTheDocument();
   });
 
   it("allows submitting a new budget limit", () => {

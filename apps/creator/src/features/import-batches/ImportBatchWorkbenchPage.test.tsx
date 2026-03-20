@@ -78,9 +78,11 @@ describe("ImportBatchWorkbenchPage", () => {
         feedback={{
           tone: "success",
           message: "匹配确认已完成",
-          latestImportBatchStatus: "confirmed",
-          latestShotExecutionStatus: "primary_selected",
-          latestPrimaryAssetId: "asset-1",
+          sections: [
+            { label: "当前批次状态", items: "confirmed" },
+            { label: "当前执行状态", items: "primary_selected" },
+            { label: "当前主素材", items: "asset-1" },
+          ],
         }}
       />,
     );
