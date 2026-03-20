@@ -15,10 +15,16 @@ import {
 } from "../features/shot-workbench/mutateShotWorkbench";
 import { ShotWorkbenchPage, type ShotWorkbenchViewModel } from "../features/shot-workbench/ShotWorkbenchPage";
 
+type ShotActionFeedback = {
+  tone: "success" | "error" | "pending";
+  message: string;
+};
+
 export function App() {
   const [shotWorkbench, setShotWorkbench] = useState<ShotWorkbenchViewModel | null>(null);
   const [importWorkbench, setImportWorkbench] = useState<ImportBatchWorkbenchViewModel | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [shotActionFeedback, setShotActionFeedback] = useState<ShotActionFeedback | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,13 +121,60 @@ export function App() {
     return (
       <ShotWorkbenchPage
         workbench={shotWorkbench}
+        feedback={shotActionFeedback ?? undefined}
         onRunSubmissionGateChecks={async (input) => {
-          await runSubmissionGateChecks(input);
-          await refreshShotWorkbench();
+          startTransition(() => {
+            setShotActionFeedback({
+              tone: "pending",
+              message: "正在执行 Gate 检查",
+            });
+          });
+          try {
+            await runSubmissionGateChecks(input);
+            await refreshShotWorkbench();
+            startTransition(() => {
+              setShotActionFeedback({
+                tone: "success",
+                message: "Gate 检查已完成",
+              });
+            });
+          } catch (error: unknown) {
+            const message =
+              error instanceof Error ? error.message : "creator: unknown gate check error";
+            startTransition(() => {
+              setShotActionFeedback({
+                tone: "error",
+                message: `Gate 检查失败：${message}`,
+              });
+            });
+          }
         }}
         onSubmitShotForReview={async (input) => {
-          await submitShotForReview(input);
-          await refreshShotWorkbench();
+          startTransition(() => {
+            setShotActionFeedback({
+              tone: "pending",
+              message: "正在提交评审",
+            });
+          });
+          try {
+            await submitShotForReview(input);
+            await refreshShotWorkbench();
+            startTransition(() => {
+              setShotActionFeedback({
+                tone: "success",
+                message: "提交评审已完成",
+              });
+            });
+          } catch (error: unknown) {
+            const message =
+              error instanceof Error ? error.message : "creator: unknown submit review error";
+            startTransition(() => {
+              setShotActionFeedback({
+                tone: "error",
+                message: `提交评审失败：${message}`,
+              });
+            });
+          }
         }}
       />
     );

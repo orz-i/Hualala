@@ -69,4 +69,60 @@ describe("ShotWorkbenchPage", () => {
       shotExecutionId: "shot-exec-1",
     });
   });
+
+  it("renders a success or error feedback message when provided", () => {
+    const { rerender } = render(
+      <ShotWorkbenchPage
+        workbench={{
+          shotExecution: {
+            id: "shot-exec-1",
+            shotId: "shot-1",
+            status: "candidate_ready",
+            primaryAssetId: "asset-1",
+          },
+          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
+          reviewSummary: {
+            latestConclusion: "pending",
+          },
+          latestEvaluationRun: {
+            id: "eval-1",
+            status: "pending",
+          },
+        }}
+        feedback={{
+          tone: "success",
+          message: "Gate 检查已完成",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Gate 检查已完成")).toBeInTheDocument();
+
+    rerender(
+      <ShotWorkbenchPage
+        workbench={{
+          shotExecution: {
+            id: "shot-exec-1",
+            shotId: "shot-1",
+            status: "candidate_ready",
+            primaryAssetId: "asset-1",
+          },
+          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
+          reviewSummary: {
+            latestConclusion: "pending",
+          },
+          latestEvaluationRun: {
+            id: "eval-1",
+            status: "pending",
+          },
+        }}
+        feedback={{
+          tone: "error",
+          message: "Gate 检查失败：network down",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Gate 检查失败：network down")).toBeInTheDocument();
+  });
 });

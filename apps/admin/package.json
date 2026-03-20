@@ -2,10 +2,26 @@
   "name": "@hualala/admin",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "node -e \"process.exit(0)\"",
-    "lint": "node -e \"process.exit(0)\"",
-    "test": "node -e \"process.exit(0)\"",
-    "dev": "node -e \"process.exit(0)\""
+    "build": "vite build",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^5.0.2",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.6",
+    "vitest": "^3.2.4"
   }
 }

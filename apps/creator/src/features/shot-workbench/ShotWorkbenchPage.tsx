@@ -28,10 +28,16 @@ export type ShotWorkbenchViewModel = {
   latestEvaluationRun?: EvaluationRunSummary;
 };
 
+type ShotWorkbenchFeedback = {
+  tone: "success" | "error" | "pending";
+  message: string;
+};
+
 type ShotWorkbenchPageProps = {
   workbench: ShotWorkbenchViewModel;
   onRunSubmissionGateChecks?: (input: { shotExecutionId: string }) => void;
   onSubmitShotForReview?: (input: { shotExecutionId: string }) => void;
+  feedback?: ShotWorkbenchFeedback;
 };
 
 const panelStyle: CSSProperties = {
@@ -53,8 +59,27 @@ export function ShotWorkbenchPage({
   workbench,
   onRunSubmissionGateChecks,
   onSubmitShotForReview,
+  feedback,
 }: ShotWorkbenchPageProps) {
   const latestEvaluationStatus = workbench.latestEvaluationRun?.status ?? "pending";
+  const feedbackPalette =
+    feedback?.tone === "error"
+      ? {
+          background: "rgba(239, 68, 68, 0.12)",
+          border: "1px solid rgba(220, 38, 38, 0.24)",
+          color: "#991b1b",
+        }
+      : feedback?.tone === "pending"
+        ? {
+            background: "rgba(245, 158, 11, 0.12)",
+            border: "1px solid rgba(180, 83, 9, 0.22)",
+            color: "#92400e",
+          }
+        : {
+            background: "rgba(15, 118, 110, 0.12)",
+            border: "1px solid rgba(13, 148, 136, 0.2)",
+            color: "#115e59",
+          };
 
   return (
     <main
@@ -83,6 +108,19 @@ export function ShotWorkbenchPage({
           <p style={{ margin: 0, color: "#334155" }}>
             Shot {workbench.shotExecution.shotId} 当前处于 <strong>{workbench.shotExecution.status}</strong>
           </p>
+          {feedback ? (
+            <p
+              style={{
+                margin: "16px 0 0",
+                padding: "10px 14px",
+                borderRadius: "14px",
+                fontSize: "0.95rem",
+                ...feedbackPalette,
+              }}
+            >
+              {feedback.message}
+            </p>
+          ) : null}
         </header>
 
         <section

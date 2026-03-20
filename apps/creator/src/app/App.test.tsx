@@ -34,6 +34,10 @@ const runSubmissionGateChecksMock = vi.mocked(runSubmissionGateChecks);
 const submitShotForReviewMock = vi.mocked(submitShotForReview);
 
 describe("App", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("prefers importBatchId from search params, loads the import workbench, and renders the live data", async () => {
     window.history.pushState({}, "", "/?importBatchId=batch-live-1&shotId=shot-live-1");
     loadImportBatchWorkbenchMock.mockResolvedValueOnce({
@@ -192,6 +196,8 @@ describe("App", () => {
       });
     });
 
+    expect(await screen.findByText("Gate 检查已完成")).toBeInTheDocument();
+
     await waitFor(() => {
       expect(screen.getAllByText("passed")).toHaveLength(2);
     });
@@ -204,10 +210,43 @@ describe("App", () => {
       });
     });
 
+    expect(await screen.findByText("提交评审已完成")).toBeInTheDocument();
+
     await waitFor(() => {
       expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(3);
     });
 
     expect(await screen.findByText("submitted_for_review")).toBeInTheDocument();
+  });
+
+  it("keeps the current shot workbench visible and surfaces an action error when gate checks fail", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-live-2");
+    loadShotWorkbenchMock.mockResolvedValue({
+      shotExecution: {
+        id: "shot-exec-live-2",
+        shotId: "shot-live-2",
+        status: "candidate_ready",
+        primaryAssetId: "asset-live-2",
+      },
+      candidateAssets: [{ id: "candidate-live-2", assetId: "asset-live-2" }],
+      reviewSummary: {
+        latestConclusion: "pending",
+      },
+      latestEvaluationRun: {
+        id: "eval-live-2",
+        status: "pending",
+      },
+    });
+    runSubmissionGateChecksMock.mockRejectedValue(new Error("network down"));
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-live-2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Gate 检查" }));
+
+    expect(await screen.findByText("Gate 检查失败：network down")).toBeInTheDocument();
+    expect(screen.getByText("shot-exec-live-2")).toBeInTheDocument();
+    expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(1);
   });
 });
