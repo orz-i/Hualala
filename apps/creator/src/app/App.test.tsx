@@ -104,6 +104,9 @@ describe("App", () => {
         itemIds: ["item-live-1"],
       });
     });
+    expect(await screen.findByText("匹配确认已完成")).toBeInTheDocument();
+    expect(screen.getByText("当前批次状态：confirmed")).toBeInTheDocument();
+    expect(screen.getByText("当前执行状态：primary_selected")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "设为主素材" }));
 
@@ -118,6 +121,60 @@ describe("App", () => {
       expect(loadImportBatchWorkbenchMock).toHaveBeenCalledTimes(3);
     });
     expect(await screen.findByText("confirmed")).toBeInTheDocument();
+    expect(screen.getByText("主素材选择已完成")).toBeInTheDocument();
+    expect(screen.getByText("当前主素材：asset-live-1")).toBeInTheDocument();
+  });
+
+  it("keeps the current import workbench visible and surfaces an action error when confirm matches fails", async () => {
+    window.history.pushState({}, "", "/?importBatchId=batch-live-2");
+    loadImportBatchWorkbenchMock.mockResolvedValue({
+      importBatch: {
+        id: "batch-live-2",
+        status: "matched_pending_confirm",
+        sourceType: "upload_session",
+      },
+      uploadSessions: [{ id: "upload-session-live-2", status: "completed" }],
+      items: [{ id: "item-live-2", status: "matched_pending_confirm", assetId: "asset-live-2" }],
+      candidateAssets: [{ id: "candidate-live-2", assetId: "asset-live-2" }],
+      shotExecutions: [{ id: "shot-exec-live-2", status: "candidate_ready", primaryAssetId: "" }],
+    });
+    confirmImportBatchItemsMock.mockRejectedValue(new Error("network down"));
+
+    render(<App />);
+
+    expect(await screen.findByText("batch-live-2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "确认匹配" }));
+
+    expect(await screen.findByText("匹配确认失败：network down")).toBeInTheDocument();
+    expect(screen.getByText("batch-live-2")).toBeInTheDocument();
+    expect(loadImportBatchWorkbenchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the current import workbench visible and surfaces an action error when select primary asset fails", async () => {
+    window.history.pushState({}, "", "/?importBatchId=batch-live-3");
+    loadImportBatchWorkbenchMock.mockResolvedValue({
+      importBatch: {
+        id: "batch-live-3",
+        status: "confirmed",
+        sourceType: "upload_session",
+      },
+      uploadSessions: [{ id: "upload-session-live-3", status: "completed" }],
+      items: [{ id: "item-live-3", status: "confirmed", assetId: "asset-live-3" }],
+      candidateAssets: [{ id: "candidate-live-3", assetId: "asset-live-3" }],
+      shotExecutions: [{ id: "shot-exec-live-3", status: "candidate_ready", primaryAssetId: "" }],
+    });
+    selectPrimaryAssetForImportBatchMock.mockRejectedValue(new Error("network down"));
+
+    render(<App />);
+
+    expect(await screen.findByText("batch-live-3")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "设为主素材" }));
+
+    expect(await screen.findByText("主素材选择失败：network down")).toBeInTheDocument();
+    expect(screen.getByText("batch-live-3")).toBeInTheDocument();
+    expect(loadImportBatchWorkbenchMock).toHaveBeenCalledTimes(1);
   });
 
   it("reads shotId from search params, loads the workbench, and renders the live data", async () => {

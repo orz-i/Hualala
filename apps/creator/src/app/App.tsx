@@ -24,11 +24,22 @@ type ShotActionFeedback = {
   latestEvaluationStatus?: string;
 };
 
+type ImportActionFeedback = {
+  tone: "success" | "error" | "pending";
+  message: string;
+  latestImportBatchStatus?: string;
+  latestShotExecutionStatus?: string;
+  latestPrimaryAssetId?: string;
+};
+
 export function App() {
   const [shotWorkbench, setShotWorkbench] = useState<ShotWorkbenchViewModel | null>(null);
   const [importWorkbench, setImportWorkbench] = useState<ImportBatchWorkbenchViewModel | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [shotActionFeedback, setShotActionFeedback] = useState<ShotActionFeedback | null>(null);
+  const [importActionFeedback, setImportActionFeedback] = useState<ImportActionFeedback | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -90,6 +101,7 @@ export function App() {
       setImportWorkbench(nextWorkbench);
       setErrorMessage("");
     });
+    return nextWorkbench;
   };
 
   const refreshShotWorkbench = async () => {
@@ -110,13 +122,68 @@ export function App() {
     return (
       <ImportBatchWorkbenchPage
         workbench={importWorkbench}
+        feedback={importActionFeedback ?? undefined}
         onConfirmMatches={async (input) => {
-          await confirmImportBatchItems(input);
-          await refreshImportWorkbench();
+          startTransition(() => {
+            setImportActionFeedback({
+              tone: "pending",
+              message: "正在确认匹配",
+            });
+          });
+          try {
+            await confirmImportBatchItems(input);
+            const nextWorkbench = await refreshImportWorkbench();
+            startTransition(() => {
+              setImportActionFeedback({
+                tone: "success",
+                message: "匹配确认已完成",
+                latestImportBatchStatus: nextWorkbench?.importBatch.status,
+                latestShotExecutionStatus: nextWorkbench?.shotExecutions[0]?.status ?? "pending",
+                latestPrimaryAssetId:
+                  nextWorkbench?.shotExecutions[0]?.primaryAssetId || undefined,
+              });
+            });
+          } catch (error: unknown) {
+            const message =
+              error instanceof Error ? error.message : "creator: unknown confirm matches error";
+            startTransition(() => {
+              setImportActionFeedback({
+                tone: "error",
+                message: `匹配确认失败：${message}`,
+              });
+            });
+          }
         }}
         onSelectPrimaryAsset={async (input) => {
-          await selectPrimaryAssetForImportBatch(input);
-          await refreshImportWorkbench();
+          startTransition(() => {
+            setImportActionFeedback({
+              tone: "pending",
+              message: "正在设为主素材",
+            });
+          });
+          try {
+            await selectPrimaryAssetForImportBatch(input);
+            const nextWorkbench = await refreshImportWorkbench();
+            startTransition(() => {
+              setImportActionFeedback({
+                tone: "success",
+                message: "主素材选择已完成",
+                latestImportBatchStatus: nextWorkbench?.importBatch.status,
+                latestShotExecutionStatus: nextWorkbench?.shotExecutions[0]?.status ?? "pending",
+                latestPrimaryAssetId:
+                  nextWorkbench?.shotExecutions[0]?.primaryAssetId || undefined,
+              });
+            });
+          } catch (error: unknown) {
+            const message =
+              error instanceof Error ? error.message : "creator: unknown select primary error";
+            startTransition(() => {
+              setImportActionFeedback({
+                tone: "error",
+                message: `主素材选择失败：${message}`,
+              });
+            });
+          }
         }}
       />
     );

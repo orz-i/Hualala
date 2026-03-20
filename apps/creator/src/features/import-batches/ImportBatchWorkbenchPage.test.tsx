@@ -60,4 +60,58 @@ describe("ImportBatchWorkbenchPage", () => {
       assetId: "asset-1",
     });
   });
+
+  it("renders success and error feedback messages when provided", () => {
+    const { rerender } = render(
+      <ImportBatchWorkbenchPage
+        workbench={{
+          importBatch: {
+            id: "batch-1",
+            status: "matched_pending_confirm",
+            sourceType: "upload_session",
+          },
+          uploadSessions: [{ id: "upload-session-1", status: "completed" }],
+          items: [{ id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" }],
+          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
+          shotExecutions: [{ id: "shot-exec-1", status: "candidate_ready", primaryAssetId: "" }],
+        }}
+        feedback={{
+          tone: "success",
+          message: "匹配确认已完成",
+          latestImportBatchStatus: "confirmed",
+          latestShotExecutionStatus: "primary_selected",
+          latestPrimaryAssetId: "asset-1",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("匹配确认已完成")).toBeInTheDocument();
+    expect(screen.getByText("当前批次状态：confirmed")).toBeInTheDocument();
+    expect(screen.getByText("当前执行状态：primary_selected")).toBeInTheDocument();
+    expect(screen.getByText("当前主素材：asset-1")).toHaveStyle({ color: "#115e59" });
+
+    rerender(
+      <ImportBatchWorkbenchPage
+        workbench={{
+          importBatch: {
+            id: "batch-1",
+            status: "matched_pending_confirm",
+            sourceType: "upload_session",
+          },
+          uploadSessions: [{ id: "upload-session-1", status: "completed" }],
+          items: [{ id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" }],
+          candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
+          shotExecutions: [{ id: "shot-exec-1", status: "candidate_ready", primaryAssetId: "" }],
+        }}
+        feedback={{
+          tone: "error",
+          message: "主素材选择失败：network down",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("主素材选择失败：network down")).toHaveStyle({
+      color: "#991b1b",
+    });
+  });
 });
