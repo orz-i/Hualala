@@ -93,6 +93,7 @@ type AssetRepository interface {
 	GenerateImportBatchID() string
 	SaveImportBatch(ctx context.Context, record asset.ImportBatch) error
 	GetImportBatch(importBatchID string) (asset.ImportBatch, bool)
+	ListImportBatches(projectID string, status string, sourceType string) []asset.ImportBatch
 
 	GenerateImportBatchItemID() string
 	SaveImportBatchItem(ctx context.Context, record asset.ImportBatchItem) error
@@ -116,6 +117,7 @@ type AssetRepository interface {
 	GenerateMediaAssetVariantID() string
 	SaveMediaAssetVariant(ctx context.Context, record asset.MediaAssetVariant) error
 	ListMediaAssetVariantsByUploadFileIDs(uploadFileIDs []string) []asset.MediaAssetVariant
+	ListMediaAssetVariantsByAssetIDs(assetIDs []string) []asset.MediaAssetVariant
 
 	GenerateCandidateAssetID() string
 	SaveCandidateAsset(ctx context.Context, record asset.CandidateAsset) error
@@ -458,6 +460,32 @@ func (s *MemoryStore) GetImportBatch(importBatchID string) (asset.ImportBatch, b
 	return record, ok
 }
 
+func (s *MemoryStore) ListImportBatches(projectID string, status string, sourceType string) []asset.ImportBatch {
+	items := make([]asset.ImportBatch, 0)
+	for _, record := range s.ImportBatches {
+		if projectID != "" && record.ProjectID != projectID {
+			continue
+		}
+		if status != "" && record.Status != status {
+			continue
+		}
+		if sourceType != "" && record.SourceType != sourceType {
+			continue
+		}
+		items = append(items, record)
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if !items[i].UpdatedAt.Equal(items[j].UpdatedAt) {
+			return items[i].UpdatedAt.After(items[j].UpdatedAt)
+		}
+		if !items[i].CreatedAt.Equal(items[j].CreatedAt) {
+			return items[i].CreatedAt.After(items[j].CreatedAt)
+		}
+		return items[i].ID > items[j].ID
+	})
+	return items
+}
+
 func (s *MemoryStore) SaveImportBatchItem(ctx context.Context, record asset.ImportBatchItem) error {
 	return s.save(ctx, func() { s.ImportBatchItems[record.ID] = record })
 }
@@ -549,6 +577,21 @@ func (s *MemoryStore) ListMediaAssetVariantsByUploadFileIDs(uploadFileIDs []stri
 	items := make([]asset.MediaAssetVariant, 0)
 	for _, record := range s.MediaAssetVariants {
 		if _, ok := lookup[record.UploadFileID]; ok {
+			items = append(items, record)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items
+}
+
+func (s *MemoryStore) ListMediaAssetVariantsByAssetIDs(assetIDs []string) []asset.MediaAssetVariant {
+	lookup := make(map[string]struct{}, len(assetIDs))
+	for _, id := range assetIDs {
+		lookup[id] = struct{}{}
+	}
+	items := make([]asset.MediaAssetVariant, 0)
+	for _, record := range s.MediaAssetVariants {
+		if _, ok := lookup[record.AssetID]; ok {
 			items = append(items, record)
 		}
 	}

@@ -39,6 +39,9 @@ const (
 	// AssetServiceAddCandidateAssetProcedure is the fully-qualified name of the AssetService's
 	// AddCandidateAsset RPC.
 	AssetServiceAddCandidateAssetProcedure = "/hualala.asset.v1.AssetService/AddCandidateAsset"
+	// AssetServiceListImportBatchesProcedure is the fully-qualified name of the AssetService's
+	// ListImportBatches RPC.
+	AssetServiceListImportBatchesProcedure = "/hualala.asset.v1.AssetService/ListImportBatches"
 	// AssetServiceListImportBatchItemsProcedure is the fully-qualified name of the AssetService's
 	// ListImportBatchItems RPC.
 	AssetServiceListImportBatchItemsProcedure = "/hualala.asset.v1.AssetService/ListImportBatchItems"
@@ -60,6 +63,7 @@ const (
 type AssetServiceClient interface {
 	CreateImportBatch(context.Context, *connect.Request[v1.CreateImportBatchRequest]) (*connect.Response[v1.CreateImportBatchResponse], error)
 	AddCandidateAsset(context.Context, *connect.Request[v1.AddCandidateAssetRequest]) (*connect.Response[v1.AddCandidateAssetResponse], error)
+	ListImportBatches(context.Context, *connect.Request[v1.ListImportBatchesRequest]) (*connect.Response[v1.ListImportBatchesResponse], error)
 	ListImportBatchItems(context.Context, *connect.Request[v1.ListImportBatchItemsRequest]) (*connect.Response[v1.ListImportBatchItemsResponse], error)
 	BatchConfirmImportBatchItems(context.Context, *connect.Request[v1.BatchConfirmImportBatchItemsRequest]) (*connect.Response[v1.BatchConfirmImportBatchItemsResponse], error)
 	GetImportBatchWorkbench(context.Context, *connect.Request[v1.GetImportBatchWorkbenchRequest]) (*connect.Response[v1.GetImportBatchWorkbenchResponse], error)
@@ -88,6 +92,12 @@ func NewAssetServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+AssetServiceAddCandidateAssetProcedure,
 			connect.WithSchema(assetServiceMethods.ByName("AddCandidateAsset")),
+			connect.WithClientOptions(opts...),
+		),
+		listImportBatches: connect.NewClient[v1.ListImportBatchesRequest, v1.ListImportBatchesResponse](
+			httpClient,
+			baseURL+AssetServiceListImportBatchesProcedure,
+			connect.WithSchema(assetServiceMethods.ByName("ListImportBatches")),
 			connect.WithClientOptions(opts...),
 		),
 		listImportBatchItems: connect.NewClient[v1.ListImportBatchItemsRequest, v1.ListImportBatchItemsResponse](
@@ -127,6 +137,7 @@ func NewAssetServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 type assetServiceClient struct {
 	createImportBatch            *connect.Client[v1.CreateImportBatchRequest, v1.CreateImportBatchResponse]
 	addCandidateAsset            *connect.Client[v1.AddCandidateAssetRequest, v1.AddCandidateAssetResponse]
+	listImportBatches            *connect.Client[v1.ListImportBatchesRequest, v1.ListImportBatchesResponse]
 	listImportBatchItems         *connect.Client[v1.ListImportBatchItemsRequest, v1.ListImportBatchItemsResponse]
 	batchConfirmImportBatchItems *connect.Client[v1.BatchConfirmImportBatchItemsRequest, v1.BatchConfirmImportBatchItemsResponse]
 	getImportBatchWorkbench      *connect.Client[v1.GetImportBatchWorkbenchRequest, v1.GetImportBatchWorkbenchResponse]
@@ -142,6 +153,11 @@ func (c *assetServiceClient) CreateImportBatch(ctx context.Context, req *connect
 // AddCandidateAsset calls hualala.asset.v1.AssetService.AddCandidateAsset.
 func (c *assetServiceClient) AddCandidateAsset(ctx context.Context, req *connect.Request[v1.AddCandidateAssetRequest]) (*connect.Response[v1.AddCandidateAssetResponse], error) {
 	return c.addCandidateAsset.CallUnary(ctx, req)
+}
+
+// ListImportBatches calls hualala.asset.v1.AssetService.ListImportBatches.
+func (c *assetServiceClient) ListImportBatches(ctx context.Context, req *connect.Request[v1.ListImportBatchesRequest]) (*connect.Response[v1.ListImportBatchesResponse], error) {
+	return c.listImportBatches.CallUnary(ctx, req)
 }
 
 // ListImportBatchItems calls hualala.asset.v1.AssetService.ListImportBatchItems.
@@ -173,6 +189,7 @@ func (c *assetServiceClient) GetAssetProvenanceSummary(ctx context.Context, req 
 type AssetServiceHandler interface {
 	CreateImportBatch(context.Context, *connect.Request[v1.CreateImportBatchRequest]) (*connect.Response[v1.CreateImportBatchResponse], error)
 	AddCandidateAsset(context.Context, *connect.Request[v1.AddCandidateAssetRequest]) (*connect.Response[v1.AddCandidateAssetResponse], error)
+	ListImportBatches(context.Context, *connect.Request[v1.ListImportBatchesRequest]) (*connect.Response[v1.ListImportBatchesResponse], error)
 	ListImportBatchItems(context.Context, *connect.Request[v1.ListImportBatchItemsRequest]) (*connect.Response[v1.ListImportBatchItemsResponse], error)
 	BatchConfirmImportBatchItems(context.Context, *connect.Request[v1.BatchConfirmImportBatchItemsRequest]) (*connect.Response[v1.BatchConfirmImportBatchItemsResponse], error)
 	GetImportBatchWorkbench(context.Context, *connect.Request[v1.GetImportBatchWorkbenchRequest]) (*connect.Response[v1.GetImportBatchWorkbenchResponse], error)
@@ -197,6 +214,12 @@ func NewAssetServiceHandler(svc AssetServiceHandler, opts ...connect.HandlerOpti
 		AssetServiceAddCandidateAssetProcedure,
 		svc.AddCandidateAsset,
 		connect.WithSchema(assetServiceMethods.ByName("AddCandidateAsset")),
+		connect.WithHandlerOptions(opts...),
+	)
+	assetServiceListImportBatchesHandler := connect.NewUnaryHandler(
+		AssetServiceListImportBatchesProcedure,
+		svc.ListImportBatches,
+		connect.WithSchema(assetServiceMethods.ByName("ListImportBatches")),
 		connect.WithHandlerOptions(opts...),
 	)
 	assetServiceListImportBatchItemsHandler := connect.NewUnaryHandler(
@@ -235,6 +258,8 @@ func NewAssetServiceHandler(svc AssetServiceHandler, opts ...connect.HandlerOpti
 			assetServiceCreateImportBatchHandler.ServeHTTP(w, r)
 		case AssetServiceAddCandidateAssetProcedure:
 			assetServiceAddCandidateAssetHandler.ServeHTTP(w, r)
+		case AssetServiceListImportBatchesProcedure:
+			assetServiceListImportBatchesHandler.ServeHTTP(w, r)
 		case AssetServiceListImportBatchItemsProcedure:
 			assetServiceListImportBatchItemsHandler.ServeHTTP(w, r)
 		case AssetServiceBatchConfirmImportBatchItemsProcedure:
@@ -260,6 +285,10 @@ func (UnimplementedAssetServiceHandler) CreateImportBatch(context.Context, *conn
 
 func (UnimplementedAssetServiceHandler) AddCandidateAsset(context.Context, *connect.Request[v1.AddCandidateAssetRequest]) (*connect.Response[v1.AddCandidateAssetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.asset.v1.AssetService.AddCandidateAsset is not implemented"))
+}
+
+func (UnimplementedAssetServiceHandler) ListImportBatches(context.Context, *connect.Request[v1.ListImportBatchesRequest]) (*connect.Response[v1.ListImportBatchesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.asset.v1.AssetService.ListImportBatches is not implemented"))
 }
 
 func (UnimplementedAssetServiceHandler) ListImportBatchItems(context.Context, *connect.Request[v1.ListImportBatchItemsRequest]) (*connect.Response[v1.ListImportBatchItemsResponse], error) {

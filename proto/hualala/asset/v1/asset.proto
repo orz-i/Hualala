@@ -7,6 +7,7 @@ option go_package = "github.com/hualala/apps/backend/gen/hualala/asset/v1;assetv
 service AssetService {
   rpc CreateImportBatch(CreateImportBatchRequest) returns (CreateImportBatchResponse);
   rpc AddCandidateAsset(AddCandidateAssetRequest) returns (AddCandidateAssetResponse);
+  rpc ListImportBatches(ListImportBatchesRequest) returns (ListImportBatchesResponse);
   rpc ListImportBatchItems(ListImportBatchItemsRequest) returns (ListImportBatchItemsResponse);
   rpc BatchConfirmImportBatchItems(BatchConfirmImportBatchItemsRequest) returns (BatchConfirmImportBatchItemsResponse);
   rpc GetImportBatchWorkbench(GetImportBatchWorkbenchRequest) returns (GetImportBatchWorkbenchResponse);
@@ -21,6 +22,21 @@ message ImportBatch {
   string operator_id = 4;
   string source_type = 5;
   string status = 6;
+}
+
+message ImportBatchSummary {
+  string id = 1;
+  string org_id = 2;
+  string project_id = 3;
+  string operator_id = 4;
+  string source_type = 5;
+  string status = 6;
+  uint32 upload_session_count = 7;
+  uint32 item_count = 8;
+  uint32 confirmed_item_count = 9;
+  uint32 candidate_asset_count = 10;
+  uint32 media_asset_count = 11;
+  string updated_at = 12;
 }
 
 message ImportBatchItem {
@@ -99,6 +115,16 @@ message CreateImportBatchResponse {
   ImportBatch import_batch = 1;
 }
 
+message ListImportBatchesRequest {
+  string project_id = 1;
+  string status = 2;
+  string source_type = 3;
+}
+
+message ListImportBatchesResponse {
+  repeated ImportBatchSummary import_batches = 1;
+}
+
 message AddCandidateAssetRequest {
   string shot_execution_id = 1;
   string project_id = 2;
@@ -162,4 +188,9 @@ message GetAssetProvenanceSummaryRequest {
 message GetAssetProvenanceSummaryResponse {
   MediaAsset asset = 1;
   string provenance_summary = 2;
+  string candidate_asset_id = 3;
+  string shot_execution_id = 4;
+  string source_run_id = 5;
+  string import_batch_id = 6;
+  uint32 variant_count = 7;
 }

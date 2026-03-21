@@ -68,6 +68,7 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 			return
 		}
 		service.publishUploadSessionUpdated(session)
+		service.publishImportBatchUpdated(session.ImportBatchID, session.OrgID, session.ProjectID, "upload_session.created", session.ID)
 		service.writeSessionResponse(w, http.StatusOK, session)
 	})
 
@@ -97,6 +98,7 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 				return
 			}
 			service.publishUploadSessionUpdated(session)
+			service.publishImportBatchUpdated(session.ImportBatchID, session.OrgID, session.ProjectID, "upload_session.retried", session.ID)
 			service.writeSessionResponse(w, http.StatusOK, session)
 		case r.Method == http.MethodPost && action == "complete":
 			var request struct {
@@ -123,6 +125,7 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 				return
 			}
 			service.publishUploadSessionUpdated(session)
+			service.publishImportBatchUpdated(session.ImportBatchID, session.OrgID, session.ProjectID, "upload_session.completed", session.ID)
 			service.writeSessionResponse(w, http.StatusOK, session)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -396,6 +399,37 @@ func (s *Service) publishUploadSessionUpdated(session asset.UploadSession) {
 		ProjectID:      session.ProjectID,
 		ResourceType:   "upload_session",
 		ResourceID:     session.ID,
+		Payload:        string(body),
+	})
+}
+
+func (s *Service) publishImportBatchUpdated(importBatchID string, organizationID string, projectID string, reason string, uploadSessionID string) {
+	if s == nil || s.eventPublisher == nil {
+		return
+	}
+	importBatchID = strings.TrimSpace(importBatchID)
+	projectID = strings.TrimSpace(projectID)
+	if importBatchID == "" || projectID == "" {
+		return
+	}
+
+	body, err := json.Marshal(map[string]any{
+		"import_batch_id":   importBatchID,
+		"project_id":        projectID,
+		"organization_id":   strings.TrimSpace(organizationID),
+		"reason":            strings.TrimSpace(reason),
+		"upload_session_id": strings.TrimSpace(uploadSessionID),
+	})
+	if err != nil {
+		return
+	}
+
+	s.eventPublisher.Publish(events.Event{
+		EventType:      "asset.import_batch.updated",
+		OrganizationID: strings.TrimSpace(organizationID),
+		ProjectID:      projectID,
+		ResourceType:   "import_batch",
+		ResourceID:     importBatchID,
 		Payload:        string(body),
 	})
 }

@@ -2,6 +2,7 @@ package assetapp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,11 +11,13 @@ import (
 	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 type Service struct {
 	assets     db.AssetRepository
 	executions db.ExecutionRepository
+	publisher  *events.Publisher
 }
 
 type CreateImportBatchInput struct {
@@ -40,6 +43,12 @@ type ListCandidateAssetsInput struct {
 	ShotExecutionID string
 }
 
+type ListImportBatchesInput struct {
+	ProjectID  string
+	Status     string
+	SourceType string
+}
+
 type ListImportBatchItemsInput struct {
 	ImportBatchID string
 }
@@ -56,10 +65,24 @@ type GetAssetProvenanceSummaryInput struct {
 type AssetProvenanceSummary struct {
 	Asset             asset.MediaAsset
 	ProvenanceSummary string
+	CandidateAssetID  string
+	ShotExecutionID   string
+	SourceRunID       string
+	ImportBatchID     string
+	VariantCount      int
 }
 
 type GetImportBatchWorkbenchInput struct {
 	ImportBatchID string
+}
+
+type ImportBatchSummary struct {
+	ImportBatch         asset.ImportBatch
+	UploadSessionCount  int
+	ItemCount           int
+	ConfirmedItemCount  int
+	CandidateAssetCount int
+	MediaAssetCount     int
 }
 
 type ImportBatchWorkbench struct {
@@ -73,8 +96,8 @@ type ImportBatchWorkbench struct {
 	ShotExecutions     []execution.ShotExecution
 }
 
-func NewService(assets db.AssetRepository, executions db.ExecutionRepository) *Service {
-	return &Service{assets: assets, executions: executions}
+func NewService(assets db.AssetRepository, executions db.ExecutionRepository, publisher *events.Publisher) *Service {
+	return &Service{assets: assets, executions: executions, publisher: publisher}
 }
 
 func (s *Service) CreateImportBatch(ctx context.Context, input CreateImportBatchInput) (asset.ImportBatch, error) {
@@ -100,6 +123,7 @@ func (s *Service) CreateImportBatch(ctx context.Context, input CreateImportBatch
 	if err := s.assets.SaveImportBatch(ctx, record); err != nil {
 		return asset.ImportBatch{}, err
 	}
+	s.publishImportBatchUpdated(record.ID, record.OrgID, record.ProjectID, record.Status, "import_batch.created", "")
 	return record, nil
 }
 
@@ -160,6 +184,7 @@ func (s *Service) AddCandidateAsset(ctx context.Context, input AddCandidateAsset
 		return asset.CandidateAsset{}, err
 	}
 
+	s.publishImportBatchUpdated(input.ImportBatchID, mediaAsset.OrgID, mediaAsset.ProjectID, "matched_pending_confirm", "candidate_asset.added", candidate.ID)
 	return candidate, nil
 }
 
@@ -168,6 +193,47 @@ func (s *Service) ListCandidateAssets(_ context.Context, input ListCandidateAsse
 		return nil, errors.New("assetapp: repository is required")
 	}
 	return s.assets.ListCandidateAssetsByExecution(input.ShotExecutionID), nil
+}
+
+func (s *Service) ListImportBatches(_ context.Context, input ListImportBatchesInput) ([]ImportBatchSummary, error) {
+	if s == nil || s.assets == nil {
+		return nil, errors.New("assetapp: repository is required")
+	}
+	projectID := strings.TrimSpace(input.ProjectID)
+	if projectID == "" {
+		return nil, errors.New("assetapp: project_id is required")
+	}
+
+	records := s.assets.ListImportBatches(projectID, strings.TrimSpace(input.Status), strings.TrimSpace(input.SourceType))
+	summaries := make([]ImportBatchSummary, 0, len(records))
+	for _, record := range records {
+		uploadSessions := s.assets.ListUploadSessionsByImportBatch(record.ID)
+		items := s.assets.ListImportBatchItems(record.ID)
+		mediaAssets := s.assets.ListMediaAssetsByImportBatch(record.ID)
+
+		assetIDs := make([]string, 0, len(mediaAssets))
+		for _, mediaAsset := range mediaAssets {
+			assetIDs = append(assetIDs, mediaAsset.ID)
+		}
+		candidateAssets := s.assets.ListCandidateAssetsByAssetIDs(assetIDs)
+
+		confirmedItemCount := 0
+		for _, item := range items {
+			if strings.TrimSpace(item.Status) == "confirmed" {
+				confirmedItemCount++
+			}
+		}
+
+		summaries = append(summaries, ImportBatchSummary{
+			ImportBatch:         record,
+			UploadSessionCount:  len(uploadSessions),
+			ItemCount:           len(items),
+			ConfirmedItemCount:  confirmedItemCount,
+			CandidateAssetCount: len(candidateAssets),
+			MediaAssetCount:     len(mediaAssets),
+		})
+	}
+	return summaries, nil
 }
 
 func (s *Service) ListImportBatchItems(_ context.Context, input ListImportBatchItemsInput) ([]asset.ImportBatchItem, error) {
@@ -212,6 +278,7 @@ func (s *Service) BatchConfirmImportBatchItems(ctx context.Context, input BatchC
 		if err := s.assets.SaveImportBatch(ctx, batch); err != nil {
 			return nil, err
 		}
+		s.publishImportBatchUpdated(batch.ID, batch.OrgID, batch.ProjectID, batch.Status, "import_batch.confirmed", "")
 	}
 
 	return confirmedItems, nil
@@ -298,8 +365,56 @@ func (s *Service) GetAssetProvenanceSummary(_ context.Context, input GetAssetPro
 		return AssetProvenanceSummary{}, errors.New("assetapp: asset not found")
 	}
 
+	candidateAssetID := ""
+	shotExecutionID := ""
+	sourceRunID := ""
+	candidates := s.assets.ListCandidateAssetsByAssetIDs([]string{record.ID})
+	if len(candidates) > 0 {
+		candidateAssetID = candidates[0].ID
+		shotExecutionID = candidates[0].ShotExecutionID
+		sourceRunID = candidates[0].SourceRunID
+	}
+	variantCount := len(s.assets.ListMediaAssetVariantsByAssetIDs([]string{record.ID}))
+
 	return AssetProvenanceSummary{
 		Asset:             record,
 		ProvenanceSummary: fmt.Sprintf("source_type=%s import_batch_id=%s rights_status=%s", record.SourceType, record.ImportBatchID, record.RightsStatus),
+		CandidateAssetID:  candidateAssetID,
+		ShotExecutionID:   shotExecutionID,
+		SourceRunID:       sourceRunID,
+		ImportBatchID:     record.ImportBatchID,
+		VariantCount:      variantCount,
 	}, nil
+}
+
+func (s *Service) publishImportBatchUpdated(importBatchID string, organizationID string, projectID string, status string, reason string, candidateAssetID string) {
+	if s == nil || s.publisher == nil {
+		return
+	}
+	importBatchID = strings.TrimSpace(importBatchID)
+	projectID = strings.TrimSpace(projectID)
+	if importBatchID == "" || projectID == "" {
+		return
+	}
+
+	body, err := json.Marshal(map[string]any{
+		"import_batch_id":    importBatchID,
+		"status":             strings.TrimSpace(status),
+		"reason":             strings.TrimSpace(reason),
+		"candidate_asset_id": strings.TrimSpace(candidateAssetID),
+		"organization_id":    strings.TrimSpace(organizationID),
+		"project_id":         projectID,
+	})
+	if err != nil {
+		return
+	}
+
+	s.publisher.Publish(events.Event{
+		EventType:      "asset.import_batch.updated",
+		OrganizationID: strings.TrimSpace(organizationID),
+		ProjectID:      projectID,
+		ResourceType:   "import_batch",
+		ResourceID:     importBatchID,
+		Payload:        string(body),
+	})
 }

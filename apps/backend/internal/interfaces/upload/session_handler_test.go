@@ -2,8 +2,8 @@ package upload
 
 import (
 	"bufio"
-	"context"
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -179,6 +179,62 @@ func TestUploadSessionPublishesSSEEvents(t *testing.T) {
 	}
 	if !strings.Contains(stream, `"retry_count":1`) {
 		t.Fatalf("expected retry_count 1 in SSE payload, got body %q", stream)
+	}
+}
+
+func TestUploadSessionPublishesImportBatchProjectEvent(t *testing.T) {
+	store := db.NewMemoryStore()
+	resetSessionStore(store)
+	store.EventPublisher.Reset()
+	store.ImportBatches["import-batch-1"] = assetdomain.ImportBatch{
+		ID:         "import-batch-1",
+		OrgID:      "org-1",
+		ProjectID:  "project-1",
+		OperatorID: "user-1",
+		SourceType: "upload_session",
+		Status:     "pending_review",
+	}
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, newUploadServiceFromStore(store))
+	sse.RegisterRoutes(mux, store.EventPublisher)
+
+	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
+		"organization_id":    "org-1",
+		"project_id":         "project-1",
+		"import_batch_id":    "import-batch-1",
+		"file_name":          "shot.png",
+		"checksum":           "sha256:abc123",
+		"size_bytes":         1024,
+		"expires_in_seconds": 60,
+	})
+	createResponse := decodeUploadJSONResponse(t, createRec)
+	sessionID := createResponse["session_id"].(string)
+
+	performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions/"+sessionID+"/retry", nil)
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	sseCtx, cancelSSE := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelSSE()
+	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id=org-1&project_id=project-1", nil)
+	if err != nil {
+		t.Fatalf("http.NewRequestWithContext returned error: %v", err)
+	}
+	sseResp, err := server.Client().Do(sseReq)
+	if err != nil {
+		t.Fatalf("server.Client().Do returned error: %v", err)
+	}
+	defer sseResp.Body.Close()
+
+	stream := readUploadEventStreamUntil(t, sseResp.Body, cancelSSE,
+		"event: asset.import_batch.updated",
+		`"import_batch_id":"import-batch-1"`,
+		`"upload_session_id":"`+sessionID+`"`,
+	)
+	if !strings.Contains(stream, "event: asset.import_batch.updated") {
+		t.Fatalf("expected asset.import_batch.updated SSE event, got body %q", stream)
 	}
 }
 
