@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ADMIN_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { loadAdminOverview } from "../features/dashboard/loadAdminOverview";
 import { loadGovernancePanel } from "../features/dashboard/loadGovernancePanel";
@@ -13,6 +13,11 @@ import { loadWorkflowRunDetails } from "../features/dashboard/loadWorkflowRunDet
 import { loadAssetMonitorPanel } from "../features/dashboard/loadAssetMonitorPanel";
 import { loadImportBatchDetails } from "../features/dashboard/loadImportBatchDetails";
 import { loadAssetProvenanceDetails } from "../features/dashboard/loadAssetProvenanceDetails";
+import {
+  confirmImportBatchItem,
+  confirmImportBatchItems,
+  selectPrimaryAssetForImportBatch,
+} from "../features/dashboard/mutateAssetMonitor";
 import {
   cancelWorkflowRun,
   retryWorkflowRun,
@@ -54,6 +59,11 @@ vi.mock("../features/dashboard/loadImportBatchDetails", () => ({
 vi.mock("../features/dashboard/loadAssetProvenanceDetails", () => ({
   loadAssetProvenanceDetails: vi.fn(),
 }));
+vi.mock("../features/dashboard/mutateAssetMonitor", () => ({
+  confirmImportBatchItem: vi.fn(),
+  confirmImportBatchItems: vi.fn(),
+  selectPrimaryAssetForImportBatch: vi.fn(),
+}));
 vi.mock("../features/dashboard/mutateWorkflowRun", () => ({
   retryWorkflowRun: vi.fn(),
   cancelWorkflowRun: vi.fn(),
@@ -73,6 +83,9 @@ const loadWorkflowRunDetailsMock = vi.mocked(loadWorkflowRunDetails);
 const loadAssetMonitorPanelMock = vi.mocked(loadAssetMonitorPanel);
 const loadImportBatchDetailsMock = vi.mocked(loadImportBatchDetails);
 const loadAssetProvenanceDetailsMock = vi.mocked(loadAssetProvenanceDetails);
+const confirmImportBatchItemMock = vi.mocked(confirmImportBatchItem);
+const confirmImportBatchItemsMock = vi.mocked(confirmImportBatchItems);
+const selectPrimaryAssetForImportBatchMock = vi.mocked(selectPrimaryAssetForImportBatch);
 const retryWorkflowRunMock = vi.mocked(retryWorkflowRun);
 const cancelWorkflowRunMock = vi.mocked(cancelWorkflowRun);
 const subscribeAdminRecentChangesMock = vi.mocked(subscribeAdminRecentChanges);
@@ -237,6 +250,9 @@ describe("Admin App", () => {
     loadAssetProvenanceDetailsMock.mockResolvedValue(
       createAssetProvenanceDetail("project-demo-001"),
     );
+    confirmImportBatchItemMock.mockResolvedValue(undefined);
+    confirmImportBatchItemsMock.mockResolvedValue(undefined);
+    selectPrimaryAssetForImportBatchMock.mockResolvedValue(undefined);
     retryWorkflowRunMock.mockResolvedValue(undefined);
     cancelWorkflowRunMock.mockResolvedValue(undefined);
   });
@@ -792,6 +808,248 @@ describe("Admin App", () => {
     expect(warnSpy).toHaveBeenCalledWith("asset monitor refresh down");
 
     warnSpy.mockRestore();
+  });
+
+  it("confirms selected import batch items, then refreshes the asset monitor and detail", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-asset-3&shotExecutionId=shot-exec-live-asset-3&orgId=org-live-asset-3&userId=user-live-asset-3",
+    );
+    loadAdminOverviewMock.mockResolvedValue(
+      createOverview("project-live-asset-3", "shot-exec-live-asset-3"),
+    );
+    loadGovernancePanelMock.mockResolvedValue(
+      createGovernance("org-live-asset-3", "user-live-asset-3"),
+    );
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-asset-3"));
+    loadAssetMonitorPanelMock.mockResolvedValue(createAssetMonitor("project-live-asset-3"));
+    loadImportBatchDetailsMock.mockResolvedValue({
+      ...createAssetBatchDetail("project-live-asset-3"),
+      items: [
+        {
+          id: "import-item-1",
+          status: "matched_pending_confirm",
+          assetId: "media-asset-1",
+        },
+        {
+          id: "import-item-2",
+          status: "matched_pending_confirm",
+          assetId: "media-asset-2",
+        },
+      ],
+      candidateAssets: [
+        {
+          id: "candidate-1",
+          shotExecutionId: "shot-exec-1",
+          assetId: "media-asset-1",
+          sourceRunId: "workflow-run-1",
+        },
+      ],
+      mediaAssets: [
+        {
+          id: "media-asset-1",
+          projectId: "project-live-asset-3",
+          sourceType: "upload_session",
+          rightsStatus: "clear",
+          importBatchId: "import-batch-1",
+          locale: "zh-CN",
+          aiAnnotated: true,
+        },
+      ],
+    });
+    loadAssetProvenanceDetailsMock.mockResolvedValue(
+      createAssetProvenanceDetail("project-live-asset-3"),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByText("资产监控")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "查看导入批次详情 import-batch-1" }));
+    expect(await screen.findByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
+
+    const candidateAssetsSection = screen
+      .getByRole("heading", { name: "候选资源" })
+      .closest("section");
+    expect(candidateAssetsSection).not.toBeNull();
+    fireEvent.click(
+      within(candidateAssetsSection as HTMLElement).getByRole("button", {
+        name: "查看资源来源 media-asset-1",
+      }),
+    );
+    expect(await screen.findByRole("dialog", { name: "资源来源详情" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "关闭资源来源详情" }));
+    expect(await screen.findByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "选择导入条目 import-item-1" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "选择导入条目 import-item-2" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认已选项" }));
+
+    expect(await screen.findByText("正在确认已选匹配")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(confirmImportBatchItemsMock).toHaveBeenCalledWith({
+        importBatchId: "import-batch-1",
+        itemIds: ["import-item-1", "import-item-2"],
+        orgId: "org-live-asset-3",
+        userId: "user-live-asset-3",
+      });
+    });
+    await waitFor(() => {
+      expect(loadAssetMonitorPanelMock).toHaveBeenCalledTimes(2);
+      expect(loadImportBatchDetailsMock).toHaveBeenCalledTimes(2);
+      expect(loadAssetProvenanceDetailsMock).toHaveBeenCalledTimes(1);
+    });
+    expect(await screen.findByText("已确认所选匹配")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "资源来源详情" })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "确认已选项" }),
+    ).toBeDisabled();
+  });
+
+  it("confirms all actionable import batch items from the open detail drawer", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-asset-4&shotExecutionId=shot-exec-live-asset-4&orgId=org-live-asset-4&userId=user-live-asset-4",
+    );
+    loadAdminOverviewMock.mockResolvedValue(
+      createOverview("project-live-asset-4", "shot-exec-live-asset-4"),
+    );
+    loadGovernancePanelMock.mockResolvedValue(
+      createGovernance("org-live-asset-4", "user-live-asset-4"),
+    );
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-asset-4"));
+    loadAssetMonitorPanelMock.mockResolvedValue(createAssetMonitor("project-live-asset-4"));
+    loadImportBatchDetailsMock.mockResolvedValue({
+      ...createAssetBatchDetail("project-live-asset-4"),
+      items: [
+        {
+          id: "import-item-1",
+          status: "confirmed",
+          assetId: "media-asset-1",
+        },
+        {
+          id: "import-item-2",
+          status: "matched_pending_confirm",
+          assetId: "media-asset-2",
+        },
+        {
+          id: "import-item-3",
+          status: "pending_review",
+          assetId: "",
+        },
+        {
+          id: "import-item-4",
+          status: "matched_pending_confirm",
+          assetId: "media-asset-4",
+        },
+      ],
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("资产监控")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "查看导入批次详情 import-batch-1" }));
+    expect(await screen.findByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "确认全部可确认项" }));
+
+    expect(await screen.findByText("正在确认全部可确认项")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(confirmImportBatchItemsMock).toHaveBeenCalledWith({
+        importBatchId: "import-batch-1",
+        itemIds: ["import-item-2", "import-item-4"],
+        orgId: "org-live-asset-4",
+        userId: "user-live-asset-4",
+      });
+    });
+    expect(await screen.findByText("已确认全部可确认项")).toBeInTheDocument();
+  });
+
+  it("selects a primary asset and keeps the import batch detail open", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-asset-5&shotExecutionId=shot-exec-live-asset-5&orgId=org-live-asset-5&userId=user-live-asset-5",
+    );
+    loadAdminOverviewMock.mockResolvedValue(
+      createOverview("project-live-asset-5", "shot-exec-live-asset-5"),
+    );
+    loadGovernancePanelMock.mockResolvedValue(
+      createGovernance("org-live-asset-5", "user-live-asset-5"),
+    );
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-asset-5"));
+    loadAssetMonitorPanelMock.mockResolvedValue(createAssetMonitor("project-live-asset-5"));
+    loadImportBatchDetailsMock.mockResolvedValue(createAssetBatchDetail("project-live-asset-5"));
+
+    render(<App />);
+
+    expect(await screen.findByText("资产监控")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "查看导入批次详情 import-batch-1" }));
+    expect(await screen.findByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "设置候选资源 candidate-1 为主素材" }));
+
+    expect(await screen.findByText("正在设置主素材")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(selectPrimaryAssetForImportBatchMock).toHaveBeenCalledWith({
+        shotExecutionId: "shot-exec-1",
+        assetId: "media-asset-1",
+        orgId: "org-live-asset-5",
+        userId: "user-live-asset-5",
+      });
+    });
+    await waitFor(() => {
+      expect(loadAssetMonitorPanelMock).toHaveBeenCalledTimes(2);
+      expect(loadImportBatchDetailsMock).toHaveBeenCalledTimes(2);
+    });
+    expect(await screen.findByText("主素材已更新")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
+  });
+
+  it("keeps the asset detail open and preserves selections when asset actions fail", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-asset-6&shotExecutionId=shot-exec-live-asset-6&orgId=org-live-asset-6&userId=user-live-asset-6",
+    );
+    loadAdminOverviewMock.mockResolvedValue(
+      createOverview("project-live-asset-6", "shot-exec-live-asset-6"),
+    );
+    loadGovernancePanelMock.mockResolvedValue(
+      createGovernance("org-live-asset-6", "user-live-asset-6"),
+    );
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-asset-6"));
+    loadAssetMonitorPanelMock.mockResolvedValue(createAssetMonitor("project-live-asset-6"));
+    loadImportBatchDetailsMock.mockResolvedValue({
+      ...createAssetBatchDetail("project-live-asset-6"),
+      items: [
+        {
+          id: "import-item-2",
+          status: "matched_pending_confirm",
+          assetId: "media-asset-2",
+        },
+      ],
+    });
+    confirmImportBatchItemsMock.mockRejectedValue(new Error("asset backend down"));
+
+    render(<App />);
+
+    expect(await screen.findByText("资产监控")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "查看导入批次详情 import-batch-1" }));
+    expect(await screen.findByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "选择导入条目 import-item-2" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认已选项" }));
+
+    expect(await screen.findByText("资产操作失败：asset backend down")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "选择导入条目 import-item-2" })).toBeChecked();
+    expect(loadAssetMonitorPanelMock).toHaveBeenCalledTimes(1);
+    expect(loadImportBatchDetailsMock).toHaveBeenCalledTimes(1);
   });
 
   it("retries a failed workflow run, then refreshes the monitor and open details", async () => {

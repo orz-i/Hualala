@@ -26,6 +26,11 @@ import { loadWorkflowMonitorPanel } from "../features/dashboard/loadWorkflowMoni
 import { loadWorkflowRunDetails } from "../features/dashboard/loadWorkflowRunDetails";
 import { updateBudgetPolicy } from "../features/dashboard/mutateBudgetPolicy";
 import {
+  confirmImportBatchItem,
+  confirmImportBatchItems,
+  selectPrimaryAssetForImportBatch,
+} from "../features/dashboard/mutateAssetMonitor";
+import {
   updateMemberRole,
   updateOrgLocaleSettings,
   updateUserPreferences,
@@ -108,6 +113,7 @@ export function App() {
   const [selectedWorkflowRunId, setSelectedWorkflowRunId] = useState<string | null>(null);
   const [selectedImportBatchId, setSelectedImportBatchId] = useState<string | null>(null);
   const [selectedAssetProvenanceId, setSelectedAssetProvenanceId] = useState<string | null>(null);
+  const [selectedImportItemIds, setSelectedImportItemIds] = useState<string[]>([]);
   const [workflowStatusFilter, setWorkflowStatusFilter] = useState("");
   const [workflowTypeFilter, setWorkflowTypeFilter] = useState("");
   const [assetStatusFilter, setAssetStatusFilter] = useState("");
@@ -122,6 +128,11 @@ export function App() {
     message: string;
   } | null>(null);
   const [workflowActionPending, setWorkflowActionPending] = useState(false);
+  const [assetActionFeedback, setAssetActionFeedback] = useState<{
+    tone: "pending" | "success" | "error";
+    message: string;
+  } | null>(null);
+  const [assetActionPending, setAssetActionPending] = useState(false);
   const workflowRefreshStateRef = useRef({
     running: false,
     queued: false,
@@ -294,6 +305,65 @@ export function App() {
   useEffect(() => {
     refreshAssetSilentlyRef.current = refreshAssetSilently;
   }, [refreshAssetSilently]);
+
+  const runAssetAction = useCallback(
+    async ({
+      pendingMessage,
+      successMessage,
+      execute,
+      clearSelectionsOnSuccess = false,
+    }: {
+      pendingMessage: string;
+      successMessage: string;
+      execute: (input: {
+        orgId: string;
+        userId: string;
+      }) => Promise<void>;
+      clearSelectionsOnSuccess?: boolean;
+    }) => {
+      if (assetActionPending) {
+        return;
+      }
+
+      startTransition(() => {
+        setAssetActionPending(true);
+        setAssetActionFeedback({
+          tone: "pending",
+          message: pendingMessage,
+        });
+      });
+
+      try {
+        await waitForFeedbackPaint();
+        await execute({
+          orgId: effectiveOrgId,
+          userId: effectiveUserId,
+        });
+        await refreshAssetSilently();
+        startTransition(() => {
+          setAssetActionPending(false);
+          setAssetActionFeedback({
+            tone: "success",
+            message: successMessage,
+          });
+          if (clearSelectionsOnSuccess) {
+            setSelectedImportItemIds([]);
+          }
+        });
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "admin: unknown asset action error";
+        startTransition(() => {
+          setAssetActionPending(false);
+          setAssetActionFeedback({
+            tone: "error",
+            message: t("asset.action.error", { message }),
+          });
+        });
+      }
+    },
+    [assetActionPending, effectiveOrgId, effectiveUserId, refreshAssetSilently, t],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -667,6 +737,8 @@ export function App() {
       budgetFeedback={budgetFeedback ?? undefined}
       workflowActionFeedback={workflowActionFeedback ?? undefined}
       workflowActionPending={workflowActionPending}
+      assetActionFeedback={assetActionFeedback ?? undefined}
+      assetActionPending={assetActionPending}
       onUpdateBudgetLimit={async (input) => {
         startTransition(() => {
           setBudgetFeedback({
@@ -756,6 +828,9 @@ export function App() {
           setSelectedImportBatchId(importBatchId);
           setSelectedAssetProvenanceId(null);
           setAssetProvenanceDetail(null);
+          setSelectedImportItemIds([]);
+          setAssetActionFeedback(null);
+          setAssetActionPending(false);
         });
       }}
       onCloseImportBatchDetail={() => {
@@ -764,6 +839,75 @@ export function App() {
           setImportBatchDetail(null);
           setSelectedAssetProvenanceId(null);
           setAssetProvenanceDetail(null);
+          setSelectedImportItemIds([]);
+          setAssetActionFeedback(null);
+          setAssetActionPending(false);
+        });
+      }}
+      selectedImportItemIds={selectedImportItemIds}
+      onToggleImportBatchItemSelection={({ itemId, checked }) => {
+        startTransition(() => {
+          setSelectedImportItemIds((current) => {
+            if (checked) {
+              return current.includes(itemId) ? current : [...current, itemId];
+            }
+            return current.filter((candidateId) => candidateId !== itemId);
+          });
+        });
+      }}
+      onConfirmImportBatchItem={({ importBatchId, itemId }) => {
+        void runAssetAction({
+          pendingMessage: t("asset.action.confirm.pending"),
+          successMessage: t("asset.action.confirm.success"),
+          clearSelectionsOnSuccess: true,
+          execute: (options) =>
+            confirmImportBatchItem({
+              importBatchId,
+              itemId,
+              ...options,
+            }),
+        });
+      }}
+      onConfirmSelectedImportBatchItems={({ importBatchId, itemIds }) => {
+        void runAssetAction({
+          pendingMessage: t("asset.action.confirmSelected.pending"),
+          successMessage: t("asset.action.confirmSelected.success"),
+          clearSelectionsOnSuccess: true,
+          execute: (options) =>
+            confirmImportBatchItems({
+              importBatchId,
+              itemIds,
+              ...options,
+            }),
+        });
+      }}
+      onConfirmAllImportBatchItems={({ importBatchId, itemIds }) => {
+        if (itemIds.length === 0) {
+          return;
+        }
+
+        void runAssetAction({
+          pendingMessage: t("asset.action.confirmAll.pending"),
+          successMessage: t("asset.action.confirmAll.success"),
+          clearSelectionsOnSuccess: true,
+          execute: (options) =>
+            confirmImportBatchItems({
+              importBatchId,
+              itemIds,
+              ...options,
+            }),
+        });
+      }}
+      onSelectPrimaryAsset={({ shotExecutionId, assetId }) => {
+        void runAssetAction({
+          pendingMessage: t("asset.action.selectPrimary.pending"),
+          successMessage: t("asset.action.selectPrimary.success"),
+          execute: (options) =>
+            selectPrimaryAssetForImportBatch({
+              shotExecutionId,
+              assetId,
+              ...options,
+            }),
         });
       }}
       onSelectAssetProvenance={(assetId) => {
