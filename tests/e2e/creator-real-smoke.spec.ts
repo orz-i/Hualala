@@ -15,6 +15,7 @@ test("creator real smoke: shot workbench completes gate checks against backend",
   );
 
   await page.goto(seed.urls.creatorShot);
+  await page.getByRole("button", { name: "进入开发会话" }).click();
 
   await expect(page.getByText(seed.creatorShot.shotExecutionId)).toBeVisible();
   await expect(page.getByText("1 个候选素材")).toBeVisible();
@@ -45,6 +46,7 @@ test("creator real smoke: import workbench confirms matches and selects primary 
   );
 
   await page.goto(seed.urls.creatorImport);
+  await page.getByRole("button", { name: "进入开发会话" }).click();
 
   await expect(page.getByText(seed.creatorImport.importBatchId)).toBeVisible();
   await expect(page.getByText("1 个上传会话")).toBeVisible();
