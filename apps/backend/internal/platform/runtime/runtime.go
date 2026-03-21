@@ -83,7 +83,7 @@ func (f Factory) Services() ServiceSet {
 		AuthService:      authapp.NewService(repos.AuthOrg, authorizer),
 		OrgService:       orgapp.NewService(repos.AuthOrg, authorizer),
 		ExecutionService: executionapp.NewService(repos.Executions, repos.ProjectContent, repos.Assets, repos.ReviewBilling, repos.EventPublisher),
-		AssetService:     assetapp.NewService(repos.Assets, repos.Executions),
+		AssetService:     assetapp.NewService(repos.Assets, repos.Executions, repos.EventPublisher),
 		ReviewService:    reviewapp.NewService(repos.Executions, repos.ReviewBilling, repos.EventPublisher),
 		BillingService:   billingapp.NewService(repos.ReviewBilling, repos.EventPublisher),
 		ProjectService:   projectapp.NewService(repos.ProjectContent),

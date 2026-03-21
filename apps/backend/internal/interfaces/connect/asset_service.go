@@ -49,6 +49,24 @@ func (h *assetHandler) AddCandidateAsset(ctx context.Context, req *connectrpc.Re
 	}), nil
 }
 
+func (h *assetHandler) ListImportBatches(ctx context.Context, req *connectrpc.Request[assetv1.ListImportBatchesRequest]) (*connectrpc.Response[assetv1.ListImportBatchesResponse], error) {
+	records, err := h.service.ListImportBatches(ctx, assetapp.ListImportBatchesInput{
+		ProjectID:  req.Msg.GetProjectId(),
+		Status:     req.Msg.GetStatus(),
+		SourceType: req.Msg.GetSourceType(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	items := make([]*assetv1.ImportBatchSummary, 0, len(records))
+	for _, record := range records {
+		items = append(items, mapImportBatchSummary(record))
+	}
+	return connectrpc.NewResponse(&assetv1.ListImportBatchesResponse{
+		ImportBatches: items,
+	}), nil
+}
+
 func (h *assetHandler) ListImportBatchItems(ctx context.Context, req *connectrpc.Request[assetv1.ListImportBatchItemsRequest]) (*connectrpc.Response[assetv1.ListImportBatchItemsResponse], error) {
 	records, err := h.service.ListImportBatchItems(ctx, assetapp.ListImportBatchItemsInput{
 		ImportBatchID: req.Msg.GetImportBatchId(),
@@ -157,5 +175,10 @@ func (h *assetHandler) GetAssetProvenanceSummary(ctx context.Context, req *conne
 	return connectrpc.NewResponse(&assetv1.GetAssetProvenanceSummaryResponse{
 		Asset:             mapMediaAsset(record.Asset),
 		ProvenanceSummary: record.ProvenanceSummary,
+		CandidateAssetId:  record.CandidateAssetID,
+		ShotExecutionId:   record.ShotExecutionID,
+		SourceRunId:       record.SourceRunID,
+		ImportBatchId:     record.ImportBatchID,
+		VariantCount:      uint32(record.VariantCount),
 	}), nil
 }

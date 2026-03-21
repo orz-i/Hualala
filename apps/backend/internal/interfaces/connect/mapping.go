@@ -1,6 +1,8 @@
 package connect
 
 import (
+	"time"
+
 	assetv1 "github.com/hualala/apps/backend/gen/hualala/asset/v1"
 	authv1 "github.com/hualala/apps/backend/gen/hualala/auth/v1"
 	billingv1 "github.com/hualala/apps/backend/gen/hualala/billing/v1"
@@ -9,6 +11,7 @@ import (
 	orgv1 "github.com/hualala/apps/backend/gen/hualala/org/v1"
 	projectv1 "github.com/hualala/apps/backend/gen/hualala/project/v1"
 	reviewv1 "github.com/hualala/apps/backend/gen/hualala/review/v1"
+	"github.com/hualala/apps/backend/internal/application/assetapp"
 	"github.com/hualala/apps/backend/internal/application/billingapp"
 	"github.com/hualala/apps/backend/internal/application/executionapp"
 	"github.com/hualala/apps/backend/internal/application/reviewapp"
@@ -169,6 +172,23 @@ func mapImportBatch(record asset.ImportBatch) *assetv1.ImportBatch {
 		OperatorId: record.OperatorID,
 		SourceType: record.SourceType,
 		Status:     record.Status,
+	}
+}
+
+func mapImportBatchSummary(record assetapp.ImportBatchSummary) *assetv1.ImportBatchSummary {
+	return &assetv1.ImportBatchSummary{
+		Id:                  record.ImportBatch.ID,
+		OrgId:               record.ImportBatch.OrgID,
+		ProjectId:           record.ImportBatch.ProjectID,
+		OperatorId:          record.ImportBatch.OperatorID,
+		SourceType:          record.ImportBatch.SourceType,
+		Status:              record.ImportBatch.Status,
+		UploadSessionCount:  uint32(record.UploadSessionCount),
+		ItemCount:           uint32(record.ItemCount),
+		ConfirmedItemCount:  uint32(record.ConfirmedItemCount),
+		CandidateAssetCount: uint32(record.CandidateAssetCount),
+		MediaAssetCount:     uint32(record.MediaAssetCount),
+		UpdatedAt:           record.ImportBatch.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }
 

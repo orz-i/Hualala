@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddCandidateAssetRequest, AddCandidateAssetResponse, BatchConfirmImportBatchItemsRequest, BatchConfirmImportBatchItemsResponse, CreateImportBatchRequest, CreateImportBatchResponse, GetAssetProvenanceSummaryRequest, GetAssetProvenanceSummaryResponse, GetImportBatchWorkbenchRequest, GetImportBatchWorkbenchResponse, ListCandidateAssetsRequest, ListCandidateAssetsResponse, ListImportBatchItemsRequest, ListImportBatchItemsResponse } from "./asset_pb.js";
+import { AddCandidateAssetRequest, AddCandidateAssetResponse, BatchConfirmImportBatchItemsRequest, BatchConfirmImportBatchItemsResponse, CreateImportBatchRequest, CreateImportBatchResponse, GetAssetProvenanceSummaryRequest, GetAssetProvenanceSummaryResponse, GetImportBatchWorkbenchRequest, GetImportBatchWorkbenchResponse, ListCandidateAssetsRequest, ListCandidateAssetsResponse, ListImportBatchesRequest, ListImportBatchesResponse, ListImportBatchItemsRequest, ListImportBatchItemsResponse } from "./asset_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -28,6 +28,15 @@ export const AssetService = {
       name: "AddCandidateAsset",
       I: AddCandidateAssetRequest,
       O: AddCandidateAssetResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.asset.v1.AssetService.ListImportBatches
+     */
+    listImportBatches: {
+      name: "ListImportBatches",
+      I: ListImportBatchesRequest,
+      O: ListImportBatchesResponse,
       kind: MethodKind.Unary,
     },
     /**

@@ -105,6 +105,138 @@ func (x *ImportBatch) GetStatus() string {
 	return ""
 }
 
+type ImportBatchSummary struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Id                  string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	OrgId               string                 `protobuf:"bytes,2,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	ProjectId           string                 `protobuf:"bytes,3,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	OperatorId          string                 `protobuf:"bytes,4,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`
+	SourceType          string                 `protobuf:"bytes,5,opt,name=source_type,json=sourceType,proto3" json:"source_type,omitempty"`
+	Status              string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	UploadSessionCount  uint32                 `protobuf:"varint,7,opt,name=upload_session_count,json=uploadSessionCount,proto3" json:"upload_session_count,omitempty"`
+	ItemCount           uint32                 `protobuf:"varint,8,opt,name=item_count,json=itemCount,proto3" json:"item_count,omitempty"`
+	ConfirmedItemCount  uint32                 `protobuf:"varint,9,opt,name=confirmed_item_count,json=confirmedItemCount,proto3" json:"confirmed_item_count,omitempty"`
+	CandidateAssetCount uint32                 `protobuf:"varint,10,opt,name=candidate_asset_count,json=candidateAssetCount,proto3" json:"candidate_asset_count,omitempty"`
+	MediaAssetCount     uint32                 `protobuf:"varint,11,opt,name=media_asset_count,json=mediaAssetCount,proto3" json:"media_asset_count,omitempty"`
+	UpdatedAt           string                 `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *ImportBatchSummary) Reset() {
+	*x = ImportBatchSummary{}
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportBatchSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportBatchSummary) ProtoMessage() {}
+
+func (x *ImportBatchSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportBatchSummary.ProtoReflect.Descriptor instead.
+func (*ImportBatchSummary) Descriptor() ([]byte, []int) {
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ImportBatchSummary) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ImportBatchSummary) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *ImportBatchSummary) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *ImportBatchSummary) GetOperatorId() string {
+	if x != nil {
+		return x.OperatorId
+	}
+	return ""
+}
+
+func (x *ImportBatchSummary) GetSourceType() string {
+	if x != nil {
+		return x.SourceType
+	}
+	return ""
+}
+
+func (x *ImportBatchSummary) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ImportBatchSummary) GetUploadSessionCount() uint32 {
+	if x != nil {
+		return x.UploadSessionCount
+	}
+	return 0
+}
+
+func (x *ImportBatchSummary) GetItemCount() uint32 {
+	if x != nil {
+		return x.ItemCount
+	}
+	return 0
+}
+
+func (x *ImportBatchSummary) GetConfirmedItemCount() uint32 {
+	if x != nil {
+		return x.ConfirmedItemCount
+	}
+	return 0
+}
+
+func (x *ImportBatchSummary) GetCandidateAssetCount() uint32 {
+	if x != nil {
+		return x.CandidateAssetCount
+	}
+	return 0
+}
+
+func (x *ImportBatchSummary) GetMediaAssetCount() uint32 {
+	if x != nil {
+		return x.MediaAssetCount
+	}
+	return 0
+}
+
+func (x *ImportBatchSummary) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
 type ImportBatchItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -118,7 +250,7 @@ type ImportBatchItem struct {
 
 func (x *ImportBatchItem) Reset() {
 	*x = ImportBatchItem{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[1]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -130,7 +262,7 @@ func (x *ImportBatchItem) String() string {
 func (*ImportBatchItem) ProtoMessage() {}
 
 func (x *ImportBatchItem) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[1]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -143,7 +275,7 @@ func (x *ImportBatchItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportBatchItem.ProtoReflect.Descriptor instead.
 func (*ImportBatchItem) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{1}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ImportBatchItem) GetId() string {
@@ -196,7 +328,7 @@ type MediaAsset struct {
 
 func (x *MediaAsset) Reset() {
 	*x = MediaAsset{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[2]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -208,7 +340,7 @@ func (x *MediaAsset) String() string {
 func (*MediaAsset) ProtoMessage() {}
 
 func (x *MediaAsset) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[2]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -221,7 +353,7 @@ func (x *MediaAsset) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MediaAsset.ProtoReflect.Descriptor instead.
 func (*MediaAsset) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{2}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *MediaAsset) GetId() string {
@@ -285,7 +417,7 @@ type ShotCandidateAsset struct {
 
 func (x *ShotCandidateAsset) Reset() {
 	*x = ShotCandidateAsset{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[3]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -297,7 +429,7 @@ func (x *ShotCandidateAsset) String() string {
 func (*ShotCandidateAsset) ProtoMessage() {}
 
 func (x *ShotCandidateAsset) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[3]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -310,7 +442,7 @@ func (x *ShotCandidateAsset) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShotCandidateAsset.ProtoReflect.Descriptor instead.
 func (*ShotCandidateAsset) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{3}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ShotCandidateAsset) GetId() string {
@@ -359,7 +491,7 @@ type UploadSession struct {
 
 func (x *UploadSession) Reset() {
 	*x = UploadSession{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[4]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -371,7 +503,7 @@ func (x *UploadSession) String() string {
 func (*UploadSession) ProtoMessage() {}
 
 func (x *UploadSession) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[4]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -384,7 +516,7 @@ func (x *UploadSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadSession.ProtoReflect.Descriptor instead.
 func (*UploadSession) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{4}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *UploadSession) GetId() string {
@@ -471,7 +603,7 @@ type UploadFile struct {
 
 func (x *UploadFile) Reset() {
 	*x = UploadFile{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[5]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -483,7 +615,7 @@ func (x *UploadFile) String() string {
 func (*UploadFile) ProtoMessage() {}
 
 func (x *UploadFile) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[5]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -496,7 +628,7 @@ func (x *UploadFile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadFile.ProtoReflect.Descriptor instead.
 func (*UploadFile) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{5}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *UploadFile) GetId() string {
@@ -556,7 +688,7 @@ type MediaAssetVariant struct {
 
 func (x *MediaAssetVariant) Reset() {
 	*x = MediaAssetVariant{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[6]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -568,7 +700,7 @@ func (x *MediaAssetVariant) String() string {
 func (*MediaAssetVariant) ProtoMessage() {}
 
 func (x *MediaAssetVariant) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[6]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -581,7 +713,7 @@ func (x *MediaAssetVariant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MediaAssetVariant.ProtoReflect.Descriptor instead.
 func (*MediaAssetVariant) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{6}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *MediaAssetVariant) GetId() string {
@@ -646,7 +778,7 @@ type ImportBatchShotExecution struct {
 
 func (x *ImportBatchShotExecution) Reset() {
 	*x = ImportBatchShotExecution{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[7]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -658,7 +790,7 @@ func (x *ImportBatchShotExecution) String() string {
 func (*ImportBatchShotExecution) ProtoMessage() {}
 
 func (x *ImportBatchShotExecution) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[7]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -671,7 +803,7 @@ func (x *ImportBatchShotExecution) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportBatchShotExecution.ProtoReflect.Descriptor instead.
 func (*ImportBatchShotExecution) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{7}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ImportBatchShotExecution) GetId() string {
@@ -721,7 +853,7 @@ type CreateImportBatchRequest struct {
 
 func (x *CreateImportBatchRequest) Reset() {
 	*x = CreateImportBatchRequest{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[8]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -733,7 +865,7 @@ func (x *CreateImportBatchRequest) String() string {
 func (*CreateImportBatchRequest) ProtoMessage() {}
 
 func (x *CreateImportBatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[8]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -746,7 +878,7 @@ func (x *CreateImportBatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateImportBatchRequest.ProtoReflect.Descriptor instead.
 func (*CreateImportBatchRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{8}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CreateImportBatchRequest) GetProjectId() string {
@@ -786,7 +918,7 @@ type CreateImportBatchResponse struct {
 
 func (x *CreateImportBatchResponse) Reset() {
 	*x = CreateImportBatchResponse{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[9]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -798,7 +930,7 @@ func (x *CreateImportBatchResponse) String() string {
 func (*CreateImportBatchResponse) ProtoMessage() {}
 
 func (x *CreateImportBatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[9]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -811,12 +943,116 @@ func (x *CreateImportBatchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateImportBatchResponse.ProtoReflect.Descriptor instead.
 func (*CreateImportBatchResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{9}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CreateImportBatchResponse) GetImportBatch() *ImportBatch {
 	if x != nil {
 		return x.ImportBatch
+	}
+	return nil
+}
+
+type ListImportBatchesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	SourceType    string                 `protobuf:"bytes,3,opt,name=source_type,json=sourceType,proto3" json:"source_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListImportBatchesRequest) Reset() {
+	*x = ListImportBatchesRequest{}
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListImportBatchesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListImportBatchesRequest) ProtoMessage() {}
+
+func (x *ListImportBatchesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListImportBatchesRequest.ProtoReflect.Descriptor instead.
+func (*ListImportBatchesRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ListImportBatchesRequest) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *ListImportBatchesRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListImportBatchesRequest) GetSourceType() string {
+	if x != nil {
+		return x.SourceType
+	}
+	return ""
+}
+
+type ListImportBatchesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ImportBatches []*ImportBatchSummary  `protobuf:"bytes,1,rep,name=import_batches,json=importBatches,proto3" json:"import_batches,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListImportBatchesResponse) Reset() {
+	*x = ListImportBatchesResponse{}
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListImportBatchesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListImportBatchesResponse) ProtoMessage() {}
+
+func (x *ListImportBatchesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListImportBatchesResponse.ProtoReflect.Descriptor instead.
+func (*ListImportBatchesResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ListImportBatchesResponse) GetImportBatches() []*ImportBatchSummary {
+	if x != nil {
+		return x.ImportBatches
 	}
 	return nil
 }
@@ -838,7 +1074,7 @@ type AddCandidateAssetRequest struct {
 
 func (x *AddCandidateAssetRequest) Reset() {
 	*x = AddCandidateAssetRequest{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[10]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -850,7 +1086,7 @@ func (x *AddCandidateAssetRequest) String() string {
 func (*AddCandidateAssetRequest) ProtoMessage() {}
 
 func (x *AddCandidateAssetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[10]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -863,7 +1099,7 @@ func (x *AddCandidateAssetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddCandidateAssetRequest.ProtoReflect.Descriptor instead.
 func (*AddCandidateAssetRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{10}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AddCandidateAssetRequest) GetShotExecutionId() string {
@@ -938,7 +1174,7 @@ type AddCandidateAssetResponse struct {
 
 func (x *AddCandidateAssetResponse) Reset() {
 	*x = AddCandidateAssetResponse{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[11]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -950,7 +1186,7 @@ func (x *AddCandidateAssetResponse) String() string {
 func (*AddCandidateAssetResponse) ProtoMessage() {}
 
 func (x *AddCandidateAssetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[11]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -963,7 +1199,7 @@ func (x *AddCandidateAssetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddCandidateAssetResponse.ProtoReflect.Descriptor instead.
 func (*AddCandidateAssetResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{11}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AddCandidateAssetResponse) GetAsset() *ShotCandidateAsset {
@@ -982,7 +1218,7 @@ type ListImportBatchItemsRequest struct {
 
 func (x *ListImportBatchItemsRequest) Reset() {
 	*x = ListImportBatchItemsRequest{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[12]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -994,7 +1230,7 @@ func (x *ListImportBatchItemsRequest) String() string {
 func (*ListImportBatchItemsRequest) ProtoMessage() {}
 
 func (x *ListImportBatchItemsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[12]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1007,7 +1243,7 @@ func (x *ListImportBatchItemsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListImportBatchItemsRequest.ProtoReflect.Descriptor instead.
 func (*ListImportBatchItemsRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{12}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListImportBatchItemsRequest) GetImportBatchId() string {
@@ -1026,7 +1262,7 @@ type ListImportBatchItemsResponse struct {
 
 func (x *ListImportBatchItemsResponse) Reset() {
 	*x = ListImportBatchItemsResponse{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[13]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1038,7 +1274,7 @@ func (x *ListImportBatchItemsResponse) String() string {
 func (*ListImportBatchItemsResponse) ProtoMessage() {}
 
 func (x *ListImportBatchItemsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[13]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1051,7 +1287,7 @@ func (x *ListImportBatchItemsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListImportBatchItemsResponse.ProtoReflect.Descriptor instead.
 func (*ListImportBatchItemsResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{13}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListImportBatchItemsResponse) GetItems() []*ImportBatchItem {
@@ -1071,7 +1307,7 @@ type BatchConfirmImportBatchItemsRequest struct {
 
 func (x *BatchConfirmImportBatchItemsRequest) Reset() {
 	*x = BatchConfirmImportBatchItemsRequest{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[14]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1083,7 +1319,7 @@ func (x *BatchConfirmImportBatchItemsRequest) String() string {
 func (*BatchConfirmImportBatchItemsRequest) ProtoMessage() {}
 
 func (x *BatchConfirmImportBatchItemsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[14]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1096,7 +1332,7 @@ func (x *BatchConfirmImportBatchItemsRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use BatchConfirmImportBatchItemsRequest.ProtoReflect.Descriptor instead.
 func (*BatchConfirmImportBatchItemsRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{14}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *BatchConfirmImportBatchItemsRequest) GetImportBatchId() string {
@@ -1122,7 +1358,7 @@ type BatchConfirmImportBatchItemsResponse struct {
 
 func (x *BatchConfirmImportBatchItemsResponse) Reset() {
 	*x = BatchConfirmImportBatchItemsResponse{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[15]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1134,7 +1370,7 @@ func (x *BatchConfirmImportBatchItemsResponse) String() string {
 func (*BatchConfirmImportBatchItemsResponse) ProtoMessage() {}
 
 func (x *BatchConfirmImportBatchItemsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[15]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1147,7 +1383,7 @@ func (x *BatchConfirmImportBatchItemsResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use BatchConfirmImportBatchItemsResponse.ProtoReflect.Descriptor instead.
 func (*BatchConfirmImportBatchItemsResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{15}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *BatchConfirmImportBatchItemsResponse) GetItems() []*ImportBatchItem {
@@ -1166,7 +1402,7 @@ type GetImportBatchWorkbenchRequest struct {
 
 func (x *GetImportBatchWorkbenchRequest) Reset() {
 	*x = GetImportBatchWorkbenchRequest{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[16]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1178,7 +1414,7 @@ func (x *GetImportBatchWorkbenchRequest) String() string {
 func (*GetImportBatchWorkbenchRequest) ProtoMessage() {}
 
 func (x *GetImportBatchWorkbenchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[16]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1191,7 +1427,7 @@ func (x *GetImportBatchWorkbenchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetImportBatchWorkbenchRequest.ProtoReflect.Descriptor instead.
 func (*GetImportBatchWorkbenchRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{16}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GetImportBatchWorkbenchRequest) GetImportBatchId() string {
@@ -1217,7 +1453,7 @@ type GetImportBatchWorkbenchResponse struct {
 
 func (x *GetImportBatchWorkbenchResponse) Reset() {
 	*x = GetImportBatchWorkbenchResponse{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[17]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1229,7 +1465,7 @@ func (x *GetImportBatchWorkbenchResponse) String() string {
 func (*GetImportBatchWorkbenchResponse) ProtoMessage() {}
 
 func (x *GetImportBatchWorkbenchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[17]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1242,7 +1478,7 @@ func (x *GetImportBatchWorkbenchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetImportBatchWorkbenchResponse.ProtoReflect.Descriptor instead.
 func (*GetImportBatchWorkbenchResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{17}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetImportBatchWorkbenchResponse) GetImportBatch() *ImportBatch {
@@ -1310,7 +1546,7 @@ type ListCandidateAssetsRequest struct {
 
 func (x *ListCandidateAssetsRequest) Reset() {
 	*x = ListCandidateAssetsRequest{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[18]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1322,7 +1558,7 @@ func (x *ListCandidateAssetsRequest) String() string {
 func (*ListCandidateAssetsRequest) ProtoMessage() {}
 
 func (x *ListCandidateAssetsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[18]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1335,7 +1571,7 @@ func (x *ListCandidateAssetsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCandidateAssetsRequest.ProtoReflect.Descriptor instead.
 func (*ListCandidateAssetsRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{18}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ListCandidateAssetsRequest) GetShotExecutionId() string {
@@ -1354,7 +1590,7 @@ type ListCandidateAssetsResponse struct {
 
 func (x *ListCandidateAssetsResponse) Reset() {
 	*x = ListCandidateAssetsResponse{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[19]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1366,7 +1602,7 @@ func (x *ListCandidateAssetsResponse) String() string {
 func (*ListCandidateAssetsResponse) ProtoMessage() {}
 
 func (x *ListCandidateAssetsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[19]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1379,7 +1615,7 @@ func (x *ListCandidateAssetsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCandidateAssetsResponse.ProtoReflect.Descriptor instead.
 func (*ListCandidateAssetsResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{19}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ListCandidateAssetsResponse) GetAssets() []*ShotCandidateAsset {
@@ -1398,7 +1634,7 @@ type GetAssetProvenanceSummaryRequest struct {
 
 func (x *GetAssetProvenanceSummaryRequest) Reset() {
 	*x = GetAssetProvenanceSummaryRequest{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[20]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1410,7 +1646,7 @@ func (x *GetAssetProvenanceSummaryRequest) String() string {
 func (*GetAssetProvenanceSummaryRequest) ProtoMessage() {}
 
 func (x *GetAssetProvenanceSummaryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[20]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1423,7 +1659,7 @@ func (x *GetAssetProvenanceSummaryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAssetProvenanceSummaryRequest.ProtoReflect.Descriptor instead.
 func (*GetAssetProvenanceSummaryRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{20}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GetAssetProvenanceSummaryRequest) GetAssetId() string {
@@ -1437,13 +1673,18 @@ type GetAssetProvenanceSummaryResponse struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	Asset             *MediaAsset            `protobuf:"bytes,1,opt,name=asset,proto3" json:"asset,omitempty"`
 	ProvenanceSummary string                 `protobuf:"bytes,2,opt,name=provenance_summary,json=provenanceSummary,proto3" json:"provenance_summary,omitempty"`
+	CandidateAssetId  string                 `protobuf:"bytes,3,opt,name=candidate_asset_id,json=candidateAssetId,proto3" json:"candidate_asset_id,omitempty"`
+	ShotExecutionId   string                 `protobuf:"bytes,4,opt,name=shot_execution_id,json=shotExecutionId,proto3" json:"shot_execution_id,omitempty"`
+	SourceRunId       string                 `protobuf:"bytes,5,opt,name=source_run_id,json=sourceRunId,proto3" json:"source_run_id,omitempty"`
+	ImportBatchId     string                 `protobuf:"bytes,6,opt,name=import_batch_id,json=importBatchId,proto3" json:"import_batch_id,omitempty"`
+	VariantCount      uint32                 `protobuf:"varint,7,opt,name=variant_count,json=variantCount,proto3" json:"variant_count,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GetAssetProvenanceSummaryResponse) Reset() {
 	*x = GetAssetProvenanceSummaryResponse{}
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[21]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1455,7 +1696,7 @@ func (x *GetAssetProvenanceSummaryResponse) String() string {
 func (*GetAssetProvenanceSummaryResponse) ProtoMessage() {}
 
 func (x *GetAssetProvenanceSummaryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_asset_v1_asset_proto_msgTypes[21]
+	mi := &file_hualala_asset_v1_asset_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1468,7 +1709,7 @@ func (x *GetAssetProvenanceSummaryResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetAssetProvenanceSummaryResponse.ProtoReflect.Descriptor instead.
 func (*GetAssetProvenanceSummaryResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{21}
+	return file_hualala_asset_v1_asset_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetAssetProvenanceSummaryResponse) GetAsset() *MediaAsset {
@@ -1485,6 +1726,41 @@ func (x *GetAssetProvenanceSummaryResponse) GetProvenanceSummary() string {
 	return ""
 }
 
+func (x *GetAssetProvenanceSummaryResponse) GetCandidateAssetId() string {
+	if x != nil {
+		return x.CandidateAssetId
+	}
+	return ""
+}
+
+func (x *GetAssetProvenanceSummaryResponse) GetShotExecutionId() string {
+	if x != nil {
+		return x.ShotExecutionId
+	}
+	return ""
+}
+
+func (x *GetAssetProvenanceSummaryResponse) GetSourceRunId() string {
+	if x != nil {
+		return x.SourceRunId
+	}
+	return ""
+}
+
+func (x *GetAssetProvenanceSummaryResponse) GetImportBatchId() string {
+	if x != nil {
+		return x.ImportBatchId
+	}
+	return ""
+}
+
+func (x *GetAssetProvenanceSummaryResponse) GetVariantCount() uint32 {
+	if x != nil {
+		return x.VariantCount
+	}
+	return 0
+}
+
 var File_hualala_asset_v1_asset_proto protoreflect.FileDescriptor
 
 const file_hualala_asset_v1_asset_proto_rawDesc = "" +
@@ -1499,7 +1775,26 @@ const file_hualala_asset_v1_asset_proto_rawDesc = "" +
 	"operatorId\x12\x1f\n" +
 	"\vsource_type\x18\x05 \x01(\tR\n" +
 	"sourceType\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\"\xa4\x01\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\"\xb6\x03\n" +
+	"\x12ImportBatchSummary\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
+	"\x06org_id\x18\x02 \x01(\tR\x05orgId\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x03 \x01(\tR\tprojectId\x12\x1f\n" +
+	"\voperator_id\x18\x04 \x01(\tR\n" +
+	"operatorId\x12\x1f\n" +
+	"\vsource_type\x18\x05 \x01(\tR\n" +
+	"sourceType\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x120\n" +
+	"\x14upload_session_count\x18\a \x01(\rR\x12uploadSessionCount\x12\x1d\n" +
+	"\n" +
+	"item_count\x18\b \x01(\rR\titemCount\x120\n" +
+	"\x14confirmed_item_count\x18\t \x01(\rR\x12confirmedItemCount\x122\n" +
+	"\x15candidate_asset_count\x18\n" +
+	" \x01(\rR\x13candidateAssetCount\x12*\n" +
+	"\x11media_asset_count\x18\v \x01(\rR\x0fmediaAssetCount\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\f \x01(\tR\tupdatedAt\"\xa4\x01\n" +
 	"\x0fImportBatchItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12&\n" +
 	"\x0fimport_batch_id\x18\x02 \x01(\tR\rimportBatchId\x12\x16\n" +
@@ -1570,7 +1865,15 @@ const file_hualala_asset_v1_asset_proto_rawDesc = "" +
 	"\vsource_type\x18\x04 \x01(\tR\n" +
 	"sourceType\"]\n" +
 	"\x19CreateImportBatchResponse\x12@\n" +
-	"\fimport_batch\x18\x01 \x01(\v2\x1d.hualala.asset.v1.ImportBatchR\vimportBatch\"\xd4\x02\n" +
+	"\fimport_batch\x18\x01 \x01(\v2\x1d.hualala.asset.v1.ImportBatchR\vimportBatch\"r\n" +
+	"\x18ListImportBatchesRequest\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12\x1f\n" +
+	"\vsource_type\x18\x03 \x01(\tR\n" +
+	"sourceType\"h\n" +
+	"\x19ListImportBatchesResponse\x12K\n" +
+	"\x0eimport_batches\x18\x01 \x03(\v2$.hualala.asset.v1.ImportBatchSummaryR\rimportBatches\"\xd4\x02\n" +
 	"\x18AddCandidateAssetRequest\x12*\n" +
 	"\x11shot_execution_id\x18\x01 \x01(\tR\x0fshotExecutionId\x12\x1d\n" +
 	"\n" +
@@ -1610,13 +1913,19 @@ const file_hualala_asset_v1_asset_proto_rawDesc = "" +
 	"\x1bListCandidateAssetsResponse\x12<\n" +
 	"\x06assets\x18\x01 \x03(\v2$.hualala.asset.v1.ShotCandidateAssetR\x06assets\"=\n" +
 	" GetAssetProvenanceSummaryRequest\x12\x19\n" +
-	"\basset_id\x18\x01 \x01(\tR\aassetId\"\x86\x01\n" +
+	"\basset_id\x18\x01 \x01(\tR\aassetId\"\xd1\x02\n" +
 	"!GetAssetProvenanceSummaryResponse\x122\n" +
 	"\x05asset\x18\x01 \x01(\v2\x1c.hualala.asset.v1.MediaAssetR\x05asset\x12-\n" +
-	"\x12provenance_summary\x18\x02 \x01(\tR\x11provenanceSummary2\xec\x06\n" +
+	"\x12provenance_summary\x18\x02 \x01(\tR\x11provenanceSummary\x12,\n" +
+	"\x12candidate_asset_id\x18\x03 \x01(\tR\x10candidateAssetId\x12*\n" +
+	"\x11shot_execution_id\x18\x04 \x01(\tR\x0fshotExecutionId\x12\"\n" +
+	"\rsource_run_id\x18\x05 \x01(\tR\vsourceRunId\x12&\n" +
+	"\x0fimport_batch_id\x18\x06 \x01(\tR\rimportBatchId\x12#\n" +
+	"\rvariant_count\x18\a \x01(\rR\fvariantCount2\xda\a\n" +
 	"\fAssetService\x12l\n" +
 	"\x11CreateImportBatch\x12*.hualala.asset.v1.CreateImportBatchRequest\x1a+.hualala.asset.v1.CreateImportBatchResponse\x12l\n" +
-	"\x11AddCandidateAsset\x12*.hualala.asset.v1.AddCandidateAssetRequest\x1a+.hualala.asset.v1.AddCandidateAssetResponse\x12u\n" +
+	"\x11AddCandidateAsset\x12*.hualala.asset.v1.AddCandidateAssetRequest\x1a+.hualala.asset.v1.AddCandidateAssetResponse\x12l\n" +
+	"\x11ListImportBatches\x12*.hualala.asset.v1.ListImportBatchesRequest\x1a+.hualala.asset.v1.ListImportBatchesResponse\x12u\n" +
 	"\x14ListImportBatchItems\x12-.hualala.asset.v1.ListImportBatchItemsRequest\x1a..hualala.asset.v1.ListImportBatchItemsResponse\x12\x8d\x01\n" +
 	"\x1cBatchConfirmImportBatchItems\x125.hualala.asset.v1.BatchConfirmImportBatchItemsRequest\x1a6.hualala.asset.v1.BatchConfirmImportBatchItemsResponse\x12~\n" +
 	"\x17GetImportBatchWorkbench\x120.hualala.asset.v1.GetImportBatchWorkbenchRequest\x1a1.hualala.asset.v1.GetImportBatchWorkbenchResponse\x12r\n" +
@@ -1637,65 +1946,71 @@ func file_hualala_asset_v1_asset_proto_rawDescGZIP() []byte {
 	return file_hualala_asset_v1_asset_proto_rawDescData
 }
 
-var file_hualala_asset_v1_asset_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_hualala_asset_v1_asset_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_hualala_asset_v1_asset_proto_goTypes = []any{
 	(*ImportBatch)(nil),                          // 0: hualala.asset.v1.ImportBatch
-	(*ImportBatchItem)(nil),                      // 1: hualala.asset.v1.ImportBatchItem
-	(*MediaAsset)(nil),                           // 2: hualala.asset.v1.MediaAsset
-	(*ShotCandidateAsset)(nil),                   // 3: hualala.asset.v1.ShotCandidateAsset
-	(*UploadSession)(nil),                        // 4: hualala.asset.v1.UploadSession
-	(*UploadFile)(nil),                           // 5: hualala.asset.v1.UploadFile
-	(*MediaAssetVariant)(nil),                    // 6: hualala.asset.v1.MediaAssetVariant
-	(*ImportBatchShotExecution)(nil),             // 7: hualala.asset.v1.ImportBatchShotExecution
-	(*CreateImportBatchRequest)(nil),             // 8: hualala.asset.v1.CreateImportBatchRequest
-	(*CreateImportBatchResponse)(nil),            // 9: hualala.asset.v1.CreateImportBatchResponse
-	(*AddCandidateAssetRequest)(nil),             // 10: hualala.asset.v1.AddCandidateAssetRequest
-	(*AddCandidateAssetResponse)(nil),            // 11: hualala.asset.v1.AddCandidateAssetResponse
-	(*ListImportBatchItemsRequest)(nil),          // 12: hualala.asset.v1.ListImportBatchItemsRequest
-	(*ListImportBatchItemsResponse)(nil),         // 13: hualala.asset.v1.ListImportBatchItemsResponse
-	(*BatchConfirmImportBatchItemsRequest)(nil),  // 14: hualala.asset.v1.BatchConfirmImportBatchItemsRequest
-	(*BatchConfirmImportBatchItemsResponse)(nil), // 15: hualala.asset.v1.BatchConfirmImportBatchItemsResponse
-	(*GetImportBatchWorkbenchRequest)(nil),       // 16: hualala.asset.v1.GetImportBatchWorkbenchRequest
-	(*GetImportBatchWorkbenchResponse)(nil),      // 17: hualala.asset.v1.GetImportBatchWorkbenchResponse
-	(*ListCandidateAssetsRequest)(nil),           // 18: hualala.asset.v1.ListCandidateAssetsRequest
-	(*ListCandidateAssetsResponse)(nil),          // 19: hualala.asset.v1.ListCandidateAssetsResponse
-	(*GetAssetProvenanceSummaryRequest)(nil),     // 20: hualala.asset.v1.GetAssetProvenanceSummaryRequest
-	(*GetAssetProvenanceSummaryResponse)(nil),    // 21: hualala.asset.v1.GetAssetProvenanceSummaryResponse
+	(*ImportBatchSummary)(nil),                   // 1: hualala.asset.v1.ImportBatchSummary
+	(*ImportBatchItem)(nil),                      // 2: hualala.asset.v1.ImportBatchItem
+	(*MediaAsset)(nil),                           // 3: hualala.asset.v1.MediaAsset
+	(*ShotCandidateAsset)(nil),                   // 4: hualala.asset.v1.ShotCandidateAsset
+	(*UploadSession)(nil),                        // 5: hualala.asset.v1.UploadSession
+	(*UploadFile)(nil),                           // 6: hualala.asset.v1.UploadFile
+	(*MediaAssetVariant)(nil),                    // 7: hualala.asset.v1.MediaAssetVariant
+	(*ImportBatchShotExecution)(nil),             // 8: hualala.asset.v1.ImportBatchShotExecution
+	(*CreateImportBatchRequest)(nil),             // 9: hualala.asset.v1.CreateImportBatchRequest
+	(*CreateImportBatchResponse)(nil),            // 10: hualala.asset.v1.CreateImportBatchResponse
+	(*ListImportBatchesRequest)(nil),             // 11: hualala.asset.v1.ListImportBatchesRequest
+	(*ListImportBatchesResponse)(nil),            // 12: hualala.asset.v1.ListImportBatchesResponse
+	(*AddCandidateAssetRequest)(nil),             // 13: hualala.asset.v1.AddCandidateAssetRequest
+	(*AddCandidateAssetResponse)(nil),            // 14: hualala.asset.v1.AddCandidateAssetResponse
+	(*ListImportBatchItemsRequest)(nil),          // 15: hualala.asset.v1.ListImportBatchItemsRequest
+	(*ListImportBatchItemsResponse)(nil),         // 16: hualala.asset.v1.ListImportBatchItemsResponse
+	(*BatchConfirmImportBatchItemsRequest)(nil),  // 17: hualala.asset.v1.BatchConfirmImportBatchItemsRequest
+	(*BatchConfirmImportBatchItemsResponse)(nil), // 18: hualala.asset.v1.BatchConfirmImportBatchItemsResponse
+	(*GetImportBatchWorkbenchRequest)(nil),       // 19: hualala.asset.v1.GetImportBatchWorkbenchRequest
+	(*GetImportBatchWorkbenchResponse)(nil),      // 20: hualala.asset.v1.GetImportBatchWorkbenchResponse
+	(*ListCandidateAssetsRequest)(nil),           // 21: hualala.asset.v1.ListCandidateAssetsRequest
+	(*ListCandidateAssetsResponse)(nil),          // 22: hualala.asset.v1.ListCandidateAssetsResponse
+	(*GetAssetProvenanceSummaryRequest)(nil),     // 23: hualala.asset.v1.GetAssetProvenanceSummaryRequest
+	(*GetAssetProvenanceSummaryResponse)(nil),    // 24: hualala.asset.v1.GetAssetProvenanceSummaryResponse
 }
 var file_hualala_asset_v1_asset_proto_depIdxs = []int32{
 	0,  // 0: hualala.asset.v1.CreateImportBatchResponse.import_batch:type_name -> hualala.asset.v1.ImportBatch
-	3,  // 1: hualala.asset.v1.AddCandidateAssetResponse.asset:type_name -> hualala.asset.v1.ShotCandidateAsset
-	1,  // 2: hualala.asset.v1.ListImportBatchItemsResponse.items:type_name -> hualala.asset.v1.ImportBatchItem
-	1,  // 3: hualala.asset.v1.BatchConfirmImportBatchItemsResponse.items:type_name -> hualala.asset.v1.ImportBatchItem
-	0,  // 4: hualala.asset.v1.GetImportBatchWorkbenchResponse.import_batch:type_name -> hualala.asset.v1.ImportBatch
-	4,  // 5: hualala.asset.v1.GetImportBatchWorkbenchResponse.upload_sessions:type_name -> hualala.asset.v1.UploadSession
-	5,  // 6: hualala.asset.v1.GetImportBatchWorkbenchResponse.upload_files:type_name -> hualala.asset.v1.UploadFile
-	2,  // 7: hualala.asset.v1.GetImportBatchWorkbenchResponse.media_assets:type_name -> hualala.asset.v1.MediaAsset
-	6,  // 8: hualala.asset.v1.GetImportBatchWorkbenchResponse.media_asset_variants:type_name -> hualala.asset.v1.MediaAssetVariant
-	1,  // 9: hualala.asset.v1.GetImportBatchWorkbenchResponse.items:type_name -> hualala.asset.v1.ImportBatchItem
-	3,  // 10: hualala.asset.v1.GetImportBatchWorkbenchResponse.candidate_assets:type_name -> hualala.asset.v1.ShotCandidateAsset
-	7,  // 11: hualala.asset.v1.GetImportBatchWorkbenchResponse.shot_executions:type_name -> hualala.asset.v1.ImportBatchShotExecution
-	3,  // 12: hualala.asset.v1.ListCandidateAssetsResponse.assets:type_name -> hualala.asset.v1.ShotCandidateAsset
-	2,  // 13: hualala.asset.v1.GetAssetProvenanceSummaryResponse.asset:type_name -> hualala.asset.v1.MediaAsset
-	8,  // 14: hualala.asset.v1.AssetService.CreateImportBatch:input_type -> hualala.asset.v1.CreateImportBatchRequest
-	10, // 15: hualala.asset.v1.AssetService.AddCandidateAsset:input_type -> hualala.asset.v1.AddCandidateAssetRequest
-	12, // 16: hualala.asset.v1.AssetService.ListImportBatchItems:input_type -> hualala.asset.v1.ListImportBatchItemsRequest
-	14, // 17: hualala.asset.v1.AssetService.BatchConfirmImportBatchItems:input_type -> hualala.asset.v1.BatchConfirmImportBatchItemsRequest
-	16, // 18: hualala.asset.v1.AssetService.GetImportBatchWorkbench:input_type -> hualala.asset.v1.GetImportBatchWorkbenchRequest
-	18, // 19: hualala.asset.v1.AssetService.ListCandidateAssets:input_type -> hualala.asset.v1.ListCandidateAssetsRequest
-	20, // 20: hualala.asset.v1.AssetService.GetAssetProvenanceSummary:input_type -> hualala.asset.v1.GetAssetProvenanceSummaryRequest
-	9,  // 21: hualala.asset.v1.AssetService.CreateImportBatch:output_type -> hualala.asset.v1.CreateImportBatchResponse
-	11, // 22: hualala.asset.v1.AssetService.AddCandidateAsset:output_type -> hualala.asset.v1.AddCandidateAssetResponse
-	13, // 23: hualala.asset.v1.AssetService.ListImportBatchItems:output_type -> hualala.asset.v1.ListImportBatchItemsResponse
-	15, // 24: hualala.asset.v1.AssetService.BatchConfirmImportBatchItems:output_type -> hualala.asset.v1.BatchConfirmImportBatchItemsResponse
-	17, // 25: hualala.asset.v1.AssetService.GetImportBatchWorkbench:output_type -> hualala.asset.v1.GetImportBatchWorkbenchResponse
-	19, // 26: hualala.asset.v1.AssetService.ListCandidateAssets:output_type -> hualala.asset.v1.ListCandidateAssetsResponse
-	21, // 27: hualala.asset.v1.AssetService.GetAssetProvenanceSummary:output_type -> hualala.asset.v1.GetAssetProvenanceSummaryResponse
-	21, // [21:28] is the sub-list for method output_type
-	14, // [14:21] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	1,  // 1: hualala.asset.v1.ListImportBatchesResponse.import_batches:type_name -> hualala.asset.v1.ImportBatchSummary
+	4,  // 2: hualala.asset.v1.AddCandidateAssetResponse.asset:type_name -> hualala.asset.v1.ShotCandidateAsset
+	2,  // 3: hualala.asset.v1.ListImportBatchItemsResponse.items:type_name -> hualala.asset.v1.ImportBatchItem
+	2,  // 4: hualala.asset.v1.BatchConfirmImportBatchItemsResponse.items:type_name -> hualala.asset.v1.ImportBatchItem
+	0,  // 5: hualala.asset.v1.GetImportBatchWorkbenchResponse.import_batch:type_name -> hualala.asset.v1.ImportBatch
+	5,  // 6: hualala.asset.v1.GetImportBatchWorkbenchResponse.upload_sessions:type_name -> hualala.asset.v1.UploadSession
+	6,  // 7: hualala.asset.v1.GetImportBatchWorkbenchResponse.upload_files:type_name -> hualala.asset.v1.UploadFile
+	3,  // 8: hualala.asset.v1.GetImportBatchWorkbenchResponse.media_assets:type_name -> hualala.asset.v1.MediaAsset
+	7,  // 9: hualala.asset.v1.GetImportBatchWorkbenchResponse.media_asset_variants:type_name -> hualala.asset.v1.MediaAssetVariant
+	2,  // 10: hualala.asset.v1.GetImportBatchWorkbenchResponse.items:type_name -> hualala.asset.v1.ImportBatchItem
+	4,  // 11: hualala.asset.v1.GetImportBatchWorkbenchResponse.candidate_assets:type_name -> hualala.asset.v1.ShotCandidateAsset
+	8,  // 12: hualala.asset.v1.GetImportBatchWorkbenchResponse.shot_executions:type_name -> hualala.asset.v1.ImportBatchShotExecution
+	4,  // 13: hualala.asset.v1.ListCandidateAssetsResponse.assets:type_name -> hualala.asset.v1.ShotCandidateAsset
+	3,  // 14: hualala.asset.v1.GetAssetProvenanceSummaryResponse.asset:type_name -> hualala.asset.v1.MediaAsset
+	9,  // 15: hualala.asset.v1.AssetService.CreateImportBatch:input_type -> hualala.asset.v1.CreateImportBatchRequest
+	13, // 16: hualala.asset.v1.AssetService.AddCandidateAsset:input_type -> hualala.asset.v1.AddCandidateAssetRequest
+	11, // 17: hualala.asset.v1.AssetService.ListImportBatches:input_type -> hualala.asset.v1.ListImportBatchesRequest
+	15, // 18: hualala.asset.v1.AssetService.ListImportBatchItems:input_type -> hualala.asset.v1.ListImportBatchItemsRequest
+	17, // 19: hualala.asset.v1.AssetService.BatchConfirmImportBatchItems:input_type -> hualala.asset.v1.BatchConfirmImportBatchItemsRequest
+	19, // 20: hualala.asset.v1.AssetService.GetImportBatchWorkbench:input_type -> hualala.asset.v1.GetImportBatchWorkbenchRequest
+	21, // 21: hualala.asset.v1.AssetService.ListCandidateAssets:input_type -> hualala.asset.v1.ListCandidateAssetsRequest
+	23, // 22: hualala.asset.v1.AssetService.GetAssetProvenanceSummary:input_type -> hualala.asset.v1.GetAssetProvenanceSummaryRequest
+	10, // 23: hualala.asset.v1.AssetService.CreateImportBatch:output_type -> hualala.asset.v1.CreateImportBatchResponse
+	14, // 24: hualala.asset.v1.AssetService.AddCandidateAsset:output_type -> hualala.asset.v1.AddCandidateAssetResponse
+	12, // 25: hualala.asset.v1.AssetService.ListImportBatches:output_type -> hualala.asset.v1.ListImportBatchesResponse
+	16, // 26: hualala.asset.v1.AssetService.ListImportBatchItems:output_type -> hualala.asset.v1.ListImportBatchItemsResponse
+	18, // 27: hualala.asset.v1.AssetService.BatchConfirmImportBatchItems:output_type -> hualala.asset.v1.BatchConfirmImportBatchItemsResponse
+	20, // 28: hualala.asset.v1.AssetService.GetImportBatchWorkbench:output_type -> hualala.asset.v1.GetImportBatchWorkbenchResponse
+	22, // 29: hualala.asset.v1.AssetService.ListCandidateAssets:output_type -> hualala.asset.v1.ListCandidateAssetsResponse
+	24, // 30: hualala.asset.v1.AssetService.GetAssetProvenanceSummary:output_type -> hualala.asset.v1.GetAssetProvenanceSummaryResponse
+	23, // [23:31] is the sub-list for method output_type
+	15, // [15:23] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_hualala_asset_v1_asset_proto_init() }
@@ -1709,7 +2024,7 @@ func file_hualala_asset_v1_asset_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hualala_asset_v1_asset_proto_rawDesc), len(file_hualala_asset_v1_asset_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   22,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
