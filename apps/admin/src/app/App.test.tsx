@@ -777,6 +777,10 @@ describe("Admin App", () => {
     render(<App />);
 
     expect(await screen.findByText("project-live-asset-2")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(subscribeAdminRecentChangesMock).toHaveBeenCalledTimes(1);
+    });
+    expect(onAssetImportBatchUpdated).not.toBeNull();
     act(() => {
       onAssetImportBatchUpdated?.();
     });
