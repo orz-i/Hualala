@@ -15,6 +15,8 @@ type GetShotWorkbenchResponse = {
     shotExecution?: {
       id?: string;
       shotId?: string;
+      orgId?: string;
+      projectId?: string;
       status?: string;
       primaryAssetId?: string;
     };
@@ -61,6 +63,8 @@ export async function loadShotWorkbench({
     shotExecution: {
       id: workbench.shotExecution.id,
       shotId: workbench.shotExecution.shotId,
+      orgId: workbench.shotExecution.orgId ?? "",
+      projectId: workbench.shotExecution.projectId ?? "",
       status: workbench.shotExecution.status ?? "unknown",
       primaryAssetId: workbench.shotExecution.primaryAssetId ?? "",
     },

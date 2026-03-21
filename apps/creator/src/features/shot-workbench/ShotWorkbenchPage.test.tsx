@@ -7,6 +7,8 @@ describe("ShotWorkbenchPage", () => {
     shotExecution: {
       id: "shot-exec-1",
       shotId: "shot-1",
+      orgId: "org-1",
+      projectId: "project-1",
       status: "submitted_for_review",
       primaryAssetId: "asset-1",
     },

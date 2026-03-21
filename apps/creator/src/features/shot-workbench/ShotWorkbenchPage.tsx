@@ -19,6 +19,8 @@ type EvaluationRunSummary = {
 type ShotExecutionSummary = {
   id: string;
   shotId: string;
+  orgId: string;
+  projectId: string;
   status: string;
   primaryAssetId: string;
 };
