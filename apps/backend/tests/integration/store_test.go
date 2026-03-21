@@ -12,7 +12,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func openIntegrationStore(t *testing.T) *db.MemoryStore {
+func openIntegrationStore(t *testing.T) db.RuntimeStore {
 	t.Helper()
 
 	cfg := config.Load()
@@ -25,22 +25,7 @@ func openIntegrationStore(t *testing.T) *db.MemoryStore {
 		t.Fatalf("ResolveMigrationsDir returned error: %v", err)
 	}
 	if cfg.DBDriver == "postgres" {
-		handle, err := sql.Open("postgres", cfg.DatabaseURL)
-		if err != nil {
-			t.Fatalf("sql.Open returned error: %v", err)
-		}
-		defer handle.Close()
-		if err := handle.PingContext(context.Background()); err != nil {
-			t.Fatalf("PingContext returned error: %v", err)
-		}
-		if cfg.AutoMigrate {
-			if err := db.RunMigrations(context.Background(), handle, migrationsDir); err != nil {
-				t.Fatalf("RunMigrations returned error: %v", err)
-			}
-		}
-		if _, err := db.EnsureDevBootstrap(context.Background(), handle); err != nil {
-			t.Fatalf("EnsureDevBootstrap returned error: %v", err)
-		}
+		resetIntegrationRuntimeState(t, migrationsDir)
 	}
 	runtimeStore, closeFn, err := db.OpenStore(context.Background(), db.OpenStoreOptions{
 		Driver:        cfg.DBDriver,
@@ -52,10 +37,6 @@ func openIntegrationStore(t *testing.T) *db.MemoryStore {
 	if err != nil {
 		t.Fatalf("OpenStore returned error: %v", err)
 	}
-	store, ok := runtimeStore.(*db.MemoryStore)
-	if !ok {
-		t.Fatalf("OpenStore returned %T, want *db.MemoryStore", runtimeStore)
-	}
 
 	t.Cleanup(func() {
 		if closeFn != nil {
@@ -65,5 +46,34 @@ func openIntegrationStore(t *testing.T) *db.MemoryStore {
 		}
 	})
 
-	return store
+	return runtimeStore
+}
+
+func resetIntegrationRuntimeState(t *testing.T, migrationsDir string) {
+	t.Helper()
+
+	cfg := config.Load()
+	handle, err := sql.Open("postgres", cfg.DatabaseURL)
+	if err != nil {
+		t.Fatalf("sql.Open returned error: %v", err)
+	}
+	defer handle.Close()
+
+	if err := handle.PingContext(context.Background()); err != nil {
+		t.Fatalf("PingContext returned error: %v", err)
+	}
+	if cfg.AutoMigrate {
+		if err := db.RunMigrations(context.Background(), handle, migrationsDir); err != nil {
+			t.Fatalf("RunMigrations returned error: %v", err)
+		}
+	}
+	if _, err := db.EnsureDevBootstrap(context.Background(), handle); err != nil {
+		t.Fatalf("EnsureDevBootstrap returned error: %v", err)
+	}
+	if err := db.ResetPostgresRuntimeState(context.Background(), handle); err != nil {
+		t.Fatalf("ResetPostgresRuntimeState returned error: %v", err)
+	}
+	if _, err := db.EnsureDevBootstrap(context.Background(), handle); err != nil {
+		t.Fatalf("EnsureDevBootstrap after reset returned error: %v", err)
+	}
 }

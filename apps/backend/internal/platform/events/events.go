@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -18,18 +19,31 @@ type Event struct {
 	CreatedAt      time.Time
 }
 
+type Recorder interface {
+	Append(context.Context, Event) (Event, error)
+	List(context.Context, string, string, string) ([]Event, error)
+	Reset(context.Context) error
+}
+
 type Publisher struct {
 	mu               sync.RWMutex
 	nextID           int
 	nextSubscriberID int
 	records          []Event
 	subscribers      map[int]subscriber
+	recorder         Recorder
 }
 
 func NewPublisher() *Publisher {
 	return &Publisher{
 		subscribers: make(map[int]subscriber),
 	}
+}
+
+func NewDurablePublisher(recorder Recorder) *Publisher {
+	publisher := NewPublisher()
+	publisher.recorder = recorder
+	return publisher
 }
 
 func (p *Publisher) Publish(event Event) Event {
@@ -39,21 +53,32 @@ func (p *Publisher) Publish(event Event) Event {
 
 	p.mu.Lock()
 
-	p.nextID++
-	if strings.TrimSpace(event.ID) == "" {
-		event.ID = fmt.Sprintf("evt-%d", p.nextID)
+	if p.recorder == nil {
+		p.nextID++
+		if strings.TrimSpace(event.ID) == "" {
+			event.ID = fmt.Sprintf("evt-%d", p.nextID)
+		}
 	}
 	if event.CreatedAt.IsZero() {
 		event.CreatedAt = time.Now().UTC()
 	}
-	p.records = append(p.records, event)
+	if p.recorder == nil {
+		p.records = append(p.records, event)
+	}
 	targets := make([]chan Event, 0, len(p.subscribers))
 	for _, subscription := range p.subscribers {
 		if subscription.matches(event) {
 			targets = append(targets, subscription.events)
 		}
 	}
+	recorder := p.recorder
 	p.mu.Unlock()
+
+	if recorder != nil {
+		if persisted, err := recorder.Append(context.Background(), event); err == nil {
+			event = persisted
+		}
+	}
 
 	for _, stream := range targets {
 		select {
@@ -68,6 +93,16 @@ func (p *Publisher) Publish(event Event) Event {
 func (p *Publisher) List(organizationID string, projectID string, lastEventID string) []Event {
 	if p == nil {
 		return nil
+	}
+
+	p.mu.RLock()
+	recorder := p.recorder
+	p.mu.RUnlock()
+	if recorder != nil {
+		items, err := recorder.List(context.Background(), organizationID, projectID, lastEventID)
+		if err == nil {
+			return items
+		}
 	}
 
 	p.mu.RLock()
@@ -99,12 +134,16 @@ func (p *Publisher) Reset() {
 	}
 
 	p.mu.Lock()
+	recorder := p.recorder
 	defer p.mu.Unlock()
 
 	p.nextID = 0
 	p.records = nil
 	p.nextSubscriberID = 0
 	p.subscribers = make(map[int]subscriber)
+	if recorder != nil {
+		_ = recorder.Reset(context.Background())
+	}
 }
 
 func (p *Publisher) Subscribe(organizationID string, projectID string) (<-chan Event, func()) {

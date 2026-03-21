@@ -48,20 +48,7 @@ func OpenStore(ctx context.Context, options OpenStoreOptions) (RuntimeStore, fun
 				return nil, nil, err
 			}
 		}
-		if options.StoreKey != "" && options.StoreKey != defaultSnapshotStoreKey {
-			if err := resetRelationalState(ctx, handle); err != nil {
-				_ = handle.Close()
-				return nil, nil, err
-			}
-		}
-
-		store, err := NewPersistentMemoryStore(ctx, NewPostgresPersister(handle, options.StoreKey))
-		if err != nil {
-			_ = handle.Close()
-			return nil, nil, err
-		}
-		store.EnableUUIDIDs()
-		return store, handle.Close, nil
+		return NewPostgresStore(handle, options.StoreKey), handle.Close, nil
 	default:
 		return nil, nil, fmt.Errorf("db: unsupported driver %q", options.Driver)
 	}

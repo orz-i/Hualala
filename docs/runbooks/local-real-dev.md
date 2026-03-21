@@ -15,6 +15,12 @@
 - admin：`http://127.0.0.1:4173`
 - creator：`http://127.0.0.1:4174`
 
+当前 `master` 的 backend 真实运行时已经切成 **原生 PostgreSQL runtime**：
+
+- `DB_DRIVER=postgres` 时，`db.OpenStore(...)` 直接返回 Postgres-backed runtime store
+- workflow / asset / execution / billing / auth 等主域状态不再 materialize 成进程内 `*db.MemoryStore`
+- `/sse/events` 的 replay 真相层来自 Postgres durable event path，而不是单纯依赖进程内 publisher
+
 ## 前置依赖
 
 - Docker Desktop 或兼容 `docker compose` 的本地 Docker
@@ -78,6 +84,61 @@ corepack pnpm run dev:real:seed
 - Creator Import：
   - `http://127.0.0.1:4174/?importBatchId=...`
 
+如果要确认当前 backend 真的是“真实持久化运行时”，而不是旧的 snapshot-backed memory，可以额外做这组验证：
+
+1. 启动 `corepack pnpm run dev:real`
+2. 执行 `corepack pnpm run dev:real:seed`
+3. 打开 admin / creator，确认能看到 seed 后的数据
+4. 只重启 backend 进程，再刷新页面
+
+正确结果：
+
+- 项目、workflow、asset、shot execution 数据仍然存在
+- `/sse/events` 用 `Last-Event-ID` replay 仍能补到重启前写入的事件
+
+如果 backend 重启后数据消失，优先检查：
+
+- `DB_DRIVER` 是否被外部环境改成了 `memory`
+- `DATABASE_URL` 是否指到了错误库
+- 启动脚本是否还是旧的 snapshot-backed 运行方式
+
+## Backend 容器化基线
+
+当前仓库已经提供最小 backend 容器入口：
+
+- Dockerfile：`apps/backend/Dockerfile`
+- 构建命令：
+
+```bash
+docker build -f apps/backend/Dockerfile -t hualala-backend .
+```
+
+- 运行命令示例：
+
+```bash
+docker run --rm -p 8080:8080 ^
+  -e DB_DRIVER=postgres ^
+  -e DATABASE_URL=postgres://hualala:hualala@host.docker.internal:5432/hualala?sslmode=disable ^
+  -e AUTO_MIGRATE=true ^
+  -e HTTP_ADDR=:8080 ^
+  hualala-backend
+```
+
+容器 env contract 只收口这 4 个变量：
+
+- `DB_DRIVER`
+  - 默认值：`postgres`
+  - 本地 / CI / 预发的真实运行时都应保持这个值
+- `DATABASE_URL`
+  - 必填时应指向真实 Postgres
+  - 本地默认：`postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable`
+- `AUTO_MIGRATE`
+  - 默认：`true`
+  - 若显式设为 `false`，容器只启动 API，不会自动跑 migration
+- `HTTP_ADDR`
+  - 默认：`:8080`
+  - 容器侧仍保持 backend 监听 `8080`
+
 ## 停止与清理
 
 - 停止前端和 backend：
@@ -118,6 +179,21 @@ corepack pnpm run dev:real:seed
 - 确认 `DATABASE_URL` 未被外部环境改坏
 - 默认应指向：
   - `postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable`
+
+### 2.1 backend 重启后数据看起来“丢了”
+
+症状：
+
+- admin / creator 刷新后回到空状态
+- workflow / asset 列表在 backend 重启后消失
+
+处理：
+
+- 先确认不是连到了新的数据库：
+  - 检查 `DATABASE_URL`
+- 再确认 backend 不是跑在 memory driver：
+  - 检查 `DB_DRIVER`
+- 如果是容器启动，确认容器内也带了同样的 env contract，而不是只在宿主机终端里设置了变量
 
 ### 3. backend 8080 未起来
 
