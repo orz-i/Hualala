@@ -16,11 +16,15 @@ message WorkflowRun {
   string id = 1;
   string workflow_type = 2;
   string status = 3;
+  string resource_id = 4;
+  string project_id = 5;
 }
 
 message StartWorkflowRequest {
   string workflow_type = 1;
   string resource_id = 2;
+  string organization_id = 3;
+  string project_id = 4;
 }
 
 message StartWorkflowResponse {
@@ -37,6 +41,7 @@ message GetWorkflowRunResponse {
 
 message ListWorkflowRunsRequest {
   string project_id = 1;
+  string resource_id = 2;
 }
 
 message ListWorkflowRunsResponse {

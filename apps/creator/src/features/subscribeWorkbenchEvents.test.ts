@@ -58,7 +58,7 @@ describe("subscribeWorkbenchEvents", () => {
     ["shot" as CreatorWorkbenchKind, "shot.evaluation.created", true],
     ["shot" as CreatorWorkbenchKind, "shot.review.created", true],
     ["shot" as CreatorWorkbenchKind, "asset.upload_session.updated", false],
-    ["shot" as CreatorWorkbenchKind, "workflow.updated", false],
+    ["shot" as CreatorWorkbenchKind, "workflow.updated", true],
     ["import" as CreatorWorkbenchKind, "asset.upload_session.updated", true],
     ["import" as CreatorWorkbenchKind, "shot.execution.updated", true],
     ["import" as CreatorWorkbenchKind, "shot.review.created", false],

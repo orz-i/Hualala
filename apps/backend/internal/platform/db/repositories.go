@@ -159,7 +159,7 @@ type WorkflowRepository interface {
 	GenerateWorkflowRunID() string
 	SaveWorkflowRun(ctx context.Context, record workflow.WorkflowRun) error
 	GetWorkflowRun(workflowRunID string) (workflow.WorkflowRun, bool)
-	ListWorkflowRuns(projectID string) []workflow.WorkflowRun
+	ListWorkflowRuns(projectID, resourceID string) []workflow.WorkflowRun
 }
 
 func (s *MemoryStore) save(ctx context.Context, mutate func()) error {
@@ -673,14 +673,25 @@ func (s *MemoryStore) GetWorkflowRun(workflowRunID string) (workflow.WorkflowRun
 	return record, ok
 }
 
-func (s *MemoryStore) ListWorkflowRuns(projectID string) []workflow.WorkflowRun {
+func (s *MemoryStore) ListWorkflowRuns(projectID, resourceID string) []workflow.WorkflowRun {
 	items := make([]workflow.WorkflowRun, 0)
 	for _, record := range s.WorkflowRuns {
 		if projectID != "" && record.ProjectID != projectID {
 			continue
 		}
+		if resourceID != "" && record.ResourceID != resourceID {
+			continue
+		}
 		items = append(items, record)
 	}
-	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	sort.Slice(items, func(i, j int) bool {
+		if !items[i].UpdatedAt.Equal(items[j].UpdatedAt) {
+			return items[i].UpdatedAt.After(items[j].UpdatedAt)
+		}
+		if !items[i].CreatedAt.Equal(items[j].CreatedAt) {
+			return items[i].CreatedAt.After(items[j].CreatedAt)
+		}
+		return items[i].ID > items[j].ID
+	})
 	return items
 }

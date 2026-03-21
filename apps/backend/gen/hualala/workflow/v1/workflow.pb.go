@@ -26,6 +26,8 @@ type WorkflowRun struct {
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	WorkflowType  string                 `protobuf:"bytes,2,opt,name=workflow_type,json=workflowType,proto3" json:"workflow_type,omitempty"`
 	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	ResourceId    string                 `protobuf:"bytes,4,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	ProjectId     string                 `protobuf:"bytes,5,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -81,12 +83,28 @@ func (x *WorkflowRun) GetStatus() string {
 	return ""
 }
 
+func (x *WorkflowRun) GetResourceId() string {
+	if x != nil {
+		return x.ResourceId
+	}
+	return ""
+}
+
+func (x *WorkflowRun) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
 type StartWorkflowRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	WorkflowType  string                 `protobuf:"bytes,1,opt,name=workflow_type,json=workflowType,proto3" json:"workflow_type,omitempty"`
-	ResourceId    string                 `protobuf:"bytes,2,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	WorkflowType   string                 `protobuf:"bytes,1,opt,name=workflow_type,json=workflowType,proto3" json:"workflow_type,omitempty"`
+	ResourceId     string                 `protobuf:"bytes,2,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	OrganizationId string                 `protobuf:"bytes,3,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
+	ProjectId      string                 `protobuf:"bytes,4,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *StartWorkflowRequest) Reset() {
@@ -129,6 +147,20 @@ func (x *StartWorkflowRequest) GetWorkflowType() string {
 func (x *StartWorkflowRequest) GetResourceId() string {
 	if x != nil {
 		return x.ResourceId
+	}
+	return ""
+}
+
+func (x *StartWorkflowRequest) GetOrganizationId() string {
+	if x != nil {
+		return x.OrganizationId
+	}
+	return ""
+}
+
+func (x *StartWorkflowRequest) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
 	}
 	return ""
 }
@@ -268,6 +300,7 @@ func (x *GetWorkflowRunResponse) GetWorkflowRun() *WorkflowRun {
 type ListWorkflowRunsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	ResourceId    string                 `protobuf:"bytes,2,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -305,6 +338,13 @@ func (*ListWorkflowRunsRequest) Descriptor() ([]byte, []int) {
 func (x *ListWorkflowRunsRequest) GetProjectId() string {
 	if x != nil {
 		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *ListWorkflowRunsRequest) GetResourceId() string {
+	if x != nil {
+		return x.ResourceId
 	}
 	return ""
 }
@@ -533,24 +573,33 @@ var File_hualala_workflow_v1_workflow_proto protoreflect.FileDescriptor
 
 const file_hualala_workflow_v1_workflow_proto_rawDesc = "" +
 	"\n" +
-	"\"hualala/workflow/v1/workflow.proto\x12\x13hualala.workflow.v1\"Z\n" +
+	"\"hualala/workflow/v1/workflow.proto\x12\x13hualala.workflow.v1\"\x9a\x01\n" +
 	"\vWorkflowRun\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12#\n" +
 	"\rworkflow_type\x18\x02 \x01(\tR\fworkflowType\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\tR\x06status\"\\\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x1f\n" +
+	"\vresource_id\x18\x04 \x01(\tR\n" +
+	"resourceId\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x05 \x01(\tR\tprojectId\"\xa4\x01\n" +
 	"\x14StartWorkflowRequest\x12#\n" +
 	"\rworkflow_type\x18\x01 \x01(\tR\fworkflowType\x12\x1f\n" +
 	"\vresource_id\x18\x02 \x01(\tR\n" +
-	"resourceId\"\\\n" +
+	"resourceId\x12'\n" +
+	"\x0forganization_id\x18\x03 \x01(\tR\x0eorganizationId\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x04 \x01(\tR\tprojectId\"\\\n" +
 	"\x15StartWorkflowResponse\x12C\n" +
 	"\fworkflow_run\x18\x01 \x01(\v2 .hualala.workflow.v1.WorkflowRunR\vworkflowRun\"?\n" +
 	"\x15GetWorkflowRunRequest\x12&\n" +
 	"\x0fworkflow_run_id\x18\x01 \x01(\tR\rworkflowRunId\"]\n" +
 	"\x16GetWorkflowRunResponse\x12C\n" +
-	"\fworkflow_run\x18\x01 \x01(\v2 .hualala.workflow.v1.WorkflowRunR\vworkflowRun\"8\n" +
+	"\fworkflow_run\x18\x01 \x01(\v2 .hualala.workflow.v1.WorkflowRunR\vworkflowRun\"Y\n" +
 	"\x17ListWorkflowRunsRequest\x12\x1d\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\tR\tprojectId\"a\n" +
+	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x1f\n" +
+	"\vresource_id\x18\x02 \x01(\tR\n" +
+	"resourceId\"a\n" +
 	"\x18ListWorkflowRunsResponse\x12E\n" +
 	"\rworkflow_runs\x18\x01 \x03(\v2 .hualala.workflow.v1.WorkflowRunR\fworkflowRuns\"B\n" +
 	"\x18CancelWorkflowRunRequest\x12&\n" +

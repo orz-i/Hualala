@@ -22,17 +22,26 @@ import {
   selectPrimaryAssetForImportBatch,
 } from "../features/import-batches/mutateImportBatchWorkbench";
 import { loadShotWorkbench } from "../features/shot-workbench/loadShotWorkbench";
+import { loadShotWorkflowPanel } from "../features/shot-workbench/loadShotWorkflowPanel";
 import {
   runSubmissionGateChecks,
   submitShotForReview,
 } from "../features/shot-workbench/mutateShotWorkbench";
+import {
+  retryShotWorkflowRun,
+  startShotWorkflow,
+} from "../features/shot-workbench/mutateShotWorkflow";
 import type { ActionFeedbackModel } from "../features/shared/ActionFeedback";
 import {
   buildImportFeedback,
   buildShotFeedback,
 } from "../features/shared/buildActionFeedback";
 import { subscribeWorkbenchEvents } from "../features/subscribeWorkbenchEvents";
-import { ShotWorkbenchPage, type ShotWorkbenchViewModel } from "../features/shot-workbench/ShotWorkbenchPage";
+import {
+  ShotWorkbenchPage,
+  type ShotWorkbenchViewModel,
+  type ShotWorkflowPanelViewModel,
+} from "../features/shot-workbench/ShotWorkbenchPage";
 
 function waitForFeedbackPaint() {
   return new Promise((resolve) => {
@@ -78,6 +87,9 @@ function buildLatestImportFeedback({
 export function App() {
   const { locale, setLocale, t } = useLocaleState();
   const [shotWorkbench, setShotWorkbench] = useState<ShotWorkbenchViewModel | null>(null);
+  const [shotWorkflowPanel, setShotWorkflowPanel] = useState<ShotWorkflowPanelViewModel | null>(
+    null,
+  );
   const [importWorkbench, setImportWorkbench] = useState<ImportBatchWorkbenchViewModel | null>(null);
   const [selectedUploadFile, setSelectedUploadFile] = useState<SelectedUploadFileState | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -96,7 +108,19 @@ export function App() {
         importBatchId,
         load: importBatchId
           ? loadImportBatchWorkbench({ importBatchId, orgId, userId })
-          : loadShotWorkbench({ shotId, orgId, userId }),
+          : (async () => {
+              const nextShotWorkbench = await loadShotWorkbench({ shotId, orgId, userId });
+              const nextWorkflowPanel = await loadShotWorkflowPanel({
+                shotExecutionId: nextShotWorkbench.shotExecution.id,
+                projectId: nextShotWorkbench.shotExecution.projectId,
+                orgId,
+                userId,
+              });
+              return {
+                shotWorkbench: nextShotWorkbench,
+                shotWorkflowPanel: nextWorkflowPanel,
+              };
+            })(),
       };
     };
 
@@ -111,8 +135,15 @@ export function App() {
           if (importBatchId) {
             setImportWorkbench(nextWorkbench as ImportBatchWorkbenchViewModel);
             setShotWorkbench(null);
+            setShotWorkflowPanel(null);
           } else {
-            setShotWorkbench(nextWorkbench as ShotWorkbenchViewModel);
+            setShotWorkbench(
+              (nextWorkbench as { shotWorkbench: ShotWorkbenchViewModel }).shotWorkbench,
+            );
+            setShotWorkflowPanel(
+              (nextWorkbench as { shotWorkflowPanel: ShotWorkflowPanelViewModel })
+                .shotWorkflowPanel,
+            );
             setImportWorkbench(null);
           }
           setSelectedUploadFile(null);
@@ -128,6 +159,7 @@ export function App() {
         startTransition(() => {
           setErrorMessage(message);
           setShotWorkbench(null);
+          setShotWorkflowPanel(null);
           setImportWorkbench(null);
           setSelectedUploadFile(null);
         });
@@ -154,8 +186,15 @@ export function App() {
   const refreshShotWorkbench = useCallback(async () => {
     const { shotId, orgId, userId } = getRequestContext();
     const nextWorkbench = await loadShotWorkbench({ shotId, orgId, userId });
+    const nextWorkflowPanel = await loadShotWorkflowPanel({
+      shotExecutionId: nextWorkbench.shotExecution.id,
+      projectId: nextWorkbench.shotExecution.projectId,
+      orgId,
+      userId,
+    });
     startTransition(() => {
       setShotWorkbench(nextWorkbench);
+      setShotWorkflowPanel(nextWorkflowPanel);
       setErrorMessage("");
     });
     return nextWorkbench;
@@ -173,18 +212,22 @@ export function App() {
     }
 
     state.inFlight = true;
-    void (async () => {
+    const runRefresh = async () => {
       try {
-        do {
-          state.queued = false;
-          await refresh();
-        } while (state.queued);
+        await refresh();
       } catch (error: unknown) {
         console.warn(`creator: ${scope} sse refresh failed`, error);
       } finally {
+        if (state.queued) {
+          state.queued = false;
+          void runRefresh();
+          return;
+        }
         state.inFlight = false;
       }
-    })();
+    };
+
+    void runRefresh();
   }, []);
 
   useEffect(() => {
@@ -283,6 +326,48 @@ export function App() {
         });
       });
       return null;
+    }
+  };
+
+  const runShotAction = async ({
+    pendingMessageKey,
+    successMessageKey,
+    errorMessageKey,
+    unknownErrorMessage,
+    action,
+  }: {
+    pendingMessageKey: CreatorMessageKey;
+    successMessageKey: CreatorMessageKey;
+    errorMessageKey: CreatorMessageKey;
+    unknownErrorMessage: string;
+    action: () => Promise<void>;
+  }) => {
+    startTransition(() => {
+      setShotActionFeedback({
+        tone: "pending",
+        message: t(pendingMessageKey),
+      });
+    });
+
+    try {
+      await waitForFeedbackPaint();
+      await action();
+      startTransition(() => {
+        setShotActionFeedback({
+          tone: "success",
+          message: t(successMessageKey),
+        });
+      });
+      return true;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : unknownErrorMessage;
+      startTransition(() => {
+        setShotActionFeedback({
+          tone: "error",
+          message: t(errorMessageKey, { message }),
+        });
+      });
+      return false;
     }
   };
 
@@ -430,6 +515,7 @@ export function App() {
     return (
       <ShotWorkbenchPage
         workbench={shotWorkbench}
+        workflowPanel={shotWorkflowPanel ?? undefined}
         locale={locale}
         t={t}
         onLocaleChange={setLocale}
@@ -514,6 +600,40 @@ export function App() {
             });
           }
         }}
+        onStartWorkflow={async (input) => {
+          const { userId } = getRequestContext();
+          await runShotAction({
+            pendingMessageKey: "feedback.pending.startWorkflow",
+            successMessageKey: "feedback.success.startWorkflow",
+            errorMessageKey: "feedback.error.startWorkflow",
+            unknownErrorMessage: "creator: unknown workflow start error",
+            action: async () => {
+              await startShotWorkflow({
+                ...input,
+                workflowType: "shot_pipeline",
+                userId,
+              });
+              await refreshShotWorkbench();
+            },
+          });
+        }}
+        onRetryWorkflowRun={async (input) => {
+          const { orgId, userId } = getRequestContext();
+          await runShotAction({
+            pendingMessageKey: "feedback.pending.retryWorkflow",
+            successMessageKey: "feedback.success.retryWorkflow",
+            errorMessageKey: "feedback.error.retryWorkflow",
+            unknownErrorMessage: "creator: unknown workflow retry error",
+            action: async () => {
+              await retryShotWorkflowRun({
+                ...input,
+                orgId,
+                userId,
+              });
+              await refreshShotWorkbench();
+            },
+          });
+        }}
       />
     );
   }
@@ -529,6 +649,7 @@ export function App() {
   return (
     <ShotWorkbenchPage
       workbench={shotWorkbench}
+      workflowPanel={shotWorkflowPanel ?? undefined}
       locale={locale}
       t={t}
       onLocaleChange={setLocale}

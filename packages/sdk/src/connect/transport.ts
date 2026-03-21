@@ -1,6 +1,13 @@
 import { withIdentityHeaders, type DevIdentity } from "./identity";
 import { createSSEClient } from "../sse/client";
 import { createUploadClient } from "../upload/client";
+import type {
+  CancelWorkflowRunResponse,
+  GetWorkflowRunResponse,
+  ListWorkflowRunsResponse,
+  RetryWorkflowRunResponse,
+  StartWorkflowResponse,
+} from "../gen/hualala/workflow/v1/workflow_pb";
 
 export type HualalaFetch = typeof fetch;
 
@@ -37,12 +44,48 @@ export type HualalaClient = {
   unary<TResponse>(path: string, body: Record<string, unknown>, label?: string): Promise<TResponse>;
   sse: ReturnType<typeof createSSEClient>;
   upload: ReturnType<typeof createUploadClient>;
+  workflow: {
+    startWorkflow(body: {
+      organizationId: string;
+      projectId: string;
+      workflowType: string;
+      resourceId: string;
+    }): Promise<StartWorkflowResponse>;
+    getWorkflowRun(body: { workflowRunId: string }): Promise<GetWorkflowRunResponse>;
+    listWorkflowRuns(body: { projectId: string; resourceId?: string }): Promise<ListWorkflowRunsResponse>;
+    cancelWorkflowRun(body: { workflowRunId: string }): Promise<CancelWorkflowRunResponse>;
+    retryWorkflowRun(body: { workflowRunId: string }): Promise<RetryWorkflowRunResponse>;
+  };
 };
 
 export function createHualalaClient(options: HualalaClientOptions = {}): HualalaClient {
   const baseUrl = resolveConnectBaseUrl(options.baseUrl);
   const fetchFn = options.fetchFn ?? fetch;
   const identity = options.identity ?? {};
+  const unary = async <TResponse>(
+    path: string,
+    body: Record<string, unknown>,
+    label = `sdk: failed to call ${path}`,
+  ) => {
+    const response = await fetchFn(`${baseUrl}${path}`, {
+      method: "POST",
+      headers: withIdentityHeaders(
+        {
+          "Content-Type": "application/json",
+          "Connect-Protocol-Version": "1",
+        },
+        identity,
+      ),
+      body: JSON.stringify(body),
+    });
+
+    await assertConnectOk(response, label);
+    const text = await response.text();
+    if (text.trim() === "") {
+      return {} as TResponse;
+    }
+    return JSON.parse(text) as TResponse;
+  };
 
   return {
     baseUrl,
@@ -57,25 +100,43 @@ export function createHualalaClient(options: HualalaClientOptions = {}): Hualala
       fetchFn,
       identity,
     }),
-    async unary<TResponse>(path: string, body: Record<string, unknown>, label = `sdk: failed to call ${path}`) {
-      const response = await fetchFn(`${baseUrl}${path}`, {
-        method: "POST",
-        headers: withIdentityHeaders(
-          {
-            "Content-Type": "application/json",
-            "Connect-Protocol-Version": "1",
-          },
-          identity,
-        ),
-        body: JSON.stringify(body),
-      });
-
-      await assertConnectOk(response, label);
-      const text = await response.text();
-      if (text.trim() === "") {
-        return {} as TResponse;
-      }
-      return JSON.parse(text) as TResponse;
+    workflow: {
+      startWorkflow(body) {
+        return unary<StartWorkflowResponse>(
+          "/hualala.workflow.v1.WorkflowService/StartWorkflow",
+          body,
+          "sdk: failed to start workflow",
+        );
+      },
+      getWorkflowRun(body) {
+        return unary<GetWorkflowRunResponse>(
+          "/hualala.workflow.v1.WorkflowService/GetWorkflowRun",
+          body,
+          "sdk: failed to get workflow run",
+        );
+      },
+      listWorkflowRuns(body) {
+        return unary<ListWorkflowRunsResponse>(
+          "/hualala.workflow.v1.WorkflowService/ListWorkflowRuns",
+          body,
+          "sdk: failed to list workflow runs",
+        );
+      },
+      cancelWorkflowRun(body) {
+        return unary<CancelWorkflowRunResponse>(
+          "/hualala.workflow.v1.WorkflowService/CancelWorkflowRun",
+          body,
+          "sdk: failed to cancel workflow run",
+        );
+      },
+      retryWorkflowRun(body) {
+        return unary<RetryWorkflowRunResponse>(
+          "/hualala.workflow.v1.WorkflowService/RetryWorkflowRun",
+          body,
+          "sdk: failed to retry workflow run",
+        );
+      },
     },
+    unary,
   };
 }

@@ -21,11 +21,21 @@ describe("ShotWorkbenchPage", () => {
       status: "passed",
     },
   };
+  const workflowPanel = {
+    latestWorkflowRun: {
+      id: "workflow-run-1",
+      workflowType: "shot_pipeline",
+      status: "failed",
+      resourceId: "shot-exec-1",
+      projectId: "project-1",
+    },
+  };
 
   it("renders shot execution summary, candidate count, review conclusion, and evaluation status", () => {
     render(
       <ShotWorkbenchPage
         workbench={workbench}
+        workflowPanel={workflowPanel}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
         onLocaleChange={() => {}}
@@ -38,25 +48,36 @@ describe("ShotWorkbenchPage", () => {
     expect(screen.getByText("approved")).toBeInTheDocument();
     expect(screen.getAllByText("最近评估：passed").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("主素材：asset-1")).toBeInTheDocument();
+    expect(screen.getByText(/workflow-run-1/)).toBeInTheDocument();
+    expect(screen.getByText(/shot_pipeline/)).toBeInTheDocument();
+    expect(screen.getByText(/failed/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重试工作流" })).toBeInTheDocument();
   });
 
   it("triggers gate check and submit review actions for the current shot execution", () => {
     const onRunSubmissionGateChecks = vi.fn();
     const onSubmitShotForReview = vi.fn();
+    const onStartWorkflow = vi.fn();
+    const onRetryWorkflowRun = vi.fn();
 
     render(
       <ShotWorkbenchPage
         workbench={workbench}
+        workflowPanel={workflowPanel}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
         onLocaleChange={() => {}}
         onRunSubmissionGateChecks={onRunSubmissionGateChecks}
         onSubmitShotForReview={onSubmitShotForReview}
+        onStartWorkflow={onStartWorkflow}
+        onRetryWorkflowRun={onRetryWorkflowRun}
       />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Gate 检查" }));
     fireEvent.click(screen.getByRole("button", { name: "提交评审" }));
+    fireEvent.click(screen.getByRole("button", { name: "发起工作流" }));
+    fireEvent.click(screen.getByRole("button", { name: "重试工作流" }));
 
     expect(onRunSubmissionGateChecks).toHaveBeenCalledWith({
       shotExecutionId: "shot-exec-1",
@@ -64,12 +85,21 @@ describe("ShotWorkbenchPage", () => {
     expect(onSubmitShotForReview).toHaveBeenCalledWith({
       shotExecutionId: "shot-exec-1",
     });
+    expect(onStartWorkflow).toHaveBeenCalledWith({
+      shotExecutionId: "shot-exec-1",
+      projectId: "project-1",
+      orgId: "org-1",
+    });
+    expect(onRetryWorkflowRun).toHaveBeenCalledWith({
+      workflowRunId: "workflow-run-1",
+    });
   });
 
   it("renders a success or error feedback message when provided", () => {
     const { rerender } = render(
       <ShotWorkbenchPage
         workbench={workbench}
+        workflowPanel={workflowPanel}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
         onLocaleChange={() => {}}
@@ -97,6 +127,7 @@ describe("ShotWorkbenchPage", () => {
     rerender(
       <ShotWorkbenchPage
         workbench={workbench}
+        workflowPanel={workflowPanel}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
         onLocaleChange={() => {}}
@@ -116,6 +147,12 @@ describe("ShotWorkbenchPage", () => {
     render(
       <ShotWorkbenchPage
         workbench={workbench}
+        workflowPanel={{
+          latestWorkflowRun: {
+            ...workflowPanel.latestWorkflowRun,
+            status: "running",
+          },
+        }}
         locale="en-US"
         t={createTranslator("en-US")}
         onLocaleChange={onLocaleChange}
@@ -124,7 +161,10 @@ describe("ShotWorkbenchPage", () => {
 
     expect(screen.getByText("Creator Workbench")).toBeInTheDocument();
     expect(screen.getByText("Review Outcome")).toBeInTheDocument();
+    expect(screen.getByText("Workflow Run")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run Gate Checks" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start Workflow" })).toBeInTheDocument();
+    expect(screen.getByText("Workflow running")).toBeInTheDocument();
 
     fireEvent.change(screen.getByTestId("ui-locale-select"), {
       target: { value: "zh-CN" },

@@ -17,8 +17,10 @@ type workflowHandler struct {
 
 func (h *workflowHandler) StartWorkflow(ctx context.Context, req *connectrpc.Request[workflowv1.StartWorkflowRequest]) (*connectrpc.Response[workflowv1.StartWorkflowResponse], error) {
 	record, err := h.service.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
-		WorkflowType: req.Msg.GetWorkflowType(),
-		ResourceID:   req.Msg.GetResourceId(),
+		OrganizationID: req.Msg.GetOrganizationId(),
+		ProjectID:      req.Msg.GetProjectId(),
+		WorkflowType:   req.Msg.GetWorkflowType(),
+		ResourceID:     req.Msg.GetResourceId(),
 	})
 	if err != nil {
 		return nil, asConnectError(err)
@@ -42,7 +44,8 @@ func (h *workflowHandler) GetWorkflowRun(ctx context.Context, req *connectrpc.Re
 
 func (h *workflowHandler) ListWorkflowRuns(ctx context.Context, req *connectrpc.Request[workflowv1.ListWorkflowRunsRequest]) (*connectrpc.Response[workflowv1.ListWorkflowRunsResponse], error) {
 	records, err := h.service.ListWorkflowRuns(ctx, workflowapp.ListWorkflowRunsInput{
-		ProjectID: req.Msg.GetProjectId(),
+		ProjectID:  req.Msg.GetProjectId(),
+		ResourceID: req.Msg.GetResourceId(),
 	})
 	if err != nil {
 		return nil, asConnectError(err)
@@ -85,5 +88,7 @@ func mapWorkflowRun(record workflow.WorkflowRun) *workflowv1.WorkflowRun {
 		Id:           record.ID,
 		WorkflowType: record.WorkflowType,
 		Status:       record.Status,
+		ResourceId:   record.ResourceID,
+		ProjectId:    record.ProjectID,
 	}
 }
