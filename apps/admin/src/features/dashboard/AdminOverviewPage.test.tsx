@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createTranslator } from "../../i18n";
 import { AdminOverviewPage } from "./AdminOverviewPage";
 import type { AdminGovernanceViewModel } from "./governance";
@@ -345,6 +345,35 @@ describe("AdminOverviewPage", () => {
     expect(screen.getByText(/provider_error/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "关闭工作流详情" }));
+    expect(onCloseWorkflowDetail).toHaveBeenCalled();
+  });
+
+  it("traps focus inside the workflow detail dialog and locks background scroll", async () => {
+    const onCloseWorkflowDetail = vi.fn();
+
+    render(
+      <AdminOverviewPage
+        overview={overview}
+        governance={governance}
+        workflowMonitor={workflowMonitor}
+        workflowRunDetail={workflowDetail}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onCloseWorkflowDetail={onCloseWorkflowDetail}
+      />,
+    );
+
+    const closeButton = screen.getByRole("button", { name: "关闭工作流详情" });
+    await waitFor(() => {
+      expect(closeButton).toHaveFocus();
+    });
+    expect(document.body.style.overflow).toBe("hidden");
+
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(closeButton).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
     expect(onCloseWorkflowDetail).toHaveBeenCalled();
   });
 });

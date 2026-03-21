@@ -99,6 +99,7 @@ export function App() {
     running: false,
     queued: false,
   });
+  const refreshWorkflowSilentlyRef = useRef<() => Promise<void>>(async () => {});
 
   const searchParams = new URLSearchParams(window.location.search);
   const projectId = searchParams.get("projectId") ?? "project-demo-001";
@@ -174,6 +175,10 @@ export function App() {
       }
     }
   }, [refreshWorkflowMonitor, refreshWorkflowRunDetail, selectedWorkflowRunId]);
+
+  useEffect(() => {
+    refreshWorkflowSilentlyRef.current = refreshWorkflowSilently;
+  }, [refreshWorkflowSilently]);
 
   useEffect(() => {
     let cancelled = false;
@@ -319,13 +324,13 @@ export function App() {
         });
       },
       onWorkflowUpdated: () => {
-        void refreshWorkflowSilently();
+        void refreshWorkflowSilentlyRef.current();
       },
       onError: (error) => {
         console.warn(error.message);
       },
     });
-  }, [overview ? "ready" : "idle", projectId, refreshWorkflowSilently, subscriptionOrgId]);
+  }, [overview ? "ready" : "idle", projectId, subscriptionOrgId]);
 
   if (errorMessage) {
     return (

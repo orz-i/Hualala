@@ -502,6 +502,9 @@ describe("Admin App", () => {
     });
 
     await waitFor(() => {
+      expect(subscribeAdminRecentChangesMock).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
       expect(loadWorkflowMonitorPanelMock).toHaveBeenLastCalledWith({
         projectId: "project-live-6",
         status: "failed",
@@ -510,6 +513,7 @@ describe("Admin App", () => {
         userId: "user-live-6",
       });
     });
+    expect(subscribeAdminRecentChangesMock).toHaveBeenCalledTimes(1);
     expect(loadAdminOverviewMock).toHaveBeenCalledTimes(1);
     expect(loadGovernancePanelMock).toHaveBeenCalledTimes(1);
 
@@ -525,5 +529,70 @@ describe("Admin App", () => {
 
     expect(await screen.findByRole("dialog", { name: "工作流详情" })).toBeInTheDocument();
     expect(screen.getByText(/provider_error/)).toBeInTheDocument();
+  });
+
+  it("keeps the SSE subscription stable across workflow filter changes and refreshes with the latest filters", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-7&shotExecutionId=shot-exec-live-7&orgId=org-live-7&userId=user-live-7",
+    );
+    loadAdminOverviewMock.mockResolvedValue(createOverview("project-live-7", "shot-exec-live-7"));
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-7", "user-live-7"));
+    loadWorkflowMonitorPanelMock
+      .mockResolvedValueOnce(createWorkflowMonitor("project-live-7"))
+      .mockResolvedValue({
+        ...createWorkflowMonitor("project-live-7"),
+        filters: {
+          status: "failed",
+          workflowType: "shot_pipeline",
+        },
+      });
+
+    let onWorkflowUpdated: (() => void) | null = null;
+    subscribeAdminRecentChangesMock.mockImplementation((options) => {
+      onWorkflowUpdated = options.onWorkflowUpdated ?? null;
+      return () => {};
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("project-live-7")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(subscribeAdminRecentChangesMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText("工作流状态过滤"), {
+      target: { value: "failed" },
+    });
+    fireEvent.change(screen.getByLabelText("工作流类型过滤"), {
+      target: { value: "shot_pipeline" },
+    });
+
+    await waitFor(() => {
+      expect(loadWorkflowMonitorPanelMock).toHaveBeenLastCalledWith({
+        projectId: "project-live-7",
+        status: "failed",
+        workflowType: "shot_pipeline",
+        orgId: "org-live-7",
+        userId: "user-live-7",
+      });
+    });
+    expect(subscribeAdminRecentChangesMock).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      onWorkflowUpdated?.();
+    });
+
+    await waitFor(() => {
+      expect(loadWorkflowMonitorPanelMock).toHaveBeenLastCalledWith({
+        projectId: "project-live-7",
+        status: "failed",
+        workflowType: "shot_pipeline",
+        orgId: "org-live-7",
+        userId: "user-live-7",
+      });
+    });
+    expect(subscribeAdminRecentChangesMock).toHaveBeenCalledTimes(1);
   });
 });

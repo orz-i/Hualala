@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import type { AdminTranslator, LocaleCode } from "../../i18n";
 import type { AdminGovernanceViewModel } from "./governance";
 import type {
@@ -117,6 +117,21 @@ function formatDateTime(value: string) {
   return value.replace("T", " ").replace(".000Z", "Z");
 }
 
+function listFocusableElements(container: HTMLElement) {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      [
+        "button:not([disabled])",
+        "[href]",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        "[tabindex]:not([tabindex='-1'])",
+      ].join(","),
+    ),
+  ).filter((element) => !element.hasAttribute("hidden"));
+}
+
 export function AdminOverviewPage({
   overview,
   governance,
@@ -142,6 +157,9 @@ export function AdminOverviewPage({
   const orgLocaleInputId = useId();
   const workflowStatusFilterInputId = useId();
   const workflowTypeFilterInputId = useId();
+  const workflowDetailTitleId = useId();
+  const workflowDialogRef = useRef<HTMLElement | null>(null);
+  const workflowCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const [budgetLimitYuan, setBudgetLimitYuan] = useState(
     (overview.budgetSnapshot.limitCents / 100).toFixed(2),
   );
@@ -178,6 +196,68 @@ export function AdminOverviewPage({
       Object.fromEntries(governance.members.map((member) => [member.memberId, member.roleId])),
     );
   }, [governance.members]);
+
+  useEffect(() => {
+    if (!workflowRunDetail) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const previousActiveElement =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    document.body.style.overflow = "hidden";
+    workflowCloseButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseWorkflowDetail?.();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const dialog = workflowDialogRef.current;
+      if (!dialog) {
+        return;
+      }
+
+      const focusableElements = listFocusableElements(dialog);
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      if (!firstElement || !lastElement) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      if (event.shiftKey && activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+        return;
+      }
+
+      if (!event.shiftKey && activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousActiveElement?.focus();
+    };
+  }, [onCloseWorkflowDetail, workflowRunDetail]);
 
   const recentChangePalette = (tone: RecentChangeSummary["tone"]) =>
     tone === "success"
@@ -797,7 +877,10 @@ export function AdminOverviewPage({
         >
           <aside
             role="dialog"
-            aria-label={t("workflow.detail.title")}
+            aria-modal="true"
+            aria-labelledby={workflowDetailTitleId}
+            ref={workflowDialogRef}
+            tabIndex={-1}
             style={{
               width: "min(820px, 100%)",
               maxHeight: "calc(100vh - 48px)",
@@ -809,21 +892,24 @@ export function AdminOverviewPage({
               display: "grid",
               gap: "18px",
             }}
-          >
-            <div
+            >
+              <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "flex-start",
                 gap: "16px",
               }}
-            >
-              <div style={{ display: "grid", gap: "6px" }}>
-                <h2 style={{ margin: 0 }}>{t("workflow.detail.title")}</h2>
-                <p style={metricStyle}>{workflowRunDetail.run.id}</p>
-              </div>
+              >
+                <div style={{ display: "grid", gap: "6px" }}>
+                  <h2 id={workflowDetailTitleId} style={{ margin: 0 }}>
+                    {t("workflow.detail.title")}
+                  </h2>
+                  <p style={metricStyle}>{workflowRunDetail.run.id}</p>
+                </div>
               <button
                 type="button"
+                ref={workflowCloseButtonRef}
                 aria-label={t("workflow.detail.close")}
                 onClick={() => {
                   onCloseWorkflowDetail?.();
