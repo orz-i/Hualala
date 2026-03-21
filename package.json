@@ -20,6 +20,8 @@
     "db:down": "node tooling/scripts/docker_compose.mjs down -v",
     "db:migrate": "go run ./apps/backend/cmd/migrate",
     "db:bootstrap-dev": "go run ./apps/backend/cmd/bootstrapdev",
+    "dev:real": "node tooling/scripts/run-dev-real.mjs",
+    "dev:real:seed": "corepack pnpm run demo:seed:backend",
     "dev": "turbo run dev",
     "proto:lint": "node tooling/scripts/run-buf.mjs lint",
     "proto:gen": "node tooling/scripts/run-buf.mjs generate",
