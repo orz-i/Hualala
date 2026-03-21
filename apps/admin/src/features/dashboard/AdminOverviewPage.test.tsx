@@ -128,6 +128,34 @@ describe("AdminOverviewPage", () => {
       },
     ],
   };
+  const runningWorkflowDetail: WorkflowRunDetailViewModel = {
+    ...workflowDetail,
+    run: workflowMonitor.runs[0]!,
+    steps: [
+      {
+        id: "step-running-1",
+        workflowRunId: "workflow-run-1",
+        stepKey: "attempt_1.gateway",
+        stepOrder: 2,
+        status: "running",
+        errorCode: "",
+        errorMessage: "",
+        startedAt: "2024-03-09T16:00:10.000Z",
+        completedAt: "",
+        failedAt: "",
+      },
+    ],
+  };
+  const succeededWorkflowDetail: WorkflowRunDetailViewModel = {
+    ...workflowDetail,
+    run: {
+      ...workflowDetail.run,
+      id: "workflow-run-3",
+      status: "succeeded",
+      currentStep: "attempt_1.gateway",
+      lastError: "",
+    },
+  };
 
   it("renders budget, billing, and review overview cards", () => {
     render(
@@ -371,9 +399,74 @@ describe("AdminOverviewPage", () => {
     expect(document.body.style.overflow).toBe("hidden");
 
     fireEvent.keyDown(document, { key: "Tab" });
-    expect(closeButton).toHaveFocus();
+    expect(screen.getByRole("button", { name: "重试工作流" })).toHaveFocus();
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onCloseWorkflowDetail).toHaveBeenCalled();
+  });
+
+  it("shows retry action for failed workflow details and renders workflow feedback", () => {
+    const onRetryWorkflowRun = vi.fn();
+
+    render(
+      <AdminOverviewPage
+        overview={overview}
+        governance={governance}
+        workflowMonitor={workflowMonitor}
+        workflowRunDetail={workflowDetail}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onRetryWorkflowRun={onRetryWorkflowRun}
+        workflowActionFeedback={{
+          tone: "pending",
+          message: "正在重试工作流",
+        }}
+        workflowActionPending
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "重试工作流" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "取消工作流" })).not.toBeInTheDocument();
+    expect(screen.getByText("正在重试工作流")).toBeInTheDocument();
+  });
+
+  it("shows cancel action for running workflow details", () => {
+    const onCancelWorkflowRun = vi.fn();
+
+    render(
+      <AdminOverviewPage
+        overview={overview}
+        governance={governance}
+        workflowMonitor={workflowMonitor}
+        workflowRunDetail={runningWorkflowDetail}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onCancelWorkflowRun={onCancelWorkflowRun}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "取消工作流" }));
+
+    expect(onCancelWorkflowRun).toHaveBeenCalledWith("workflow-run-1");
+    expect(screen.queryByRole("button", { name: "重试工作流" })).not.toBeInTheDocument();
+  });
+
+  it("does not show workflow action buttons for succeeded workflow details", () => {
+    render(
+      <AdminOverviewPage
+        overview={overview}
+        governance={governance}
+        workflowMonitor={workflowMonitor}
+        workflowRunDetail={succeededWorkflowDetail}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "重试工作流" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "取消工作流" })).not.toBeInTheDocument();
   });
 });

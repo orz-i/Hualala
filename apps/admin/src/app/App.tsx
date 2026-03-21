@@ -22,6 +22,10 @@ import {
   updateOrgLocaleSettings,
   updateUserPreferences,
 } from "../features/dashboard/mutateGovernance";
+import {
+  cancelWorkflowRun,
+  retryWorkflowRun,
+} from "../features/dashboard/mutateWorkflowRun";
 import { subscribeAdminRecentChanges } from "../features/dashboard/subscribeRecentChanges";
 import type {
   WorkflowMonitorViewModel,
@@ -95,6 +99,11 @@ export function App() {
     tone: "pending" | "success" | "error";
     message: string;
   } | null>(null);
+  const [workflowActionFeedback, setWorkflowActionFeedback] = useState<{
+    tone: "pending" | "success" | "error";
+    message: string;
+  } | null>(null);
+  const [workflowActionPending, setWorkflowActionPending] = useState(false);
   const workflowRefreshStateRef = useRef({
     running: false,
     queued: false,
@@ -107,6 +116,9 @@ export function App() {
   const orgId = searchParams.get("orgId") ?? undefined;
   const userId = searchParams.get("userId") ?? undefined;
   const subscriptionOrgId = orgId ?? governance?.currentSession.orgId;
+  const effectiveGovernance = governance ?? buildFallbackGovernance(orgId, userId);
+  const effectiveOrgId = orgId ?? effectiveGovernance.currentSession.orgId;
+  const effectiveUserId = userId ?? effectiveGovernance.currentSession.userId;
 
   const refreshOverview = useCallback(async () => {
     const nextOverview = await loadAdminOverview({ projectId, shotExecutionId });
@@ -332,6 +344,70 @@ export function App() {
     });
   }, [overview ? "ready" : "idle", projectId, subscriptionOrgId]);
 
+  const runWorkflowAction = useCallback(
+    async ({
+      workflowRunId,
+      pendingMessage,
+      successMessage,
+      execute,
+    }: {
+      workflowRunId: string;
+      pendingMessage: string;
+      successMessage: string;
+      execute: (input: {
+        workflowRunId: string;
+        orgId: string;
+        userId: string;
+      }) => Promise<void>;
+    }) => {
+      if (workflowActionPending) {
+        return;
+      }
+
+      startTransition(() => {
+        setWorkflowActionPending(true);
+        setWorkflowActionFeedback({
+          tone: "pending",
+          message: pendingMessage,
+        });
+      });
+
+      try {
+        await waitForFeedbackPaint();
+        await execute({
+          workflowRunId,
+          orgId: effectiveOrgId,
+          userId: effectiveUserId,
+        });
+        await refreshWorkflowSilently();
+        startTransition(() => {
+          setWorkflowActionPending(false);
+          setWorkflowActionFeedback({
+            tone: "success",
+            message: successMessage,
+          });
+        });
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "admin: unknown workflow action error";
+        startTransition(() => {
+          setWorkflowActionPending(false);
+          setWorkflowActionFeedback({
+            tone: "error",
+            message: t("workflow.action.error", { message }),
+          });
+        });
+      }
+    },
+    [
+      effectiveOrgId,
+      effectiveUserId,
+      refreshWorkflowSilently,
+      t,
+      workflowActionPending,
+    ],
+  );
+
   if (errorMessage) {
     return (
       <main style={{ padding: "32px" }}>
@@ -344,9 +420,6 @@ export function App() {
     return <main style={{ padding: "32px" }}>{t("app.loading")}</main>;
   }
 
-  const effectiveGovernance = governance ?? buildFallbackGovernance(orgId, userId);
-  const effectiveOrgId = orgId ?? effectiveGovernance.currentSession.orgId;
-  const effectiveUserId = userId ?? effectiveGovernance.currentSession.userId;
   const effectiveWorkflowMonitor =
     workflowMonitor ??
     ({
@@ -367,6 +440,8 @@ export function App() {
       t={t}
       onLocaleChange={setLocale}
       budgetFeedback={budgetFeedback ?? undefined}
+      workflowActionFeedback={workflowActionFeedback ?? undefined}
+      workflowActionPending={workflowActionPending}
       onUpdateBudgetLimit={async (input) => {
         startTransition(() => {
           setBudgetFeedback({
@@ -438,12 +513,31 @@ export function App() {
       onSelectWorkflowRun={(workflowRunId) => {
         startTransition(() => {
           setSelectedWorkflowRunId(workflowRunId);
+          setWorkflowActionFeedback(null);
         });
       }}
       onCloseWorkflowDetail={() => {
         startTransition(() => {
           setSelectedWorkflowRunId(null);
           setWorkflowRunDetail(null);
+          setWorkflowActionFeedback(null);
+          setWorkflowActionPending(false);
+        });
+      }}
+      onRetryWorkflowRun={(workflowRunId) => {
+        void runWorkflowAction({
+          workflowRunId,
+          pendingMessage: t("workflow.action.retry.pending"),
+          successMessage: t("workflow.action.retry.success"),
+          execute: retryWorkflowRun,
+        });
+      }}
+      onCancelWorkflowRun={(workflowRunId) => {
+        void runWorkflowAction({
+          workflowRunId,
+          pendingMessage: t("workflow.action.cancel.pending"),
+          successMessage: t("workflow.action.cancel.success"),
+          execute: cancelWorkflowRun,
         });
       }}
     />
