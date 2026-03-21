@@ -10,11 +10,19 @@ import {
 } from "../features/dashboard/mutateGovernance";
 import { loadWorkflowMonitorPanel } from "../features/dashboard/loadWorkflowMonitorPanel";
 import { loadWorkflowRunDetails } from "../features/dashboard/loadWorkflowRunDetails";
+import { loadAssetMonitorPanel } from "../features/dashboard/loadAssetMonitorPanel";
+import { loadImportBatchDetails } from "../features/dashboard/loadImportBatchDetails";
+import { loadAssetProvenanceDetails } from "../features/dashboard/loadAssetProvenanceDetails";
 import {
   cancelWorkflowRun,
   retryWorkflowRun,
 } from "../features/dashboard/mutateWorkflowRun";
 import { subscribeAdminRecentChanges } from "../features/dashboard/subscribeRecentChanges";
+import {
+  createAssetBatchDetail,
+  createAssetMonitor,
+  createAssetProvenanceDetail,
+} from "../features/dashboard/assetMonitor.test-data";
 import { App } from "./App";
 
 vi.mock("../features/dashboard/loadAdminOverview", () => ({
@@ -37,6 +45,15 @@ vi.mock("../features/dashboard/loadWorkflowMonitorPanel", () => ({
 vi.mock("../features/dashboard/loadWorkflowRunDetails", () => ({
   loadWorkflowRunDetails: vi.fn(),
 }));
+vi.mock("../features/dashboard/loadAssetMonitorPanel", () => ({
+  loadAssetMonitorPanel: vi.fn(),
+}));
+vi.mock("../features/dashboard/loadImportBatchDetails", () => ({
+  loadImportBatchDetails: vi.fn(),
+}));
+vi.mock("../features/dashboard/loadAssetProvenanceDetails", () => ({
+  loadAssetProvenanceDetails: vi.fn(),
+}));
 vi.mock("../features/dashboard/mutateWorkflowRun", () => ({
   retryWorkflowRun: vi.fn(),
   cancelWorkflowRun: vi.fn(),
@@ -53,6 +70,9 @@ const updateMemberRoleMock = vi.mocked(updateMemberRole);
 const updateOrgLocaleSettingsMock = vi.mocked(updateOrgLocaleSettings);
 const loadWorkflowMonitorPanelMock = vi.mocked(loadWorkflowMonitorPanel);
 const loadWorkflowRunDetailsMock = vi.mocked(loadWorkflowRunDetails);
+const loadAssetMonitorPanelMock = vi.mocked(loadAssetMonitorPanel);
+const loadImportBatchDetailsMock = vi.mocked(loadImportBatchDetails);
+const loadAssetProvenanceDetailsMock = vi.mocked(loadAssetProvenanceDetails);
 const retryWorkflowRunMock = vi.mocked(retryWorkflowRun);
 const cancelWorkflowRunMock = vi.mocked(cancelWorkflowRun);
 const subscribeAdminRecentChangesMock = vi.mocked(subscribeAdminRecentChanges);
@@ -212,6 +232,11 @@ describe("Admin App", () => {
     subscribeAdminRecentChangesMock.mockReturnValue(() => {});
     loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-demo-001"));
     loadWorkflowRunDetailsMock.mockResolvedValue(createWorkflowDetail("project-demo-001"));
+    loadAssetMonitorPanelMock.mockResolvedValue(createAssetMonitor("project-demo-001"));
+    loadImportBatchDetailsMock.mockResolvedValue(createAssetBatchDetail("project-demo-001"));
+    loadAssetProvenanceDetailsMock.mockResolvedValue(
+      createAssetProvenanceDetail("project-demo-001"),
+    );
     retryWorkflowRunMock.mockResolvedValue(undefined);
     cancelWorkflowRunMock.mockResolvedValue(undefined);
   });
@@ -251,9 +276,19 @@ describe("Admin App", () => {
         userId: undefined,
       });
     });
+    await waitFor(() => {
+      expect(loadAssetMonitorPanelMock).toHaveBeenCalledWith({
+        projectId: "project-live-1",
+        status: "",
+        sourceType: "",
+        orgId: undefined,
+        userId: undefined,
+      });
+    });
 
     expect(await screen.findByText("project-live-1")).toBeInTheDocument();
     expect(screen.getByText("工作流监控")).toBeInTheDocument();
+    expect(screen.getByText("资产监控")).toBeInTheDocument();
     expect(screen.getByText("当前会话")).toBeInTheDocument();
     await waitFor(() => {
       expect(subscribeAdminRecentChangesMock).toHaveBeenCalledWith(
@@ -290,9 +325,11 @@ describe("Admin App", () => {
       conclusion?: string;
     }) => void) | null = null;
     let onWorkflowUpdated: (() => void) | null = null;
+    let onAssetImportBatchUpdated: (() => void) | null = null;
     subscribeAdminRecentChangesMock.mockImplementation((options) => {
       onChange = options.onChange;
       onWorkflowUpdated = options.onWorkflowUpdated ?? null;
+      onAssetImportBatchUpdated = options.onAssetImportBatchUpdated ?? null;
       return () => {};
     });
 
@@ -322,6 +359,14 @@ describe("Admin App", () => {
 
     await waitFor(() => {
       expect(loadWorkflowMonitorPanelMock).toHaveBeenCalledTimes(2);
+    });
+
+    act(() => {
+      onAssetImportBatchUpdated?.();
+    });
+
+    await waitFor(() => {
+      expect(loadAssetMonitorPanelMock).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -631,6 +676,122 @@ describe("Admin App", () => {
       });
     });
     expect(subscribeAdminRecentChangesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens asset monitor details, provenance, and refreshes them on asset SSE updates", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-asset-1&shotExecutionId=shot-exec-live-asset-1&orgId=org-live-asset-1&userId=user-live-asset-1",
+    );
+    loadAdminOverviewMock.mockResolvedValue(
+      createOverview("project-live-asset-1", "shot-exec-live-asset-1"),
+    );
+    loadGovernancePanelMock.mockResolvedValue(
+      createGovernance("org-live-asset-1", "user-live-asset-1"),
+    );
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-asset-1"));
+    loadAssetMonitorPanelMock.mockResolvedValue(createAssetMonitor("project-live-asset-1"));
+    loadImportBatchDetailsMock.mockResolvedValue(createAssetBatchDetail("project-live-asset-1"));
+    loadAssetProvenanceDetailsMock.mockResolvedValue(
+      createAssetProvenanceDetail("project-live-asset-1"),
+    );
+
+    let onAssetImportBatchUpdated: (() => void) | null = null;
+    subscribeAdminRecentChangesMock.mockImplementation((options) => {
+      onAssetImportBatchUpdated = options.onAssetImportBatchUpdated ?? null;
+      return () => {};
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("资产监控")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(loadAssetMonitorPanelMock).toHaveBeenCalledWith({
+        projectId: "project-live-asset-1",
+        status: "",
+        sourceType: "",
+        orgId: "org-live-asset-1",
+        userId: "user-live-asset-1",
+      });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "查看导入批次详情 import-batch-1" }));
+
+    await waitFor(() => {
+      expect(loadImportBatchDetailsMock).toHaveBeenCalledWith({
+        importBatchId: "import-batch-1",
+        orgId: "org-live-asset-1",
+        userId: "user-live-asset-1",
+      });
+    });
+    expect(await screen.findByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "查看资源来源 media-asset-1" })[0]!);
+
+    await waitFor(() => {
+      expect(loadAssetProvenanceDetailsMock).toHaveBeenCalledWith({
+        assetId: "media-asset-1",
+        orgId: "org-live-asset-1",
+        userId: "user-live-asset-1",
+      });
+    });
+    expect(await screen.findByRole("dialog", { name: "资源来源详情" })).toBeInTheDocument();
+
+    act(() => {
+      onAssetImportBatchUpdated?.();
+    });
+
+    await waitFor(() => {
+      expect(loadAssetMonitorPanelMock).toHaveBeenCalledTimes(2);
+      expect(loadImportBatchDetailsMock).toHaveBeenCalledTimes(2);
+      expect(loadAssetProvenanceDetailsMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("keeps the page visible when asset silent refresh fails", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-asset-2&shotExecutionId=shot-exec-live-asset-2&orgId=org-live-asset-2&userId=user-live-asset-2",
+    );
+    loadAdminOverviewMock.mockResolvedValue(
+      createOverview("project-live-asset-2", "shot-exec-live-asset-2"),
+    );
+    loadGovernancePanelMock.mockResolvedValue(
+      createGovernance("org-live-asset-2", "user-live-asset-2"),
+    );
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-asset-2"));
+    loadAssetMonitorPanelMock
+      .mockResolvedValueOnce(createAssetMonitor("project-live-asset-2"))
+      .mockRejectedValueOnce(new Error("asset monitor refresh down"));
+
+    let onAssetImportBatchUpdated: (() => void) | null = null;
+    subscribeAdminRecentChangesMock.mockImplementation((options) => {
+      onAssetImportBatchUpdated = options.onAssetImportBatchUpdated ?? null;
+      return () => {};
+    });
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    render(<App />);
+
+    expect(await screen.findByText("project-live-asset-2")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(subscribeAdminRecentChangesMock).toHaveBeenCalledTimes(1);
+    });
+    expect(onAssetImportBatchUpdated).not.toBeNull();
+    act(() => {
+      onAssetImportBatchUpdated?.();
+    });
+
+    await waitFor(() => {
+      expect(loadAssetMonitorPanelMock).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByText("project-live-asset-2")).toBeInTheDocument();
+    expect(warnSpy).toHaveBeenCalledWith("asset monitor refresh down");
+
+    warnSpy.mockRestore();
   });
 
   it("retries a failed workflow run, then refreshes the monitor and open details", async () => {

@@ -1,5 +1,10 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import type { AdminTranslator, LocaleCode } from "../../i18n";
+import type {
+  AssetMonitorViewModel,
+  AssetProvenanceDetailViewModel,
+  ImportBatchDetailViewModel,
+} from "./assetMonitor";
 import type { AdminGovernanceViewModel } from "./governance";
 import type {
   WorkflowMonitorViewModel,
@@ -71,7 +76,10 @@ type AdminOverviewPageProps = {
   overview: AdminOverviewViewModel;
   governance: AdminGovernanceViewModel;
   workflowMonitor: WorkflowMonitorViewModel;
+  assetMonitor: AssetMonitorViewModel;
   workflowRunDetail?: WorkflowRunDetailViewModel | null;
+  importBatchDetail?: ImportBatchDetailViewModel | null;
+  assetProvenanceDetail?: AssetProvenanceDetailViewModel | null;
   locale: LocaleCode;
   t: AdminTranslator;
   onLocaleChange: (locale: LocaleCode) => void;
@@ -85,8 +93,14 @@ type AdminOverviewPageProps = {
   onUpdateOrgLocaleSettings?: (input: { defaultLocale: string }) => void;
   onWorkflowStatusFilterChange?: (status: string) => void;
   onWorkflowTypeFilterChange?: (workflowType: string) => void;
+  onAssetStatusFilterChange?: (status: string) => void;
+  onAssetSourceTypeFilterChange?: (sourceType: string) => void;
   onSelectWorkflowRun?: (workflowRunId: string) => void;
+  onSelectImportBatch?: (importBatchId: string) => void;
+  onSelectAssetProvenance?: (assetId: string) => void;
   onCloseWorkflowDetail?: () => void;
+  onCloseImportBatchDetail?: () => void;
+  onCloseAssetProvenance?: () => void;
   budgetFeedback?: BudgetFeedback;
   workflowActionFeedback?: BudgetFeedback;
   workflowActionPending?: boolean;
@@ -149,6 +163,16 @@ function formatDateTime(value: string) {
   return value.replace("T", " ").replace(".000Z", "Z");
 }
 
+function formatFileSize(sizeBytes: number) {
+  if (sizeBytes >= 1024 * 1024) {
+    return `${(sizeBytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+  if (sizeBytes >= 1024) {
+    return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  }
+  return `${sizeBytes} B`;
+}
+
 function listFocusableElements(container: HTMLElement) {
   return Array.from(
     container.querySelectorAll<HTMLElement>(
@@ -164,11 +188,88 @@ function listFocusableElements(container: HTMLElement) {
   ).filter((element) => !element.hasAttribute("hidden"));
 }
 
+function useDialogAccessibility({
+  open,
+  dialogRef,
+  closeButtonRef,
+  onClose,
+}: {
+  open: boolean;
+  dialogRef: React.RefObject<HTMLElement | null>;
+  closeButtonRef: React.RefObject<HTMLButtonElement | null>;
+  onClose?: () => void;
+}) {
+  useLayoutEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const previousActiveElement =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose?.();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const dialog = dialogRef.current;
+      if (!dialog) {
+        return;
+      }
+
+      const focusableElements = listFocusableElements(dialog);
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      if (!firstElement || !lastElement) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      if (event.shiftKey && activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+        return;
+      }
+
+      if (!event.shiftKey && activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousActiveElement?.focus();
+    };
+  }, [closeButtonRef, dialogRef, onClose, open]);
+}
+
 export function AdminOverviewPage({
   overview,
   governance,
   workflowMonitor,
+  assetMonitor,
   workflowRunDetail,
+  importBatchDetail,
+  assetProvenanceDetail,
   locale,
   t,
   onLocaleChange,
@@ -178,8 +279,14 @@ export function AdminOverviewPage({
   onUpdateOrgLocaleSettings,
   onWorkflowStatusFilterChange,
   onWorkflowTypeFilterChange,
+  onAssetStatusFilterChange,
+  onAssetSourceTypeFilterChange,
   onSelectWorkflowRun,
+  onSelectImportBatch,
+  onSelectAssetProvenance,
   onCloseWorkflowDetail,
+  onCloseImportBatchDetail,
+  onCloseAssetProvenance,
   budgetFeedback,
   workflowActionFeedback,
   workflowActionPending,
@@ -193,9 +300,17 @@ export function AdminOverviewPage({
   const orgLocaleInputId = useId();
   const workflowStatusFilterInputId = useId();
   const workflowTypeFilterInputId = useId();
+  const assetStatusFilterInputId = useId();
+  const assetSourceTypeFilterInputId = useId();
   const workflowDetailTitleId = useId();
+  const assetDetailTitleId = useId();
+  const assetProvenanceTitleId = useId();
   const workflowDialogRef = useRef<HTMLElement | null>(null);
   const workflowCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+  const assetDetailDialogRef = useRef<HTMLElement | null>(null);
+  const assetDetailCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+  const assetProvenanceDialogRef = useRef<HTMLElement | null>(null);
+  const assetProvenanceCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const [budgetLimitYuan, setBudgetLimitYuan] = useState(
     (overview.budgetSnapshot.limitCents / 100).toFixed(2),
   );
@@ -239,67 +354,26 @@ export function AdminOverviewPage({
     );
   }, [governance.members]);
 
-  useLayoutEffect(() => {
-    if (!workflowRunDetail) {
-      return;
-    }
+  useDialogAccessibility({
+    open: Boolean(workflowRunDetail),
+    dialogRef: workflowDialogRef,
+    closeButtonRef: workflowCloseButtonRef,
+    onClose: onCloseWorkflowDetail,
+  });
 
-    const previousOverflow = document.body.style.overflow;
-    const previousActiveElement =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    document.body.style.overflow = "hidden";
-    workflowCloseButtonRef.current?.focus();
+  useDialogAccessibility({
+    open: Boolean(importBatchDetail) && !assetProvenanceDetail,
+    dialogRef: assetDetailDialogRef,
+    closeButtonRef: assetDetailCloseButtonRef,
+    onClose: onCloseImportBatchDetail,
+  });
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onCloseWorkflowDetail?.();
-        return;
-      }
-
-      if (event.key !== "Tab") {
-        return;
-      }
-
-      const dialog = workflowDialogRef.current;
-      if (!dialog) {
-        return;
-      }
-
-      const focusableElements = listFocusableElements(dialog);
-      if (focusableElements.length === 0) {
-        event.preventDefault();
-        dialog.focus();
-        return;
-      }
-
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-      if (!firstElement || !lastElement) {
-        return;
-      }
-
-      const activeElement = document.activeElement;
-      if (event.shiftKey && activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-        return;
-      }
-
-      if (!event.shiftKey && activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-      previousActiveElement?.focus();
-    };
-  }, [onCloseWorkflowDetail, workflowRunDetail]);
+  useDialogAccessibility({
+    open: Boolean(assetProvenanceDetail),
+    dialogRef: assetProvenanceDialogRef,
+    closeButtonRef: assetProvenanceCloseButtonRef,
+    onClose: onCloseAssetProvenance,
+  });
 
   const recentChangePalette = (tone: RecentChangeSummary["tone"]) =>
     tone === "success"
@@ -725,6 +799,153 @@ export function AdminOverviewPage({
           </article>
 
           <article style={panelStyle}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "16px",
+                marginBottom: "16px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <h2 style={{ marginTop: 0, marginBottom: "8px", fontSize: "1.05rem" }}>
+                  {t("asset.panel.title")}
+                </h2>
+                <p style={{ ...metricStyle, fontSize: "0.9rem" }}>
+                  {t("asset.panel.summary", { count: assetMonitor.importBatches.length })}
+                </p>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: "10px",
+                  flex: "1 1 360px",
+                }}
+              >
+                <label
+                  htmlFor={assetStatusFilterInputId}
+                  style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}
+                >
+                  <span>{t("asset.filter.status")}</span>
+                  <select
+                    id={assetStatusFilterInputId}
+                    value={assetMonitor.filters.status}
+                    onChange={(event) => {
+                      onAssetStatusFilterChange?.(event.target.value);
+                    }}
+                    style={{
+                      borderRadius: "12px",
+                      border: "1px solid rgba(148, 163, 184, 0.45)",
+                      padding: "8px 10px",
+                      font: "inherit",
+                      background: "#ffffff",
+                    }}
+                  >
+                    <option value="">{t("asset.filter.option.all")}</option>
+                    <option value="pending_review">{t("asset.filter.option.pendingReview")}</option>
+                    <option value="matched_pending_confirm">
+                      {t("asset.filter.option.matchedPendingConfirm")}
+                    </option>
+                    <option value="confirmed">{t("asset.filter.option.confirmed")}</option>
+                  </select>
+                </label>
+                <label
+                  htmlFor={assetSourceTypeFilterInputId}
+                  style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}
+                >
+                  <span>{t("asset.filter.sourceType")}</span>
+                  <select
+                    id={assetSourceTypeFilterInputId}
+                    value={assetMonitor.filters.sourceType}
+                    onChange={(event) => {
+                      onAssetSourceTypeFilterChange?.(event.target.value);
+                    }}
+                    style={{
+                      borderRadius: "12px",
+                      border: "1px solid rgba(148, 163, 184, 0.45)",
+                      padding: "8px 10px",
+                      font: "inherit",
+                      background: "#ffffff",
+                    }}
+                  >
+                    <option value="">{t("asset.filter.option.all")}</option>
+                    <option value="upload_session">upload_session</option>
+                    <option value="workflow_import">workflow_import</option>
+                    <option value="manual_upload">manual_upload</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div style={{ display: "grid", gap: "12px" }}>
+              {assetMonitor.importBatches.map((batch) => (
+                <article
+                  key={batch.id}
+                  style={{
+                    display: "grid",
+                    gap: "10px",
+                    padding: "14px 16px",
+                    borderRadius: "14px",
+                    background: "rgba(255, 255, 255, 0.82)",
+                    border: "1px solid rgba(148, 163, 184, 0.18)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <strong>{batch.id}</strong>
+                    <button
+                      type="button"
+                      style={{
+                        border: 0,
+                        borderRadius: "999px",
+                        padding: "8px 14px",
+                        background: "#1d4ed8",
+                        color: "#eff6ff",
+                        cursor: "pointer",
+                      }}
+                      aria-label={t("asset.detail.button", { id: batch.id })}
+                      onClick={() => {
+                        onSelectImportBatch?.(batch.id);
+                      }}
+                    >
+                      {t("asset.detail.open")}
+                    </button>
+                  </div>
+                  <p style={metricStyle}>
+                    {t("asset.batch.summary", {
+                      sourceType: batch.sourceType,
+                      status: batch.status,
+                    })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("asset.batch.counts", {
+                      uploadSessionCount: batch.uploadSessionCount,
+                      itemCount: batch.itemCount,
+                      confirmedItemCount: batch.confirmedItemCount,
+                      candidateAssetCount: batch.candidateAssetCount,
+                      mediaAssetCount: batch.mediaAssetCount,
+                    })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("asset.batch.updatedAt", {
+                      updatedAt: formatDateTime(batch.updatedAt),
+                    })}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </article>
+
+          <article style={panelStyle}>
             <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
               {t("governance.session.title")}
             </h2>
@@ -906,6 +1127,352 @@ export function AdminOverviewPage({
           </article>
         </section>
       </section>
+      {importBatchDetail && !assetProvenanceDetail ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.35)",
+            display: "grid",
+            placeItems: "center",
+            padding: "24px",
+          }}
+        >
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={assetDetailTitleId}
+            ref={assetDetailDialogRef}
+            tabIndex={-1}
+            style={{
+              width: "min(900px, 100%)",
+              maxHeight: "calc(100vh - 48px)",
+              overflow: "auto",
+              borderRadius: "24px",
+              padding: "24px",
+              background: "#f8fafc",
+              boxShadow: "0 24px 48px rgba(15, 23, 42, 0.2)",
+              display: "grid",
+              gap: "18px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "16px",
+              }}
+            >
+              <div style={{ display: "grid", gap: "6px" }}>
+                <h2 id={assetDetailTitleId} style={{ margin: 0 }}>
+                  {t("asset.detail.title")}
+                </h2>
+                <p style={metricStyle}>{importBatchDetail.batch.id}</p>
+              </div>
+              <button
+                type="button"
+                ref={assetDetailCloseButtonRef}
+                aria-label={t("asset.detail.close")}
+                onClick={() => {
+                  onCloseImportBatchDetail?.();
+                }}
+                style={{
+                  ...workflowActionButtonBaseStyle,
+                  ...workflowActionButtonToneStyles.close,
+                }}
+              >
+                {t("asset.detail.close")}
+              </button>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: "12px",
+              }}
+            >
+              <p style={metricStyle}>
+                {t("asset.detail.project", { projectId: importBatchDetail.batch.projectId })}
+              </p>
+              <p style={metricStyle}>
+                {t("asset.detail.org", { orgId: importBatchDetail.batch.orgId })}
+              </p>
+              <p style={metricStyle}>
+                {t("asset.detail.operator", { operatorId: importBatchDetail.batch.operatorId })}
+              </p>
+              <p style={metricStyle}>
+                {t("asset.detail.sourceType", {
+                  sourceType: importBatchDetail.batch.sourceType,
+                })}
+              </p>
+              <p style={metricStyle}>
+                {t("asset.detail.status", { status: importBatchDetail.batch.status })}
+              </p>
+              <p style={metricStyle}>
+                {t("asset.detail.section.summary", {
+                  uploadSessionCount: importBatchDetail.uploadSessions.length,
+                  itemCount: importBatchDetail.items.length,
+                  candidateAssetCount: importBatchDetail.candidateAssets.length,
+                  mediaAssetCount: importBatchDetail.mediaAssets.length,
+                })}
+              </p>
+            </div>
+
+            <section style={{ display: "grid", gap: "12px" }}>
+              <h3 style={{ margin: 0 }}>{t("asset.detail.uploadSessions")}</h3>
+              {importBatchDetail.uploadSessions.map((session) => (
+                <article
+                  key={session.id}
+                  style={{
+                    display: "grid",
+                    gap: "6px",
+                    padding: "14px 16px",
+                    borderRadius: "14px",
+                    background: "#ffffff",
+                    border: "1px solid rgba(148, 163, 184, 0.2)",
+                  }}
+                >
+                  <strong>{session.fileName || session.id}</strong>
+                  <p style={metricStyle}>
+                    {t("asset.uploadSession.summary", {
+                      status: session.status,
+                      size: formatFileSize(session.sizeBytes),
+                      retryCount: session.retryCount,
+                    })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("asset.uploadSession.checksum", { checksum: session.checksum || "none" })}
+                  </p>
+                </article>
+              ))}
+            </section>
+
+            <section style={{ display: "grid", gap: "12px" }}>
+              <h3 style={{ margin: 0 }}>{t("asset.detail.items")}</h3>
+              {importBatchDetail.items.map((item) => (
+                <article
+                  key={item.id}
+                  style={{
+                    display: "grid",
+                    gap: "6px",
+                    padding: "14px 16px",
+                    borderRadius: "14px",
+                    background: "#ffffff",
+                    border: "1px solid rgba(148, 163, 184, 0.2)",
+                  }}
+                >
+                  <strong>{item.id}</strong>
+                  <p style={metricStyle}>
+                    {t("asset.item.summary", { status: item.status, assetId: item.assetId || "none" })}
+                  </p>
+                </article>
+              ))}
+            </section>
+
+            <section style={{ display: "grid", gap: "12px" }}>
+              <h3 style={{ margin: 0 }}>{t("asset.detail.candidateAssets")}</h3>
+              {importBatchDetail.candidateAssets.map((candidate) => (
+                <article
+                  key={candidate.id}
+                  style={{
+                    display: "grid",
+                    gap: "10px",
+                    padding: "14px 16px",
+                    borderRadius: "14px",
+                    background: "#ffffff",
+                    border: "1px solid rgba(148, 163, 184, 0.2)",
+                  }}
+                >
+                  <strong>{candidate.id}</strong>
+                  <p style={metricStyle}>
+                    {t("asset.candidate.summary", {
+                      shotExecutionId: candidate.shotExecutionId || "none",
+                      sourceRunId: candidate.sourceRunId || "none",
+                    })}
+                  </p>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={metricStyle}>
+                      {t("asset.candidate.assetId", { assetId: candidate.assetId || "none" })}
+                    </span>
+                    {candidate.assetId ? (
+                      <button
+                        type="button"
+                        aria-label={t("asset.provenance.button", { assetId: candidate.assetId })}
+                        onClick={() => {
+                          onSelectAssetProvenance?.(candidate.assetId);
+                        }}
+                        style={{
+                          border: 0,
+                          borderRadius: "999px",
+                          padding: "8px 14px",
+                          background: "#0f766e",
+                          color: "#ecfeff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {t("asset.provenance.open")}
+                      </button>
+                    ) : null}
+                  </div>
+                </article>
+              ))}
+            </section>
+
+            <section style={{ display: "grid", gap: "12px" }}>
+              <h3 style={{ margin: 0 }}>{t("asset.detail.mediaAssets")}</h3>
+              {importBatchDetail.mediaAssets.map((asset) => (
+                <article
+                  key={asset.id}
+                  style={{
+                    display: "grid",
+                    gap: "10px",
+                    padding: "14px 16px",
+                    borderRadius: "14px",
+                    background: "#ffffff",
+                    border: "1px solid rgba(148, 163, 184, 0.2)",
+                  }}
+                >
+                  <strong>{asset.id}</strong>
+                  <p style={metricStyle}>
+                    {t("asset.media.summary", {
+                      sourceType: asset.sourceType,
+                      rightsStatus: asset.rightsStatus,
+                      locale: asset.locale || "none",
+                    })}
+                  </p>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={metricStyle}>
+                      {t("asset.media.importBatchId", {
+                        importBatchId: asset.importBatchId || "none",
+                      })}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={t("asset.provenance.button", { assetId: asset.id })}
+                      onClick={() => {
+                        onSelectAssetProvenance?.(asset.id);
+                      }}
+                      style={{
+                        border: 0,
+                        borderRadius: "999px",
+                        padding: "8px 14px",
+                        background: "#0f766e",
+                        color: "#ecfeff",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {t("asset.provenance.open")}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </section>
+          </aside>
+        </div>
+      ) : null}
+      {assetProvenanceDetail ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            display: "grid",
+            placeItems: "center",
+            padding: "24px",
+          }}
+        >
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={assetProvenanceTitleId}
+            ref={assetProvenanceDialogRef}
+            tabIndex={-1}
+            style={{
+              width: "min(720px, 100%)",
+              maxHeight: "calc(100vh - 48px)",
+              overflow: "auto",
+              borderRadius: "24px",
+              padding: "24px",
+              background: "#f8fafc",
+              boxShadow: "0 24px 48px rgba(15, 23, 42, 0.2)",
+              display: "grid",
+              gap: "18px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "16px",
+              }}
+            >
+              <div style={{ display: "grid", gap: "6px" }}>
+                <h2 id={assetProvenanceTitleId} style={{ margin: 0 }}>
+                  {t("asset.provenance.title")}
+                </h2>
+                <p style={metricStyle}>{assetProvenanceDetail.asset.id}</p>
+              </div>
+              <button
+                type="button"
+                ref={assetProvenanceCloseButtonRef}
+                aria-label={t("asset.provenance.close")}
+                onClick={() => {
+                  onCloseAssetProvenance?.();
+                }}
+                style={{
+                  ...workflowActionButtonBaseStyle,
+                  ...workflowActionButtonToneStyles.close,
+                }}
+              >
+                {t("asset.provenance.close")}
+              </button>
+            </div>
+            <p style={metricStyle}>{assetProvenanceDetail.provenanceSummary}</p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: "12px",
+              }}
+            >
+              <p style={metricStyle}>
+                {t("asset.provenance.candidateAssetId", {
+                  candidateAssetId: assetProvenanceDetail.candidateAssetId || "none",
+                })}
+              </p>
+              <p style={metricStyle}>
+                {t("asset.provenance.shotExecutionId", {
+                  shotExecutionId: assetProvenanceDetail.shotExecutionId || "none",
+                })}
+              </p>
+              <p style={metricStyle}>
+                {t("asset.provenance.sourceRunId", {
+                  sourceRunId: assetProvenanceDetail.sourceRunId || "none",
+                })}
+              </p>
+              <p style={metricStyle}>
+                {t("asset.provenance.importBatchId", {
+                  importBatchId: assetProvenanceDetail.importBatchId || "none",
+                })}
+              </p>
+              <p style={metricStyle}>
+                {t("asset.provenance.variantCount", {
+                  variantCount: assetProvenanceDetail.variantCount,
+                })}
+              </p>
+              <p style={metricStyle}>
+                {t("asset.provenance.assetMeta", {
+                  sourceType: assetProvenanceDetail.asset.sourceType,
+                  rightsStatus: assetProvenanceDetail.asset.rightsStatus,
+                  locale: assetProvenanceDetail.asset.locale || "none",
+                })}
+              </p>
+            </div>
+          </aside>
+        </div>
+      ) : null}
       {workflowRunDetail ? (
         <div
           style={{

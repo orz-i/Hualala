@@ -11,9 +11,17 @@ import {
   type AdminOverviewViewModel,
   type RecentChangeSummary,
 } from "../features/dashboard/AdminOverviewPage";
+import type {
+  AssetMonitorViewModel,
+  AssetProvenanceDetailViewModel,
+  ImportBatchDetailViewModel,
+} from "../features/dashboard/assetMonitor";
 import type { AdminGovernanceViewModel } from "../features/dashboard/governance";
 import { loadAdminOverview } from "../features/dashboard/loadAdminOverview";
+import { loadAssetMonitorPanel } from "../features/dashboard/loadAssetMonitorPanel";
+import { loadAssetProvenanceDetails } from "../features/dashboard/loadAssetProvenanceDetails";
 import { loadGovernancePanel } from "../features/dashboard/loadGovernancePanel";
+import { loadImportBatchDetails } from "../features/dashboard/loadImportBatchDetails";
 import { loadWorkflowMonitorPanel } from "../features/dashboard/loadWorkflowMonitorPanel";
 import { loadWorkflowRunDetails } from "../features/dashboard/loadWorkflowRunDetails";
 import { updateBudgetPolicy } from "../features/dashboard/mutateBudgetPolicy";
@@ -89,11 +97,21 @@ export function App() {
   const [overview, setOverview] = useState<AdminOverviewViewModel | null>(null);
   const [governance, setGovernance] = useState<AdminGovernanceViewModel | null>(null);
   const [workflowMonitor, setWorkflowMonitor] = useState<WorkflowMonitorViewModel | null>(null);
+  const [assetMonitor, setAssetMonitor] = useState<AssetMonitorViewModel | null>(null);
   const [workflowRunDetail, setWorkflowRunDetail] =
     useState<WorkflowRunDetailViewModel | null>(null);
+  const [importBatchDetail, setImportBatchDetail] = useState<ImportBatchDetailViewModel | null>(
+    null,
+  );
+  const [assetProvenanceDetail, setAssetProvenanceDetail] =
+    useState<AssetProvenanceDetailViewModel | null>(null);
   const [selectedWorkflowRunId, setSelectedWorkflowRunId] = useState<string | null>(null);
+  const [selectedImportBatchId, setSelectedImportBatchId] = useState<string | null>(null);
+  const [selectedAssetProvenanceId, setSelectedAssetProvenanceId] = useState<string | null>(null);
   const [workflowStatusFilter, setWorkflowStatusFilter] = useState("");
   const [workflowTypeFilter, setWorkflowTypeFilter] = useState("");
+  const [assetStatusFilter, setAssetStatusFilter] = useState("");
+  const [assetSourceTypeFilter, setAssetSourceTypeFilter] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [budgetFeedback, setBudgetFeedback] = useState<{
     tone: "pending" | "success" | "error";
@@ -108,7 +126,12 @@ export function App() {
     running: false,
     queued: false,
   });
+  const assetRefreshStateRef = useRef({
+    running: false,
+    queued: false,
+  });
   const refreshWorkflowSilentlyRef = useRef<() => Promise<void>>(async () => {});
+  const refreshAssetSilentlyRef = useRef<() => Promise<void>>(async () => {});
 
   const searchParams = new URLSearchParams(window.location.search);
   const projectId = searchParams.get("projectId") ?? "project-demo-001";
@@ -162,6 +185,47 @@ export function App() {
     [orgId, userId],
   );
 
+  const refreshAssetMonitor = useCallback(async () => {
+    const nextAssetMonitor = await loadAssetMonitorPanel({
+      projectId,
+      status: assetStatusFilter,
+      sourceType: assetSourceTypeFilter,
+      orgId,
+      userId,
+    });
+    startTransition(() => {
+      setAssetMonitor(nextAssetMonitor);
+    });
+  }, [assetSourceTypeFilter, assetStatusFilter, orgId, projectId, userId]);
+
+  const refreshImportBatchDetail = useCallback(
+    async (importBatchId: string) => {
+      const nextImportBatchDetail = await loadImportBatchDetails({
+        importBatchId,
+        orgId,
+        userId,
+      });
+      startTransition(() => {
+        setImportBatchDetail(nextImportBatchDetail);
+      });
+    },
+    [orgId, userId],
+  );
+
+  const refreshAssetProvenanceDetail = useCallback(
+    async (assetId: string) => {
+      const nextAssetProvenanceDetail = await loadAssetProvenanceDetails({
+        assetId,
+        orgId,
+        userId,
+      });
+      startTransition(() => {
+        setAssetProvenanceDetail(nextAssetProvenanceDetail);
+      });
+    },
+    [orgId, userId],
+  );
+
   const refreshWorkflowSilently = useCallback(async () => {
     if (workflowRefreshStateRef.current.running) {
       workflowRefreshStateRef.current.queued = true;
@@ -191,6 +255,45 @@ export function App() {
   useEffect(() => {
     refreshWorkflowSilentlyRef.current = refreshWorkflowSilently;
   }, [refreshWorkflowSilently]);
+
+  const refreshAssetSilently = useCallback(async () => {
+    if (assetRefreshStateRef.current.running) {
+      assetRefreshStateRef.current.queued = true;
+      return;
+    }
+
+    assetRefreshStateRef.current.running = true;
+
+    try {
+      await refreshAssetMonitor();
+      if (selectedImportBatchId) {
+        await refreshImportBatchDetail(selectedImportBatchId);
+      }
+      if (selectedAssetProvenanceId) {
+        await refreshAssetProvenanceDetail(selectedAssetProvenanceId);
+      }
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "admin: unknown asset refresh error";
+      console.warn(message);
+    } finally {
+      assetRefreshStateRef.current.running = false;
+      if (assetRefreshStateRef.current.queued) {
+        assetRefreshStateRef.current.queued = false;
+        void refreshAssetSilently();
+      }
+    }
+  }, [
+    refreshAssetMonitor,
+    refreshAssetProvenanceDetail,
+    refreshImportBatchDetail,
+    selectedAssetProvenanceId,
+    selectedImportBatchId,
+  ]);
+
+  useEffect(() => {
+    refreshAssetSilentlyRef.current = refreshAssetSilently;
+  }, [refreshAssetSilently]);
 
   useEffect(() => {
     let cancelled = false;
@@ -239,6 +342,47 @@ export function App() {
       cancelled = true;
     };
   }, [orgId, projectId, shotExecutionId, userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    loadAssetMonitorPanel({
+      projectId,
+      status: assetStatusFilter,
+      sourceType: assetSourceTypeFilter,
+      orgId,
+      userId,
+    })
+      .then((nextAssetMonitor) => {
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setAssetMonitor(nextAssetMonitor);
+        });
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : "admin: unknown asset monitor error";
+        console.warn(message);
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setAssetMonitor({
+            filters: {
+              status: assetStatusFilter,
+              sourceType: assetSourceTypeFilter,
+            },
+            importBatches: [],
+          });
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [assetSourceTypeFilter, assetStatusFilter, orgId, projectId, userId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -315,6 +459,72 @@ export function App() {
   }, [orgId, selectedWorkflowRunId, userId]);
 
   useEffect(() => {
+    if (!selectedImportBatchId) {
+      startTransition(() => {
+        setImportBatchDetail(null);
+      });
+      return;
+    }
+
+    let cancelled = false;
+    loadImportBatchDetails({
+      importBatchId: selectedImportBatchId,
+      orgId,
+      userId,
+    })
+      .then((nextImportBatchDetail) => {
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setImportBatchDetail(nextImportBatchDetail);
+        });
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : "admin: unknown import batch detail error";
+        console.warn(message);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, selectedImportBatchId, userId]);
+
+  useEffect(() => {
+    if (!selectedAssetProvenanceId) {
+      startTransition(() => {
+        setAssetProvenanceDetail(null);
+      });
+      return;
+    }
+
+    let cancelled = false;
+    loadAssetProvenanceDetails({
+      assetId: selectedAssetProvenanceId,
+      orgId,
+      userId,
+    })
+      .then((nextAssetProvenanceDetail) => {
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setAssetProvenanceDetail(nextAssetProvenanceDetail);
+        });
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : "admin: unknown asset provenance error";
+        console.warn(message);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, selectedAssetProvenanceId, userId]);
+
+  useEffect(() => {
     if (!overview || !subscriptionOrgId) {
       return;
     }
@@ -337,6 +547,9 @@ export function App() {
       },
       onWorkflowUpdated: () => {
         void refreshWorkflowSilentlyRef.current();
+      },
+      onAssetImportBatchUpdated: () => {
+        void refreshAssetSilentlyRef.current();
       },
       onError: (error) => {
         console.warn(error.message);
@@ -429,13 +642,25 @@ export function App() {
       },
       runs: [],
     } satisfies WorkflowMonitorViewModel);
+  const effectiveAssetMonitor =
+    assetMonitor ??
+    ({
+      filters: {
+        status: assetStatusFilter,
+        sourceType: assetSourceTypeFilter,
+      },
+      importBatches: [],
+    } satisfies AssetMonitorViewModel);
 
   return (
     <AdminOverviewPage
       overview={overview}
       governance={effectiveGovernance}
       workflowMonitor={effectiveWorkflowMonitor}
+      assetMonitor={effectiveAssetMonitor}
       workflowRunDetail={workflowRunDetail}
+      importBatchDetail={importBatchDetail}
+      assetProvenanceDetail={assetProvenanceDetail}
       locale={locale}
       t={t}
       onLocaleChange={setLocale}
@@ -510,10 +735,46 @@ export function App() {
           setWorkflowTypeFilter(workflowType);
         });
       }}
+      onAssetStatusFilterChange={(status) => {
+        startTransition(() => {
+          setAssetStatusFilter(status);
+        });
+      }}
+      onAssetSourceTypeFilterChange={(sourceType) => {
+        startTransition(() => {
+          setAssetSourceTypeFilter(sourceType);
+        });
+      }}
       onSelectWorkflowRun={(workflowRunId) => {
         startTransition(() => {
           setSelectedWorkflowRunId(workflowRunId);
           setWorkflowActionFeedback(null);
+        });
+      }}
+      onSelectImportBatch={(importBatchId) => {
+        startTransition(() => {
+          setSelectedImportBatchId(importBatchId);
+          setSelectedAssetProvenanceId(null);
+          setAssetProvenanceDetail(null);
+        });
+      }}
+      onCloseImportBatchDetail={() => {
+        startTransition(() => {
+          setSelectedImportBatchId(null);
+          setImportBatchDetail(null);
+          setSelectedAssetProvenanceId(null);
+          setAssetProvenanceDetail(null);
+        });
+      }}
+      onSelectAssetProvenance={(assetId) => {
+        startTransition(() => {
+          setSelectedAssetProvenanceId(assetId);
+        });
+      }}
+      onCloseAssetProvenance={() => {
+        startTransition(() => {
+          setSelectedAssetProvenanceId(null);
+          setAssetProvenanceDetail(null);
         });
       }}
       onCloseWorkflowDetail={() => {
