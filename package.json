@@ -13,7 +13,7 @@
     "test:e2e:admin:real": "node tooling/scripts/run-playwright-suite.mjs admin-real test tests/e2e/admin-real-smoke.spec.ts",
     "test:e2e:creator:real": "node tooling/scripts/run-playwright-suite.mjs creator-real test tests/e2e/creator-real-smoke.spec.ts",
     "test:e2e:phase1:real": "node tooling/scripts/run-playwright-suite.mjs all-real test tests/e2e/phase1-real-acceptance.spec.ts",
-    "test:tooling": "node --test tooling/scripts/demo_seed.test.mjs tooling/scripts/backend_seed.test.mjs tooling/scripts/i18n_key_parity_check.test.mjs tooling/scripts/phase1_ci_real_acceptance.test.mjs tooling/scripts/phase2_postgres_ci.test.mjs",
+    "test:tooling": "node --test tooling/scripts/demo_seed.test.mjs tooling/scripts/backend_seed.test.mjs tooling/scripts/i18n_key_parity_check.test.mjs tooling/scripts/phase1_ci_real_acceptance.test.mjs tooling/scripts/phase2_postgres_ci.test.mjs tooling/scripts/run-dev-real.test.mjs",
     "demo:seed": "node tooling/scripts/demo_seed.mjs",
     "demo:seed:backend": "node tooling/scripts/backend_seed.mjs",
     "db:up": "node tooling/scripts/docker_compose.mjs up -d",

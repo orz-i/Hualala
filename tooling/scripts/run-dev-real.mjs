@@ -1,5 +1,4 @@
 import { spawn, spawnSync } from "node:child_process";
-import net from "node:net";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
@@ -10,7 +9,7 @@ const repoRoot = resolve(scriptDir, "..", "..");
 const backendHealthUrl = "http://127.0.0.1:8080/healthz";
 const adminUrl = "http://127.0.0.1:4173";
 const creatorUrl = "http://127.0.0.1:4174";
-const defaultDatabaseUrl = "postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable";
+export const defaultDatabaseUrl = "postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable";
 
 const managedChildren = [];
 let shuttingDown = false;
@@ -46,57 +45,82 @@ function treeKill(child) {
   child.kill("SIGTERM");
 }
 
+export function buildManagedEnv(baseEnv = process.env, overrides = {}) {
+  return {
+    ...baseEnv,
+    ...overrides,
+    DB_DRIVER: "postgres",
+    DATABASE_URL: defaultDatabaseUrl,
+  };
+}
+
+export function buildPostgresReadyCommand() {
+  return "node tooling/scripts/docker_compose.mjs exec -T postgres pg_isready -U hualala -d hualala";
+}
+
 function spawnCommand(command, options = {}) {
   return spawn(command, {
     cwd: repoRoot,
-    stdio: "inherit",
+    stdio: options.stdio ?? "inherit",
     shell: true,
-    env: {
-      ...process.env,
-      ...options.env,
-    },
+    env: buildManagedEnv(process.env, options.env ?? {}),
   });
 }
 
-async function runStep(label, command) {
-  console.log(`[dev:real] ${label}: ${command}`);
-  const child = spawnCommand(command);
+async function runCommand(command, options = {}) {
+  const child = spawnCommand(command, options);
+  let stdout = "";
+  let stderr = "";
+
+  if (child.stdout) {
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+  }
+  if (child.stderr) {
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+  }
 
   const exitCode = await new Promise((resolveExit, rejectExit) => {
     child.on("error", rejectExit);
     child.on("close", resolveExit);
   });
 
+  return {
+    exitCode,
+    stdout,
+    stderr,
+  };
+}
+
+async function runStep(label, command) {
+  console.log(`[dev:real] ${label}: ${command}`);
+  const { exitCode } = await runCommand(command);
+
   if (exitCode !== 0) {
     throw new Error(`[dev:real] ${label} failed with exit code ${exitCode ?? 1}`);
   }
 }
 
-async function waitForTcp(host, port, label, timeoutMs = 60_000) {
+async function waitForCommandSuccess(label, command, timeoutMs = 60_000) {
   const deadline = Date.now() + timeoutMs;
+  let lastError = "";
 
   while (Date.now() < deadline) {
-    const ready = await new Promise((resolveReady) => {
-      const socket = net.createConnection({ host, port });
-      const cleanup = (value) => {
-        socket.removeAllListeners();
-        socket.destroy();
-        resolveReady(value);
-      };
-
-      socket.once("connect", () => cleanup(true));
-      socket.once("error", () => cleanup(false));
-      socket.setTimeout(1_000, () => cleanup(false));
-    });
-
-    if (ready) {
+    const { exitCode, stdout, stderr } = await runCommand(command, { stdio: "pipe" });
+    if (exitCode === 0) {
       return;
     }
 
+    lastError = stderr.trim() || stdout.trim() || `exit code ${exitCode ?? 1}`;
     await delay(1_000);
   }
 
-  throw new Error(`[dev:real] ${label} timed out after ${timeoutMs}ms`);
+  throw new Error(`[dev:real] ${label} timed out after ${timeoutMs}ms: ${lastError}`);
 }
 
 async function waitForHttp(url, label, timeoutMs = 120_000) {
@@ -157,8 +181,8 @@ function startManagedProcess(name, command, readyCheck) {
   return readyCheck();
 }
 
-async function main() {
-  const { host, port } = parseDatabaseAddress(process.env.DATABASE_URL || defaultDatabaseUrl);
+export async function main() {
+  const { host, port } = parseDatabaseAddress(defaultDatabaseUrl);
 
   process.on("SIGINT", () => {
     void shutdown(0);
@@ -168,7 +192,10 @@ async function main() {
   });
 
   await runStep("启动 Postgres", "corepack pnpm run db:up");
-  await waitForTcp(host, port, `等待 Postgres ${host}:${port}`);
+  await waitForCommandSuccess(
+    `等待 Postgres ${host}:${port}`,
+    buildPostgresReadyCommand(),
+  );
   await runStep("执行数据库迁移", "corepack pnpm run db:migrate");
   await runStep("执行开发 bootstrap", "corepack pnpm run db:bootstrap-dev");
 
@@ -195,7 +222,9 @@ async function main() {
   await new Promise(() => {});
 }
 
-main().catch(async (error) => {
-  console.error(error instanceof Error ? error.message : error);
-  await shutdown(1);
-});
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch(async (error) => {
+    console.error(error instanceof Error ? error.message : error);
+    await shutdown(1);
+  });
+}
