@@ -8,6 +8,8 @@ import {
   updateOrgLocaleSettings,
   updateUserPreferences,
 } from "../features/dashboard/mutateGovernance";
+import { loadWorkflowMonitorPanel } from "../features/dashboard/loadWorkflowMonitorPanel";
+import { loadWorkflowRunDetails } from "../features/dashboard/loadWorkflowRunDetails";
 import { subscribeAdminRecentChanges } from "../features/dashboard/subscribeRecentChanges";
 import { App } from "./App";
 
@@ -25,6 +27,12 @@ vi.mock("../features/dashboard/mutateGovernance", () => ({
   updateMemberRole: vi.fn(),
   updateOrgLocaleSettings: vi.fn(),
 }));
+vi.mock("../features/dashboard/loadWorkflowMonitorPanel", () => ({
+  loadWorkflowMonitorPanel: vi.fn(),
+}));
+vi.mock("../features/dashboard/loadWorkflowRunDetails", () => ({
+  loadWorkflowRunDetails: vi.fn(),
+}));
 vi.mock("../features/dashboard/subscribeRecentChanges", () => ({
   subscribeAdminRecentChanges: vi.fn(),
 }));
@@ -35,6 +43,8 @@ const updateBudgetPolicyMock = vi.mocked(updateBudgetPolicy);
 const updateUserPreferencesMock = vi.mocked(updateUserPreferences);
 const updateMemberRoleMock = vi.mocked(updateMemberRole);
 const updateOrgLocaleSettingsMock = vi.mocked(updateOrgLocaleSettings);
+const loadWorkflowMonitorPanelMock = vi.mocked(loadWorkflowMonitorPanel);
+const loadWorkflowRunDetailsMock = vi.mocked(loadWorkflowRunDetails);
 const subscribeAdminRecentChangesMock = vi.mocked(subscribeAdminRecentChanges);
 
 function createOverview(projectId: string, shotExecutionId: string, limitCents = 120000) {
@@ -101,12 +111,72 @@ function createGovernance(orgId: string, userId: string, locale = "zh-CN") {
   };
 }
 
+function createWorkflowMonitor(projectId: string) {
+  return {
+    filters: {
+      status: "",
+      workflowType: "",
+    },
+    runs: [
+      {
+        id: "workflow-run-1",
+        projectId,
+        resourceId: "shot-exec-live-1",
+        workflowType: "shot_pipeline",
+        status: "running",
+        provider: "seedance",
+        currentStep: "attempt_1.gateway",
+        attemptCount: 1,
+        lastError: "",
+        externalRequestId: "request-1",
+        createdAt: "2024-03-09T16:00:00.000Z",
+        updatedAt: "2024-03-09T16:05:00.000Z",
+      },
+    ],
+  };
+}
+
+function createWorkflowDetail(projectId: string) {
+  return {
+    run: {
+      id: "workflow-run-1",
+      projectId,
+      resourceId: "shot-exec-live-1",
+      workflowType: "shot_pipeline",
+      status: "failed",
+      provider: "seedance",
+      currentStep: "attempt_1.gateway",
+      attemptCount: 1,
+      lastError: "provider rejected request",
+      externalRequestId: "request-1",
+      createdAt: "2024-03-09T16:00:00.000Z",
+      updatedAt: "2024-03-09T16:05:00.000Z",
+    },
+    steps: [
+      {
+        id: "step-1",
+        workflowRunId: "workflow-run-1",
+        stepKey: "attempt_1.gateway",
+        stepOrder: 2,
+        status: "failed",
+        errorCode: "provider_error",
+        errorMessage: "provider rejected request",
+        startedAt: "2024-03-09T16:00:10.000Z",
+        completedAt: "",
+        failedAt: "2024-03-09T16:05:00.000Z",
+      },
+    ],
+  };
+}
+
 describe("Admin App", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     window.localStorage.clear();
     window.localStorage.setItem(ADMIN_UI_LOCALE_STORAGE_KEY, "zh-CN");
     subscribeAdminRecentChangesMock.mockReturnValue(() => {});
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-demo-001"));
+    loadWorkflowRunDetailsMock.mockResolvedValue(createWorkflowDetail("project-demo-001"));
   });
 
   it("reads projectId and shotExecutionId from search params, then renders the live overview", async () => {
@@ -117,6 +187,7 @@ describe("Admin App", () => {
     );
     loadAdminOverviewMock.mockResolvedValue(createOverview("project-live-1", "shot-exec-live-1"));
     loadGovernancePanelMock.mockResolvedValue(createGovernance("org-demo-001", "22222222-2222-2222-2222-222222222222"));
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-1"));
 
     render(<App />);
 
@@ -134,8 +205,18 @@ describe("Admin App", () => {
         userId: undefined,
       });
     });
+    await waitFor(() => {
+      expect(loadWorkflowMonitorPanelMock).toHaveBeenCalledWith({
+        projectId: "project-live-1",
+        status: "",
+        workflowType: "",
+        orgId: undefined,
+        userId: undefined,
+      });
+    });
 
     expect(await screen.findByText("project-live-1")).toBeInTheDocument();
+    expect(screen.getByText("工作流监控")).toBeInTheDocument();
     expect(screen.getByText("当前会话")).toBeInTheDocument();
     await waitFor(() => {
       expect(subscribeAdminRecentChangesMock).toHaveBeenCalledWith(
@@ -159,6 +240,7 @@ describe("Admin App", () => {
     );
     loadAdminOverviewMock.mockResolvedValue(createOverview("project-live-5", "shot-exec-live-5"));
     loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-5", "user-live-5"));
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-5"));
 
     let onChange: ((change: {
       id: string;
@@ -170,8 +252,10 @@ describe("Admin App", () => {
       failedChecksCount?: number;
       conclusion?: string;
     }) => void) | null = null;
+    let onWorkflowUpdated: (() => void) | null = null;
     subscribeAdminRecentChangesMock.mockImplementation((options) => {
       onChange = options.onChange;
+      onWorkflowUpdated = options.onWorkflowUpdated ?? null;
       return () => {};
     });
 
@@ -194,6 +278,14 @@ describe("Admin App", () => {
 
     expect(await screen.findByText("budget.updated · 250.00 元")).toBeInTheDocument();
     expect(loadAdminOverviewMock).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      onWorkflowUpdated?.();
+    });
+
+    await waitFor(() => {
+      expect(loadWorkflowMonitorPanelMock).toHaveBeenCalledTimes(2);
+    });
   });
 
   it("updates the budget policy and refreshes the overview", async () => {
@@ -207,6 +299,7 @@ describe("Admin App", () => {
       createOverview("project-live-1", "shot-exec-live-1", 150000),
     );
     loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-1", "user-live-1"));
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-1"));
     updateBudgetPolicyMock.mockResolvedValue({
       id: "budget-1",
       orgId: "org-live-1",
@@ -244,6 +337,7 @@ describe("Admin App", () => {
     );
     loadAdminOverviewMock.mockResolvedValue(createOverview("project-live-2", "shot-exec-live-2"));
     loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-2", "user-live-2"));
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-2"));
     updateBudgetPolicyMock.mockRejectedValue(new Error("network down"));
 
     render(<App />);
@@ -271,6 +365,7 @@ describe("Admin App", () => {
       createOverview("project-live-3", "shot-exec-live-3", 150000),
     );
     loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-3", "user-live-3"));
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-3"));
     updateBudgetPolicyMock.mockResolvedValue({
       id: "budget-1",
       orgId: "org-live-3",
@@ -307,6 +402,7 @@ describe("Admin App", () => {
     );
     loadAdminOverviewMock.mockResolvedValue(createOverview("project-live-4", "shot-exec-live-4"));
     loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-4", "user-live-4"));
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-4"));
     updateUserPreferencesMock.mockResolvedValue({
       userId: "user-live-4",
       displayLocale: "en-US",
@@ -373,5 +469,61 @@ describe("Admin App", () => {
         roleId: "role-admin",
       });
     });
+  });
+
+  it("opens workflow details and updates filters without breaking the page", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-6&shotExecutionId=shot-exec-live-6&orgId=org-live-6&userId=user-live-6",
+    );
+    loadAdminOverviewMock.mockResolvedValue(createOverview("project-live-6", "shot-exec-live-6"));
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-6", "user-live-6"));
+    loadWorkflowMonitorPanelMock
+      .mockResolvedValueOnce(createWorkflowMonitor("project-live-6"))
+      .mockResolvedValueOnce({
+        ...createWorkflowMonitor("project-live-6"),
+        filters: {
+          status: "failed",
+          workflowType: "shot_pipeline",
+        },
+      });
+    loadWorkflowRunDetailsMock.mockResolvedValue(createWorkflowDetail("project-live-6"));
+
+    render(<App />);
+
+    expect(await screen.findByText("workflow-run-1")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("工作流状态过滤"), {
+      target: { value: "failed" },
+    });
+    fireEvent.change(screen.getByLabelText("工作流类型过滤"), {
+      target: { value: "shot_pipeline" },
+    });
+
+    await waitFor(() => {
+      expect(loadWorkflowMonitorPanelMock).toHaveBeenLastCalledWith({
+        projectId: "project-live-6",
+        status: "failed",
+        workflowType: "shot_pipeline",
+        orgId: "org-live-6",
+        userId: "user-live-6",
+      });
+    });
+    expect(loadAdminOverviewMock).toHaveBeenCalledTimes(1);
+    expect(loadGovernancePanelMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "查看工作流详情 workflow-run-1" }));
+
+    await waitFor(() => {
+      expect(loadWorkflowRunDetailsMock).toHaveBeenCalledWith({
+        workflowRunId: "workflow-run-1",
+        orgId: "org-live-6",
+        userId: "user-live-6",
+      });
+    });
+
+    expect(await screen.findByRole("dialog", { name: "工作流详情" })).toBeInTheDocument();
+    expect(screen.getByText(/provider_error/)).toBeInTheDocument();
   });
 });
