@@ -10,6 +10,10 @@ import {
 } from "../features/dashboard/mutateGovernance";
 import { loadWorkflowMonitorPanel } from "../features/dashboard/loadWorkflowMonitorPanel";
 import { loadWorkflowRunDetails } from "../features/dashboard/loadWorkflowRunDetails";
+import {
+  cancelWorkflowRun,
+  retryWorkflowRun,
+} from "../features/dashboard/mutateWorkflowRun";
 import { subscribeAdminRecentChanges } from "../features/dashboard/subscribeRecentChanges";
 import { App } from "./App";
 
@@ -33,6 +37,10 @@ vi.mock("../features/dashboard/loadWorkflowMonitorPanel", () => ({
 vi.mock("../features/dashboard/loadWorkflowRunDetails", () => ({
   loadWorkflowRunDetails: vi.fn(),
 }));
+vi.mock("../features/dashboard/mutateWorkflowRun", () => ({
+  retryWorkflowRun: vi.fn(),
+  cancelWorkflowRun: vi.fn(),
+}));
 vi.mock("../features/dashboard/subscribeRecentChanges", () => ({
   subscribeAdminRecentChanges: vi.fn(),
 }));
@@ -45,6 +53,8 @@ const updateMemberRoleMock = vi.mocked(updateMemberRole);
 const updateOrgLocaleSettingsMock = vi.mocked(updateOrgLocaleSettings);
 const loadWorkflowMonitorPanelMock = vi.mocked(loadWorkflowMonitorPanel);
 const loadWorkflowRunDetailsMock = vi.mocked(loadWorkflowRunDetails);
+const retryWorkflowRunMock = vi.mocked(retryWorkflowRun);
+const cancelWorkflowRunMock = vi.mocked(cancelWorkflowRun);
 const subscribeAdminRecentChangesMock = vi.mocked(subscribeAdminRecentChanges);
 
 function createOverview(projectId: string, shotExecutionId: string, limitCents = 120000) {
@@ -169,6 +179,31 @@ function createWorkflowDetail(projectId: string) {
   };
 }
 
+function createRunningWorkflowDetail(projectId: string) {
+  return {
+    ...createWorkflowDetail(projectId),
+    run: {
+      ...createWorkflowDetail(projectId).run,
+      status: "running",
+      lastError: "",
+    },
+    steps: [
+      {
+        id: "step-running-1",
+        workflowRunId: "workflow-run-1",
+        stepKey: "attempt_1.gateway",
+        stepOrder: 2,
+        status: "running",
+        errorCode: "",
+        errorMessage: "",
+        startedAt: "2024-03-09T16:00:10.000Z",
+        completedAt: "",
+        failedAt: "",
+      },
+    ],
+  };
+}
+
 describe("Admin App", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -177,6 +212,8 @@ describe("Admin App", () => {
     subscribeAdminRecentChangesMock.mockReturnValue(() => {});
     loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-demo-001"));
     loadWorkflowRunDetailsMock.mockResolvedValue(createWorkflowDetail("project-demo-001"));
+    retryWorkflowRunMock.mockResolvedValue(undefined);
+    cancelWorkflowRunMock.mockResolvedValue(undefined);
   });
 
   it("reads projectId and shotExecutionId from search params, then renders the live overview", async () => {
@@ -594,5 +631,115 @@ describe("Admin App", () => {
       });
     });
     expect(subscribeAdminRecentChangesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a failed workflow run, then refreshes the monitor and open details", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-8&shotExecutionId=shot-exec-live-8&orgId=org-live-8&userId=user-live-8",
+    );
+    loadAdminOverviewMock.mockResolvedValue(createOverview("project-live-8", "shot-exec-live-8"));
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-8", "user-live-8"));
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-8"));
+    loadWorkflowRunDetailsMock.mockResolvedValue(createWorkflowDetail("project-live-8"));
+
+    render(<App />);
+
+    expect(await screen.findByText("project-live-8")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "查看工作流详情 workflow-run-1" }));
+    expect(await screen.findByRole("dialog", { name: "工作流详情" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "重试工作流" }));
+
+    expect(await screen.findByText("正在重试工作流")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(retryWorkflowRunMock).toHaveBeenCalledWith({
+        workflowRunId: "workflow-run-1",
+        orgId: "org-live-8",
+        userId: "user-live-8",
+      });
+    });
+    await waitFor(() => {
+      expect(loadWorkflowMonitorPanelMock).toHaveBeenCalledTimes(2);
+      expect(loadWorkflowRunDetailsMock).toHaveBeenCalledTimes(2);
+    });
+    expect(await screen.findByText("工作流已重试")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "工作流详情" })).toBeInTheDocument();
+  });
+
+  it("cancels a running workflow run and disables duplicate submissions while pending", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-9&shotExecutionId=shot-exec-live-9&orgId=org-live-9&userId=user-live-9",
+    );
+    loadAdminOverviewMock.mockResolvedValue(createOverview("project-live-9", "shot-exec-live-9"));
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-9", "user-live-9"));
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-9"));
+    loadWorkflowRunDetailsMock.mockResolvedValue(createRunningWorkflowDetail("project-live-9"));
+
+    let resolveCancel: (() => void) | null = null;
+    cancelWorkflowRunMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCancel = resolve;
+        }),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByText("project-live-9")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "查看工作流详情 workflow-run-1" }));
+    expect(await screen.findByRole("dialog", { name: "工作流详情" })).toBeInTheDocument();
+
+    const cancelButton = await screen.findByRole("button", { name: "取消工作流" });
+    fireEvent.click(cancelButton);
+    fireEvent.click(cancelButton);
+
+    await waitFor(() => {
+      expect(cancelWorkflowRunMock).toHaveBeenCalledTimes(1);
+    });
+    expect(cancelButton).toBeDisabled();
+    expect(screen.getByText("正在取消工作流")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveCancel?.();
+    });
+
+    expect(await screen.findByText("工作流已取消")).toBeInTheDocument();
+  });
+
+  it("keeps the workflow detail open and surfaces workflow action errors", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-10&shotExecutionId=shot-exec-live-10&orgId=org-live-10&userId=user-live-10",
+    );
+    loadAdminOverviewMock.mockResolvedValue(
+      createOverview("project-live-10", "shot-exec-live-10"),
+    );
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-live-10", "user-live-10"));
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-10"));
+    loadWorkflowRunDetailsMock.mockResolvedValue(createWorkflowDetail("project-live-10"));
+    retryWorkflowRunMock.mockRejectedValue(new Error("workflow backend down"));
+
+    render(<App />);
+
+    expect(await screen.findByText("project-live-10")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "查看工作流详情 workflow-run-1" }));
+    expect(await screen.findByRole("dialog", { name: "工作流详情" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "重试工作流" }));
+
+    expect(
+      await screen.findByText("工作流操作失败：workflow backend down"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "工作流详情" })).toBeInTheDocument();
+    expect(loadWorkflowMonitorPanelMock).toHaveBeenCalledTimes(1);
+    expect(loadWorkflowRunDetailsMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import type { AdminTranslator, LocaleCode } from "../../i18n";
 import type { AdminGovernanceViewModel } from "./governance";
 import type {
@@ -88,6 +88,10 @@ type AdminOverviewPageProps = {
   onSelectWorkflowRun?: (workflowRunId: string) => void;
   onCloseWorkflowDetail?: () => void;
   budgetFeedback?: BudgetFeedback;
+  workflowActionFeedback?: BudgetFeedback;
+  workflowActionPending?: boolean;
+  onRetryWorkflowRun?: (workflowRunId: string) => void;
+  onCancelWorkflowRun?: (workflowRunId: string) => void;
 };
 
 const panelStyle: CSSProperties = {
@@ -103,6 +107,34 @@ const metricStyle: CSSProperties = {
   margin: 0,
   color: "#334155",
   fontSize: "0.95rem",
+};
+
+const workflowActionButtonBaseStyle: CSSProperties = {
+  border: 0,
+  borderRadius: "999px",
+  padding: "8px 14px",
+};
+
+const workflowActionButtonToneStyles = {
+  retry: {
+    background: "#b45309",
+    color: "#fffbeb",
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  cancel: {
+    background: "#991b1b",
+    color: "#fef2f2",
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  pending: {
+    background: "#94a3b8",
+    cursor: "not-allowed",
+  } satisfies CSSProperties,
+  close: {
+    background: "#cbd5e1",
+    color: "#0f172a",
+    cursor: "pointer",
+  } satisfies CSSProperties,
 };
 
 function formatCurrency(cents: number) {
@@ -149,6 +181,10 @@ export function AdminOverviewPage({
   onSelectWorkflowRun,
   onCloseWorkflowDetail,
   budgetFeedback,
+  workflowActionFeedback,
+  workflowActionPending,
+  onRetryWorkflowRun,
+  onCancelWorkflowRun,
 }: AdminOverviewPageProps) {
   const latestEvaluation = overview.evaluationRuns[0];
   const budgetInputId = useId();
@@ -177,6 +213,12 @@ export function AdminOverviewPage({
       : budgetFeedback?.tone === "pending"
         ? { color: "#92400e" }
         : { color: "#115e59" };
+  const workflowFeedbackPalette =
+    workflowActionFeedback?.tone === "error"
+      ? { color: "#991b1b" }
+      : workflowActionFeedback?.tone === "pending"
+        ? { color: "#92400e" }
+        : { color: "#115e59" };
 
   useEffect(() => {
     setBudgetLimitYuan((overview.budgetSnapshot.limitCents / 100).toFixed(2));
@@ -197,7 +239,7 @@ export function AdminOverviewPage({
     );
   }, [governance.members]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!workflowRunDetail) {
       return;
     }
@@ -907,25 +949,76 @@ export function AdminOverviewPage({
                   </h2>
                   <p style={metricStyle}>{workflowRunDetail.run.id}</p>
                 </div>
-              <button
-                type="button"
-                ref={workflowCloseButtonRef}
-                aria-label={t("workflow.detail.close")}
-                onClick={() => {
-                  onCloseWorkflowDetail?.();
-                }}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    flexWrap: "wrap",
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  {workflowRunDetail.run.status === "failed" ? (
+                    <button
+                      type="button"
+                      disabled={workflowActionPending}
+                      onClick={() => {
+                        onRetryWorkflowRun?.(workflowRunDetail.run.id);
+                      }}
+                      style={{
+                        ...workflowActionButtonBaseStyle,
+                        ...(workflowActionPending
+                          ? workflowActionButtonToneStyles.pending
+                          : workflowActionButtonToneStyles.retry),
+                      }}
+                    >
+                      {t("workflow.action.retry.button")}
+                    </button>
+                  ) : null}
+                  {workflowRunDetail.run.status === "running" ? (
+                    <button
+                      type="button"
+                      disabled={workflowActionPending}
+                      onClick={() => {
+                        onCancelWorkflowRun?.(workflowRunDetail.run.id);
+                      }}
+                      style={{
+                        ...workflowActionButtonBaseStyle,
+                        ...(workflowActionPending
+                          ? workflowActionButtonToneStyles.pending
+                          : workflowActionButtonToneStyles.cancel),
+                      }}
+                    >
+                      {t("workflow.action.cancel.button")}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    ref={workflowCloseButtonRef}
+                    aria-label={t("workflow.detail.close")}
+                    onClick={() => {
+                      onCloseWorkflowDetail?.();
+                    }}
+                    style={{
+                      ...workflowActionButtonBaseStyle,
+                      ...workflowActionButtonToneStyles.close,
+                    }}
+                  >
+                    {t("workflow.detail.close")}
+                  </button>
+                </div>
+            </div>
+            {workflowActionFeedback ? (
+              <p
                 style={{
-                  border: 0,
-                  borderRadius: "999px",
-                  padding: "8px 14px",
-                  background: "#cbd5e1",
-                  color: "#0f172a",
-                  cursor: "pointer",
+                  margin: 0,
+                  fontSize: "0.9rem",
+                  ...workflowFeedbackPalette,
                 }}
               >
-                {t("workflow.detail.close")}
-              </button>
-            </div>
+                {workflowActionFeedback.message}
+              </p>
+            ) : null}
             <div
               style={{
                 display: "grid",
