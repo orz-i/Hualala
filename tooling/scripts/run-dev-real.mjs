@@ -13,6 +13,7 @@ export const defaultDatabaseUrl = "postgres://hualala:hualala@127.0.0.1:5432/hua
 
 const managedChildren = [];
 let shuttingDown = false;
+let activeCommandHandle = null;
 
 function parseDatabaseAddress(databaseUrl) {
   try {
@@ -29,7 +30,48 @@ function parseDatabaseAddress(databaseUrl) {
   }
 }
 
-function treeKill(child) {
+function createExitPromise(child) {
+  if (!child) {
+    return Promise.resolve({ code: null, signal: null });
+  }
+
+  if (child.exitCode !== null) {
+    return Promise.resolve({
+      code: child.exitCode,
+      signal: child.signalCode ?? null,
+    });
+  }
+
+  return new Promise((resolveExit, rejectExit) => {
+    let settled = false;
+    const cleanup = () => {
+      child.off("error", onError);
+      child.off("close", onClose);
+    };
+    const onError = (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      rejectExit(error);
+    };
+    const onClose = (code, signal) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      resolveExit({ code, signal });
+    };
+
+    child.on("error", onError);
+    child.on("close", onClose);
+  });
+}
+
+function terminateTrackedChild(handle, force = false) {
+  const child = handle?.child;
   if (!child || child.exitCode !== null || child.killed) {
     return;
   }
@@ -42,7 +84,11 @@ function treeKill(child) {
     return;
   }
 
-  child.kill("SIGTERM");
+  try {
+    process.kill(-child.pid, force ? "SIGKILL" : "SIGTERM");
+  } catch {
+    child.kill(force ? "SIGKILL" : "SIGTERM");
+  }
 }
 
 export function buildManagedEnv(baseEnv = process.env, overrides = {}) {
@@ -58,19 +104,45 @@ export function buildPostgresReadyCommand() {
   return "node tooling/scripts/docker_compose.mjs exec -T postgres pg_isready -U hualala -d hualala";
 }
 
+export function buildSpawnDescriptor(command, platform = process.platform) {
+  if (platform === "win32") {
+    return {
+      file: "cmd.exe",
+      args: ["/d", "/s", "/c", command],
+      detached: false,
+    };
+  }
+
+  return {
+    file: "/bin/sh",
+    args: ["-lc", command],
+    detached: true,
+  };
+}
+
 function spawnCommand(command, options = {}) {
-  return spawn(command, {
+  const descriptor = buildSpawnDescriptor(command);
+  const child = spawn(descriptor.file, descriptor.args, {
     cwd: repoRoot,
     stdio: options.stdio ?? "inherit",
-    shell: true,
+    shell: false,
+    detached: descriptor.detached,
     env: buildManagedEnv(process.env, options.env ?? {}),
   });
+
+  return {
+    command,
+    child,
+    exitPromise: createExitPromise(child),
+  };
 }
 
 async function runCommand(command, options = {}) {
-  const child = spawnCommand(command, options);
+  const handle = spawnCommand(command, options);
+  const { child } = handle;
   let stdout = "";
   let stderr = "";
+  activeCommandHandle = handle;
 
   if (child.stdout) {
     child.stdout.setEncoding("utf8");
@@ -85,16 +157,19 @@ async function runCommand(command, options = {}) {
     });
   }
 
-  const exitCode = await new Promise((resolveExit, rejectExit) => {
-    child.on("error", rejectExit);
-    child.on("close", resolveExit);
-  });
+  try {
+    const { code: exitCode } = await handle.exitPromise;
 
-  return {
-    exitCode,
-    stdout,
-    stderr,
-  };
+    return {
+      exitCode,
+      stdout,
+      stderr,
+    };
+  } finally {
+    if (activeCommandHandle === handle) {
+      activeCommandHandle = null;
+    }
+  }
 }
 
 async function runStep(label, command) {
@@ -123,12 +198,30 @@ async function waitForCommandSuccess(label, command, timeoutMs = 60_000) {
   throw new Error(`[dev:real] ${label} timed out after ${timeoutMs}ms: ${lastError}`);
 }
 
+export async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timeoutMs = options.timeoutMs ?? 2_000;
+  const fetchFn = options.fetchFn ?? fetch;
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    return await fetchFn(url, {
+      ...(options.init ?? {}),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function waitForHttp(url, label, timeoutMs = 120_000) {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url, { timeoutMs: 2_000 });
       if (response.ok) {
         return;
       }
@@ -142,24 +235,53 @@ async function waitForHttp(url, label, timeoutMs = 120_000) {
   throw new Error(`[dev:real] ${label} timed out after ${timeoutMs}ms`);
 }
 
+export async function stopTrackedChild(handle, options = {}) {
+  if (!handle?.child || handle.child.exitCode !== null) {
+    return;
+  }
+
+  const graceMs = options.graceMs ?? 10_000;
+  const killMs = options.killMs ?? 2_000;
+
+  terminateTrackedChild(handle, false);
+
+  const exitedGracefully = await Promise.race([
+    handle.exitPromise.then(() => true, () => true),
+    delay(graceMs).then(() => false),
+  ]);
+
+  if (exitedGracefully) {
+    return;
+  }
+
+  terminateTrackedChild(handle, true);
+  await Promise.race([
+    handle.exitPromise.catch(() => undefined),
+    delay(killMs),
+  ]);
+}
+
 async function shutdown(exitCode = 0) {
   if (shuttingDown) {
     return;
   }
 
   shuttingDown = true;
-  for (const { child } of managedChildren) {
-    treeKill(child);
-  }
-
-  await delay(200);
+  const shutdownTargets = [
+    ...(activeCommandHandle ? [{ name: "setup-step", ...activeCommandHandle }] : []),
+    ...managedChildren,
+  ];
+  await Promise.allSettled(
+    shutdownTargets.map((handle) => stopTrackedChild(handle, { name: handle.name })),
+  );
   process.exit(exitCode);
 }
 
 function startManagedProcess(name, command, readyCheck) {
   console.log(`[dev:real] 启动 ${name}: ${command}`);
-  const child = spawnCommand(command);
-  managedChildren.push({ name, child });
+  const handle = spawnCommand(command);
+  const { child, exitPromise } = handle;
+  managedChildren.push({ name, ...handle });
 
   child.on("error", async (error) => {
     if (shuttingDown) {
@@ -169,14 +291,22 @@ function startManagedProcess(name, command, readyCheck) {
     await shutdown(1);
   });
 
-  child.on("close", async (code, signal) => {
-    if (shuttingDown) {
-      return;
-    }
-    const suffix = signal ? `signal ${signal}` : `exit code ${code ?? 1}`;
-    console.error(`[dev:real] ${name} 意外退出: ${suffix}`);
-    await shutdown(code ?? 1);
-  });
+  exitPromise
+    .then(async ({ code, signal }) => {
+      if (shuttingDown) {
+        return;
+      }
+      const suffix = signal ? `signal ${signal}` : `exit code ${code ?? 1}`;
+      console.error(`[dev:real] ${name} 意外退出: ${suffix}`);
+      await shutdown(code ?? 1);
+    })
+    .catch(async (error) => {
+      if (shuttingDown) {
+        return;
+      }
+      console.error(`[dev:real] ${name} 退出异常:`, error instanceof Error ? error.message : error);
+      await shutdown(1);
+    });
 
   return readyCheck();
 }
