@@ -367,7 +367,6 @@ describe("Admin App", () => {
 
     await waitFor(() => {
       expect(loadAssetMonitorPanelMock).toHaveBeenCalledTimes(2);
-      expect(loadAssetMonitorPanelMock).toHaveBeenCalledTimes(2);
     });
   });
 

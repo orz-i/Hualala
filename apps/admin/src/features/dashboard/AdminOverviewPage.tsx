@@ -188,6 +188,80 @@ function listFocusableElements(container: HTMLElement) {
   ).filter((element) => !element.hasAttribute("hidden"));
 }
 
+function useDialogAccessibility({
+  open,
+  dialogRef,
+  closeButtonRef,
+  onClose,
+}: {
+  open: boolean;
+  dialogRef: React.RefObject<HTMLElement | null>;
+  closeButtonRef: React.RefObject<HTMLButtonElement | null>;
+  onClose?: () => void;
+}) {
+  useLayoutEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const previousActiveElement =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose?.();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const dialog = dialogRef.current;
+      if (!dialog) {
+        return;
+      }
+
+      const focusableElements = listFocusableElements(dialog);
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      if (!firstElement || !lastElement) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      if (event.shiftKey && activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+        return;
+      }
+
+      if (!event.shiftKey && activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousActiveElement?.focus();
+    };
+  }, [closeButtonRef, dialogRef, onClose, open]);
+}
+
 export function AdminOverviewPage({
   overview,
   governance,
@@ -229,8 +303,14 @@ export function AdminOverviewPage({
   const assetStatusFilterInputId = useId();
   const assetSourceTypeFilterInputId = useId();
   const workflowDetailTitleId = useId();
+  const assetDetailTitleId = useId();
+  const assetProvenanceTitleId = useId();
   const workflowDialogRef = useRef<HTMLElement | null>(null);
   const workflowCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+  const assetDetailDialogRef = useRef<HTMLElement | null>(null);
+  const assetDetailCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+  const assetProvenanceDialogRef = useRef<HTMLElement | null>(null);
+  const assetProvenanceCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const [budgetLimitYuan, setBudgetLimitYuan] = useState(
     (overview.budgetSnapshot.limitCents / 100).toFixed(2),
   );
@@ -274,67 +354,26 @@ export function AdminOverviewPage({
     );
   }, [governance.members]);
 
-  useLayoutEffect(() => {
-    if (!workflowRunDetail) {
-      return;
-    }
+  useDialogAccessibility({
+    open: Boolean(workflowRunDetail),
+    dialogRef: workflowDialogRef,
+    closeButtonRef: workflowCloseButtonRef,
+    onClose: onCloseWorkflowDetail,
+  });
 
-    const previousOverflow = document.body.style.overflow;
-    const previousActiveElement =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    document.body.style.overflow = "hidden";
-    workflowCloseButtonRef.current?.focus();
+  useDialogAccessibility({
+    open: Boolean(importBatchDetail) && !assetProvenanceDetail,
+    dialogRef: assetDetailDialogRef,
+    closeButtonRef: assetDetailCloseButtonRef,
+    onClose: onCloseImportBatchDetail,
+  });
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onCloseWorkflowDetail?.();
-        return;
-      }
-
-      if (event.key !== "Tab") {
-        return;
-      }
-
-      const dialog = workflowDialogRef.current;
-      if (!dialog) {
-        return;
-      }
-
-      const focusableElements = listFocusableElements(dialog);
-      if (focusableElements.length === 0) {
-        event.preventDefault();
-        dialog.focus();
-        return;
-      }
-
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-      if (!firstElement || !lastElement) {
-        return;
-      }
-
-      const activeElement = document.activeElement;
-      if (event.shiftKey && activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-        return;
-      }
-
-      if (!event.shiftKey && activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-      previousActiveElement?.focus();
-    };
-  }, [onCloseWorkflowDetail, workflowRunDetail]);
+  useDialogAccessibility({
+    open: Boolean(assetProvenanceDetail),
+    dialogRef: assetProvenanceDialogRef,
+    closeButtonRef: assetProvenanceCloseButtonRef,
+    onClose: onCloseAssetProvenance,
+  });
 
   const recentChangePalette = (tone: RecentChangeSummary["tone"]) =>
     tone === "success"
@@ -806,7 +845,10 @@ export function AdminOverviewPage({
                     }}
                   >
                     <option value="">{t("asset.filter.option.all")}</option>
-                    <option value="pending">{t("asset.filter.option.pending")}</option>
+                    <option value="pending_review">{t("asset.filter.option.pendingReview")}</option>
+                    <option value="matched_pending_confirm">
+                      {t("asset.filter.option.matchedPendingConfirm")}
+                    </option>
                     <option value="confirmed">{t("asset.filter.option.confirmed")}</option>
                   </select>
                 </label>
@@ -831,6 +873,8 @@ export function AdminOverviewPage({
                   >
                     <option value="">{t("asset.filter.option.all")}</option>
                     <option value="upload_session">upload_session</option>
+                    <option value="workflow_import">workflow_import</option>
+                    <option value="manual_upload">manual_upload</option>
                   </select>
                 </label>
               </div>
@@ -1083,7 +1127,7 @@ export function AdminOverviewPage({
           </article>
         </section>
       </section>
-      {importBatchDetail ? (
+      {importBatchDetail && !assetProvenanceDetail ? (
         <div
           style={{
             position: "fixed",
@@ -1097,7 +1141,9 @@ export function AdminOverviewPage({
           <aside
             role="dialog"
             aria-modal="true"
-            aria-label={t("asset.detail.title")}
+            aria-labelledby={assetDetailTitleId}
+            ref={assetDetailDialogRef}
+            tabIndex={-1}
             style={{
               width: "min(900px, 100%)",
               maxHeight: "calc(100vh - 48px)",
@@ -1119,11 +1165,14 @@ export function AdminOverviewPage({
               }}
             >
               <div style={{ display: "grid", gap: "6px" }}>
-                <h2 style={{ margin: 0 }}>{t("asset.detail.title")}</h2>
+                <h2 id={assetDetailTitleId} style={{ margin: 0 }}>
+                  {t("asset.detail.title")}
+                </h2>
                 <p style={metricStyle}>{importBatchDetail.batch.id}</p>
               </div>
               <button
                 type="button"
+                ref={assetDetailCloseButtonRef}
                 aria-label={t("asset.detail.close")}
                 onClick={() => {
                   onCloseImportBatchDetail?.();
@@ -1336,7 +1385,9 @@ export function AdminOverviewPage({
           <aside
             role="dialog"
             aria-modal="true"
-            aria-label={t("asset.provenance.title")}
+            aria-labelledby={assetProvenanceTitleId}
+            ref={assetProvenanceDialogRef}
+            tabIndex={-1}
             style={{
               width: "min(720px, 100%)",
               maxHeight: "calc(100vh - 48px)",
@@ -1358,11 +1409,14 @@ export function AdminOverviewPage({
               }}
             >
               <div style={{ display: "grid", gap: "6px" }}>
-                <h2 style={{ margin: 0 }}>{t("asset.provenance.title")}</h2>
+                <h2 id={assetProvenanceTitleId} style={{ margin: 0 }}>
+                  {t("asset.provenance.title")}
+                </h2>
                 <p style={metricStyle}>{assetProvenanceDetail.asset.id}</p>
               </div>
               <button
                 type="button"
+                ref={assetProvenanceCloseButtonRef}
                 aria-label={t("asset.provenance.close")}
                 onClick={() => {
                   onCloseAssetProvenance?.();

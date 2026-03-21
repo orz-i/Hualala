@@ -401,7 +401,47 @@ describe("AdminOverviewPage", () => {
     const onSelectAssetProvenance = vi.fn();
     const onCloseAssetProvenance = vi.fn();
 
-    render(
+    const { rerender } = render(
+      <AdminOverviewPage
+        overview={overview}
+        governance={governance}
+        workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
+        importBatchDetail={assetDetail}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onAssetStatusFilterChange={onAssetStatusFilterChange}
+        onAssetSourceTypeFilterChange={onAssetSourceTypeFilterChange}
+        onSelectImportBatch={onSelectImportBatch}
+        onCloseImportBatchDetail={onCloseImportBatchDetail}
+        onSelectAssetProvenance={onSelectAssetProvenance}
+        onCloseAssetProvenance={onCloseAssetProvenance}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("资产状态过滤"), {
+      target: { value: "matched_pending_confirm" },
+    });
+    fireEvent.change(screen.getByLabelText("资产来源过滤"), {
+      target: { value: "workflow_import" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "查看导入批次详情 import-batch-1" }));
+
+    expect(onAssetStatusFilterChange).toHaveBeenCalledWith("matched_pending_confirm");
+    expect(onAssetSourceTypeFilterChange).toHaveBeenCalledWith("workflow_import");
+    expect(onSelectImportBatch).toHaveBeenCalledWith("import-batch-1");
+
+    expect(screen.getByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
+    expect(screen.getByText("hero.png")).toBeInTheDocument();
+    expect(screen.getByText("candidate-1")).toBeInTheDocument();
+    expect(screen.getAllByText("media-asset-1").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "查看资源来源 media-asset-1" })[0]!);
+
+    expect(onSelectAssetProvenance).toHaveBeenCalledWith("media-asset-1");
+
+    rerender(
       <AdminOverviewPage
         overview={overview}
         governance={governance}
@@ -421,33 +461,34 @@ describe("AdminOverviewPage", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("资产状态过滤"), {
-      target: { value: "confirmed" },
-    });
-    fireEvent.change(screen.getByLabelText("资产来源过滤"), {
-      target: { value: "upload_session" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "查看导入批次详情 import-batch-1" }));
-
-    expect(onAssetStatusFilterChange).toHaveBeenCalledWith("confirmed");
-    expect(onAssetSourceTypeFilterChange).toHaveBeenCalledWith("upload_session");
-    expect(onSelectImportBatch).toHaveBeenCalledWith("import-batch-1");
-
-    expect(screen.getByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
-    expect(screen.getByText("hero.png")).toBeInTheDocument();
-    expect(screen.getByText("candidate-1")).toBeInTheDocument();
-    expect(screen.getAllByText("media-asset-1").length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getAllByRole("button", { name: "查看资源来源 media-asset-1" })[0]!);
-
-    expect(onSelectAssetProvenance).toHaveBeenCalledWith("media-asset-1");
     expect(screen.getByRole("dialog", { name: "资源来源详情" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "导入批次详情" })).not.toBeInTheDocument();
     expect(screen.getByText(/source_type=upload_session/)).toBeInTheDocument();
     expect(screen.getByText("候选资源 ID：candidate-1")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "关闭资源来源详情" }));
     expect(onCloseAssetProvenance).toHaveBeenCalled();
 
+    rerender(
+      <AdminOverviewPage
+        overview={overview}
+        governance={governance}
+        workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
+        importBatchDetail={assetDetail}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onAssetStatusFilterChange={onAssetStatusFilterChange}
+        onAssetSourceTypeFilterChange={onAssetSourceTypeFilterChange}
+        onSelectImportBatch={onSelectImportBatch}
+        onCloseImportBatchDetail={onCloseImportBatchDetail}
+        onSelectAssetProvenance={onSelectAssetProvenance}
+        onCloseAssetProvenance={onCloseAssetProvenance}
+      />,
+    );
+
+    expect(screen.getByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "关闭导入批次详情" }));
     expect(onCloseImportBatchDetail).toHaveBeenCalled();
   });
@@ -480,6 +521,37 @@ describe("AdminOverviewPage", () => {
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onCloseWorkflowDetail).toHaveBeenCalled();
+  });
+
+  it("traps focus inside asset dialogs and closes the topmost dialog on Escape", async () => {
+    const onCloseImportBatchDetail = vi.fn();
+    const onCloseAssetProvenance = vi.fn();
+
+    render(
+      <AdminOverviewPage
+        overview={overview}
+        governance={governance}
+        workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
+        importBatchDetail={assetDetail}
+        assetProvenanceDetail={assetProvenanceDetail}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onCloseImportBatchDetail={onCloseImportBatchDetail}
+        onCloseAssetProvenance={onCloseAssetProvenance}
+      />,
+    );
+
+    expect(document.body.style.overflow).toBe("hidden");
+    expect(screen.getByRole("button", { name: "关闭资源来源详情" })).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(screen.getByRole("button", { name: "关闭资源来源详情" })).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onCloseAssetProvenance).toHaveBeenCalled();
+    expect(onCloseImportBatchDetail).not.toHaveBeenCalled();
   });
 
   it("shows retry action for failed workflow details and renders workflow feedback", () => {
