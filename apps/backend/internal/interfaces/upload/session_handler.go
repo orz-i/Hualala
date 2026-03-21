@@ -10,6 +10,7 @@ import (
 	"github.com/hualala/apps/backend/internal/application/policyapp"
 	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/domain/execution"
+	"github.com/hualala/apps/backend/internal/platform/authz"
 	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/events"
 )
@@ -18,6 +19,7 @@ type Service struct {
 	assets         db.AssetRepository
 	executions     db.ExecutionRepository
 	policy         *policyapp.Service
+	authorizer     authz.Authorizer
 	eventPublisher *events.Publisher
 }
 
@@ -25,6 +27,7 @@ type Dependencies struct {
 	Assets         db.AssetRepository
 	Executions     db.ExecutionRepository
 	Policy         *policyapp.Service
+	Authorizer     authz.Authorizer
 	EventPublisher *events.Publisher
 }
 
@@ -33,6 +36,7 @@ func NewService(deps Dependencies) *Service {
 		assets:         deps.Assets,
 		executions:     deps.Executions,
 		policy:         deps.Policy,
+		authorizer:     deps.Authorizer,
 		eventPublisher: deps.EventPublisher,
 	}
 }
@@ -62,7 +66,12 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 			return
 		}
 
-		session, err := service.CreateSession(r, request.OrganizationID, request.ProjectID, request.ImportBatchID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
+		principal, err := service.resolvePrincipal(r)
+		if err != nil {
+			writeUploadError(w, err)
+			return
+		}
+		session, err := service.CreateSession(r, principal, request.OrganizationID, request.ProjectID, request.ImportBatchID, request.FileName, request.Checksum, request.SizeBytes, request.ExpiresInSeconds)
 		if err != nil {
 			writeUploadError(w, err)
 			return
@@ -86,8 +95,21 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 				http.NotFound(w, r)
 				return
 			}
+			if err := service.ensureSessionAccess(r, session.OrgID); err != nil {
+				writeUploadError(w, err)
+				return
+			}
 			service.writeSessionResponse(w, http.StatusOK, session)
 		case r.Method == http.MethodPost && action == "retry":
+			session, ok := service.GetSession(sessionID)
+			if !ok {
+				http.NotFound(w, r)
+				return
+			}
+			if err := service.ensureSessionAccess(r, session.OrgID); err != nil {
+				writeUploadError(w, err)
+				return
+			}
 			session, err := service.RetrySession(r, sessionID)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
@@ -115,6 +137,15 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
+			session, ok := service.GetSession(sessionID)
+			if !ok {
+				http.NotFound(w, r)
+				return
+			}
+			if err := service.ensureSessionAccess(r, session.OrgID); err != nil {
+				writeUploadError(w, err)
+				return
+			}
 			session, err := service.CompleteSession(r, sessionID, request.ShotExecutionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.AIAnnotated, request.Width, request.Height)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
@@ -133,20 +164,31 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 	})
 }
 
-func (s *Service) CreateSession(r *http.Request, organizationID string, projectID string, importBatchID string, fileName string, checksum string, sizeBytes int64, expiresInSeconds int64) (asset.UploadSession, error) {
+func (s *Service) CreateSession(r *http.Request, principal authz.Principal, organizationID string, projectID string, importBatchID string, fileName string, checksum string, sizeBytes int64, expiresInSeconds int64) (asset.UploadSession, error) {
 	if s == nil || s.assets == nil {
 		return asset.UploadSession{}, fmt.Errorf("upload: asset repository is required")
 	}
+	if strings.TrimSpace(principal.OrgID) == "" {
+		return asset.UploadSession{}, fmt.Errorf("unauthenticated: active session not found")
+	}
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID != "" && organizationID != principal.OrgID {
+		return asset.UploadSession{}, fmt.Errorf("permission denied: upload session org override is invalid")
+	}
 	if strings.TrimSpace(importBatchID) != "" {
-		if _, ok := s.assets.GetImportBatch(strings.TrimSpace(importBatchID)); !ok {
+		importBatch, ok := s.assets.GetImportBatch(strings.TrimSpace(importBatchID))
+		if !ok {
 			return asset.UploadSession{}, fmt.Errorf("upload: import_batch_id not found")
+		}
+		if strings.TrimSpace(importBatch.OrgID) != principal.OrgID {
+			return asset.UploadSession{}, fmt.Errorf("permission denied: import batch does not belong to current org")
 		}
 	}
 
 	now := time.Now().UTC()
 	session := asset.UploadSession{
 		ID:            s.assets.GenerateUploadSessionID(),
-		OrgID:         organizationID,
+		OrgID:         principal.OrgID,
 		ProjectID:     projectID,
 		ImportBatchID: strings.TrimSpace(importBatchID),
 		FileName:      fileName,
@@ -162,6 +204,28 @@ func (s *Service) CreateSession(r *http.Request, organizationID string, projectI
 		return asset.UploadSession{}, err
 	}
 	return session, nil
+}
+
+func (s *Service) resolvePrincipal(r *http.Request) (authz.Principal, error) {
+	if s == nil {
+		return authz.Principal{}, fmt.Errorf("unauthenticated: upload service is required")
+	}
+	return s.authorizer.ResolvePrincipal(r.Context(), authz.ResolvePrincipalInput{
+		HeaderOrgID:  r.Header.Get("X-Hualala-Org-Id"),
+		HeaderUserID: r.Header.Get("X-Hualala-User-Id"),
+		CookieHeader: r.Header.Get("Cookie"),
+	})
+}
+
+func (s *Service) ensureSessionAccess(r *http.Request, organizationID string) error {
+	principal, err := s.resolvePrincipal(r)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(organizationID) != "" && strings.TrimSpace(organizationID) != principal.OrgID {
+		return fmt.Errorf("permission denied: upload session does not belong to current org")
+	}
+	return nil
 }
 
 func (s *Service) GetSession(sessionID string) (asset.UploadSession, bool) {
@@ -484,6 +548,14 @@ func (s *Service) evaluateUploadResumeAllowed(session asset.UploadSession) polic
 func writeUploadError(w http.ResponseWriter, err error) {
 	if err == nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if strings.Contains(err.Error(), "unauthenticated") {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	if strings.Contains(err.Error(), "permission denied") {
+		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
 	if strings.Contains(err.Error(), "not found") {

@@ -634,6 +634,9 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("shot-exec-shot-sse-1")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(subscribeWorkbenchEventsMock).toHaveBeenCalledTimes(1);
+    });
     expect(latestWorkbenchSubscription?.workbenchKind).toBe("shot");
 
     await act(async () => {
@@ -670,6 +673,9 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("batch-sse-1")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(subscribeWorkbenchEventsMock).toHaveBeenCalledTimes(1);
+    });
 
     const file = new File(["demo"], "scene.png", { type: "image/png" });
     fireEvent.change(screen.getByLabelText("选择本地文件"), {
@@ -720,6 +726,9 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("shot-exec-shot-sse-queued")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(subscribeWorkbenchEventsMock).toHaveBeenCalledTimes(1);
+    });
 
     act(() => {
       latestWorkbenchSubscription?.onRefreshNeeded();

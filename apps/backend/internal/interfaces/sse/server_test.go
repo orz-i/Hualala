@@ -9,8 +9,15 @@ import (
 	"testing"
 	"time"
 
+	authdomain "github.com/hualala/apps/backend/internal/domain/auth"
+	orgdomain "github.com/hualala/apps/backend/internal/domain/org"
+	"github.com/hualala/apps/backend/internal/platform/authsession"
+	"github.com/hualala/apps/backend/internal/platform/authz"
+	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/events"
 )
+
+const sseTestProjectID = "project-1"
 
 func TestSSEReplayWithLastEventID(t *testing.T) {
 	publisher := events.NewPublisher()
@@ -18,8 +25,8 @@ func TestSSEReplayWithLastEventID(t *testing.T) {
 	publishEvent(publisher, events.Event{
 		ID:             "evt-1",
 		EventType:      "shot.execution.updated",
-		OrganizationID: "org-1",
-		ProjectID:      "project-1",
+		OrganizationID: db.DefaultDevOrganizationID,
+		ProjectID:      sseTestProjectID,
 		ResourceType:   "shot_execution",
 		ResourceID:     "shot-execution-1",
 		Payload:        `{"status":"candidate_ready"}`,
@@ -27,20 +34,21 @@ func TestSSEReplayWithLastEventID(t *testing.T) {
 	publishEvent(publisher, events.Event{
 		ID:             "evt-2",
 		EventType:      "shot.execution.updated",
-		OrganizationID: "org-1",
-		ProjectID:      "project-1",
+		OrganizationID: db.DefaultDevOrganizationID,
+		ProjectID:      sseTestProjectID,
 		ResourceType:   "shot_execution",
 		ResourceID:     "shot-execution-1",
 		Payload:        `{"status":"submitted_for_review"}`,
 	})
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, publisher)
+	RegisterRoutes(mux, publisher, authz.NewAuthorizer(newSSEAuthStore()))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	req := httptest.NewRequest(http.MethodGet, "/sse/events?organization_id=org-1&project_id=project-1", nil).WithContext(ctx)
+	req := httptest.NewRequest(http.MethodGet, "/sse/events?organization_id="+db.DefaultDevOrganizationID+"&project_id="+sseTestProjectID, nil).WithContext(ctx)
 	req.Header.Set("Last-Event-ID", "evt-1")
+	req.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 	rec := httptest.NewRecorder()
 
 	done := make(chan struct{})
@@ -73,8 +81,8 @@ func TestSSEFiltersByOrgAndProject(t *testing.T) {
 	publishEvent(publisher, events.Event{
 		ID:             "evt-1",
 		EventType:      "shot.execution.updated",
-		OrganizationID: "org-1",
-		ProjectID:      "project-1",
+		OrganizationID: db.DefaultDevOrganizationID,
+		ProjectID:      sseTestProjectID,
 		ResourceType:   "shot_execution",
 		ResourceID:     "shot-execution-1",
 		Payload:        `{"status":"candidate_ready"}`,
@@ -90,11 +98,12 @@ func TestSSEFiltersByOrgAndProject(t *testing.T) {
 	})
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, publisher)
+	RegisterRoutes(mux, publisher, authz.NewAuthorizer(newSSEAuthStore()))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	req := httptest.NewRequest(http.MethodGet, "/sse/events?organization_id=org-1&project_id=project-1", nil).WithContext(ctx)
+	req := httptest.NewRequest(http.MethodGet, "/sse/events?organization_id="+db.DefaultDevOrganizationID+"&project_id="+sseTestProjectID, nil).WithContext(ctx)
+	req.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 	rec := httptest.NewRecorder()
 
 	done := make(chan struct{})
@@ -123,17 +132,18 @@ func TestSSEStreamsFutureEventsAfterReplay(t *testing.T) {
 	resetEventStore(publisher)
 
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, publisher)
+	RegisterRoutes(mux, publisher, authz.NewAuthorizer(newSSEAuthStore()))
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/sse/events?organization_id=org-1&project_id=project-1", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/sse/events?organization_id="+db.DefaultDevOrganizationID+"&project_id="+sseTestProjectID, nil)
 	if err != nil {
 		t.Fatalf("NewRequestWithContext returned error: %v", err)
 	}
+	req.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 
 	resp, err := server.Client().Do(req)
 	if err != nil {
@@ -160,8 +170,8 @@ func TestSSEStreamsFutureEventsAfterReplay(t *testing.T) {
 	publishEvent(publisher, events.Event{
 		ID:             "evt-live-1",
 		EventType:      "budget.updated",
-		OrganizationID: "org-1",
-		ProjectID:      "project-1",
+		OrganizationID: db.DefaultDevOrganizationID,
+		ProjectID:      sseTestProjectID,
 		ResourceType:   "budget",
 		ResourceID:     "budget-1",
 		Payload:        `{"limit_cents":900}`,
@@ -185,17 +195,18 @@ func TestSSEEmitsHeartbeatWhileConnectionIsIdle(t *testing.T) {
 	resetEventStore(publisher)
 
 	mux := http.NewServeMux()
-	registerRoutesWithHeartbeatInterval(mux, publisher, 20*time.Millisecond)
+	registerRoutesWithHeartbeatInterval(mux, publisher, authz.NewAuthorizer(newSSEAuthStore()), 20*time.Millisecond)
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/sse/events?organization_id=org-1&project_id=project-1", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/sse/events?organization_id="+db.DefaultDevOrganizationID+"&project_id="+sseTestProjectID, nil)
 	if err != nil {
 		t.Fatalf("NewRequestWithContext returned error: %v", err)
 	}
+	req.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 
 	resp, err := server.Client().Do(req)
 	if err != nil {
@@ -211,6 +222,22 @@ func TestSSEEmitsHeartbeatWhileConnectionIsIdle(t *testing.T) {
 
 	if strings.TrimSpace(line) != ": keep-alive" {
 		t.Fatalf("expected heartbeat frame, got %q", line)
+	}
+}
+
+func TestSSERejectsUnauthenticatedSubscription(t *testing.T) {
+	publisher := events.NewPublisher()
+	resetEventStore(publisher)
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, publisher, authz.NewAuthorizer(newSSEAuthStore()))
+
+	req := httptest.NewRequest(http.MethodGet, "/sse/events?organization_id="+db.DefaultDevOrganizationID+"&project_id="+sseTestProjectID, nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401 without active session, got %d with body %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -232,4 +259,35 @@ func waitForRecorderBody(t *testing.T, recorder *httptest.ResponseRecorder, mark
 			}
 		}
 	}
+}
+
+func newSSEAuthStore() *db.MemoryStore {
+	store := db.NewMemoryStore()
+	store.Organizations[db.DefaultDevOrganizationID] = orgdomain.Organization{
+		ID:                   db.DefaultDevOrganizationID,
+		Slug:                 "dev-org",
+		DisplayName:          "Development Organization",
+		DefaultUILocale:      "zh-CN",
+		DefaultContentLocale: "zh-CN",
+	}
+	store.Users[db.DefaultDevUserID] = authdomain.User{
+		ID:                db.DefaultDevUserID,
+		Email:             "dev-user@hualala.local",
+		DisplayName:       "Development Operator",
+		PreferredUILocale: "zh-CN",
+	}
+	store.Roles[db.DefaultDevRoleID] = orgdomain.Role{
+		ID:          db.DefaultDevRoleID,
+		OrgID:       db.DefaultDevOrganizationID,
+		Code:        "admin",
+		DisplayName: "Administrator",
+	}
+	store.Memberships[db.DefaultDevMembershipID] = orgdomain.Member{
+		ID:     db.DefaultDevMembershipID,
+		OrgID:  db.DefaultDevOrganizationID,
+		UserID: db.DefaultDevUserID,
+		RoleID: db.DefaultDevRoleID,
+		Status: "active",
+	}
+	return store
 }

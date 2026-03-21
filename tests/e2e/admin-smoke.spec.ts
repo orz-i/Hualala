@@ -9,6 +9,7 @@ test("admin smoke: renders overview and updates budget", async ({ page }) => {
   await page.goto(
     "http://127.0.0.1:4173/?projectId=project-live-1&shotExecutionId=shot-exec-live-1&orgId=org-live-1",
   );
+  await page.getByRole("button", { name: "进入开发会话" }).click();
 
   await expect(page.getByText("project-live-1")).toBeVisible();
   await expect(page.getByRole("heading", { name: "最近变更" })).toBeVisible();
@@ -37,6 +38,7 @@ test("admin smoke: keeps overview visible on budget update failure", async ({ pa
   await page.goto(
     "http://127.0.0.1:4173/?projectId=project-live-1&shotExecutionId=shot-exec-live-1&orgId=org-live-1",
   );
+  await page.getByRole("button", { name: "进入开发会话" }).click();
 
   await expect(page.getByText("project-live-1")).toBeVisible();
   await page.getByLabel("预算上限（元）").fill("1500");

@@ -37,6 +37,9 @@ func (a Authorizer) ResolvePrincipal(_ context.Context, input ResolvePrincipalIn
 	}
 	orgID := strings.TrimSpace(input.HeaderOrgID)
 	userID := strings.TrimSpace(input.HeaderUserID)
+	if (orgID == "") != (userID == "") {
+		return Principal{}, errors.New("unauthenticated: explicit override requires both org and user")
+	}
 	if orgID == "" || userID == "" {
 		sessionPrincipal, ok := authsession.ResolvePrincipal(input.CookieHeader)
 		if !ok {

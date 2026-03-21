@@ -25,6 +25,7 @@ import (
 	"github.com/hualala/apps/backend/internal/application/workflowapp"
 	"github.com/hualala/apps/backend/internal/interfaces/sse"
 	"github.com/hualala/apps/backend/internal/interfaces/upload"
+	"github.com/hualala/apps/backend/internal/platform/authz"
 	"github.com/hualala/apps/backend/internal/platform/events"
 	"github.com/hualala/apps/backend/internal/platform/runtime"
 )
@@ -34,6 +35,7 @@ var allowedHealthMethods = []string{http.MethodGet}
 type RouteDependencies struct {
 	AuthService      *authapp.Service
 	OrgService       *orgapp.Service
+	Authorizer       authz.Authorizer
 	ExecutionService *executionapp.Service
 	AssetService     *assetapp.Service
 	ReviewService    *reviewapp.Service
@@ -49,6 +51,7 @@ func NewRouteDependencies(services runtime.ServiceSet) RouteDependencies {
 	return RouteDependencies{
 		AuthService:      services.AuthService,
 		OrgService:       services.OrgService,
+		Authorizer:       services.Authorizer,
 		ExecutionService: services.ExecutionService,
 		AssetService:     services.AssetService,
 		ReviewService:    services.ReviewService,
@@ -107,7 +110,7 @@ func RegisterRoutes(mux *http.ServeMux, deps RouteDependencies) {
 		path, handler := workflowv1connect.NewWorkflowServiceHandler(&workflowHandler{service: deps.WorkflowService})
 		mux.Handle(path, handler)
 	}
-	sse.RegisterRoutes(mux, deps.EventPublisher)
+	sse.RegisterRoutes(mux, deps.EventPublisher, deps.Authorizer)
 	if deps.UploadService != nil {
 		upload.RegisterRoutes(mux, deps.UploadService)
 	}

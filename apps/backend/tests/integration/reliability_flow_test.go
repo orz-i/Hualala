@@ -17,6 +17,7 @@ import (
 	"github.com/hualala/apps/backend/internal/application/workflowapp"
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/workflow"
+	"github.com/hualala/apps/backend/internal/platform/authsession"
 	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/runtime"
 )
@@ -153,6 +154,7 @@ func TestReliabilityFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest returned error: %v", err)
 	}
+	expiredReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 	expiredResp, err := server.Client().Do(expiredReq)
 	if err != nil {
 		t.Fatalf("server.Client().Do returned error: %v", err)
@@ -183,6 +185,7 @@ func TestReliabilityFlow(t *testing.T) {
 		t.Fatalf("http.NewRequest returned error: %v", err)
 	}
 	sseReq.Header.Set("Last-Event-ID", lastEventID)
+	sseReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 	sseResp, err := server.Client().Do(sseReq)
 	if err != nil {
 		t.Fatalf("SSE request returned error: %v", err)
@@ -248,6 +251,7 @@ func performUploadRequest(t *testing.T, server *httptest.Server, method string, 
 		t.Fatalf("http.NewRequest returned error: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 
 	resp, err := server.Client().Do(req)
 	if err != nil {

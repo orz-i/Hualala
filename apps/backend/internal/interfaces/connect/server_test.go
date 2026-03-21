@@ -25,8 +25,16 @@ import (
 	reviewv1connect "github.com/hualala/apps/backend/gen/hualala/review/v1/reviewv1connect"
 	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
+	authdomain "github.com/hualala/apps/backend/internal/domain/auth"
+	orgdomain "github.com/hualala/apps/backend/internal/domain/org"
+	"github.com/hualala/apps/backend/internal/platform/authsession"
 	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/runtime"
+)
+
+const (
+	connectTestOrgID  = "org-1"
+	connectTestUserID = "user-1"
 )
 
 func TestRegisterRoutes(t *testing.T) {
@@ -57,7 +65,7 @@ func TestRegisterRoutes(t *testing.T) {
 			name:           "upload session route is available",
 			method:         http.MethodPost,
 			target:         "/upload/sessions",
-			body:           []byte(`{"organization_id":"org-1","project_id":"project-1","file_name":"shot.png","checksum":"sha256:abc123","size_bytes":1024,"expires_in_seconds":1}`),
+			body:           []byte(`{"organization_id":"` + connectTestOrgID + `","project_id":"project-1","file_name":"shot.png","checksum":"sha256:abc123","size_bytes":1024,"expires_in_seconds":1}`),
 			contentType:    "application/json",
 			expectedStatus: http.StatusOK,
 		},
@@ -77,6 +85,7 @@ func TestRegisterRoutes(t *testing.T) {
 				if tc.contentType != "" {
 					req.Header.Set("Content-Type", tc.contentType)
 				}
+				req.Header.Set("Cookie", authsession.BuildRequestCookieHeader(connectTestOrgID, connectTestUserID))
 				resp, err := server.Client().Do(req)
 				if err != nil {
 					t.Fatalf("server.Client().Do returned error: %v", err)
@@ -91,6 +100,9 @@ func TestRegisterRoutes(t *testing.T) {
 			req := httptest.NewRequest(tc.method, tc.target, bytes.NewReader(tc.body))
 			if tc.contentType != "" {
 				req.Header.Set("Content-Type", tc.contentType)
+			}
+			if tc.target == "/upload/sessions" {
+				req.Header.Set("Cookie", authsession.BuildRequestCookieHeader(connectTestOrgID, connectTestUserID))
 			}
 			rec := httptest.NewRecorder()
 
@@ -338,6 +350,7 @@ func TestExecutionAssetReviewBillingRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequest returned error: %v", err)
 	}
+	sseReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(connectTestOrgID, connectTestUserID))
 	sseResp, err := server.Client().Do(sseReq)
 	if err != nil {
 		t.Fatalf("SSE request returned error: %v", err)
@@ -840,6 +853,7 @@ func TestAssetServiceWritesPublishImportBatchProjectEvents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("http.NewRequestWithContext returned error: %v", err)
 	}
+	sseReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(connectTestOrgID, connectTestUserID))
 	sseResp, err := server.Client().Do(sseReq)
 	if err != nil {
 		t.Fatalf("SSE request returned error: %v", err)
@@ -1029,6 +1043,7 @@ func performConnectUploadJSONRequest(t *testing.T, server *httptest.Server, meth
 		t.Fatalf("http.NewRequest returned error: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", authsession.BuildRequestCookieHeader(connectTestOrgID, connectTestUserID))
 
 	resp, err := server.Client().Do(req)
 	if err != nil {
@@ -1083,5 +1098,38 @@ func TestCmdAPIAvoidsRepositorySetConstruction(t *testing.T) {
 }
 
 func newRouteDependenciesFromStore(store *db.MemoryStore) RouteDependencies {
+	seedConnectAuthStore(store)
 	return NewRouteDependencies(runtime.NewFactory(store).Services())
+}
+
+func seedConnectAuthStore(store *db.MemoryStore) {
+	if store == nil {
+		return
+	}
+	store.Organizations[connectTestOrgID] = orgdomain.Organization{
+		ID:                   connectTestOrgID,
+		Slug:                 "connect-test-org",
+		DisplayName:          "Connect Test Organization",
+		DefaultUILocale:      "zh-CN",
+		DefaultContentLocale: "zh-CN",
+	}
+	store.Users[connectTestUserID] = authdomain.User{
+		ID:                connectTestUserID,
+		Email:             "connect-test@hualala.local",
+		DisplayName:       "Connect Test User",
+		PreferredUILocale: "zh-CN",
+	}
+	store.Roles["connect-test-role"] = orgdomain.Role{
+		ID:          "connect-test-role",
+		OrgID:       connectTestOrgID,
+		Code:        "admin",
+		DisplayName: "Administrator",
+	}
+	store.Memberships["connect-test-membership"] = orgdomain.Member{
+		ID:     "connect-test-membership",
+		OrgID:  connectTestOrgID,
+		UserID: connectTestUserID,
+		RoleID: "connect-test-role",
+		Status: "active",
+	}
 }

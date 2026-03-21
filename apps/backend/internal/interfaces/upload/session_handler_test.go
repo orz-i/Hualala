@@ -16,21 +16,28 @@ import (
 
 	"github.com/hualala/apps/backend/internal/application/policyapp"
 	assetdomain "github.com/hualala/apps/backend/internal/domain/asset"
+	authdomain "github.com/hualala/apps/backend/internal/domain/auth"
 	executiondomain "github.com/hualala/apps/backend/internal/domain/execution"
+	orgdomain "github.com/hualala/apps/backend/internal/domain/org"
 	"github.com/hualala/apps/backend/internal/interfaces/sse"
+	"github.com/hualala/apps/backend/internal/platform/authsession"
+	"github.com/hualala/apps/backend/internal/platform/authz"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
+
+const uploadTestProjectID = "project-1"
 
 func TestCreateAndRetryUploadSession(t *testing.T) {
 	store := db.NewMemoryStore()
 	resetSessionStore(store)
+	seedUploadAuthStore(store)
 
 	mux := http.NewServeMux()
 	RegisterRoutes(mux, newUploadServiceFromStore(store))
 
 	createPayload := map[string]any{
-		"organization_id":    "org-1",
-		"project_id":         "project-1",
+		"organization_id":    db.DefaultDevOrganizationID,
+		"project_id":         uploadTestProjectID,
 		"file_name":          "shot.png",
 		"checksum":           "sha256:abc123",
 		"size_bytes":         1024,
@@ -59,13 +66,14 @@ func TestCreateAndRetryUploadSession(t *testing.T) {
 func TestExpiredUploadSessionStatus(t *testing.T) {
 	store := db.NewMemoryStore()
 	resetSessionStore(store)
+	seedUploadAuthStore(store)
 
 	mux := http.NewServeMux()
 	RegisterRoutes(mux, newUploadServiceFromStore(store))
 
 	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
-		"organization_id":    "org-1",
-		"project_id":         "project-1",
+		"organization_id":    db.DefaultDevOrganizationID,
+		"project_id":         uploadTestProjectID,
 		"file_name":          "shot.png",
 		"checksum":           "sha256:abc123",
 		"size_bytes":         1024,
@@ -75,6 +83,7 @@ func TestExpiredUploadSessionStatus(t *testing.T) {
 	sessionID := createResponse["session_id"].(string)
 
 	statusReq := httptest.NewRequest(http.MethodGet, "/upload/sessions/"+sessionID, nil)
+	statusReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 	statusRec := httptest.NewRecorder()
 	mux.ServeHTTP(statusRec, statusReq)
 
@@ -95,6 +104,8 @@ func TestUploadSessionsAreScopedToStore(t *testing.T) {
 	storeB := db.NewMemoryStore()
 	resetSessionStore(storeA)
 	resetSessionStore(storeB)
+	seedUploadAuthStore(storeA)
+	seedUploadAuthStore(storeB)
 
 	muxA := http.NewServeMux()
 	RegisterRoutes(muxA, newUploadServiceFromStore(storeA))
@@ -102,8 +113,8 @@ func TestUploadSessionsAreScopedToStore(t *testing.T) {
 	RegisterRoutes(muxB, newUploadServiceFromStore(storeB))
 
 	createRec := performUploadJSONRequest(t, muxA, http.MethodPost, "/upload/sessions", map[string]any{
-		"organization_id":    "org-1",
-		"project_id":         "project-1",
+		"organization_id":    db.DefaultDevOrganizationID,
+		"project_id":         uploadTestProjectID,
 		"file_name":          "shot.png",
 		"checksum":           "sha256:abc123",
 		"size_bytes":         1024,
@@ -113,6 +124,7 @@ func TestUploadSessionsAreScopedToStore(t *testing.T) {
 	sessionID := createResponse["session_id"].(string)
 
 	statusReq := httptest.NewRequest(http.MethodGet, "/upload/sessions/"+sessionID, nil)
+	statusReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 	statusRec := httptest.NewRecorder()
 	muxB.ServeHTTP(statusRec, statusReq)
 
@@ -124,15 +136,16 @@ func TestUploadSessionsAreScopedToStore(t *testing.T) {
 func TestUploadSessionPublishesSSEEvents(t *testing.T) {
 	store := db.NewMemoryStore()
 	resetSessionStore(store)
+	seedUploadAuthStore(store)
 	store.EventPublisher.Reset()
 
 	mux := http.NewServeMux()
 	RegisterRoutes(mux, newUploadServiceFromStore(store))
-	sse.RegisterRoutes(mux, store.EventPublisher)
+	sse.RegisterRoutes(mux, store.EventPublisher, authz.NewAuthorizer(store))
 
 	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
-		"organization_id":    "org-1",
-		"project_id":         "project-1",
+		"organization_id":    db.DefaultDevOrganizationID,
+		"project_id":         uploadTestProjectID,
 		"file_name":          "shot.png",
 		"checksum":           "sha256:abc123",
 		"size_bytes":         1024,
@@ -152,10 +165,11 @@ func TestUploadSessionPublishesSSEEvents(t *testing.T) {
 
 	sseCtx, cancelSSE := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelSSE()
-	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id=org-1&project_id=project-1", nil)
+	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id="+db.DefaultDevOrganizationID+"&project_id="+uploadTestProjectID, nil)
 	if err != nil {
 		t.Fatalf("http.NewRequestWithContext returned error: %v", err)
 	}
+	sseReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 	sseResp, err := server.Client().Do(sseReq)
 	if err != nil {
 		t.Fatalf("server.Client().Do returned error: %v", err)
@@ -185,11 +199,12 @@ func TestUploadSessionPublishesSSEEvents(t *testing.T) {
 func TestUploadSessionPublishesImportBatchProjectEvent(t *testing.T) {
 	store := db.NewMemoryStore()
 	resetSessionStore(store)
+	seedUploadAuthStore(store)
 	store.EventPublisher.Reset()
 	store.ImportBatches["import-batch-1"] = assetdomain.ImportBatch{
 		ID:         "import-batch-1",
-		OrgID:      "org-1",
-		ProjectID:  "project-1",
+		OrgID:      db.DefaultDevOrganizationID,
+		ProjectID:  uploadTestProjectID,
 		OperatorID: "user-1",
 		SourceType: "upload_session",
 		Status:     "pending_review",
@@ -197,11 +212,11 @@ func TestUploadSessionPublishesImportBatchProjectEvent(t *testing.T) {
 
 	mux := http.NewServeMux()
 	RegisterRoutes(mux, newUploadServiceFromStore(store))
-	sse.RegisterRoutes(mux, store.EventPublisher)
+	sse.RegisterRoutes(mux, store.EventPublisher, authz.NewAuthorizer(store))
 
 	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
-		"organization_id":    "org-1",
-		"project_id":         "project-1",
+		"organization_id":    db.DefaultDevOrganizationID,
+		"project_id":         uploadTestProjectID,
 		"import_batch_id":    "import-batch-1",
 		"file_name":          "shot.png",
 		"checksum":           "sha256:abc123",
@@ -218,10 +233,11 @@ func TestUploadSessionPublishesImportBatchProjectEvent(t *testing.T) {
 
 	sseCtx, cancelSSE := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelSSE()
-	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id=org-1&project_id=project-1", nil)
+	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id="+db.DefaultDevOrganizationID+"&project_id="+uploadTestProjectID, nil)
 	if err != nil {
 		t.Fatalf("http.NewRequestWithContext returned error: %v", err)
 	}
+	sseReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 	sseResp, err := server.Client().Do(sseReq)
 	if err != nil {
 		t.Fatalf("server.Client().Do returned error: %v", err)
@@ -277,10 +293,11 @@ func readUploadEventStreamUntil(t *testing.T, body io.ReadCloser, cancel context
 func TestCompleteUploadSessionCreatesAssetRecords(t *testing.T) {
 	store := db.NewMemoryStore()
 	resetSessionStore(store)
+	seedUploadAuthStore(store)
 	store.ImportBatches["import-batch-1"] = assetdomain.ImportBatch{
 		ID:         "import-batch-1",
-		OrgID:      "org-1",
-		ProjectID:  "project-1",
+		OrgID:      db.DefaultDevOrganizationID,
+		ProjectID:  uploadTestProjectID,
 		OperatorID: "user-1",
 		SourceType: "upload_session",
 		Status:     "pending_review",
@@ -290,8 +307,8 @@ func TestCompleteUploadSessionCreatesAssetRecords(t *testing.T) {
 	RegisterRoutes(mux, newUploadServiceFromStore(store))
 
 	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
-		"organization_id":    "org-1",
-		"project_id":         "project-1",
+		"organization_id":    db.DefaultDevOrganizationID,
+		"project_id":         uploadTestProjectID,
 		"import_batch_id":    "import-batch-1",
 		"file_name":          "shot.png",
 		"checksum":           "sha256:abc123",
@@ -361,13 +378,14 @@ func TestCompleteUploadSessionCreatesAssetRecords(t *testing.T) {
 func TestCreateUploadSessionRejectsUnknownImportBatch(t *testing.T) {
 	store := db.NewMemoryStore()
 	resetSessionStore(store)
+	seedUploadAuthStore(store)
 
 	mux := http.NewServeMux()
 	RegisterRoutes(mux, newUploadServiceFromStore(store))
 
 	reqBody, err := json.Marshal(map[string]any{
-		"organization_id":    "org-1",
-		"project_id":         "project-1",
+		"organization_id":    db.DefaultDevOrganizationID,
+		"project_id":         uploadTestProjectID,
 		"import_batch_id":    "missing-batch",
 		"file_name":          "shot.png",
 		"checksum":           "sha256:abc123",
@@ -380,6 +398,7 @@ func TestCreateUploadSessionRejectsUnknownImportBatch(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/upload/sessions", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -391,18 +410,19 @@ func TestCreateUploadSessionRejectsUnknownImportBatch(t *testing.T) {
 func TestCompleteUploadSessionCanAttachCandidateToShotExecution(t *testing.T) {
 	store := db.NewMemoryStore()
 	resetSessionStore(store)
+	seedUploadAuthStore(store)
 	store.ImportBatches["import-batch-1"] = assetdomain.ImportBatch{
 		ID:         "import-batch-1",
-		OrgID:      "org-1",
-		ProjectID:  "project-1",
+		OrgID:      db.DefaultDevOrganizationID,
+		ProjectID:  uploadTestProjectID,
 		OperatorID: "user-1",
 		SourceType: "upload_session",
 		Status:     "pending_review",
 	}
 	store.ShotExecutions["shot-execution-1"] = executiondomain.ShotExecution{
 		ID:        "shot-execution-1",
-		OrgID:     "org-1",
-		ProjectID: "project-1",
+		OrgID:     db.DefaultDevOrganizationID,
+		ProjectID: uploadTestProjectID,
 		ShotID:    "shot-1",
 		Status:    "in_progress",
 	}
@@ -411,8 +431,8 @@ func TestCompleteUploadSessionCanAttachCandidateToShotExecution(t *testing.T) {
 	RegisterRoutes(mux, newUploadServiceFromStore(store))
 
 	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
-		"organization_id":    "org-1",
-		"project_id":         "project-1",
+		"organization_id":    db.DefaultDevOrganizationID,
+		"project_id":         uploadTestProjectID,
 		"import_batch_id":    "import-batch-1",
 		"file_name":          "shot.png",
 		"checksum":           "sha256:abc123",
@@ -464,6 +484,36 @@ func TestCompleteUploadSessionCanAttachCandidateToShotExecution(t *testing.T) {
 	}
 }
 
+func TestUploadSessionRoutesRequireAuthenticatedSession(t *testing.T) {
+	store := db.NewMemoryStore()
+	resetSessionStore(store)
+	seedUploadAuthStore(store)
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, newUploadServiceFromStore(store))
+
+	reqBody, err := json.Marshal(map[string]any{
+		"organization_id":    db.DefaultDevOrganizationID,
+		"project_id":         uploadTestProjectID,
+		"file_name":          "shot.png",
+		"checksum":           "sha256:abc123",
+		"size_bytes":         1024,
+		"expires_in_seconds": 60,
+	})
+	if err != nil {
+		t.Fatalf("json.Marshal returned error: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/upload/sessions", bytes.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401 without active session, got %d with body %s", rec.Code, rec.Body.String())
+	}
+}
+
 func performUploadJSONRequest(t *testing.T, mux *http.ServeMux, method string, target string, body any) *httptest.ResponseRecorder {
 	t.Helper()
 
@@ -480,6 +530,7 @@ func performUploadJSONRequest(t *testing.T, mux *http.ServeMux, method string, t
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	req.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code >= 400 {
@@ -510,8 +561,41 @@ func newUploadServiceFromStore(store *db.MemoryStore) *Service {
 		Assets:         store,
 		Executions:     store,
 		Policy:         policyapp.NewService(store),
+		Authorizer:     authz.NewAuthorizer(store),
 		EventPublisher: store.EventPublisher,
 	})
+}
+
+func seedUploadAuthStore(store *db.MemoryStore) {
+	if store == nil {
+		return
+	}
+	store.Organizations[db.DefaultDevOrganizationID] = orgdomain.Organization{
+		ID:                   db.DefaultDevOrganizationID,
+		Slug:                 "dev-org",
+		DisplayName:          "Development Organization",
+		DefaultUILocale:      "zh-CN",
+		DefaultContentLocale: "zh-CN",
+	}
+	store.Users[db.DefaultDevUserID] = authdomain.User{
+		ID:                db.DefaultDevUserID,
+		Email:             "dev-user@hualala.local",
+		DisplayName:       "Development Operator",
+		PreferredUILocale: "zh-CN",
+	}
+	store.Roles[db.DefaultDevRoleID] = orgdomain.Role{
+		ID:          db.DefaultDevRoleID,
+		OrgID:       db.DefaultDevOrganizationID,
+		Code:        "admin",
+		DisplayName: "Administrator",
+	}
+	store.Memberships[db.DefaultDevMembershipID] = orgdomain.Member{
+		ID:     db.DefaultDevMembershipID,
+		OrgID:  db.DefaultDevOrganizationID,
+		UserID: db.DefaultDevUserID,
+		RoleID: db.DefaultDevRoleID,
+		Status: "active",
+	}
 }
 
 func TestSessionHandlerDoesNotDependOnRawMemoryStore(t *testing.T) {
