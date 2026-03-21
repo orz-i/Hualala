@@ -670,6 +670,7 @@ describe("AdminOverviewPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "确认全部可确认项" }));
     expect(onConfirmAllImportBatchItems).toHaveBeenCalledWith({
       importBatchId: "import-batch-1",
+      itemIds: ["import-item-2", "import-item-4"],
     });
 
     fireEvent.click(screen.getByRole("button", { name: "设置候选资源 candidate-1 为主素材" }));

@@ -881,13 +881,8 @@ export function App() {
             }),
         });
       }}
-      onConfirmAllImportBatchItems={({ importBatchId }) => {
-        const actionableItemIds =
-          importBatchDetail?.items
-            .filter((item) => item.status !== "confirmed" && Boolean(item.assetId))
-            .map((item) => item.id) ?? [];
-
-        if (actionableItemIds.length === 0) {
+      onConfirmAllImportBatchItems={({ importBatchId, itemIds }) => {
+        if (itemIds.length === 0) {
           return;
         }
 
@@ -898,7 +893,7 @@ export function App() {
           execute: (options) =>
             confirmImportBatchItems({
               importBatchId,
-              itemIds: actionableItemIds,
+              itemIds,
               ...options,
             }),
         });

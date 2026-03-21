@@ -118,7 +118,10 @@ type AdminOverviewPageProps = {
     importBatchId: string;
     itemIds: string[];
   }) => void;
-  onConfirmAllImportBatchItems?: (input: { importBatchId: string }) => void;
+  onConfirmAllImportBatchItems?: (input: {
+    importBatchId: string;
+    itemIds: string[];
+  }) => void;
   onSelectPrimaryAsset?: (input: { shotExecutionId: string; assetId: string }) => void;
 };
 
@@ -1348,6 +1351,7 @@ export function AdminOverviewPage({
                     onClick={() => {
                       onConfirmAllImportBatchItems?.({
                         importBatchId: importBatchDetail.batch.id,
+                        itemIds: actionableImportItemIds,
                       });
                     }}
                     style={{
