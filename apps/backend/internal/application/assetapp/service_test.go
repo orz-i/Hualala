@@ -2,10 +2,13 @@ package assetapp
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/hualala/apps/backend/internal/domain/asset"
+	"github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
@@ -278,5 +281,91 @@ func TestGetAssetProvenanceSummaryIncludesStructuredFields(t *testing.T) {
 	}
 	if got := record.ProvenanceSummary; got == "" {
 		t.Fatalf("expected non-empty provenance_summary")
+	}
+}
+
+func TestAddCandidateAssetPersistsImportBatchStatusAndPublishesMatchingEvent(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	store.Publisher().Reset()
+	service := NewService(store, store, store.Publisher())
+
+	importBatch := asset.ImportBatch{
+		ID:         store.GenerateImportBatchID(),
+		OrgID:      "org-1",
+		ProjectID:  "project-1",
+		OperatorID: "user-1",
+		SourceType: "manual_upload",
+		Status:     "pending_review",
+		CreatedAt:  time.Date(2026, 3, 21, 8, 0, 0, 0, time.UTC),
+		UpdatedAt:  time.Date(2026, 3, 21, 8, 1, 0, 0, time.UTC),
+	}
+	if err := store.SaveImportBatch(ctx, importBatch); err != nil {
+		t.Fatalf("SaveImportBatch returned error: %v", err)
+	}
+
+	shotExecution := execution.ShotExecution{
+		ID:        store.GenerateShotExecutionID(),
+		OrgID:     "org-1",
+		ProjectID: "project-1",
+		ShotID:    "shot-1",
+		Status:    "queued",
+		CreatedAt: time.Date(2026, 3, 21, 8, 2, 0, 0, time.UTC),
+		UpdatedAt: time.Date(2026, 3, 21, 8, 2, 0, 0, time.UTC),
+	}
+	if err := store.SaveShotExecution(ctx, shotExecution); err != nil {
+		t.Fatalf("SaveShotExecution returned error: %v", err)
+	}
+
+	candidate, err := service.AddCandidateAsset(ctx, AddCandidateAssetInput{
+		ShotExecutionID: shotExecution.ID,
+		ProjectID:       importBatch.ProjectID,
+		OrgID:           importBatch.OrgID,
+		ImportBatchID:   importBatch.ID,
+		SourceRunID:     "workflow-run-1",
+		SourceType:      "manual_upload",
+		AssetLocale:     "zh-CN",
+		RightsStatus:    "clear",
+		AIAnnotated:     true,
+	})
+	if err != nil {
+		t.Fatalf("AddCandidateAsset returned error: %v", err)
+	}
+
+	updatedBatch, ok := store.GetImportBatch(importBatch.ID)
+	if !ok {
+		t.Fatalf("expected import batch %q to exist", importBatch.ID)
+	}
+	if got := updatedBatch.Status; got != "matched_pending_confirm" {
+		t.Fatalf("expected persisted import batch status matched_pending_confirm, got %q", got)
+	}
+
+	events := store.Publisher().List(importBatch.OrgID, importBatch.ProjectID, "")
+	if len(events) == 0 {
+		t.Fatalf("expected asset.import_batch.updated event to be published")
+	}
+	latestEvent := events[len(events)-1]
+	if got := latestEvent.EventType; got != "asset.import_batch.updated" {
+		t.Fatalf("expected latest event type asset.import_batch.updated, got %q", got)
+	}
+
+	var payload asset.ImportBatchUpdatedEventPayload
+	if err := json.Unmarshal([]byte(latestEvent.Payload), &payload); err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v", err)
+	}
+	if got := payload.ImportBatchID; got != importBatch.ID {
+		t.Fatalf("expected import_batch_id %q, got %q", importBatch.ID, got)
+	}
+	if got := payload.Status; got != updatedBatch.Status {
+		t.Fatalf("expected payload status %q, got %q", updatedBatch.Status, got)
+	}
+	if got := payload.CandidateAssetID; got != candidate.ID {
+		t.Fatalf("expected candidate_asset_id %q, got %q", candidate.ID, got)
+	}
+	if got := payload.UploadSessionID; got != "" {
+		t.Fatalf("expected empty upload_session_id for AddCandidateAsset event, got %q", got)
+	}
+	if !strings.Contains(payload.Reason, "candidate_asset.added") {
+		t.Fatalf("expected reason candidate_asset.added, got %q", payload.Reason)
 	}
 }

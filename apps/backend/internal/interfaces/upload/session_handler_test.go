@@ -231,6 +231,7 @@ func TestUploadSessionPublishesImportBatchProjectEvent(t *testing.T) {
 	stream := readUploadEventStreamUntil(t, sseResp.Body, cancelSSE,
 		"event: asset.import_batch.updated",
 		`"import_batch_id":"import-batch-1"`,
+		`"status":"pending_review"`,
 		`"upload_session_id":"`+sessionID+`"`,
 	)
 	if !strings.Contains(stream, "event: asset.import_batch.updated") {

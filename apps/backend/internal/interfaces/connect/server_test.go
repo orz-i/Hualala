@@ -849,6 +849,7 @@ func TestAssetServiceWritesPublishImportBatchProjectEvents(t *testing.T) {
 	body := readEventStreamUntil(t, sseResp.Body, cancelSSE,
 		"event: asset.import_batch.updated",
 		`"import_batch_id":"`+importBatchID+`"`,
+		`"status":"confirmed"`,
 		`"candidate_asset_id":"`+candidate.Msg.GetAsset().GetId()+`"`,
 		`"reason":"import_batch.confirmed"`,
 	)

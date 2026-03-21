@@ -94,6 +94,7 @@ type AssetRepository interface {
 	SaveImportBatch(ctx context.Context, record asset.ImportBatch) error
 	GetImportBatch(importBatchID string) (asset.ImportBatch, bool)
 	ListImportBatches(projectID string, status string, sourceType string) []asset.ImportBatch
+	ListImportBatchStats(importBatchIDs []string) map[string]ImportBatchStats
 
 	GenerateImportBatchItemID() string
 	SaveImportBatchItem(ctx context.Context, record asset.ImportBatchItem) error
@@ -123,6 +124,14 @@ type AssetRepository interface {
 	SaveCandidateAsset(ctx context.Context, record asset.CandidateAsset) error
 	ListCandidateAssetsByExecution(shotExecutionID string) []asset.CandidateAsset
 	ListCandidateAssetsByAssetIDs(assetIDs []string) []asset.CandidateAsset
+}
+
+type ImportBatchStats struct {
+	UploadSessionCount  int
+	ItemCount           int
+	ConfirmedItemCount  int
+	CandidateAssetCount int
+	MediaAssetCount     int
 }
 
 type ReviewBillingRepository interface {
@@ -484,6 +493,64 @@ func (s *MemoryStore) ListImportBatches(projectID string, status string, sourceT
 		return items[i].ID > items[j].ID
 	})
 	return items
+}
+
+func (s *MemoryStore) ListImportBatchStats(importBatchIDs []string) map[string]ImportBatchStats {
+	lookup := make(map[string]struct{}, len(importBatchIDs))
+	for _, id := range importBatchIDs {
+		if id == "" {
+			continue
+		}
+		lookup[id] = struct{}{}
+	}
+	stats := make(map[string]ImportBatchStats, len(lookup))
+	if len(lookup) == 0 {
+		return stats
+	}
+
+	for _, record := range s.UploadSessions {
+		if _, ok := lookup[record.ImportBatchID]; !ok {
+			continue
+		}
+		current := stats[record.ImportBatchID]
+		current.UploadSessionCount++
+		stats[record.ImportBatchID] = current
+	}
+
+	for _, record := range s.ImportBatchItems {
+		if _, ok := lookup[record.ImportBatchID]; !ok {
+			continue
+		}
+		current := stats[record.ImportBatchID]
+		current.ItemCount++
+		if record.Status == "confirmed" {
+			current.ConfirmedItemCount++
+		}
+		stats[record.ImportBatchID] = current
+	}
+
+	assetToBatch := make(map[string]string)
+	for _, record := range s.MediaAssets {
+		if _, ok := lookup[record.ImportBatchID]; !ok {
+			continue
+		}
+		current := stats[record.ImportBatchID]
+		current.MediaAssetCount++
+		stats[record.ImportBatchID] = current
+		assetToBatch[record.ID] = record.ImportBatchID
+	}
+
+	for _, record := range s.CandidateAssets {
+		importBatchID, ok := assetToBatch[record.AssetID]
+		if !ok {
+			continue
+		}
+		current := stats[importBatchID]
+		current.CandidateAssetCount++
+		stats[importBatchID] = current
+	}
+
+	return stats
 }
 
 func (s *MemoryStore) SaveImportBatchItem(ctx context.Context, record asset.ImportBatchItem) error {

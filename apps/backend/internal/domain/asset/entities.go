@@ -81,3 +81,13 @@ type MediaAssetVariant struct {
 	Height       int
 	CreatedAt    time.Time
 }
+
+type ImportBatchUpdatedEventPayload struct {
+	ImportBatchID    string `json:"import_batch_id"`
+	Status           string `json:"status"`
+	Reason           string `json:"reason"`
+	CandidateAssetID string `json:"candidate_asset_id,omitempty"`
+	UploadSessionID  string `json:"upload_session_id,omitempty"`
+	OrganizationID   string `json:"organization_id"`
+	ProjectID        string `json:"project_id"`
+}
