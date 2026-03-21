@@ -135,7 +135,12 @@ func asConnectError(err error) error {
 		return connectrpc.NewError(connectrpc.CodePermissionDenied, err)
 	case strings.Contains(lower, "not found"):
 		return connectrpc.NewError(connectrpc.CodeNotFound, err)
-	case strings.Contains(lower, "required"), strings.Contains(lower, "greater than 0"), strings.Contains(lower, "budget exceeded"), strings.Contains(lower, "failed"):
+	case strings.Contains(lower, "required"),
+		strings.Contains(lower, "greater than 0"),
+		strings.Contains(lower, "budget exceeded"),
+		strings.Contains(lower, "failed"),
+		strings.Contains(lower, "cannot be retried"),
+		strings.Contains(lower, "cannot be cancelled"):
 		return connectrpc.NewError(connectrpc.CodeInvalidArgument, err)
 	default:
 		return connectrpc.NewError(connectrpc.CodeInternal, err)

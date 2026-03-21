@@ -18,6 +18,7 @@ import (
 type budgetGuard interface {
 	EvaluateBudgetGuard(projectID string, estimatedCostCents int64) error
 	EvaluateWorkflowRecoveryAllowed(run workflow.WorkflowRun) error
+	EvaluateWorkflowCancellationAllowed(run workflow.WorkflowRun) error
 }
 
 type Service struct {
@@ -134,11 +135,37 @@ func (s *Service) ListWorkflowRuns(_ context.Context, input ListWorkflowRunsInpu
 }
 
 func (s *Service) CancelWorkflowRun(ctx context.Context, input CancelWorkflowRunInput) (workflow.WorkflowRun, error) {
+	if s == nil || s.repo == nil {
+		return workflow.WorkflowRun{}, errors.New("workflowapp: repository is required")
+	}
 	record, ok := s.repo.GetWorkflowRun(strings.TrimSpace(input.WorkflowRunID))
 	if !ok {
 		return workflow.WorkflowRun{}, fmt.Errorf("workflowapp: workflow run %s not found", strings.TrimSpace(input.WorkflowRunID))
 	}
+	if s.policy != nil {
+		if err := s.policy.EvaluateWorkflowCancellationAllowed(record); err != nil {
+			return workflow.WorkflowRun{}, err
+		}
+	}
+	cancelKey := attemptStepKey(record.AttemptCount, "cancel")
+	if s.hasWorkflowStep(record.ID, cancelKey) {
+		record.Status = workflow.StatusCancelled
+		record.CurrentStep = cancelKey
+		record.LastError = ""
+		record.UpdatedAt = time.Now().UTC()
+		if err := s.repo.SaveWorkflowRun(ctx, record); err != nil {
+			return workflow.WorkflowRun{}, err
+		}
+		s.publishWorkflowUpdated(record)
+		return record, nil
+	}
+	cancelStep, err := s.createAttemptStep(ctx, record, "cancel", workflow.StatusCompleted)
+	if err != nil {
+		return workflow.WorkflowRun{}, err
+	}
 	record.Status = workflow.StatusCancelled
+	record.CurrentStep = cancelStep.StepKey
+	record.LastError = ""
 	record.UpdatedAt = time.Now().UTC()
 	if err := s.repo.SaveWorkflowRun(ctx, record); err != nil {
 		return workflow.WorkflowRun{}, err
@@ -201,6 +228,7 @@ func (s *Service) executeGateway(ctx context.Context, run workflow.WorkflowRun, 
 	})
 	if err != nil {
 		gatewayStep.Status = workflow.StatusFailed
+		gatewayStep.ErrorCode = "provider_error"
 		gatewayStep.ErrorMessage = err.Error()
 		gatewayStep.FailedAt = time.Now().UTC()
 		gatewayStep.UpdatedAt = gatewayStep.FailedAt
@@ -239,7 +267,7 @@ func (s *Service) createAttemptStep(ctx context.Context, run workflow.WorkflowRu
 		ID:            s.repo.GenerateWorkflowStepID(),
 		WorkflowRunID: run.ID,
 		StepKey:       attemptStepKey(run.AttemptCount, suffix),
-		StepOrder:     attemptStepOrder(run.AttemptCount, suffix),
+		StepOrder:     s.nextAttemptStepOrder(run, suffix),
 		Status:        status,
 		CreatedAt:     now,
 		UpdatedAt:     now,
@@ -255,6 +283,29 @@ func (s *Service) createAttemptStep(ctx context.Context, run workflow.WorkflowRu
 		return workflow.WorkflowStep{}, err
 	}
 	return step, nil
+}
+
+func (s *Service) nextAttemptStepOrder(run workflow.WorkflowRun, suffix string) int {
+	if strings.TrimSpace(suffix) != "cancel" {
+		return attemptStepOrder(run.AttemptCount, suffix)
+	}
+	steps := s.repo.ListWorkflowSteps(run.ID)
+	prefix := fmt.Sprintf("attempt_%d.", run.AttemptCount)
+	for i := len(steps) - 1; i >= 0; i-- {
+		if strings.HasPrefix(steps[i].StepKey, prefix) {
+			return steps[i].StepOrder + 1
+		}
+	}
+	return attemptStepOrder(run.AttemptCount, suffix)
+}
+
+func (s *Service) hasWorkflowStep(workflowRunID string, stepKey string) bool {
+	for _, step := range s.repo.ListWorkflowSteps(workflowRunID) {
+		if step.StepKey == stepKey {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) publishWorkflowUpdated(run workflow.WorkflowRun) {
