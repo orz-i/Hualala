@@ -14,10 +14,22 @@ describe("loadImportBatchWorkbench", () => {
     const getImportBatchWorkbenchMock = vi.fn().mockResolvedValue({
       importBatch: {
         id: "batch-1",
+        orgId: "org-1",
+        projectId: "project-1",
         status: "matched_pending_confirm",
         sourceType: "upload_session",
       },
-      uploadSessions: [{ id: "upload-session-1", status: "completed" }],
+      uploadSessions: [
+        {
+          id: "upload-session-1",
+          status: "completed",
+          fileName: "scene.png",
+          checksum: "sha256:abc",
+          sizeBytes: 1024,
+          retryCount: 2,
+          resumeHint: "upload complete for scene.png",
+        },
+      ],
       items: [{ id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" }],
       candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
       shotExecutions: [{ id: "shot-exec-1", status: "candidate_ready", primaryAssetId: "" }],
@@ -41,7 +53,16 @@ describe("loadImportBatchWorkbench", () => {
       importBatchId: "batch-1",
     });
     expect(result.importBatch.id).toBe("batch-1");
+    expect(result.importBatch.orgId).toBe("org-1");
+    expect(result.importBatch.projectId).toBe("project-1");
     expect(result.uploadSessions).toHaveLength(1);
+    expect(result.uploadSessions[0]).toMatchObject({
+      fileName: "scene.png",
+      checksum: "sha256:abc",
+      sizeBytes: 1024,
+      retryCount: 2,
+      resumeHint: "upload complete for scene.png",
+    });
     expect(result.candidateAssets).toHaveLength(1);
     expect(result.shotExecutions[0]?.status).toBe("candidate_ready");
   });

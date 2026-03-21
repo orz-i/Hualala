@@ -3,10 +3,15 @@ import { useLocaleState } from "../i18n";
 import {
   ImportBatchWorkbenchPage,
   type ImportBatchWorkbenchViewModel,
+  type SelectedUploadFileViewModel,
 } from "../features/import-batches/ImportBatchWorkbenchPage";
 import { loadImportBatchWorkbench } from "../features/import-batches/loadImportBatchWorkbench";
 import {
   confirmImportBatchItems,
+  completeUploadSessionForImportBatch,
+  createUploadSessionForImportBatch,
+  deriveUploadFileMetadata,
+  retryUploadSessionForImportBatch,
   selectPrimaryAssetForImportBatch,
 } from "../features/import-batches/mutateImportBatchWorkbench";
 import { loadShotWorkbench } from "../features/shot-workbench/loadShotWorkbench";
@@ -27,10 +32,26 @@ function waitForFeedbackPaint() {
   });
 }
 
+type SelectedUploadFileState = SelectedUploadFileViewModel & {
+  file: File;
+};
+
+function getRequestContext() {
+  const searchParams = new URLSearchParams(window.location.search);
+
+  return {
+    importBatchId: searchParams.get("importBatchId"),
+    shotId: searchParams.get("shotId") ?? "shot-demo-001",
+    orgId: searchParams.get("orgId") ?? undefined,
+    userId: searchParams.get("userId") ?? undefined,
+  };
+}
+
 export function App() {
   const { locale, setLocale, t } = useLocaleState();
   const [shotWorkbench, setShotWorkbench] = useState<ShotWorkbenchViewModel | null>(null);
   const [importWorkbench, setImportWorkbench] = useState<ImportBatchWorkbenchViewModel | null>(null);
+  const [selectedUploadFile, setSelectedUploadFile] = useState<SelectedUploadFileState | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [shotActionFeedback, setShotActionFeedback] = useState<ActionFeedbackModel | null>(null);
   const [importActionFeedback, setImportActionFeedback] = useState<ActionFeedbackModel | null>(
@@ -40,14 +61,12 @@ export function App() {
   useEffect(() => {
     let cancelled = false;
     const loadCurrentWorkbench = () => {
-      const searchParams = new URLSearchParams(window.location.search);
-      const importBatchId = searchParams.get("importBatchId");
-      const shotId = searchParams.get("shotId") ?? "shot-demo-001";
+      const { importBatchId, shotId, orgId, userId } = getRequestContext();
       return {
         importBatchId,
         load: importBatchId
-          ? loadImportBatchWorkbench({ importBatchId })
-          : loadShotWorkbench({ shotId }),
+          ? loadImportBatchWorkbench({ importBatchId, orgId, userId })
+          : loadShotWorkbench({ shotId, orgId, userId }),
       };
     };
 
@@ -66,6 +85,7 @@ export function App() {
             setShotWorkbench(nextWorkbench as ShotWorkbenchViewModel);
             setImportWorkbench(null);
           }
+          setSelectedUploadFile(null);
           setErrorMessage("");
         });
       })
@@ -79,6 +99,7 @@ export function App() {
           setErrorMessage(message);
           setShotWorkbench(null);
           setImportWorkbench(null);
+          setSelectedUploadFile(null);
         });
       });
 
@@ -88,11 +109,11 @@ export function App() {
   }, []);
 
   const refreshImportWorkbench = async () => {
-    const importBatchId = new URLSearchParams(window.location.search).get("importBatchId");
+    const { importBatchId, orgId, userId } = getRequestContext();
     if (!importBatchId) {
       return;
     }
-    const nextWorkbench = await loadImportBatchWorkbench({ importBatchId });
+    const nextWorkbench = await loadImportBatchWorkbench({ importBatchId, orgId, userId });
     startTransition(() => {
       setImportWorkbench(nextWorkbench);
       setErrorMessage("");
@@ -101,8 +122,8 @@ export function App() {
   };
 
   const refreshShotWorkbench = async () => {
-    const shotId = new URLSearchParams(window.location.search).get("shotId") ?? "shot-demo-001";
-    const nextWorkbench = await loadShotWorkbench({ shotId });
+    const { shotId, orgId, userId } = getRequestContext();
+    const nextWorkbench = await loadShotWorkbench({ shotId, orgId, userId });
     startTransition(() => {
       setShotWorkbench(nextWorkbench);
       setErrorMessage("");
@@ -121,8 +142,152 @@ export function App() {
         locale={locale}
         t={t}
         onLocaleChange={setLocale}
+        selectedUploadFile={selectedUploadFile}
         feedback={importActionFeedback ?? undefined}
+        onChooseUploadFile={async (file) => {
+          if (!file) {
+            startTransition(() => {
+              setSelectedUploadFile(null);
+              setImportActionFeedback(null);
+            });
+            return;
+          }
+
+          startTransition(() => {
+            setImportActionFeedback({
+              tone: "pending",
+              message: t("feedback.pending.readUploadFile"),
+            });
+          });
+
+          try {
+            await waitForFeedbackPaint();
+            const derived = await deriveUploadFileMetadata(file);
+            startTransition(() => {
+              setSelectedUploadFile(derived);
+              setImportActionFeedback(null);
+            });
+          } catch (error: unknown) {
+            const message =
+              error instanceof Error ? error.message : "creator: unknown upload file read error";
+            startTransition(() => {
+              setSelectedUploadFile(null);
+              setImportActionFeedback({
+                tone: "error",
+                message: t("feedback.error.readUploadFile", { message }),
+              });
+            });
+          }
+        }}
+        onRegisterSelectedUpload={async () => {
+          const { orgId, userId } = getRequestContext();
+
+          if (!importWorkbench || !selectedUploadFile) {
+            return;
+          }
+
+          startTransition(() => {
+            setImportActionFeedback({
+              tone: "pending",
+              message: t("feedback.pending.registerUpload"),
+            });
+          });
+
+          try {
+            await waitForFeedbackPaint();
+            const session = await createUploadSessionForImportBatch({
+              organizationId: importWorkbench.importBatch.orgId,
+              projectId: importWorkbench.importBatch.projectId,
+              importBatchId: importWorkbench.importBatch.id,
+              fileName: selectedUploadFile.fileName,
+              checksum: selectedUploadFile.checksum,
+              sizeBytes: selectedUploadFile.sizeBytes,
+              orgId,
+              userId,
+            });
+            await completeUploadSessionForImportBatch({
+              sessionId: session.session_id,
+              shotExecutionId: importWorkbench.shotExecutions[0]?.id ?? "",
+              mimeType: selectedUploadFile.mimeType,
+              locale,
+              width: selectedUploadFile.width,
+              height: selectedUploadFile.height,
+              orgId,
+              userId,
+            });
+            const nextWorkbench = await refreshImportWorkbench();
+            startTransition(() => {
+              setSelectedUploadFile(null);
+              setImportActionFeedback(
+                buildImportFeedback({
+                  t,
+                  tone: "success",
+                  messageKey: "feedback.success.registerUpload",
+                  latestImportBatchStatus: nextWorkbench?.importBatch.status,
+                  latestUploadSessionStatus:
+                    nextWorkbench?.uploadSessions.at(-1)?.status ?? "pending",
+                  latestShotExecutionStatus: nextWorkbench?.shotExecutions[0]?.status ?? "pending",
+                  latestPrimaryAssetId: nextWorkbench?.shotExecutions[0]?.primaryAssetId,
+                }),
+              );
+            });
+          } catch (error: unknown) {
+            const message =
+              error instanceof Error ? error.message : "creator: unknown register upload error";
+            startTransition(() => {
+              setImportActionFeedback({
+                tone: "error",
+                message: t("feedback.error.registerUpload", { message }),
+              });
+            });
+          }
+        }}
+        onRetryUploadSession={async (sessionId) => {
+          const { orgId, userId } = getRequestContext();
+
+          startTransition(() => {
+            setImportActionFeedback({
+              tone: "pending",
+              message: t("feedback.pending.retryUpload"),
+            });
+          });
+
+          try {
+            await waitForFeedbackPaint();
+            await retryUploadSessionForImportBatch({
+              sessionId,
+              orgId,
+              userId,
+            });
+            const nextWorkbench = await refreshImportWorkbench();
+            startTransition(() => {
+              setImportActionFeedback(
+                buildImportFeedback({
+                  t,
+                  tone: "success",
+                  messageKey: "feedback.success.retryUpload",
+                  latestImportBatchStatus: nextWorkbench?.importBatch.status,
+                  latestUploadSessionStatus:
+                    nextWorkbench?.uploadSessions.at(-1)?.status ?? "pending",
+                  latestShotExecutionStatus: nextWorkbench?.shotExecutions[0]?.status ?? "pending",
+                  latestPrimaryAssetId: nextWorkbench?.shotExecutions[0]?.primaryAssetId,
+                }),
+              );
+            });
+          } catch (error: unknown) {
+            const message =
+              error instanceof Error ? error.message : "creator: unknown retry upload error";
+            startTransition(() => {
+              setImportActionFeedback({
+                tone: "error",
+                message: t("feedback.error.retryUpload", { message }),
+              });
+            });
+          }
+        }}
         onConfirmMatches={async (input) => {
+          const { orgId, userId } = getRequestContext();
+
           startTransition(() => {
             setImportActionFeedback({
               tone: "pending",
@@ -131,7 +296,11 @@ export function App() {
           });
           try {
             await waitForFeedbackPaint();
-            await confirmImportBatchItems(input);
+            await confirmImportBatchItems({
+              ...input,
+              orgId,
+              userId,
+            });
             const nextWorkbench = await refreshImportWorkbench();
             startTransition(() => {
               setImportActionFeedback(
@@ -140,6 +309,8 @@ export function App() {
                   tone: "success",
                   messageKey: "feedback.success.confirmMatches",
                   latestImportBatchStatus: nextWorkbench?.importBatch.status,
+                  latestUploadSessionStatus:
+                    nextWorkbench?.uploadSessions.at(-1)?.status ?? "pending",
                   latestShotExecutionStatus: nextWorkbench?.shotExecutions[0]?.status ?? "pending",
                   latestPrimaryAssetId: nextWorkbench?.shotExecutions[0]?.primaryAssetId,
                 }),
@@ -157,6 +328,8 @@ export function App() {
           }
         }}
         onSelectPrimaryAsset={async (input) => {
+          const { orgId, userId } = getRequestContext();
+
           startTransition(() => {
             setImportActionFeedback({
               tone: "pending",
@@ -165,7 +338,11 @@ export function App() {
           });
           try {
             await waitForFeedbackPaint();
-            await selectPrimaryAssetForImportBatch(input);
+            await selectPrimaryAssetForImportBatch({
+              ...input,
+              orgId,
+              userId,
+            });
             const nextWorkbench = await refreshImportWorkbench();
             startTransition(() => {
               setImportActionFeedback(
@@ -174,6 +351,8 @@ export function App() {
                   tone: "success",
                   messageKey: "feedback.success.selectPrimary",
                   latestImportBatchStatus: nextWorkbench?.importBatch.status,
+                  latestUploadSessionStatus:
+                    nextWorkbench?.uploadSessions.at(-1)?.status ?? "pending",
                   latestShotExecutionStatus: nextWorkbench?.shotExecutions[0]?.status ?? "pending",
                   latestPrimaryAssetId: nextWorkbench?.shotExecutions[0]?.primaryAssetId,
                 }),
@@ -203,6 +382,8 @@ export function App() {
         onLocaleChange={setLocale}
         feedback={shotActionFeedback ?? undefined}
         onRunSubmissionGateChecks={async (input) => {
+          const { orgId, userId } = getRequestContext();
+
           startTransition(() => {
             setShotActionFeedback({
               tone: "pending",
@@ -211,7 +392,11 @@ export function App() {
           });
           try {
             await waitForFeedbackPaint();
-            const result = await runSubmissionGateChecks(input);
+            const result = await runSubmissionGateChecks({
+              ...input,
+              orgId,
+              userId,
+            });
             const nextWorkbench = await refreshShotWorkbench();
             startTransition(() => {
               setShotActionFeedback(
@@ -238,6 +423,8 @@ export function App() {
           }
         }}
         onSubmitShotForReview={async (input) => {
+          const { orgId, userId } = getRequestContext();
+
           startTransition(() => {
             setShotActionFeedback({
               tone: "pending",
@@ -246,7 +433,11 @@ export function App() {
           });
           try {
             await waitForFeedbackPaint();
-            await submitShotForReview(input);
+            await submitShotForReview({
+              ...input,
+              orgId,
+              userId,
+            });
             const nextWorkbench = await refreshShotWorkbench();
             startTransition(() => {
               setShotActionFeedback(

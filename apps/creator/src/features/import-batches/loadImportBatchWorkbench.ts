@@ -12,12 +12,19 @@ type LoadImportBatchWorkbenchOptions = {
 type GetImportBatchWorkbenchResponse = {
   importBatch?: {
     id?: string;
+    orgId?: string;
+    projectId?: string;
     status?: string;
     sourceType?: string;
   };
   uploadSessions?: Array<{
     id?: string;
+    fileName?: string;
+    checksum?: string;
+    sizeBytes?: number | bigint;
+    retryCount?: number;
     status?: string;
+    resumeHint?: string;
   }>;
   items?: Array<{
     id?: string;
@@ -60,12 +67,22 @@ export async function loadImportBatchWorkbench({
   return {
     importBatch: {
       id: payload.importBatch.id,
+      orgId: payload.importBatch.orgId ?? "",
+      projectId: payload.importBatch.projectId ?? "",
       status: payload.importBatch.status ?? "unknown",
       sourceType: payload.importBatch.sourceType ?? "unknown",
     },
     uploadSessions: (payload.uploadSessions ?? []).map((session) => ({
       id: session.id ?? "",
+      fileName: session.fileName ?? "",
+      checksum: session.checksum ?? "",
+      sizeBytes:
+        typeof session.sizeBytes === "bigint"
+          ? Number(session.sizeBytes)
+          : (session.sizeBytes ?? 0),
+      retryCount: session.retryCount ?? 0,
       status: session.status ?? "pending",
+      resumeHint: session.resumeHint ?? "",
     })),
     items: (payload.items ?? []).map((item) => ({
       id: item.id ?? "",

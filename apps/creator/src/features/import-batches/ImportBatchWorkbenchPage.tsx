@@ -4,13 +4,20 @@ import { ActionFeedback, type ActionFeedbackModel } from "../shared/ActionFeedba
 
 type ImportBatchSummary = {
   id: string;
+  orgId: string;
+  projectId: string;
   status: string;
   sourceType: string;
 };
 
 type UploadSessionSummary = {
   id: string;
+  fileName: string;
+  checksum: string;
+  sizeBytes: number;
+  retryCount: number;
   status: string;
+  resumeHint: string;
 };
 
 type ImportBatchItemSummary = {
@@ -38,11 +45,24 @@ export type ImportBatchWorkbenchViewModel = {
   shotExecutions: ShotExecutionSummary[];
 };
 
+export type SelectedUploadFileViewModel = {
+  fileName: string;
+  sizeBytes: number;
+  mimeType: string;
+  width: number;
+  height: number;
+  checksum: string;
+};
+
 type ImportBatchWorkbenchPageProps = {
   workbench: ImportBatchWorkbenchViewModel;
   locale: LocaleCode;
   t: CreatorTranslator;
   onLocaleChange: (locale: LocaleCode) => void;
+  selectedUploadFile?: SelectedUploadFileViewModel | null;
+  onChooseUploadFile?: (file: File | null) => void;
+  onRegisterSelectedUpload?: () => void;
+  onRetryUploadSession?: (sessionId: string) => void;
   onConfirmMatches?: (input: { importBatchId: string; itemIds: string[] }) => void;
   onSelectPrimaryAsset?: (input: {
     shotExecutionId: string;
@@ -71,6 +91,10 @@ export function ImportBatchWorkbenchPage({
   locale,
   t,
   onLocaleChange,
+  selectedUploadFile,
+  onChooseUploadFile,
+  onRegisterSelectedUpload,
+  onRetryUploadSession,
   onConfirmMatches,
   onSelectPrimaryAsset,
   feedback,
@@ -78,6 +102,10 @@ export function ImportBatchWorkbenchPage({
   const currentExecution = workbench.shotExecutions[0];
   const currentItem = workbench.items[0];
   const currentCandidate = workbench.candidateAssets[0];
+  const latestUploadSession = workbench.uploadSessions.at(-1);
+  const latestExpiredUploadSession = [...workbench.uploadSessions]
+    .reverse()
+    .find((session) => session.status === "expired");
 
   return (
     <main
@@ -166,9 +194,102 @@ export function ImportBatchWorkbenchPage({
             <p style={metricStyle}>{t("import.upload.count", { count: workbench.uploadSessions.length })}</p>
             <p style={metricStyle}>
               {t("import.upload.latestStatus", {
-                status: workbench.uploadSessions[0]?.status ?? "pending",
+                status: latestUploadSession?.status ?? "pending",
               })}
             </p>
+            {latestExpiredUploadSession?.resumeHint ? (
+              <p style={metricStyle}>
+                {t("import.upload.expiredHint", {
+                  hint: latestExpiredUploadSession.resumeHint,
+                })}
+              </p>
+            ) : null}
+            <div style={{ display: "grid", gap: "10px", marginTop: "16px" }}>
+              <label
+                htmlFor="creator-upload-file-input"
+                style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}
+              >
+                <span>{t("import.upload.fileLabel")}</span>
+                <input
+                  id="creator-upload-file-input"
+                  type="file"
+                  onChange={(event) => {
+                    onChooseUploadFile?.(event.target.files?.[0] ?? null);
+                  }}
+                />
+              </label>
+              {selectedUploadFile ? (
+                <div style={{ display: "grid", gap: "6px" }}>
+                  <p style={metricStyle}>
+                    {t("import.upload.selectedName", {
+                      fileName: selectedUploadFile.fileName,
+                    })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("import.upload.selectedSize", {
+                      sizeBytes: selectedUploadFile.sizeBytes,
+                    })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("import.upload.selectedMimeType", {
+                      mimeType: selectedUploadFile.mimeType,
+                    })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("import.upload.selectedDimensions", {
+                      width: selectedUploadFile.width,
+                      height: selectedUploadFile.height,
+                    })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("import.upload.selectedChecksum", {
+                      checksum: selectedUploadFile.checksum,
+                    })}
+                  </p>
+                </div>
+              ) : (
+                <p style={metricStyle}>{t("import.upload.selectedEmpty")}</p>
+              )}
+              <button
+                type="button"
+                style={{
+                  border: 0,
+                  borderRadius: "999px",
+                  padding: "10px 16px",
+                  background: "#7c3aed",
+                  color: "#f5f3ff",
+                  cursor: onRegisterSelectedUpload && selectedUploadFile ? "pointer" : "not-allowed",
+                  opacity: onRegisterSelectedUpload && selectedUploadFile ? 1 : 0.55,
+                }}
+                disabled={!onRegisterSelectedUpload || !selectedUploadFile}
+                onClick={() => {
+                  onRegisterSelectedUpload?.();
+                }}
+              >
+                {t("import.actions.registerUpload")}
+              </button>
+              <button
+                type="button"
+                style={{
+                  borderRadius: "999px",
+                  border: "1px solid rgba(124, 58, 237, 0.3)",
+                  padding: "10px 16px",
+                  background: "#faf5ff",
+                  color: "#6d28d9",
+                  cursor: latestExpiredUploadSession && onRetryUploadSession ? "pointer" : "not-allowed",
+                  opacity: latestExpiredUploadSession && onRetryUploadSession ? 1 : 0.55,
+                }}
+                disabled={!latestExpiredUploadSession || !onRetryUploadSession}
+                onClick={() => {
+                  if (!latestExpiredUploadSession) {
+                    return;
+                  }
+                  onRetryUploadSession?.(latestExpiredUploadSession.id);
+                }}
+              >
+                {t("import.actions.retryLatestExpiredUpload")}
+              </button>
+            </div>
           </article>
 
           <article style={panelStyle}>

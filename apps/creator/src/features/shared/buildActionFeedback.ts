@@ -21,6 +21,7 @@ type BuildImportFeedbackOptions = {
   tone: ActionFeedbackModel["tone"];
   messageKey: CreatorMessageKey;
   latestImportBatchStatus?: string;
+  latestUploadSessionStatus?: string;
   latestShotExecutionStatus?: string;
   latestPrimaryAssetId?: string;
 };
@@ -69,6 +70,7 @@ export function buildImportFeedback({
   tone,
   messageKey,
   latestImportBatchStatus,
+  latestUploadSessionStatus,
   latestShotExecutionStatus,
   latestPrimaryAssetId,
 }: BuildImportFeedbackOptions): ActionFeedbackModel {
@@ -77,6 +79,7 @@ export function buildImportFeedback({
     message: t(messageKey),
     sections: createFeedbackSections([
       { label: t("feedback.section.importBatchStatus"), items: latestImportBatchStatus },
+      { label: t("feedback.section.uploadStatus"), items: latestUploadSessionStatus },
       { label: t("feedback.section.executionStatus"), items: latestShotExecutionStatus },
       { label: t("feedback.section.primaryAsset"), items: latestPrimaryAssetId || undefined },
     ]),

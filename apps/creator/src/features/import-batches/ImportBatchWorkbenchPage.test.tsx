@@ -6,10 +6,22 @@ describe("ImportBatchWorkbenchPage", () => {
   const workbench = {
     importBatch: {
       id: "batch-1",
+      orgId: "org-1",
+      projectId: "project-1",
       status: "matched_pending_confirm",
       sourceType: "upload_session",
     },
-    uploadSessions: [{ id: "upload-session-1", status: "completed" }],
+    uploadSessions: [
+      {
+        id: "upload-session-1",
+        fileName: "scene.png",
+        checksum: "sha256:abc",
+        sizeBytes: 1024,
+        retryCount: 0,
+        status: "completed",
+        resumeHint: "",
+      },
+    ],
     items: [{ id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" }],
     candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
     shotExecutions: [{ id: "shot-exec-1", status: "candidate_ready", primaryAssetId: "" }],
@@ -100,6 +112,71 @@ describe("ImportBatchWorkbenchPage", () => {
     expect(screen.getByText("主素材选择失败：network down")).toHaveStyle({
       color: "#991b1b",
     });
+  });
+
+  it("renders upload registration controls and wires file selection plus expired retry", () => {
+    const onChooseUploadFile = vi.fn();
+    const onRegisterSelectedUpload = vi.fn();
+    const onRetryUploadSession = vi.fn();
+    const expiredWorkbench = {
+      ...workbench,
+      uploadSessions: [
+        {
+          id: "upload-session-1",
+          fileName: "scene.png",
+          checksum: "sha256:abc",
+          sizeBytes: 1024,
+          retryCount: 0,
+          status: "completed",
+          resumeHint: "",
+        },
+        {
+          id: "upload-session-2",
+          fileName: "expired.png",
+          checksum: "sha256:def",
+          sizeBytes: 2048,
+          retryCount: 1,
+          status: "expired",
+          resumeHint: "resume expired.png",
+        },
+      ],
+    };
+
+    render(
+      <ImportBatchWorkbenchPage
+        workbench={expiredWorkbench}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        {...({
+          selectedUploadFile: {
+            fileName: "scene.png",
+            sizeBytes: 1024,
+            mimeType: "image/png",
+            width: 1920,
+            height: 1080,
+            checksum: "sha256:abc",
+          },
+          onChooseUploadFile,
+          onRegisterSelectedUpload,
+          onRetryUploadSession,
+        } as any)}
+      />,
+    );
+
+    const fileInput = screen.getByLabelText("选择本地文件");
+    const file = new File(["demo"], "scene.png", { type: "image/png" });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    expect(onChooseUploadFile).toHaveBeenCalledWith(file);
+    expect(screen.getByText("文件名：scene.png")).toBeInTheDocument();
+    expect(screen.getByText("尺寸：1920×1080")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "登记上传文件" }));
+    expect(onRegisterSelectedUpload).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "重试最近过期会话" }));
+    expect(onRetryUploadSession).toHaveBeenCalledWith("upload-session-2");
   });
 
   it("switches locale and renders english import labels", () => {
