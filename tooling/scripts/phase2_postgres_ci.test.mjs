@@ -28,3 +28,21 @@ test("repo exposes postgres developer scripts", () => {
   assert.match(compose, /image:\s*postgres:16/);
   assert.match(dockerComposeScript, /\["compose", "-f", "infra\/docker\/postgres\.compose\.yml"/);
 });
+
+test("repo exposes one-command real dev scripts and dedicated runbook", () => {
+  const packageJson = readFileSync(join(repoRoot, "package.json"), "utf8");
+  const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
+  const runbook = readFileSync(join(repoRoot, "docs", "runbooks", "local-real-dev.md"), "utf8");
+  const devRealScript = readFileSync(join(repoRoot, "tooling", "scripts", "run-dev-real.mjs"), "utf8");
+
+  assert.match(packageJson, /"dev:real":\s*"node tooling\/scripts\/run-dev-real\.mjs"/);
+  assert.match(packageJson, /"dev:real:seed":\s*"corepack pnpm run demo:seed:backend"/);
+  assert.match(devRealScript, /127\.0\.0\.1:8080/);
+  assert.match(devRealScript, /127\.0\.0\.1:4173/);
+  assert.match(devRealScript, /127\.0\.0\.1:4174/);
+  assert.match(devRealScript, /tooling\/scripts\/run-backend-dev\.mjs/);
+  assert.match(readme, /docs\/runbooks\/local-real-dev\.md/);
+  assert.match(runbook, /corepack pnpm run dev:real/);
+  assert.match(runbook, /corepack pnpm run dev:real:seed/);
+  assert.match(runbook, /http:\/\/127\.0\.0\.1:8080\/healthz/);
+});

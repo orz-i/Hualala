@@ -5,7 +5,7 @@
 这份 runbook 现在区分两种模式：
 
 - mock 演示模式：只起前端 Vite dev server，浏览器层拦截 Connect 请求
-- 真实联调模式：起 `apps/backend` 内存态服务，再通过 `apps/admin` / `apps/creator` 的 Vite proxy 联到真实 backend
+- 真实联调模式：通过本地 Postgres + backend + admin/creator 的真实链路联调
 
 当前 Phase 1 仍然没有真实登录流程，因此两种模式都不使用账号体系；mock 模式用固定 demo IDs，真实联调模式使用 seed 命令输出的实际 IDs。
 
@@ -41,14 +41,14 @@
 
 ### 启动顺序
 
-1. `corepack pnpm install`
-2. 单独启动 backend：
-   - `node tooling/scripts/run-backend-dev.mjs`
-3. 单独生成真实联调数据：
-   - `corepack pnpm run demo:seed:backend`
-4. 单独启动前端：
-   - `corepack pnpm --filter @hualala/admin exec vite --host 127.0.0.1 --port 4173 --strictPort`
-   - `corepack pnpm --filter @hualala/creator exec vite --host 127.0.0.1 --port 4174 --strictPort`
+真实联调的启动、停机、排障和 demo 数据入口已经独立收口到：
+
+- `docs/runbooks/local-real-dev.md`
+
+最短路径：
+
+1. `corepack pnpm run dev:real`
+2. 另开终端执行 `corepack pnpm run dev:real:seed`
 
 ### 演示账号
 
