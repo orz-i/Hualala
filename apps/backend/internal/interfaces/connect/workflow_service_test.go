@@ -26,8 +26,10 @@ func TestWorkflowRoutes(t *testing.T) {
 	client := workflowv1connect.NewWorkflowServiceClient(server.Client(), server.URL)
 
 	started, err := client.StartWorkflow(ctx, connectrpc.NewRequest(&workflowv1.StartWorkflowRequest{
-		WorkflowType: "asset.import",
-		ResourceId:   "batch-1",
+		OrganizationId: "org-1",
+		ProjectId:      "project-1",
+		WorkflowType:   "asset.import",
+		ResourceId:     "batch-1",
 	}))
 	if err != nil {
 		t.Fatalf("StartWorkflow returned error: %v", err)
@@ -38,6 +40,12 @@ func TestWorkflowRoutes(t *testing.T) {
 	}
 	if got := started.Msg.GetWorkflowRun().GetStatus(); got != "running" {
 		t.Fatalf("expected running workflow status, got %q", got)
+	}
+	if got := started.Msg.GetWorkflowRun().GetResourceId(); got != "batch-1" {
+		t.Fatalf("expected resource_id %q, got %q", "batch-1", got)
+	}
+	if got := started.Msg.GetWorkflowRun().GetProjectId(); got != "project-1" {
+		t.Fatalf("expected project_id %q, got %q", "project-1", got)
 	}
 
 	fetched, err := client.GetWorkflowRun(ctx, connectrpc.NewRequest(&workflowv1.GetWorkflowRunRequest{
@@ -50,7 +58,9 @@ func TestWorkflowRoutes(t *testing.T) {
 		t.Fatalf("expected workflow run %q, got %q", runID, got)
 	}
 
-	listed, err := client.ListWorkflowRuns(ctx, connectrpc.NewRequest(&workflowv1.ListWorkflowRunsRequest{}))
+	listed, err := client.ListWorkflowRuns(ctx, connectrpc.NewRequest(&workflowv1.ListWorkflowRunsRequest{
+		ProjectId: "project-1",
+	}))
 	if err != nil {
 		t.Fatalf("ListWorkflowRuns returned error: %v", err)
 	}
@@ -71,6 +81,8 @@ func TestWorkflowRoutes(t *testing.T) {
 	secondRunID := store.NextWorkflowRunID()
 	store.WorkflowRuns[secondRunID] = workflow.WorkflowRun{
 		ID:             secondRunID,
+		OrgID:          "org-1",
+		ProjectID:      "project-1",
 		WorkflowType:   "asset.import",
 		ResourceID:     "batch-2",
 		Status:         "failed",
@@ -91,5 +103,8 @@ func TestWorkflowRoutes(t *testing.T) {
 	}
 	if got := retried.Msg.GetWorkflowRun().GetStatus(); got != "running" {
 		t.Fatalf("expected running workflow status after retry, got %q", got)
+	}
+	if got := retried.Msg.GetWorkflowRun().GetResourceId(); got != "batch-2" {
+		t.Fatalf("expected retried resource_id %q, got %q", "batch-2", got)
 	}
 }

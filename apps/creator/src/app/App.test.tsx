@@ -10,15 +10,23 @@ import {
   selectPrimaryAssetForImportBatch,
 } from "../features/import-batches/mutateImportBatchWorkbench";
 import { loadShotWorkbench } from "../features/shot-workbench/loadShotWorkbench";
+import { loadShotWorkflowPanel } from "../features/shot-workbench/loadShotWorkflowPanel";
 import {
   runSubmissionGateChecks,
   submitShotForReview,
 } from "../features/shot-workbench/mutateShotWorkbench";
+import {
+  retryShotWorkflowRun,
+  startShotWorkflow,
+} from "../features/shot-workbench/mutateShotWorkflow";
 import { subscribeWorkbenchEvents } from "../features/subscribeWorkbenchEvents";
 import { App } from "./App";
 
 vi.mock("../features/shot-workbench/loadShotWorkbench", () => ({
   loadShotWorkbench: vi.fn(),
+}));
+vi.mock("../features/shot-workbench/loadShotWorkflowPanel", () => ({
+  loadShotWorkflowPanel: vi.fn(),
 }));
 vi.mock("../features/import-batches/loadImportBatchWorkbench", () => ({
   loadImportBatchWorkbench: vi.fn(),
@@ -35,11 +43,16 @@ vi.mock("../features/shot-workbench/mutateShotWorkbench", () => ({
   runSubmissionGateChecks: vi.fn(),
   submitShotForReview: vi.fn(),
 }));
+vi.mock("../features/shot-workbench/mutateShotWorkflow", () => ({
+  startShotWorkflow: vi.fn(),
+  retryShotWorkflowRun: vi.fn(),
+}));
 vi.mock("../features/subscribeWorkbenchEvents", () => ({
   subscribeWorkbenchEvents: vi.fn(),
 }));
 
 const loadShotWorkbenchMock = vi.mocked(loadShotWorkbench);
+const loadShotWorkflowPanelMock = vi.mocked(loadShotWorkflowPanel);
 const loadImportBatchWorkbenchMock = vi.mocked(loadImportBatchWorkbench);
 const confirmImportBatchItemsMock = vi.mocked(confirmImportBatchItems);
 const completeUploadSessionForImportBatchMock = vi.mocked(completeUploadSessionForImportBatch);
@@ -49,6 +62,8 @@ const retryUploadSessionForImportBatchMock = vi.mocked(retryUploadSessionForImpo
 const selectPrimaryAssetForImportBatchMock = vi.mocked(selectPrimaryAssetForImportBatch);
 const runSubmissionGateChecksMock = vi.mocked(runSubmissionGateChecks);
 const submitShotForReviewMock = vi.mocked(submitShotForReview);
+const startShotWorkflowMock = vi.mocked(startShotWorkflow);
+const retryShotWorkflowRunMock = vi.mocked(retryShotWorkflowRun);
 const subscribeWorkbenchEventsMock = vi.mocked(subscribeWorkbenchEvents);
 
 let latestWorkbenchSubscription:
@@ -115,6 +130,18 @@ function createShotWorkbench(shotId: string, status = "candidate_ready", conclus
   };
 }
 
+function createShotWorkflowPanel(status = "running", id = "workflow-run-1") {
+  return {
+    latestWorkflowRun: {
+      id,
+      workflowType: "shot_pipeline",
+      status,
+      resourceId: "shot-exec-shot-live-1",
+      projectId: "project-1",
+    },
+  };
+}
+
 describe("App", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -150,6 +177,9 @@ describe("App", () => {
       latestWorkbenchSubscriptionCleanup = vi.fn();
       return latestWorkbenchSubscriptionCleanup;
     });
+    loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
+    startShotWorkflowMock.mockResolvedValue(undefined);
+    retryShotWorkflowRunMock.mockResolvedValue(undefined);
   });
 
   it("prefers importBatchId from search params, loads the import workbench, and renders the live data", async () => {
@@ -417,12 +447,15 @@ describe("App", () => {
   it("reads shotId from search params, loads the workbench, and renders the live data", async () => {
     window.history.pushState({}, "", "/?shotId=shot-live-1");
     loadShotWorkbenchMock.mockResolvedValueOnce(createShotWorkbench("shot-live-1"));
+    loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("running"));
     loadShotWorkbenchMock.mockResolvedValueOnce(
       createShotWorkbench("shot-live-1", "candidate_ready", "passed"),
     );
+    loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("running"));
     loadShotWorkbenchMock.mockResolvedValueOnce(
       createShotWorkbench("shot-live-1", "submitted_for_review", "approved"),
     );
+    loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("running"));
     runSubmissionGateChecksMock.mockResolvedValue({
       passedChecks: ["asset_selected", "review_ready"],
       failedChecks: ["copyright_missing"],
@@ -440,8 +473,15 @@ describe("App", () => {
         }),
       );
     });
+    expect(loadShotWorkflowPanelMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotExecutionId: "shot-exec-shot-live-1",
+        projectId: "project-1",
+      }),
+    );
 
     expect(await screen.findByText("shot-exec-shot-live-1")).toBeInTheDocument();
+    expect(screen.getByText(/workflow-run-1/)).toBeInTheDocument();
     expect(screen.getAllByText("pending").length).toBeGreaterThanOrEqual(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Gate 检查" }));
@@ -479,6 +519,7 @@ describe("App", () => {
   it("subscribes to shot workbench SSE after the first successful load", async () => {
     window.history.pushState({}, "", "/?shotId=shot-live-subscribe");
     loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-live-subscribe"));
+    loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
 
     render(<App />);
 
@@ -497,6 +538,7 @@ describe("App", () => {
   it("keeps the current shot workbench visible and surfaces an action error when gate checks fail", async () => {
     window.history.pushState({}, "", "/?shotId=shot-live-2");
     loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-live-2"));
+    loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
     runSubmissionGateChecksMock.mockRejectedValue(new Error("network down"));
 
     render(<App />);
@@ -515,6 +557,9 @@ describe("App", () => {
     loadShotWorkbenchMock
       .mockResolvedValueOnce(createShotWorkbench("shot-sse-1", "candidate_ready", "pending"))
       .mockResolvedValueOnce(createShotWorkbench("shot-sse-1", "submitted_for_review", "approved"));
+    loadShotWorkflowPanelMock
+      .mockResolvedValueOnce(createShotWorkflowPanel("running", "workflow-run-1"))
+      .mockResolvedValueOnce(createShotWorkflowPanel("failed", "workflow-run-2"));
 
     render(<App />);
 
@@ -526,9 +571,11 @@ describe("App", () => {
     });
 
     expect(await screen.findByText(/submitted_for_review/)).toBeInTheDocument();
+    expect(screen.getByText(/workflow-run-2/)).toBeInTheDocument();
     expect(screen.queryByText("正在执行 Gate 检查")).not.toBeInTheDocument();
     expect(screen.queryByText("Gate 检查失败")).not.toBeInTheDocument();
     expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(2);
+    expect(loadShotWorkflowPanelMock).toHaveBeenCalledTimes(2);
   });
 
   it("silently refreshes the import workbench without clearing the selected file", async () => {
@@ -576,18 +623,29 @@ describe("App", () => {
   it("queues only one additional shot refresh while a silent refresh is already in flight", async () => {
     window.history.pushState({}, "", "/?shotId=shot-sse-queued");
     let resolveFirstRefresh: ((value: ReturnType<typeof createShotWorkbench>) => void) | undefined;
+    let resolveFirstWorkflowRefresh:
+      | ((value: ReturnType<typeof createShotWorkflowPanel>) => void)
+      | undefined;
     loadShotWorkbenchMock.mockResolvedValueOnce(
       createShotWorkbench("shot-sse-queued", "candidate_ready", "pending"),
     );
+    loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("running"));
     loadShotWorkbenchMock.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           resolveFirstRefresh = resolve as typeof resolveFirstRefresh;
         }) as never,
     );
+    loadShotWorkflowPanelMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFirstWorkflowRefresh = resolve as typeof resolveFirstWorkflowRefresh;
+        }) as never,
+    );
     loadShotWorkbenchMock.mockResolvedValueOnce(
       createShotWorkbench("shot-sse-queued", "submitted_for_review", "approved"),
     );
+    loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("failed", "workflow-run-2"));
 
     render(<App />);
 
@@ -609,6 +667,15 @@ describe("App", () => {
     });
 
     await waitFor(() => {
+      expect(loadShotWorkflowPanelMock).toHaveBeenCalledTimes(2);
+    });
+
+    await act(async () => {
+      resolveFirstWorkflowRefresh?.(createShotWorkflowPanel("running"));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
       expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(3);
     });
   });
@@ -616,9 +683,11 @@ describe("App", () => {
   it("switches locale, persists it, and renders english shot feedback", async () => {
     window.history.pushState({}, "", "/?shotId=shot-live-4");
     loadShotWorkbenchMock.mockResolvedValueOnce(createShotWorkbench("shot-live-4"));
+    loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("running"));
     loadShotWorkbenchMock.mockResolvedValueOnce(
       createShotWorkbench("shot-live-4", "candidate_ready", "passed"),
     );
+    loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("running"));
     runSubmissionGateChecksMock.mockResolvedValue({
       passedChecks: ["asset_selected"],
       failedChecks: ["copyright_missing"],
@@ -639,5 +708,61 @@ describe("App", () => {
 
     expect(await screen.findByText("Gate checks completed")).toBeInTheDocument();
     expect(screen.getByText("Passed checks")).toBeInTheDocument();
+  });
+
+  it("starts a shot workflow, refreshes the panel, and shows workflow feedback", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-workflow-start");
+    loadShotWorkbenchMock
+      .mockResolvedValueOnce(createShotWorkbench("shot-live-1"))
+      .mockResolvedValueOnce(createShotWorkbench("shot-live-1"));
+    loadShotWorkflowPanelMock
+      .mockResolvedValueOnce({ latestWorkflowRun: undefined })
+      .mockResolvedValueOnce(createShotWorkflowPanel("running", "workflow-run-2"));
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-shot-live-1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "发起工作流" }));
+
+    await waitFor(() => {
+      expect(startShotWorkflowMock).toHaveBeenCalledWith({
+        orgId: "org-1",
+        projectId: "project-1",
+        shotExecutionId: "shot-exec-shot-live-1",
+        workflowType: "shot_pipeline",
+        userId: undefined,
+      });
+    });
+
+    expect(await screen.findByText("工作流已发起")).toBeInTheDocument();
+    expect(screen.getByText(/workflow-run-2/)).toBeInTheDocument();
+  });
+
+  it("retries a failed workflow run and refreshes the panel", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-workflow-retry");
+    loadShotWorkbenchMock
+      .mockResolvedValueOnce(createShotWorkbench("shot-live-1"))
+      .mockResolvedValueOnce(createShotWorkbench("shot-live-1"));
+    loadShotWorkflowPanelMock
+      .mockResolvedValueOnce(createShotWorkflowPanel("failed", "workflow-run-failed"))
+      .mockResolvedValueOnce(createShotWorkflowPanel("running", "workflow-run-failed"));
+
+    render(<App />);
+
+    expect(await screen.findByText(/workflow-run-failed/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "重试工作流" }));
+
+    await waitFor(() => {
+      expect(retryShotWorkflowRunMock).toHaveBeenCalledWith({
+        workflowRunId: "workflow-run-failed",
+        orgId: undefined,
+        userId: undefined,
+      });
+    });
+
+    expect(await screen.findByText("工作流已重试")).toBeInTheDocument();
+    expect(screen.getByText(/当前状态：running/)).toBeInTheDocument();
   });
 });

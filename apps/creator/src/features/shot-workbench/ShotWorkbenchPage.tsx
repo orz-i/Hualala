@@ -16,6 +16,14 @@ type EvaluationRunSummary = {
   status: string;
 };
 
+type WorkflowRunSummary = {
+  id: string;
+  workflowType: string;
+  status: string;
+  resourceId: string;
+  projectId: string;
+};
+
 type ShotExecutionSummary = {
   id: string;
   shotId: string;
@@ -32,13 +40,24 @@ export type ShotWorkbenchViewModel = {
   latestEvaluationRun?: EvaluationRunSummary;
 };
 
-type ShotWorkbenchPageProps = {
+export type ShotWorkflowPanelViewModel = {
+  latestWorkflowRun?: WorkflowRunSummary;
+};
+
+export type ShotWorkbenchPageProps = {
   workbench: ShotWorkbenchViewModel;
+  workflowPanel?: ShotWorkflowPanelViewModel;
   locale: LocaleCode;
   t: CreatorTranslator;
   onLocaleChange: (locale: LocaleCode) => void;
   onRunSubmissionGateChecks?: (input: { shotExecutionId: string }) => void;
   onSubmitShotForReview?: (input: { shotExecutionId: string }) => void;
+  onStartWorkflow?: (input: {
+    shotExecutionId: string;
+    projectId: string;
+    orgId: string;
+  }) => void;
+  onRetryWorkflowRun?: (input: { workflowRunId: string }) => void;
   feedback?: ActionFeedbackModel;
 };
 
@@ -59,14 +78,20 @@ const metricStyle: CSSProperties = {
 
 export function ShotWorkbenchPage({
   workbench,
+  workflowPanel,
   locale,
   t,
   onLocaleChange,
   onRunSubmissionGateChecks,
   onSubmitShotForReview,
+  onStartWorkflow,
+  onRetryWorkflowRun,
   feedback,
 }: ShotWorkbenchPageProps) {
   const latestEvaluationStatus = workbench.latestEvaluationRun?.status ?? "pending";
+  const latestWorkflowRun = workflowPanel?.latestWorkflowRun;
+  const isWorkflowRunning = latestWorkflowRun?.status === "running";
+  const isWorkflowRetryable = latestWorkflowRun?.status === "failed";
 
   return (
     <main
@@ -198,6 +223,66 @@ export function ShotWorkbenchPage({
                 {t("shot.actions.submitReview")}
               </button>
             </div>
+          </article>
+
+          <article style={panelStyle}>
+            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("shot.workflow.title")}</h2>
+            {latestWorkflowRun ? (
+              <>
+                <p style={metricStyle}>{t("shot.workflow.id", { id: latestWorkflowRun.id })}</p>
+                <p style={metricStyle}>
+                  {t("shot.workflow.type", { workflowType: latestWorkflowRun.workflowType })}
+                </p>
+                <p style={metricStyle}>{t("shot.workflow.status", { status: latestWorkflowRun.status })}</p>
+              </>
+            ) : (
+              <p style={metricStyle}>{t("shot.workflow.empty")}</p>
+            )}
+            <div style={{ display: "flex", gap: "12px", marginTop: "16px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                style={{
+                  border: 0,
+                  borderRadius: "999px",
+                  padding: "10px 16px",
+                  background: "#1d4ed8",
+                  color: "#eff6ff",
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  onStartWorkflow?.({
+                    shotExecutionId: workbench.shotExecution.id,
+                    projectId: workbench.shotExecution.projectId,
+                    orgId: workbench.shotExecution.orgId,
+                  });
+                }}
+              >
+                {t("shot.actions.startWorkflow")}
+              </button>
+              {isWorkflowRetryable && latestWorkflowRun ? (
+                <button
+                  type="button"
+                  style={{
+                    border: 0,
+                    borderRadius: "999px",
+                    padding: "10px 16px",
+                    background: "#7c2d12",
+                    color: "#fff7ed",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => {
+                    onRetryWorkflowRun?.({
+                      workflowRunId: latestWorkflowRun.id,
+                    });
+                  }}
+                >
+                  {t("shot.actions.retryWorkflow")}
+                </button>
+              ) : null}
+            </div>
+            {isWorkflowRunning ? (
+              <p style={{ ...metricStyle, marginTop: "12px" }}>{t("shot.workflow.running")}</p>
+            ) : null}
           </article>
         </section>
 

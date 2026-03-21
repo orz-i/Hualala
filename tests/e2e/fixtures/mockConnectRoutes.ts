@@ -55,6 +55,8 @@ type CreatorShotState = {
     shotExecution: {
       id: string;
       shotId: string;
+      orgId?: string;
+      projectId?: string;
       status: string;
       primaryAssetId: string;
     };
@@ -236,9 +238,28 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
   let creatorShotState = clone(
     phase1DemoScenarios.creatorShot[scenario.creatorShot ?? "success"],
   );
+  let creatorShotWorkflowRuns: Array<{
+    id: string;
+    workflowType: string;
+    status: string;
+    resourceId: string;
+    projectId: string;
+  }> = [];
   let creatorImportState = clone(
     phase1DemoScenarios.creatorImport[scenario.creatorImport ?? "success"],
   );
+
+  await page.route(/\/sse\/events(?:\?.*)?$/, async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      headers: {
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+      body: ": keep-alive\n\n",
+    });
+  });
 
   await page.route(/\/hualala\..+/, async (route: Route) => {
     const url = new URL(route.request().url());
@@ -369,6 +390,65 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     }
 
     if (scenario.creatorShot) {
+      if (pathname === "/hualala.workflow.v1.WorkflowService/ListWorkflowRuns") {
+        await route.fulfill(
+          jsonResponse(200, {
+            workflowRuns: clone(creatorShotWorkflowRuns),
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.workflow.v1.WorkflowService/StartWorkflow") {
+        const body = route.request().postDataJSON() as {
+          workflowType?: string;
+          resourceId?: string;
+          projectId?: string;
+        };
+        const workflowRun = {
+          id: `workflow-run-${creatorShotWorkflowRuns.length + 1}`,
+          workflowType: body.workflowType ?? "shot_pipeline",
+          status: "running",
+          resourceId: body.resourceId ?? creatorShotState.workbench.shotExecution.id,
+          projectId:
+            body.projectId ??
+            creatorShotState.workbench.shotExecution.projectId ??
+            "project-live-1",
+        };
+        creatorShotWorkflowRuns = [workflowRun, ...clone(creatorShotWorkflowRuns)];
+        await route.fulfill(
+          jsonResponse(200, {
+            workflowRun,
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.workflow.v1.WorkflowService/RetryWorkflowRun") {
+        const body = route.request().postDataJSON() as { workflowRunId?: string };
+        const current = creatorShotWorkflowRuns.find((run) => run.id === body.workflowRunId);
+        const workflowRun = {
+          id: current?.id ?? body.workflowRunId ?? "workflow-run-retry",
+          workflowType: current?.workflowType ?? "shot_pipeline",
+          status: "running",
+          resourceId: current?.resourceId ?? creatorShotState.workbench.shotExecution.id,
+          projectId:
+            current?.projectId ??
+            creatorShotState.workbench.shotExecution.projectId ??
+            "project-live-1",
+        };
+        creatorShotWorkflowRuns = [
+          workflowRun,
+          ...creatorShotWorkflowRuns.filter((run) => run.id !== workflowRun.id),
+        ];
+        await route.fulfill(
+          jsonResponse(200, {
+            workflowRun,
+          }),
+        );
+        return;
+      }
+
       if (pathname === "/hualala.execution.v1.ExecutionService/GetShotWorkbench") {
         await route.fulfill(jsonResponse(200, creatorShotState));
         return;

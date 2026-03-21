@@ -20,6 +20,7 @@ const shotWorkbenchEvents = new Set([
   "shot.execution.updated",
   "shot.evaluation.created",
   "shot.review.created",
+  "workflow.updated",
 ]);
 
 const importWorkbenchEvents = new Set([
