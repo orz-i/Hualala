@@ -3,6 +3,10 @@ import { CREATOR_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { loadImportBatchWorkbench } from "../features/import-batches/loadImportBatchWorkbench";
 import {
   confirmImportBatchItems,
+  completeUploadSessionForImportBatch,
+  createUploadSessionForImportBatch,
+  deriveUploadFileMetadata,
+  retryUploadSessionForImportBatch,
   selectPrimaryAssetForImportBatch,
 } from "../features/import-batches/mutateImportBatchWorkbench";
 import { loadShotWorkbench } from "../features/shot-workbench/loadShotWorkbench";
@@ -20,6 +24,10 @@ vi.mock("../features/import-batches/loadImportBatchWorkbench", () => ({
 }));
 vi.mock("../features/import-batches/mutateImportBatchWorkbench", () => ({
   confirmImportBatchItems: vi.fn(),
+  completeUploadSessionForImportBatch: vi.fn(),
+  createUploadSessionForImportBatch: vi.fn(),
+  deriveUploadFileMetadata: vi.fn(),
+  retryUploadSessionForImportBatch: vi.fn(),
   selectPrimaryAssetForImportBatch: vi.fn(),
 }));
 vi.mock("../features/shot-workbench/mutateShotWorkbench", () => ({
@@ -30,6 +38,10 @@ vi.mock("../features/shot-workbench/mutateShotWorkbench", () => ({
 const loadShotWorkbenchMock = vi.mocked(loadShotWorkbench);
 const loadImportBatchWorkbenchMock = vi.mocked(loadImportBatchWorkbench);
 const confirmImportBatchItemsMock = vi.mocked(confirmImportBatchItems);
+const completeUploadSessionForImportBatchMock = vi.mocked(completeUploadSessionForImportBatch);
+const createUploadSessionForImportBatchMock = vi.mocked(createUploadSessionForImportBatch);
+const deriveUploadFileMetadataMock = vi.mocked(deriveUploadFileMetadata);
+const retryUploadSessionForImportBatchMock = vi.mocked(retryUploadSessionForImportBatch);
 const selectPrimaryAssetForImportBatchMock = vi.mocked(selectPrimaryAssetForImportBatch);
 const runSubmissionGateChecksMock = vi.mocked(runSubmissionGateChecks);
 const submitShotForReviewMock = vi.mocked(submitShotForReview);
@@ -38,10 +50,22 @@ function createImportWorkbench(batchId: string, status = "matched_pending_confir
   return {
     importBatch: {
       id: batchId,
+      orgId: "org-1",
+      projectId: "project-1",
       status,
       sourceType: "upload_session",
     },
-    uploadSessions: [{ id: `upload-session-${batchId}`, status: "completed" }],
+    uploadSessions: [
+      {
+        id: `upload-session-${batchId}`,
+        status: "completed",
+        fileName: `${batchId}.png`,
+        checksum: "sha256:seed",
+        sizeBytes: 1024,
+        retryCount: 0,
+        resumeHint: `upload complete for ${batchId}.png`,
+      },
+    ],
     items: [{ id: `item-${batchId}`, status, assetId: `asset-${batchId}` }],
     candidateAssets: [{ id: `candidate-${batchId}`, assetId: `asset-${batchId}` }],
     shotExecutions: [
@@ -78,6 +102,29 @@ describe("App", () => {
     vi.resetAllMocks();
     window.localStorage.clear();
     window.localStorage.setItem(CREATOR_UI_LOCALE_STORAGE_KEY, "zh-CN");
+    deriveUploadFileMetadataMock.mockResolvedValue({
+      fileName: "scene.png",
+      sizeBytes: 1024,
+      mimeType: "image/png",
+      width: 1920,
+      height: 1080,
+      checksum: "sha256:abc",
+      file: new File(["demo"], "scene.png", { type: "image/png" }),
+    } as never);
+    createUploadSessionForImportBatchMock.mockResolvedValue({
+      session_id: "upload-session-created",
+      status: "pending",
+    } as never);
+    completeUploadSessionForImportBatchMock.mockResolvedValue({
+      session_id: "upload-session-created",
+      status: "uploaded",
+      asset_id: "asset-new",
+    } as never);
+    retryUploadSessionForImportBatchMock.mockResolvedValue({
+      session_id: "upload-session-created",
+      status: "pending",
+      retry_count: 1,
+    } as never);
   });
 
   it("prefers importBatchId from search params, loads the import workbench, and renders the live data", async () => {
@@ -162,6 +209,166 @@ describe("App", () => {
     expect(await screen.findByText("主素材选择失败：network down")).toBeInTheDocument();
     expect(screen.getByText("batch-live-3")).toBeInTheDocument();
     expect(loadImportBatchWorkbenchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the upload registration actions for the import workbench", async () => {
+    window.history.pushState({}, "", "/?importBatchId=batch-live-4");
+    loadImportBatchWorkbenchMock.mockResolvedValue(createImportWorkbench("batch-live-4"));
+
+    render(<App />);
+
+    expect(await screen.findByText("batch-live-4")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "登记上传文件" })).toBeInTheDocument();
+    expect(screen.getByLabelText("选择本地文件")).toBeInTheDocument();
+  });
+
+  it("registers the selected upload file and refreshes the import workbench", async () => {
+    window.history.pushState({}, "", "/?importBatchId=batch-live-5");
+    loadImportBatchWorkbenchMock
+      .mockResolvedValueOnce(createImportWorkbench("batch-live-5"))
+      .mockResolvedValueOnce({
+        ...createImportWorkbench("batch-live-5", "confirmed"),
+        uploadSessions: [
+          {
+            id: "upload-session-created",
+            status: "uploaded",
+            fileName: "scene.png",
+            checksum: "sha256:abc",
+            sizeBytes: 1024,
+            retryCount: 0,
+            resumeHint: "upload complete for scene.png",
+          },
+        ],
+      });
+
+    render(<App />);
+
+    expect(await screen.findByText("batch-live-5")).toBeInTheDocument();
+
+    const file = new File(["demo"], "scene.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("选择本地文件"), {
+      target: { files: [file] },
+    });
+
+    await waitFor(() => {
+      expect(deriveUploadFileMetadataMock).toHaveBeenCalledWith(file);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "登记上传文件" }));
+
+    await waitFor(() => {
+      expect(createUploadSessionForImportBatchMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "org-1",
+          projectId: "project-1",
+          importBatchId: "batch-live-5",
+          fileName: "scene.png",
+          checksum: "sha256:abc",
+          sizeBytes: 1024,
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(completeUploadSessionForImportBatchMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: "upload-session-created",
+          shotExecutionId: "shot-exec-batch-live-5",
+          mimeType: "image/png",
+          locale: "zh-CN",
+          width: 1920,
+          height: 1080,
+        }),
+      );
+    });
+
+    expect(await screen.findByText("上传登记已完成")).toBeInTheDocument();
+    expect(screen.getByText("当前上传状态：uploaded")).toBeInTheDocument();
+    expect(loadImportBatchWorkbenchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("surfaces an upload registration error and keeps the current import workbench", async () => {
+    window.history.pushState({}, "", "/?importBatchId=batch-live-6");
+    loadImportBatchWorkbenchMock.mockResolvedValue(createImportWorkbench("batch-live-6"));
+    createUploadSessionForImportBatchMock.mockRejectedValue(new Error("network down"));
+
+    render(<App />);
+
+    expect(await screen.findByText("batch-live-6")).toBeInTheDocument();
+
+    const file = new File(["demo"], "scene.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("选择本地文件"), {
+      target: { files: [file] },
+    });
+
+    await waitFor(() => {
+      expect(deriveUploadFileMetadataMock).toHaveBeenCalledWith(file);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "登记上传文件" }));
+
+    expect(await screen.findByText("上传登记失败：network down")).toBeInTheDocument();
+    expect(screen.getByText("batch-live-6")).toBeInTheDocument();
+    expect(loadImportBatchWorkbenchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries the latest expired upload session and refreshes the import workbench", async () => {
+    window.history.pushState({}, "", "/?importBatchId=batch-live-7");
+    loadImportBatchWorkbenchMock
+      .mockResolvedValueOnce({
+        ...createImportWorkbench("batch-live-7"),
+        uploadSessions: [
+          {
+            id: "upload-session-old",
+            status: "completed",
+            fileName: "old.png",
+            checksum: "sha256:old",
+            sizeBytes: 100,
+            retryCount: 0,
+            resumeHint: "",
+          },
+          {
+            id: "upload-session-expired",
+            status: "expired",
+            fileName: "expired.png",
+            checksum: "sha256:expired",
+            sizeBytes: 512,
+            retryCount: 0,
+            resumeHint: "resume expired.png",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ...createImportWorkbench("batch-live-7", "confirmed"),
+        uploadSessions: [
+          {
+            id: "upload-session-expired",
+            status: "pending",
+            fileName: "expired.png",
+            checksum: "sha256:expired",
+            sizeBytes: 512,
+            retryCount: 1,
+            resumeHint: "resume expired.png",
+          },
+        ],
+      });
+
+    render(<App />);
+
+    expect(await screen.findByText("batch-live-7")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "重试最近过期会话" }));
+
+    await waitFor(() => {
+      expect(retryUploadSessionForImportBatchMock).toHaveBeenCalledWith({
+        sessionId: "upload-session-expired",
+        orgId: undefined,
+        userId: undefined,
+      });
+    });
+
+    expect(await screen.findByText("上传会话重试已完成")).toBeInTheDocument();
+    expect(screen.getByText("当前上传状态：pending")).toBeInTheDocument();
+    expect(loadImportBatchWorkbenchMock).toHaveBeenCalledTimes(2);
   });
 
   it("reads shotId from search params, loads the workbench, and renders the live data", async () => {

@@ -1,5 +1,6 @@
 import { withIdentityHeaders, type DevIdentity } from "./identity";
 import { createSSEClient } from "../sse/client";
+import { createUploadClient } from "../upload/client";
 
 export type HualalaFetch = typeof fetch;
 
@@ -35,6 +36,7 @@ export type HualalaClient = {
   identity: DevIdentity;
   unary<TResponse>(path: string, body: Record<string, unknown>, label?: string): Promise<TResponse>;
   sse: ReturnType<typeof createSSEClient>;
+  upload: ReturnType<typeof createUploadClient>;
 };
 
 export function createHualalaClient(options: HualalaClientOptions = {}): HualalaClient {
@@ -46,6 +48,11 @@ export function createHualalaClient(options: HualalaClientOptions = {}): Hualala
     baseUrl,
     identity,
     sse: createSSEClient({
+      baseUrl,
+      fetchFn,
+      identity,
+    }),
+    upload: createUploadClient({
       baseUrl,
       fetchFn,
       identity,
