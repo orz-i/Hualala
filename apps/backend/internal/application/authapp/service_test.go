@@ -6,27 +6,49 @@ import (
 
 	"github.com/hualala/apps/backend/internal/domain/auth"
 	"github.com/hualala/apps/backend/internal/domain/org"
+	"github.com/hualala/apps/backend/internal/platform/authsession"
 	"github.com/hualala/apps/backend/internal/platform/authz"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
-func TestGetCurrentSessionFallsBackToBootstrapIdentity(t *testing.T) {
+func TestGetCurrentSessionRequiresOverrideOrSession(t *testing.T) {
 	store := db.NewMemoryStore()
 	seedDevAuthOrgStore(store)
 	service := NewService(store, authz.NewAuthorizer(store))
 
 	session, err := service.GetCurrentSession(context.Background(), GetCurrentSessionInput{})
+	if err == nil {
+		t.Fatalf("expected unauthenticated error, got session %#v", session)
+	}
+}
+
+func TestGetCurrentSessionAcceptsSessionCookie(t *testing.T) {
+	store := db.NewMemoryStore()
+	seedDevAuthOrgStore(store)
+	service := NewService(store, authz.NewAuthorizer(store))
+
+	session, err := service.GetCurrentSession(context.Background(), GetCurrentSessionInput{
+		CookieHeader: authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID),
+	})
 	if err != nil {
 		t.Fatalf("GetCurrentSession returned error: %v", err)
 	}
 	if got := session.UserID; got != db.DefaultDevUserID {
 		t.Fatalf("expected dev user %q, got %q", db.DefaultDevUserID, got)
 	}
-	if got := session.OrgID; got != db.DefaultDevOrganizationID {
-		t.Fatalf("expected dev org %q, got %q", db.DefaultDevOrganizationID, got)
+}
+
+func TestStartDevSessionReturnsBootstrapIdentity(t *testing.T) {
+	store := db.NewMemoryStore()
+	seedDevAuthOrgStore(store)
+	service := NewService(store, authz.NewAuthorizer(store))
+
+	session, err := service.StartDevSession(context.Background())
+	if err != nil {
+		t.Fatalf("StartDevSession returned error: %v", err)
 	}
-	if got := session.Locale; got != "zh-CN" {
-		t.Fatalf("expected zh-CN locale, got %q", got)
+	if got := session.SessionID; got != "dev:"+db.DefaultDevOrganizationID+":"+db.DefaultDevUserID {
+		t.Fatalf("unexpected session id %q", got)
 	}
 }
 
@@ -44,6 +66,27 @@ func TestUpdateUserPreferencesOnlyAllowsSelfUpdate(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatalf("expected self-update restriction error")
+	}
+}
+
+func TestRefreshSessionRequiresRefreshTokenAndCookie(t *testing.T) {
+	store := db.NewMemoryStore()
+	seedDevAuthOrgStore(store)
+	service := NewService(store, authz.NewAuthorizer(store))
+
+	if _, err := service.RefreshSession(context.Background(), RefreshSessionInput{}); err == nil {
+		t.Fatalf("expected refresh_token is required error")
+	}
+
+	session, err := service.RefreshSession(context.Background(), RefreshSessionInput{
+		CookieHeader:  authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID),
+		RefreshToken:  authsession.DevRefreshToken,
+	})
+	if err != nil {
+		t.Fatalf("RefreshSession returned error: %v", err)
+	}
+	if got := session.UserID; got != db.DefaultDevUserID {
+		t.Fatalf("expected user %q, got %q", db.DefaultDevUserID, got)
 	}
 }
 

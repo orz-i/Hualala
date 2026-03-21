@@ -93,6 +93,7 @@ describe("sdk sse client", () => {
     expect(fetchFn).toHaveBeenCalledWith(
       "http://127.0.0.1:8080/sse/events?organization_id=org-1&project_id=project-1",
       expect.objectContaining({
+        credentials: "include",
         method: "GET",
         headers: expect.objectContaining({
           "Last-Event-ID": "evt-9",
@@ -138,6 +139,50 @@ describe("sdk sse client", () => {
 
     await vi.waitFor(() => {
       expect(fetchFn).toHaveBeenCalledTimes(2);
+    });
+
+    subscription.close();
+  });
+
+  it("still injects identity headers when explicit override is provided", async () => {
+    const fetchFn: typeof fetch = vi.fn(async () => {
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.close();
+        },
+      });
+      return new Response(stream, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream; charset=utf-8" },
+      });
+    });
+
+    const client = createSSEClient({
+      baseUrl: "http://127.0.0.1:8080/",
+      fetchFn,
+      identity: {
+        orgId: "org-1",
+        userId: "user-1",
+      },
+    });
+
+    const subscription = client.subscribeEvents({
+      organizationId: "org-1",
+      projectId: "project-1",
+      onEvent: vi.fn(),
+    });
+
+    await vi.waitFor(() => {
+      expect(fetchFn).toHaveBeenCalledWith(
+        "http://127.0.0.1:8080/sse/events?organization_id=org-1&project_id=project-1",
+        expect.objectContaining({
+          credentials: "include",
+          headers: expect.objectContaining({
+            "X-Hualala-Org-Id": "org-1",
+            "X-Hualala-User-Id": "user-1",
+          }),
+        }),
+      );
     });
 
     subscription.close();

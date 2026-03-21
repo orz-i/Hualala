@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   createHualalaClient,
   resolveConnectBaseUrl,
@@ -23,7 +23,7 @@ describe("sdk transport", () => {
   });
 
   it("posts connect json through the shared client", async () => {
-    const fetchFn = async () =>
+    const fetchFn = vi.fn(async () =>
       new Response(
         JSON.stringify({
           session: {
@@ -34,7 +34,7 @@ describe("sdk transport", () => {
           },
         }),
         { status: 200 },
-      );
+      ));
 
     const client = createHualalaClient({
       baseUrl: "http://127.0.0.1:8080/",
@@ -46,6 +46,38 @@ describe("sdk transport", () => {
       session?: { sessionId?: string };
     }>("/hualala.auth.v1.AuthService/GetCurrentSession", {});
     expect(result.session?.sessionId).toBe("dev:org-1:user-1");
+    expect(fetchFn).toHaveBeenCalledWith(
+      "http://127.0.0.1:8080/hualala.auth.v1.AuthService/GetCurrentSession",
+      expect.objectContaining({
+        credentials: "include",
+        headers: expect.objectContaining({
+          "X-Hualala-Org-Id": "org-1",
+          "X-Hualala-User-Id": "user-1",
+        }),
+      }),
+    );
+  });
+
+  it("uses include credentials and does not inject identity headers by default", async () => {
+    const fetchFn = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+    const client = createHualalaClient({
+      baseUrl: "http://127.0.0.1:8080/",
+      fetchFn,
+    });
+
+    await client.unary<{ ok: boolean }>("/hualala.auth.v1.AuthService/GetCurrentSession", {});
+
+    expect(fetchFn).toHaveBeenCalledWith(
+      "http://127.0.0.1:8080/hualala.auth.v1.AuthService/GetCurrentSession",
+      expect.objectContaining({
+        credentials: "include",
+        headers: expect.not.objectContaining({
+          "X-Hualala-Org-Id": expect.anything(),
+          "X-Hualala-User-Id": expect.anything(),
+        }),
+      }),
+    );
   });
 
   it("returns an empty object for successful unary calls with an empty body", async () => {

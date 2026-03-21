@@ -39,6 +39,7 @@ export function createUploadClient(options: HualalaClientOptions = {}): UploadCl
     async createSession(body: CreateUploadSessionInput) {
       const response = await fetchFn(joinUrl(baseUrl, "/upload/sessions"), {
         method: "POST",
+        credentials: "include",
         headers: withIdentityHeaders(
           {
             "Content-Type": "application/json",
@@ -55,6 +56,7 @@ export function createUploadClient(options: HualalaClientOptions = {}): UploadCl
     async getSession(sessionId: string) {
       const response = await fetchFn(joinUrl(baseUrl, `/upload/sessions/${sessionId}`), {
         method: "GET",
+        credentials: "include",
         headers: withIdentityHeaders({}, identity),
       });
       return parseUploadJson<UploadSessionResponse>(
@@ -67,6 +69,7 @@ export function createUploadClient(options: HualalaClientOptions = {}): UploadCl
         joinUrl(baseUrl, `/upload/sessions/${sessionId}/retry`),
         {
           method: "POST",
+          credentials: "include",
           headers: withIdentityHeaders({}, identity),
         },
       );
@@ -80,6 +83,7 @@ export function createUploadClient(options: HualalaClientOptions = {}): UploadCl
         joinUrl(baseUrl, `/upload/sessions/${sessionId}/complete`),
         {
           method: "POST",
+          credentials: "include",
           headers: withIdentityHeaders(
             {
               "Content-Type": "application/json",

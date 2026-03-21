@@ -40,6 +40,13 @@ import {
   retryWorkflowRun,
 } from "../features/dashboard/mutateWorkflowRun";
 import { subscribeAdminRecentChanges } from "../features/dashboard/subscribeRecentChanges";
+import {
+  clearCurrentSession,
+  ensureDevSession,
+  isUnauthenticatedSessionError,
+  loadCurrentSession,
+  type SessionViewModel,
+} from "../features/session/sessionBootstrap";
 import type {
   WorkflowMonitorViewModel,
   WorkflowRunDetailViewModel,
@@ -49,33 +56,6 @@ function waitForFeedbackPaint() {
   return new Promise((resolve) => {
     window.setTimeout(resolve, 0);
   });
-}
-
-function buildFallbackGovernance(orgId?: string, userId?: string): AdminGovernanceViewModel {
-  const fallbackOrgId = orgId ?? "org-dev-fallback";
-  const fallbackUserId = userId ?? "user-dev-fallback";
-  const locale = "zh-CN";
-
-  return {
-    currentSession: {
-      sessionId: `dev:${fallbackOrgId}:${fallbackUserId}`,
-      orgId: fallbackOrgId,
-      userId: fallbackUserId,
-      locale,
-    },
-    userPreferences: {
-      userId: fallbackUserId,
-      displayLocale: locale,
-      timezone: "",
-    },
-    members: [],
-    roles: [],
-    orgLocaleSettings: {
-      orgId: fallbackOrgId,
-      defaultLocale: locale,
-      supportedLocales: [locale],
-    },
-  };
 }
 
 function mergeRecentChanges(
@@ -99,6 +79,10 @@ function mergeRecentChanges(
 
 export function App() {
   const { locale, setLocale, t } = useLocaleState();
+  const [sessionState, setSessionState] = useState<"loading" | "ready" | "unauthenticated">(
+    "loading",
+  );
+  const [session, setSession] = useState<SessionViewModel | null>(null);
   const [overview, setOverview] = useState<AdminOverviewViewModel | null>(null);
   const [governance, setGovernance] = useState<AdminGovernanceViewModel | null>(null);
   const [workflowMonitor, setWorkflowMonitor] = useState<WorkflowMonitorViewModel | null>(null);
@@ -147,12 +131,18 @@ export function App() {
   const searchParams = new URLSearchParams(window.location.search);
   const projectId = searchParams.get("projectId") ?? "project-demo-001";
   const shotExecutionId = searchParams.get("shotExecutionId") ?? "shot-exec-demo-001";
-  const orgId = searchParams.get("orgId") ?? undefined;
-  const userId = searchParams.get("userId") ?? undefined;
-  const subscriptionOrgId = orgId ?? governance?.currentSession.orgId;
-  const effectiveGovernance = governance ?? buildFallbackGovernance(orgId, userId);
-  const effectiveOrgId = orgId ?? effectiveGovernance.currentSession.orgId;
-  const effectiveUserId = userId ?? effectiveGovernance.currentSession.userId;
+  const overrideOrgId = searchParams.get("orgId") ?? undefined;
+  const overrideUserId = searchParams.get("userId") ?? undefined;
+  const identityOverride =
+    overrideOrgId && overrideUserId
+      ? {
+          orgId: overrideOrgId,
+          userId: overrideUserId,
+        }
+      : undefined;
+  const subscriptionOrgId = overrideOrgId ?? session?.orgId;
+  const effectiveOrgId = overrideOrgId ?? session?.orgId ?? "";
+  const effectiveUserId = overrideUserId ?? session?.userId ?? "";
 
   const refreshOverview = useCallback(async () => {
     const nextOverview = await loadAdminOverview({ projectId, shotExecutionId });
@@ -163,37 +153,46 @@ export function App() {
   }, [projectId, shotExecutionId]);
 
   const refreshGovernance = useCallback(async () => {
-    const nextGovernance = await loadGovernancePanel({ orgId, userId });
+    const nextGovernance = await loadGovernancePanel({
+      orgId: identityOverride?.orgId,
+      userId: identityOverride?.userId,
+    });
     startTransition(() => {
       setGovernance(nextGovernance);
     });
-  }, [orgId, userId]);
+  }, [identityOverride?.orgId, identityOverride?.userId]);
 
   const refreshWorkflowMonitor = useCallback(async () => {
     const nextWorkflowMonitor = await loadWorkflowMonitorPanel({
       projectId,
       status: workflowStatusFilter,
       workflowType: workflowTypeFilter,
-      orgId,
-      userId,
+      orgId: identityOverride?.orgId,
+      userId: identityOverride?.userId,
     });
     startTransition(() => {
       setWorkflowMonitor(nextWorkflowMonitor);
     });
-  }, [orgId, projectId, userId, workflowStatusFilter, workflowTypeFilter]);
+  }, [
+    identityOverride?.orgId,
+    identityOverride?.userId,
+    projectId,
+    workflowStatusFilter,
+    workflowTypeFilter,
+  ]);
 
   const refreshWorkflowRunDetail = useCallback(
     async (workflowRunId: string) => {
       const nextWorkflowRunDetail = await loadWorkflowRunDetails({
         workflowRunId,
-        orgId,
-        userId,
+        orgId: identityOverride?.orgId,
+        userId: identityOverride?.userId,
       });
       startTransition(() => {
         setWorkflowRunDetail(nextWorkflowRunDetail);
       });
     },
-    [orgId, userId],
+    [identityOverride?.orgId, identityOverride?.userId],
   );
 
   const refreshAssetMonitor = useCallback(async () => {
@@ -201,40 +200,46 @@ export function App() {
       projectId,
       status: assetStatusFilter,
       sourceType: assetSourceTypeFilter,
-      orgId,
-      userId,
+      orgId: identityOverride?.orgId,
+      userId: identityOverride?.userId,
     });
     startTransition(() => {
       setAssetMonitor(nextAssetMonitor);
     });
-  }, [assetSourceTypeFilter, assetStatusFilter, orgId, projectId, userId]);
+  }, [
+    assetSourceTypeFilter,
+    assetStatusFilter,
+    identityOverride?.orgId,
+    identityOverride?.userId,
+    projectId,
+  ]);
 
   const refreshImportBatchDetail = useCallback(
     async (importBatchId: string) => {
       const nextImportBatchDetail = await loadImportBatchDetails({
         importBatchId,
-        orgId,
-        userId,
+        orgId: identityOverride?.orgId,
+        userId: identityOverride?.userId,
       });
       startTransition(() => {
         setImportBatchDetail(nextImportBatchDetail);
       });
     },
-    [orgId, userId],
+    [identityOverride?.orgId, identityOverride?.userId],
   );
 
   const refreshAssetProvenanceDetail = useCallback(
     async (assetId: string) => {
       const nextAssetProvenanceDetail = await loadAssetProvenanceDetails({
         assetId,
-        orgId,
-        userId,
+        orgId: identityOverride?.orgId,
+        userId: identityOverride?.userId,
       });
       startTransition(() => {
         setAssetProvenanceDetail(nextAssetProvenanceDetail);
       });
     },
-    [orgId, userId],
+    [identityOverride?.orgId, identityOverride?.userId],
   );
 
   const refreshWorkflowSilently = useCallback(async () => {
@@ -368,6 +373,80 @@ export function App() {
   useEffect(() => {
     let cancelled = false;
 
+    startTransition(() => {
+      setSessionState("loading");
+      setSession(null);
+      setErrorMessage("");
+    });
+
+    loadCurrentSession({
+      orgId: identityOverride?.orgId,
+      userId: identityOverride?.userId,
+    })
+      .then((nextSession) => {
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setSession(nextSession);
+          setSessionState("ready");
+        });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        if (isUnauthenticatedSessionError(error)) {
+          startTransition(() => {
+            setSession(null);
+            setSessionState("unauthenticated");
+          });
+          return;
+        }
+        const message =
+          error instanceof Error ? error.message : "admin: unknown session bootstrap error";
+        startTransition(() => {
+          setErrorMessage(message);
+          setSession(null);
+          setSessionState("unauthenticated");
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [identityOverride?.orgId, identityOverride?.userId]);
+
+  useEffect(() => {
+    if (sessionState === "ready") {
+      return;
+    }
+    startTransition(() => {
+      setOverview(null);
+      setGovernance(null);
+      setWorkflowMonitor(null);
+      setAssetMonitor(null);
+      setWorkflowRunDetail(null);
+      setImportBatchDetail(null);
+      setAssetProvenanceDetail(null);
+      setSelectedWorkflowRunId(null);
+      setSelectedImportBatchId(null);
+      setSelectedAssetProvenanceId(null);
+      setSelectedImportItemIds([]);
+      setWorkflowActionFeedback(null);
+      setWorkflowActionPending(false);
+      setAssetActionFeedback(null);
+      setAssetActionPending(false);
+    });
+  }, [sessionState]);
+
+  useEffect(() => {
+    if (sessionState !== "ready") {
+      return;
+    }
+
+    let cancelled = false;
+
     loadAdminOverview({ projectId, shotExecutionId })
       .then((nextOverview) => {
         if (cancelled) {
@@ -390,7 +469,10 @@ export function App() {
         });
       });
 
-    loadGovernancePanel({ orgId, userId })
+    loadGovernancePanel({
+      orgId: identityOverride?.orgId,
+      userId: identityOverride?.userId,
+    })
       .then((nextGovernance) => {
         if (cancelled) {
           return;
@@ -399,11 +481,14 @@ export function App() {
           setGovernance(nextGovernance);
         });
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (cancelled) {
           return;
         }
+        const message =
+          error instanceof Error ? error.message : "admin: unknown governance error";
         startTransition(() => {
+          setErrorMessage(message);
           setGovernance(null);
         });
       });
@@ -411,17 +496,27 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [orgId, projectId, shotExecutionId, userId]);
+  }, [
+    identityOverride?.orgId,
+    identityOverride?.userId,
+    projectId,
+    sessionState,
+    shotExecutionId,
+  ]);
 
   useEffect(() => {
+    if (sessionState !== "ready") {
+      return;
+    }
+
     let cancelled = false;
 
     loadAssetMonitorPanel({
       projectId,
       status: assetStatusFilter,
       sourceType: assetSourceTypeFilter,
-      orgId,
-      userId,
+      orgId: identityOverride?.orgId,
+      userId: identityOverride?.userId,
     })
       .then((nextAssetMonitor) => {
         if (cancelled) {
@@ -452,17 +547,28 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [assetSourceTypeFilter, assetStatusFilter, orgId, projectId, userId]);
+  }, [
+    assetSourceTypeFilter,
+    assetStatusFilter,
+    identityOverride?.orgId,
+    identityOverride?.userId,
+    projectId,
+    sessionState,
+  ]);
 
   useEffect(() => {
+    if (sessionState !== "ready") {
+      return;
+    }
+
     let cancelled = false;
 
     loadWorkflowMonitorPanel({
       projectId,
       status: workflowStatusFilter,
       workflowType: workflowTypeFilter,
-      orgId,
-      userId,
+      orgId: identityOverride?.orgId,
+      userId: identityOverride?.userId,
     })
       .then((nextWorkflowMonitor) => {
         if (cancelled) {
@@ -493,9 +599,19 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [orgId, projectId, userId, workflowStatusFilter, workflowTypeFilter]);
+  }, [
+    identityOverride?.orgId,
+    identityOverride?.userId,
+    projectId,
+    sessionState,
+    workflowStatusFilter,
+    workflowTypeFilter,
+  ]);
 
   useEffect(() => {
+    if (sessionState !== "ready") {
+      return;
+    }
     if (!selectedWorkflowRunId) {
       startTransition(() => {
         setWorkflowRunDetail(null);
@@ -506,8 +622,8 @@ export function App() {
     let cancelled = false;
     loadWorkflowRunDetails({
       workflowRunId: selectedWorkflowRunId,
-      orgId,
-      userId,
+      orgId: identityOverride?.orgId,
+      userId: identityOverride?.userId,
     })
       .then((nextWorkflowRunDetail) => {
         if (cancelled) {
@@ -526,9 +642,17 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [orgId, selectedWorkflowRunId, userId]);
+  }, [
+    identityOverride?.orgId,
+    identityOverride?.userId,
+    selectedWorkflowRunId,
+    sessionState,
+  ]);
 
   useEffect(() => {
+    if (sessionState !== "ready") {
+      return;
+    }
     if (!selectedImportBatchId) {
       startTransition(() => {
         setImportBatchDetail(null);
@@ -539,8 +663,8 @@ export function App() {
     let cancelled = false;
     loadImportBatchDetails({
       importBatchId: selectedImportBatchId,
-      orgId,
-      userId,
+      orgId: identityOverride?.orgId,
+      userId: identityOverride?.userId,
     })
       .then((nextImportBatchDetail) => {
         if (cancelled) {
@@ -559,9 +683,17 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [orgId, selectedImportBatchId, userId]);
+  }, [
+    identityOverride?.orgId,
+    identityOverride?.userId,
+    selectedImportBatchId,
+    sessionState,
+  ]);
 
   useEffect(() => {
+    if (sessionState !== "ready") {
+      return;
+    }
     if (!selectedAssetProvenanceId) {
       startTransition(() => {
         setAssetProvenanceDetail(null);
@@ -572,8 +704,8 @@ export function App() {
     let cancelled = false;
     loadAssetProvenanceDetails({
       assetId: selectedAssetProvenanceId,
-      orgId,
-      userId,
+      orgId: identityOverride?.orgId,
+      userId: identityOverride?.userId,
     })
       .then((nextAssetProvenanceDetail) => {
         if (cancelled) {
@@ -592,10 +724,15 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [orgId, selectedAssetProvenanceId, userId]);
+  }, [
+    identityOverride?.orgId,
+    identityOverride?.userId,
+    selectedAssetProvenanceId,
+    sessionState,
+  ]);
 
   useEffect(() => {
-    if (!overview || !subscriptionOrgId) {
+    if (sessionState !== "ready" || !overview || !subscriptionOrgId) {
       return;
     }
 
@@ -625,7 +762,7 @@ export function App() {
         console.warn(error.message);
       },
     });
-  }, [overview ? "ready" : "idle", projectId, subscriptionOrgId]);
+  }, [overview ? "ready" : "idle", projectId, sessionState, subscriptionOrgId]);
 
   const runWorkflowAction = useCallback(
     async ({
@@ -691,6 +828,44 @@ export function App() {
     ],
   );
 
+  const handleStartDevSession = useCallback(async () => {
+    startTransition(() => {
+      setSessionState("loading");
+      setErrorMessage("");
+    });
+    try {
+      const nextSession = await ensureDevSession();
+      startTransition(() => {
+        setSession(nextSession);
+        setSessionState("ready");
+      });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "admin: unknown start session error";
+      startTransition(() => {
+        setErrorMessage(message);
+        setSessionState("unauthenticated");
+      });
+    }
+  }, []);
+
+  const handleClearCurrentSession = useCallback(async () => {
+    try {
+      await clearCurrentSession();
+      startTransition(() => {
+        setSession(null);
+        setSessionState("unauthenticated");
+        setErrorMessage("");
+      });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "admin: unknown clear session error";
+      startTransition(() => {
+        setErrorMessage(message);
+      });
+    }
+  }, []);
+
   if (errorMessage) {
     return (
       <main style={{ padding: "32px" }}>
@@ -699,7 +874,37 @@ export function App() {
     );
   }
 
-  if (!overview) {
+  if (sessionState === "loading") {
+    return <main style={{ padding: "32px" }}>{t("session.loading")}</main>;
+  }
+
+  if (sessionState === "unauthenticated") {
+    return (
+      <main style={{ padding: "32px", display: "grid", gap: "16px", maxWidth: "480px" }}>
+        <h1 style={{ margin: 0 }}>{t("session.gate.title")}</h1>
+        <p style={{ margin: 0 }}>{t("session.gate.description")}</p>
+        <button
+          type="button"
+          onClick={() => {
+            void handleStartDevSession();
+          }}
+          style={{
+            width: "fit-content",
+            border: 0,
+            borderRadius: "999px",
+            padding: "10px 18px",
+            background: "#0f766e",
+            color: "#f0fdfa",
+            cursor: "pointer",
+          }}
+        >
+          {t("session.gate.enter")}
+        </button>
+      </main>
+    );
+  }
+
+  if (!overview || !governance) {
     return <main style={{ padding: "32px" }}>{t("app.loading")}</main>;
   }
 
@@ -723,228 +928,263 @@ export function App() {
     } satisfies AssetMonitorViewModel);
 
   return (
-    <AdminOverviewPage
-      overview={overview}
-      governance={effectiveGovernance}
-      workflowMonitor={effectiveWorkflowMonitor}
-      assetMonitor={effectiveAssetMonitor}
-      workflowRunDetail={workflowRunDetail}
-      importBatchDetail={importBatchDetail}
-      assetProvenanceDetail={assetProvenanceDetail}
-      locale={locale}
-      t={t}
-      onLocaleChange={setLocale}
-      budgetFeedback={budgetFeedback ?? undefined}
-      workflowActionFeedback={workflowActionFeedback ?? undefined}
-      workflowActionPending={workflowActionPending}
-      assetActionFeedback={assetActionFeedback ?? undefined}
-      assetActionPending={assetActionPending}
-      onUpdateBudgetLimit={async (input) => {
-        startTransition(() => {
-          setBudgetFeedback({
-            tone: "pending",
-            message: t("budget.feedback.pending"),
+    <>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "12px",
+          padding: "16px 24px 0",
+        }}
+      >
+        <p style={{ margin: 0, color: "#334155" }}>
+          {identityOverride
+            ? t("session.override.active", { orgId: identityOverride.orgId, userId: identityOverride.userId })
+            : t("session.active", { userId: session?.userId ?? "" })}
+        </p>
+        {!identityOverride ? (
+          <button
+            type="button"
+            onClick={() => {
+              void handleClearCurrentSession();
+            }}
+            style={{
+              border: 0,
+              borderRadius: "999px",
+              padding: "8px 14px",
+              background: "#cbd5e1",
+              color: "#0f172a",
+              cursor: "pointer",
+            }}
+          >
+            {t("session.clear")}
+          </button>
+        ) : null}
+      </div>
+      <AdminOverviewPage
+        overview={overview}
+        governance={governance}
+        workflowMonitor={effectiveWorkflowMonitor}
+        assetMonitor={effectiveAssetMonitor}
+        workflowRunDetail={workflowRunDetail}
+        importBatchDetail={importBatchDetail}
+        assetProvenanceDetail={assetProvenanceDetail}
+        locale={locale}
+        t={t}
+        onLocaleChange={setLocale}
+        budgetFeedback={budgetFeedback ?? undefined}
+        workflowActionFeedback={workflowActionFeedback ?? undefined}
+        workflowActionPending={workflowActionPending}
+        assetActionFeedback={assetActionFeedback ?? undefined}
+        assetActionPending={assetActionPending}
+        onUpdateBudgetLimit={async (input) => {
+          startTransition(() => {
+            setBudgetFeedback({
+              tone: "pending",
+              message: t("budget.feedback.pending"),
+            });
           });
-        });
-        try {
-          await waitForFeedbackPaint();
-          await updateBudgetPolicy({
+          try {
+            await waitForFeedbackPaint();
+            await updateBudgetPolicy({
+              orgId: effectiveOrgId,
+              projectId: input.projectId,
+              limitCents: input.limitCents,
+            });
+            await refreshOverview();
+            startTransition(() => {
+              setBudgetFeedback({
+                tone: "success",
+                message: t("budget.feedback.success"),
+              });
+            });
+          } catch (error: unknown) {
+            const message =
+              error instanceof Error ? error.message : "admin: unknown budget update error";
+            startTransition(() => {
+              setBudgetFeedback({
+                tone: "error",
+                message: t("budget.feedback.error", { message }),
+              });
+            });
+          }
+        }}
+        onUpdateUserPreferences={async (input) => {
+          await updateUserPreferences({
             orgId: effectiveOrgId,
-            projectId: input.projectId,
-            limitCents: input.limitCents,
+            userId: effectiveUserId,
+            displayLocale: input.displayLocale,
+            timezone: input.timezone,
           });
-          await refreshOverview();
+          await refreshGovernance();
+        }}
+        onUpdateMemberRole={async (input) => {
+          await updateMemberRole({
+            orgId: effectiveOrgId,
+            userId: effectiveUserId,
+            memberId: input.memberId,
+            roleId: input.roleId,
+          });
+          await refreshGovernance();
+        }}
+        onUpdateOrgLocaleSettings={async (input) => {
+          await updateOrgLocaleSettings({
+            orgId: effectiveOrgId,
+            userId: effectiveUserId,
+            defaultLocale: input.defaultLocale,
+          });
+          await refreshGovernance();
+        }}
+        onWorkflowStatusFilterChange={(status) => {
           startTransition(() => {
-            setBudgetFeedback({
-              tone: "success",
-              message: t("budget.feedback.success"),
+            setWorkflowStatusFilter(status);
+          });
+        }}
+        onWorkflowTypeFilterChange={(workflowType) => {
+          startTransition(() => {
+            setWorkflowTypeFilter(workflowType);
+          });
+        }}
+        onAssetStatusFilterChange={(status) => {
+          startTransition(() => {
+            setAssetStatusFilter(status);
+          });
+        }}
+        onAssetSourceTypeFilterChange={(sourceType) => {
+          startTransition(() => {
+            setAssetSourceTypeFilter(sourceType);
+          });
+        }}
+        onSelectWorkflowRun={(workflowRunId) => {
+          startTransition(() => {
+            setSelectedWorkflowRunId(workflowRunId);
+            setWorkflowActionFeedback(null);
+          });
+        }}
+        onSelectImportBatch={(importBatchId) => {
+          startTransition(() => {
+            setSelectedImportBatchId(importBatchId);
+            setSelectedAssetProvenanceId(null);
+            setAssetProvenanceDetail(null);
+            setSelectedImportItemIds([]);
+            setAssetActionFeedback(null);
+            setAssetActionPending(false);
+          });
+        }}
+        onCloseImportBatchDetail={() => {
+          startTransition(() => {
+            setSelectedImportBatchId(null);
+            setImportBatchDetail(null);
+            setSelectedAssetProvenanceId(null);
+            setAssetProvenanceDetail(null);
+            setSelectedImportItemIds([]);
+            setAssetActionFeedback(null);
+            setAssetActionPending(false);
+          });
+        }}
+        selectedImportItemIds={selectedImportItemIds}
+        onToggleImportBatchItemSelection={({ itemId, checked }) => {
+          startTransition(() => {
+            setSelectedImportItemIds((current) => {
+              if (checked) {
+                return current.includes(itemId) ? current : [...current, itemId];
+              }
+              return current.filter((candidateId) => candidateId !== itemId);
             });
           });
-        } catch (error: unknown) {
-          const message =
-            error instanceof Error ? error.message : "admin: unknown budget update error";
-          startTransition(() => {
-            setBudgetFeedback({
-              tone: "error",
-              message: t("budget.feedback.error", { message }),
-            });
+        }}
+        onConfirmImportBatchItem={({ importBatchId, itemId }) => {
+          void runAssetAction({
+            pendingMessage: t("asset.action.confirm.pending"),
+            successMessage: t("asset.action.confirm.success"),
+            clearSelectionsOnSuccess: true,
+            execute: (options) =>
+              confirmImportBatchItem({
+                importBatchId,
+                itemId,
+                ...options,
+              }),
           });
-        }
-      }}
-      onUpdateUserPreferences={async (input) => {
-        await updateUserPreferences({
-          orgId: effectiveOrgId,
-          userId: effectiveUserId,
-          displayLocale: input.displayLocale,
-          timezone: input.timezone,
-        });
-        await refreshGovernance();
-      }}
-      onUpdateMemberRole={async (input) => {
-        await updateMemberRole({
-          orgId: effectiveOrgId,
-          userId: effectiveUserId,
-          memberId: input.memberId,
-          roleId: input.roleId,
-        });
-        await refreshGovernance();
-      }}
-      onUpdateOrgLocaleSettings={async (input) => {
-        await updateOrgLocaleSettings({
-          orgId: effectiveOrgId,
-          userId: effectiveUserId,
-          defaultLocale: input.defaultLocale,
-        });
-        await refreshGovernance();
-      }}
-      onWorkflowStatusFilterChange={(status) => {
-        startTransition(() => {
-          setWorkflowStatusFilter(status);
-        });
-      }}
-      onWorkflowTypeFilterChange={(workflowType) => {
-        startTransition(() => {
-          setWorkflowTypeFilter(workflowType);
-        });
-      }}
-      onAssetStatusFilterChange={(status) => {
-        startTransition(() => {
-          setAssetStatusFilter(status);
-        });
-      }}
-      onAssetSourceTypeFilterChange={(sourceType) => {
-        startTransition(() => {
-          setAssetSourceTypeFilter(sourceType);
-        });
-      }}
-      onSelectWorkflowRun={(workflowRunId) => {
-        startTransition(() => {
-          setSelectedWorkflowRunId(workflowRunId);
-          setWorkflowActionFeedback(null);
-        });
-      }}
-      onSelectImportBatch={(importBatchId) => {
-        startTransition(() => {
-          setSelectedImportBatchId(importBatchId);
-          setSelectedAssetProvenanceId(null);
-          setAssetProvenanceDetail(null);
-          setSelectedImportItemIds([]);
-          setAssetActionFeedback(null);
-          setAssetActionPending(false);
-        });
-      }}
-      onCloseImportBatchDetail={() => {
-        startTransition(() => {
-          setSelectedImportBatchId(null);
-          setImportBatchDetail(null);
-          setSelectedAssetProvenanceId(null);
-          setAssetProvenanceDetail(null);
-          setSelectedImportItemIds([]);
-          setAssetActionFeedback(null);
-          setAssetActionPending(false);
-        });
-      }}
-      selectedImportItemIds={selectedImportItemIds}
-      onToggleImportBatchItemSelection={({ itemId, checked }) => {
-        startTransition(() => {
-          setSelectedImportItemIds((current) => {
-            if (checked) {
-              return current.includes(itemId) ? current : [...current, itemId];
-            }
-            return current.filter((candidateId) => candidateId !== itemId);
+        }}
+        onConfirmSelectedImportBatchItems={({ importBatchId, itemIds }) => {
+          void runAssetAction({
+            pendingMessage: t("asset.action.confirmSelected.pending"),
+            successMessage: t("asset.action.confirmSelected.success"),
+            clearSelectionsOnSuccess: true,
+            execute: (options) =>
+              confirmImportBatchItems({
+                importBatchId,
+                itemIds,
+                ...options,
+              }),
           });
-        });
-      }}
-      onConfirmImportBatchItem={({ importBatchId, itemId }) => {
-        void runAssetAction({
-          pendingMessage: t("asset.action.confirm.pending"),
-          successMessage: t("asset.action.confirm.success"),
-          clearSelectionsOnSuccess: true,
-          execute: (options) =>
-            confirmImportBatchItem({
-              importBatchId,
-              itemId,
-              ...options,
-            }),
-        });
-      }}
-      onConfirmSelectedImportBatchItems={({ importBatchId, itemIds }) => {
-        void runAssetAction({
-          pendingMessage: t("asset.action.confirmSelected.pending"),
-          successMessage: t("asset.action.confirmSelected.success"),
-          clearSelectionsOnSuccess: true,
-          execute: (options) =>
-            confirmImportBatchItems({
-              importBatchId,
-              itemIds,
-              ...options,
-            }),
-        });
-      }}
-      onConfirmAllImportBatchItems={({ importBatchId, itemIds }) => {
-        if (itemIds.length === 0) {
-          return;
-        }
+        }}
+        onConfirmAllImportBatchItems={({ importBatchId, itemIds }) => {
+          if (itemIds.length === 0) {
+            return;
+          }
 
-        void runAssetAction({
-          pendingMessage: t("asset.action.confirmAll.pending"),
-          successMessage: t("asset.action.confirmAll.success"),
-          clearSelectionsOnSuccess: true,
-          execute: (options) =>
-            confirmImportBatchItems({
-              importBatchId,
-              itemIds,
-              ...options,
-            }),
-        });
-      }}
-      onSelectPrimaryAsset={({ shotExecutionId, assetId }) => {
-        void runAssetAction({
-          pendingMessage: t("asset.action.selectPrimary.pending"),
-          successMessage: t("asset.action.selectPrimary.success"),
-          execute: (options) =>
-            selectPrimaryAssetForImportBatch({
-              shotExecutionId,
-              assetId,
-              ...options,
-            }),
-        });
-      }}
-      onSelectAssetProvenance={(assetId) => {
-        startTransition(() => {
-          setSelectedAssetProvenanceId(assetId);
-        });
-      }}
-      onCloseAssetProvenance={() => {
-        startTransition(() => {
-          setSelectedAssetProvenanceId(null);
-          setAssetProvenanceDetail(null);
-        });
-      }}
-      onCloseWorkflowDetail={() => {
-        startTransition(() => {
-          setSelectedWorkflowRunId(null);
-          setWorkflowRunDetail(null);
-          setWorkflowActionFeedback(null);
-          setWorkflowActionPending(false);
-        });
-      }}
-      onRetryWorkflowRun={(workflowRunId) => {
-        void runWorkflowAction({
-          workflowRunId,
-          pendingMessage: t("workflow.action.retry.pending"),
-          successMessage: t("workflow.action.retry.success"),
-          execute: retryWorkflowRun,
-        });
-      }}
-      onCancelWorkflowRun={(workflowRunId) => {
-        void runWorkflowAction({
-          workflowRunId,
-          pendingMessage: t("workflow.action.cancel.pending"),
-          successMessage: t("workflow.action.cancel.success"),
-          execute: cancelWorkflowRun,
-        });
-      }}
-    />
+          void runAssetAction({
+            pendingMessage: t("asset.action.confirmAll.pending"),
+            successMessage: t("asset.action.confirmAll.success"),
+            clearSelectionsOnSuccess: true,
+            execute: (options) =>
+              confirmImportBatchItems({
+                importBatchId,
+                itemIds,
+                ...options,
+              }),
+          });
+        }}
+        onSelectPrimaryAsset={({ shotExecutionId, assetId }) => {
+          void runAssetAction({
+            pendingMessage: t("asset.action.selectPrimary.pending"),
+            successMessage: t("asset.action.selectPrimary.success"),
+            execute: (options) =>
+              selectPrimaryAssetForImportBatch({
+                shotExecutionId,
+                assetId,
+                ...options,
+              }),
+          });
+        }}
+        onSelectAssetProvenance={(assetId) => {
+          startTransition(() => {
+            setSelectedAssetProvenanceId(assetId);
+          });
+        }}
+        onCloseAssetProvenance={() => {
+          startTransition(() => {
+            setSelectedAssetProvenanceId(null);
+            setAssetProvenanceDetail(null);
+          });
+        }}
+        onCloseWorkflowDetail={() => {
+          startTransition(() => {
+            setSelectedWorkflowRunId(null);
+            setWorkflowRunDetail(null);
+            setWorkflowActionFeedback(null);
+            setWorkflowActionPending(false);
+          });
+        }}
+        onRetryWorkflowRun={(workflowRunId) => {
+          void runWorkflowAction({
+            workflowRunId,
+            pendingMessage: t("workflow.action.retry.pending"),
+            successMessage: t("workflow.action.retry.success"),
+            execute: retryWorkflowRun,
+          });
+        }}
+        onCancelWorkflowRun={(workflowRunId) => {
+          void runWorkflowAction({
+            workflowRunId,
+            pendingMessage: t("workflow.action.cancel.pending"),
+            successMessage: t("workflow.action.cancel.success"),
+            execute: cancelWorkflowRun,
+          });
+        }}
+      />
+    </>
   );
 }

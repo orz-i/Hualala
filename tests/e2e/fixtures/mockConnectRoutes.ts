@@ -232,6 +232,7 @@ function delay(ms: number) {
 
 export async function mockConnectRoutes(page: Page, scenario: MockConnectScenario) {
   const phase1DemoScenarios = await loadPhase1DemoScenarios();
+  let devSessionActive = false;
   let adminState = withRecentChanges(
     withGovernance(clone(phase1DemoScenarios.admin[scenario.admin ?? "success"])),
   );
@@ -264,6 +265,45 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
   await page.route(/\/hualala\..+/, async (route: Route) => {
     const url = new URL(route.request().url());
     const pathname = url.pathname;
+
+    if (pathname === "/hualala.auth.v1.AuthService/GetCurrentSession") {
+      if (!devSessionActive) {
+        await route.fulfill(jsonResponse(401, { error: "unauthenticated" }));
+        return;
+      }
+      const session =
+        scenario.admin || scenario.creatorImport
+          ? adminState.governance.currentSession
+          : {
+              sessionId: "dev:org-1:user-1",
+              orgId: "org-1",
+              userId: "user-1",
+              locale: "zh-CN",
+            };
+      await route.fulfill(jsonResponse(200, { session }));
+      return;
+    }
+
+    if (pathname === "/hualala.auth.v1.AuthService/StartDevSession") {
+      devSessionActive = true;
+      const session =
+        scenario.admin || scenario.creatorImport
+          ? adminState.governance.currentSession
+          : {
+              sessionId: "dev:org-1:user-1",
+              orgId: "org-1",
+              userId: "user-1",
+              locale: "zh-CN",
+            };
+      await route.fulfill(jsonResponse(200, { session }));
+      return;
+    }
+
+    if (pathname === "/hualala.auth.v1.AuthService/ClearCurrentSession") {
+      devSessionActive = false;
+      await route.fulfill(jsonResponse(200, {}));
+      return;
+    }
 
     if (scenario.admin) {
       if (pathname === "/hualala.billing.v1.BillingService/UpdateBudgetPolicy") {

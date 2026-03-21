@@ -185,6 +185,86 @@ func (*GetCurrentSessionRequest) Descriptor() ([]byte, []int) {
 	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{2}
 }
 
+type StartDevSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartDevSessionRequest) Reset() {
+	*x = StartDevSessionRequest{}
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartDevSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartDevSessionRequest) ProtoMessage() {}
+
+func (x *StartDevSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartDevSessionRequest.ProtoReflect.Descriptor instead.
+func (*StartDevSessionRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{3}
+}
+
+type StartDevSessionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Session       *Session               `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartDevSessionResponse) Reset() {
+	*x = StartDevSessionResponse{}
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartDevSessionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartDevSessionResponse) ProtoMessage() {}
+
+func (x *StartDevSessionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartDevSessionResponse.ProtoReflect.Descriptor instead.
+func (*StartDevSessionResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *StartDevSessionResponse) GetSession() *Session {
+	if x != nil {
+		return x.Session
+	}
+	return nil
+}
+
 type GetCurrentSessionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Session       *Session               `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
@@ -194,7 +274,7 @@ type GetCurrentSessionResponse struct {
 
 func (x *GetCurrentSessionResponse) Reset() {
 	*x = GetCurrentSessionResponse{}
-	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[3]
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -206,7 +286,7 @@ func (x *GetCurrentSessionResponse) String() string {
 func (*GetCurrentSessionResponse) ProtoMessage() {}
 
 func (x *GetCurrentSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[3]
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -219,7 +299,7 @@ func (x *GetCurrentSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCurrentSessionResponse.ProtoReflect.Descriptor instead.
 func (*GetCurrentSessionResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{3}
+	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetCurrentSessionResponse) GetSession() *Session {
@@ -238,7 +318,7 @@ type RefreshSessionRequest struct {
 
 func (x *RefreshSessionRequest) Reset() {
 	*x = RefreshSessionRequest{}
-	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[4]
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -250,7 +330,7 @@ func (x *RefreshSessionRequest) String() string {
 func (*RefreshSessionRequest) ProtoMessage() {}
 
 func (x *RefreshSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[4]
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -263,7 +343,7 @@ func (x *RefreshSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefreshSessionRequest.ProtoReflect.Descriptor instead.
 func (*RefreshSessionRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{4}
+	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *RefreshSessionRequest) GetRefreshToken() string {
@@ -282,7 +362,7 @@ type RefreshSessionResponse struct {
 
 func (x *RefreshSessionResponse) Reset() {
 	*x = RefreshSessionResponse{}
-	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[5]
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -294,7 +374,7 @@ func (x *RefreshSessionResponse) String() string {
 func (*RefreshSessionResponse) ProtoMessage() {}
 
 func (x *RefreshSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[5]
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -307,7 +387,7 @@ func (x *RefreshSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefreshSessionResponse.ProtoReflect.Descriptor instead.
 func (*RefreshSessionResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{5}
+	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RefreshSessionResponse) GetSession() *Session {
@@ -315,6 +395,78 @@ func (x *RefreshSessionResponse) GetSession() *Session {
 		return x.Session
 	}
 	return nil
+}
+
+type ClearCurrentSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClearCurrentSessionRequest) Reset() {
+	*x = ClearCurrentSessionRequest{}
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClearCurrentSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClearCurrentSessionRequest) ProtoMessage() {}
+
+func (x *ClearCurrentSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClearCurrentSessionRequest.ProtoReflect.Descriptor instead.
+func (*ClearCurrentSessionRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{8}
+}
+
+type ClearCurrentSessionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClearCurrentSessionResponse) Reset() {
+	*x = ClearCurrentSessionResponse{}
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClearCurrentSessionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClearCurrentSessionResponse) ProtoMessage() {}
+
+func (x *ClearCurrentSessionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClearCurrentSessionResponse.ProtoReflect.Descriptor instead.
+func (*ClearCurrentSessionResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{9}
 }
 
 type UpdateUserPreferencesRequest struct {
@@ -328,7 +480,7 @@ type UpdateUserPreferencesRequest struct {
 
 func (x *UpdateUserPreferencesRequest) Reset() {
 	*x = UpdateUserPreferencesRequest{}
-	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[6]
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -340,7 +492,7 @@ func (x *UpdateUserPreferencesRequest) String() string {
 func (*UpdateUserPreferencesRequest) ProtoMessage() {}
 
 func (x *UpdateUserPreferencesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[6]
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -353,7 +505,7 @@ func (x *UpdateUserPreferencesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateUserPreferencesRequest.ProtoReflect.Descriptor instead.
 func (*UpdateUserPreferencesRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{6}
+	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *UpdateUserPreferencesRequest) GetUserId() string {
@@ -386,7 +538,7 @@ type UpdateUserPreferencesResponse struct {
 
 func (x *UpdateUserPreferencesResponse) Reset() {
 	*x = UpdateUserPreferencesResponse{}
-	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[7]
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -398,7 +550,7 @@ func (x *UpdateUserPreferencesResponse) String() string {
 func (*UpdateUserPreferencesResponse) ProtoMessage() {}
 
 func (x *UpdateUserPreferencesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[7]
+	mi := &file_hualala_auth_v1_auth_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -411,7 +563,7 @@ func (x *UpdateUserPreferencesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateUserPreferencesResponse.ProtoReflect.Descriptor instead.
 func (*UpdateUserPreferencesResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{7}
+	return file_hualala_auth_v1_auth_service_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *UpdateUserPreferencesResponse) GetPreferences() *UserPreferences {
@@ -436,22 +588,29 @@ const file_hualala_auth_v1_auth_service_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12%\n" +
 	"\x0edisplay_locale\x18\x02 \x01(\tR\rdisplayLocale\x12\x1a\n" +
 	"\btimezone\x18\x03 \x01(\tR\btimezone\"\x1a\n" +
-	"\x18GetCurrentSessionRequest\"O\n" +
+	"\x18GetCurrentSessionRequest\"\x18\n" +
+	"\x16StartDevSessionRequest\"M\n" +
+	"\x17StartDevSessionResponse\x122\n" +
+	"\asession\x18\x01 \x01(\v2\x18.hualala.auth.v1.SessionR\asession\"O\n" +
 	"\x19GetCurrentSessionResponse\x122\n" +
 	"\asession\x18\x01 \x01(\v2\x18.hualala.auth.v1.SessionR\asession\"<\n" +
 	"\x15RefreshSessionRequest\x12#\n" +
 	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"L\n" +
 	"\x16RefreshSessionResponse\x122\n" +
-	"\asession\x18\x01 \x01(\v2\x18.hualala.auth.v1.SessionR\asession\"z\n" +
+	"\asession\x18\x01 \x01(\v2\x18.hualala.auth.v1.SessionR\asession\"\x1c\n" +
+	"\x1aClearCurrentSessionRequest\"\x1d\n" +
+	"\x1bClearCurrentSessionResponse\"z\n" +
 	"\x1cUpdateUserPreferencesRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12%\n" +
 	"\x0edisplay_locale\x18\x02 \x01(\tR\rdisplayLocale\x12\x1a\n" +
 	"\btimezone\x18\x03 \x01(\tR\btimezone\"c\n" +
 	"\x1dUpdateUserPreferencesResponse\x12B\n" +
-	"\vpreferences\x18\x01 \x01(\v2 .hualala.auth.v1.UserPreferencesR\vpreferences2\xd4\x02\n" +
-	"\vAuthService\x12j\n" +
+	"\vpreferences\x18\x01 \x01(\v2 .hualala.auth.v1.UserPreferencesR\vpreferences2\xac\x04\n" +
+	"\vAuthService\x12d\n" +
+	"\x0fStartDevSession\x12'.hualala.auth.v1.StartDevSessionRequest\x1a(.hualala.auth.v1.StartDevSessionResponse\x12j\n" +
 	"\x11GetCurrentSession\x12).hualala.auth.v1.GetCurrentSessionRequest\x1a*.hualala.auth.v1.GetCurrentSessionResponse\x12a\n" +
-	"\x0eRefreshSession\x12&.hualala.auth.v1.RefreshSessionRequest\x1a'.hualala.auth.v1.RefreshSessionResponse\x12v\n" +
+	"\x0eRefreshSession\x12&.hualala.auth.v1.RefreshSessionRequest\x1a'.hualala.auth.v1.RefreshSessionResponse\x12p\n" +
+	"\x13ClearCurrentSession\x12+.hualala.auth.v1.ClearCurrentSessionRequest\x1a,.hualala.auth.v1.ClearCurrentSessionResponse\x12v\n" +
 	"\x15UpdateUserPreferences\x12-.hualala.auth.v1.UpdateUserPreferencesRequest\x1a..hualala.auth.v1.UpdateUserPreferencesResponseB\xc1\x01\n" +
 	"\x13com.hualala.auth.v1B\x10AuthServiceProtoP\x01Z:github.com/hualala/apps/backend/gen/hualala/auth/v1;authv1\xa2\x02\x03HAX\xaa\x02\x0fHualala.Auth.V1\xca\x02\x0fHualala\\Auth\\V1\xe2\x02\x1bHualala\\Auth\\V1\\GPBMetadata\xea\x02\x11Hualala::Auth::V1b\x06proto3"
 
@@ -467,32 +626,41 @@ func file_hualala_auth_v1_auth_service_proto_rawDescGZIP() []byte {
 	return file_hualala_auth_v1_auth_service_proto_rawDescData
 }
 
-var file_hualala_auth_v1_auth_service_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_hualala_auth_v1_auth_service_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_hualala_auth_v1_auth_service_proto_goTypes = []any{
 	(*Session)(nil),                       // 0: hualala.auth.v1.Session
 	(*UserPreferences)(nil),               // 1: hualala.auth.v1.UserPreferences
 	(*GetCurrentSessionRequest)(nil),      // 2: hualala.auth.v1.GetCurrentSessionRequest
-	(*GetCurrentSessionResponse)(nil),     // 3: hualala.auth.v1.GetCurrentSessionResponse
-	(*RefreshSessionRequest)(nil),         // 4: hualala.auth.v1.RefreshSessionRequest
-	(*RefreshSessionResponse)(nil),        // 5: hualala.auth.v1.RefreshSessionResponse
-	(*UpdateUserPreferencesRequest)(nil),  // 6: hualala.auth.v1.UpdateUserPreferencesRequest
-	(*UpdateUserPreferencesResponse)(nil), // 7: hualala.auth.v1.UpdateUserPreferencesResponse
+	(*StartDevSessionRequest)(nil),        // 3: hualala.auth.v1.StartDevSessionRequest
+	(*StartDevSessionResponse)(nil),       // 4: hualala.auth.v1.StartDevSessionResponse
+	(*GetCurrentSessionResponse)(nil),     // 5: hualala.auth.v1.GetCurrentSessionResponse
+	(*RefreshSessionRequest)(nil),         // 6: hualala.auth.v1.RefreshSessionRequest
+	(*RefreshSessionResponse)(nil),        // 7: hualala.auth.v1.RefreshSessionResponse
+	(*ClearCurrentSessionRequest)(nil),    // 8: hualala.auth.v1.ClearCurrentSessionRequest
+	(*ClearCurrentSessionResponse)(nil),   // 9: hualala.auth.v1.ClearCurrentSessionResponse
+	(*UpdateUserPreferencesRequest)(nil),  // 10: hualala.auth.v1.UpdateUserPreferencesRequest
+	(*UpdateUserPreferencesResponse)(nil), // 11: hualala.auth.v1.UpdateUserPreferencesResponse
 }
 var file_hualala_auth_v1_auth_service_proto_depIdxs = []int32{
-	0, // 0: hualala.auth.v1.GetCurrentSessionResponse.session:type_name -> hualala.auth.v1.Session
-	0, // 1: hualala.auth.v1.RefreshSessionResponse.session:type_name -> hualala.auth.v1.Session
-	1, // 2: hualala.auth.v1.UpdateUserPreferencesResponse.preferences:type_name -> hualala.auth.v1.UserPreferences
-	2, // 3: hualala.auth.v1.AuthService.GetCurrentSession:input_type -> hualala.auth.v1.GetCurrentSessionRequest
-	4, // 4: hualala.auth.v1.AuthService.RefreshSession:input_type -> hualala.auth.v1.RefreshSessionRequest
-	6, // 5: hualala.auth.v1.AuthService.UpdateUserPreferences:input_type -> hualala.auth.v1.UpdateUserPreferencesRequest
-	3, // 6: hualala.auth.v1.AuthService.GetCurrentSession:output_type -> hualala.auth.v1.GetCurrentSessionResponse
-	5, // 7: hualala.auth.v1.AuthService.RefreshSession:output_type -> hualala.auth.v1.RefreshSessionResponse
-	7, // 8: hualala.auth.v1.AuthService.UpdateUserPreferences:output_type -> hualala.auth.v1.UpdateUserPreferencesResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	0,  // 0: hualala.auth.v1.StartDevSessionResponse.session:type_name -> hualala.auth.v1.Session
+	0,  // 1: hualala.auth.v1.GetCurrentSessionResponse.session:type_name -> hualala.auth.v1.Session
+	0,  // 2: hualala.auth.v1.RefreshSessionResponse.session:type_name -> hualala.auth.v1.Session
+	1,  // 3: hualala.auth.v1.UpdateUserPreferencesResponse.preferences:type_name -> hualala.auth.v1.UserPreferences
+	3,  // 4: hualala.auth.v1.AuthService.StartDevSession:input_type -> hualala.auth.v1.StartDevSessionRequest
+	2,  // 5: hualala.auth.v1.AuthService.GetCurrentSession:input_type -> hualala.auth.v1.GetCurrentSessionRequest
+	6,  // 6: hualala.auth.v1.AuthService.RefreshSession:input_type -> hualala.auth.v1.RefreshSessionRequest
+	8,  // 7: hualala.auth.v1.AuthService.ClearCurrentSession:input_type -> hualala.auth.v1.ClearCurrentSessionRequest
+	10, // 8: hualala.auth.v1.AuthService.UpdateUserPreferences:input_type -> hualala.auth.v1.UpdateUserPreferencesRequest
+	4,  // 9: hualala.auth.v1.AuthService.StartDevSession:output_type -> hualala.auth.v1.StartDevSessionResponse
+	5,  // 10: hualala.auth.v1.AuthService.GetCurrentSession:output_type -> hualala.auth.v1.GetCurrentSessionResponse
+	7,  // 11: hualala.auth.v1.AuthService.RefreshSession:output_type -> hualala.auth.v1.RefreshSessionResponse
+	9,  // 12: hualala.auth.v1.AuthService.ClearCurrentSession:output_type -> hualala.auth.v1.ClearCurrentSessionResponse
+	11, // 13: hualala.auth.v1.AuthService.UpdateUserPreferences:output_type -> hualala.auth.v1.UpdateUserPreferencesResponse
+	9,  // [9:14] is the sub-list for method output_type
+	4,  // [4:9] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_hualala_auth_v1_auth_service_proto_init() }
@@ -506,7 +674,7 @@ func file_hualala_auth_v1_auth_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hualala_auth_v1_auth_service_proto_rawDesc), len(file_hualala_auth_v1_auth_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

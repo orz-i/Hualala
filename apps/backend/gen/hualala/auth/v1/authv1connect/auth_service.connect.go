@@ -33,12 +33,18 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// AuthServiceStartDevSessionProcedure is the fully-qualified name of the AuthService's
+	// StartDevSession RPC.
+	AuthServiceStartDevSessionProcedure = "/hualala.auth.v1.AuthService/StartDevSession"
 	// AuthServiceGetCurrentSessionProcedure is the fully-qualified name of the AuthService's
 	// GetCurrentSession RPC.
 	AuthServiceGetCurrentSessionProcedure = "/hualala.auth.v1.AuthService/GetCurrentSession"
 	// AuthServiceRefreshSessionProcedure is the fully-qualified name of the AuthService's
 	// RefreshSession RPC.
 	AuthServiceRefreshSessionProcedure = "/hualala.auth.v1.AuthService/RefreshSession"
+	// AuthServiceClearCurrentSessionProcedure is the fully-qualified name of the AuthService's
+	// ClearCurrentSession RPC.
+	AuthServiceClearCurrentSessionProcedure = "/hualala.auth.v1.AuthService/ClearCurrentSession"
 	// AuthServiceUpdateUserPreferencesProcedure is the fully-qualified name of the AuthService's
 	// UpdateUserPreferences RPC.
 	AuthServiceUpdateUserPreferencesProcedure = "/hualala.auth.v1.AuthService/UpdateUserPreferences"
@@ -46,8 +52,10 @@ const (
 
 // AuthServiceClient is a client for the hualala.auth.v1.AuthService service.
 type AuthServiceClient interface {
+	StartDevSession(context.Context, *connect.Request[v1.StartDevSessionRequest]) (*connect.Response[v1.StartDevSessionResponse], error)
 	GetCurrentSession(context.Context, *connect.Request[v1.GetCurrentSessionRequest]) (*connect.Response[v1.GetCurrentSessionResponse], error)
 	RefreshSession(context.Context, *connect.Request[v1.RefreshSessionRequest]) (*connect.Response[v1.RefreshSessionResponse], error)
+	ClearCurrentSession(context.Context, *connect.Request[v1.ClearCurrentSessionRequest]) (*connect.Response[v1.ClearCurrentSessionResponse], error)
 	UpdateUserPreferences(context.Context, *connect.Request[v1.UpdateUserPreferencesRequest]) (*connect.Response[v1.UpdateUserPreferencesResponse], error)
 }
 
@@ -62,6 +70,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 	baseURL = strings.TrimRight(baseURL, "/")
 	authServiceMethods := v1.File_hualala_auth_v1_auth_service_proto.Services().ByName("AuthService").Methods()
 	return &authServiceClient{
+		startDevSession: connect.NewClient[v1.StartDevSessionRequest, v1.StartDevSessionResponse](
+			httpClient,
+			baseURL+AuthServiceStartDevSessionProcedure,
+			connect.WithSchema(authServiceMethods.ByName("StartDevSession")),
+			connect.WithClientOptions(opts...),
+		),
 		getCurrentSession: connect.NewClient[v1.GetCurrentSessionRequest, v1.GetCurrentSessionResponse](
 			httpClient,
 			baseURL+AuthServiceGetCurrentSessionProcedure,
@@ -72,6 +86,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+AuthServiceRefreshSessionProcedure,
 			connect.WithSchema(authServiceMethods.ByName("RefreshSession")),
+			connect.WithClientOptions(opts...),
+		),
+		clearCurrentSession: connect.NewClient[v1.ClearCurrentSessionRequest, v1.ClearCurrentSessionResponse](
+			httpClient,
+			baseURL+AuthServiceClearCurrentSessionProcedure,
+			connect.WithSchema(authServiceMethods.ByName("ClearCurrentSession")),
 			connect.WithClientOptions(opts...),
 		),
 		updateUserPreferences: connect.NewClient[v1.UpdateUserPreferencesRequest, v1.UpdateUserPreferencesResponse](
@@ -85,9 +105,16 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
+	startDevSession       *connect.Client[v1.StartDevSessionRequest, v1.StartDevSessionResponse]
 	getCurrentSession     *connect.Client[v1.GetCurrentSessionRequest, v1.GetCurrentSessionResponse]
 	refreshSession        *connect.Client[v1.RefreshSessionRequest, v1.RefreshSessionResponse]
+	clearCurrentSession   *connect.Client[v1.ClearCurrentSessionRequest, v1.ClearCurrentSessionResponse]
 	updateUserPreferences *connect.Client[v1.UpdateUserPreferencesRequest, v1.UpdateUserPreferencesResponse]
+}
+
+// StartDevSession calls hualala.auth.v1.AuthService.StartDevSession.
+func (c *authServiceClient) StartDevSession(ctx context.Context, req *connect.Request[v1.StartDevSessionRequest]) (*connect.Response[v1.StartDevSessionResponse], error) {
+	return c.startDevSession.CallUnary(ctx, req)
 }
 
 // GetCurrentSession calls hualala.auth.v1.AuthService.GetCurrentSession.
@@ -100,6 +127,11 @@ func (c *authServiceClient) RefreshSession(ctx context.Context, req *connect.Req
 	return c.refreshSession.CallUnary(ctx, req)
 }
 
+// ClearCurrentSession calls hualala.auth.v1.AuthService.ClearCurrentSession.
+func (c *authServiceClient) ClearCurrentSession(ctx context.Context, req *connect.Request[v1.ClearCurrentSessionRequest]) (*connect.Response[v1.ClearCurrentSessionResponse], error) {
+	return c.clearCurrentSession.CallUnary(ctx, req)
+}
+
 // UpdateUserPreferences calls hualala.auth.v1.AuthService.UpdateUserPreferences.
 func (c *authServiceClient) UpdateUserPreferences(ctx context.Context, req *connect.Request[v1.UpdateUserPreferencesRequest]) (*connect.Response[v1.UpdateUserPreferencesResponse], error) {
 	return c.updateUserPreferences.CallUnary(ctx, req)
@@ -107,8 +139,10 @@ func (c *authServiceClient) UpdateUserPreferences(ctx context.Context, req *conn
 
 // AuthServiceHandler is an implementation of the hualala.auth.v1.AuthService service.
 type AuthServiceHandler interface {
+	StartDevSession(context.Context, *connect.Request[v1.StartDevSessionRequest]) (*connect.Response[v1.StartDevSessionResponse], error)
 	GetCurrentSession(context.Context, *connect.Request[v1.GetCurrentSessionRequest]) (*connect.Response[v1.GetCurrentSessionResponse], error)
 	RefreshSession(context.Context, *connect.Request[v1.RefreshSessionRequest]) (*connect.Response[v1.RefreshSessionResponse], error)
+	ClearCurrentSession(context.Context, *connect.Request[v1.ClearCurrentSessionRequest]) (*connect.Response[v1.ClearCurrentSessionResponse], error)
 	UpdateUserPreferences(context.Context, *connect.Request[v1.UpdateUserPreferencesRequest]) (*connect.Response[v1.UpdateUserPreferencesResponse], error)
 }
 
@@ -119,6 +153,12 @@ type AuthServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	authServiceMethods := v1.File_hualala_auth_v1_auth_service_proto.Services().ByName("AuthService").Methods()
+	authServiceStartDevSessionHandler := connect.NewUnaryHandler(
+		AuthServiceStartDevSessionProcedure,
+		svc.StartDevSession,
+		connect.WithSchema(authServiceMethods.ByName("StartDevSession")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceGetCurrentSessionHandler := connect.NewUnaryHandler(
 		AuthServiceGetCurrentSessionProcedure,
 		svc.GetCurrentSession,
@@ -131,6 +171,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("RefreshSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceClearCurrentSessionHandler := connect.NewUnaryHandler(
+		AuthServiceClearCurrentSessionProcedure,
+		svc.ClearCurrentSession,
+		connect.WithSchema(authServiceMethods.ByName("ClearCurrentSession")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceUpdateUserPreferencesHandler := connect.NewUnaryHandler(
 		AuthServiceUpdateUserPreferencesProcedure,
 		svc.UpdateUserPreferences,
@@ -139,10 +185,14 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 	)
 	return "/hualala.auth.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case AuthServiceStartDevSessionProcedure:
+			authServiceStartDevSessionHandler.ServeHTTP(w, r)
 		case AuthServiceGetCurrentSessionProcedure:
 			authServiceGetCurrentSessionHandler.ServeHTTP(w, r)
 		case AuthServiceRefreshSessionProcedure:
 			authServiceRefreshSessionHandler.ServeHTTP(w, r)
+		case AuthServiceClearCurrentSessionProcedure:
+			authServiceClearCurrentSessionHandler.ServeHTTP(w, r)
 		case AuthServiceUpdateUserPreferencesProcedure:
 			authServiceUpdateUserPreferencesHandler.ServeHTTP(w, r)
 		default:
@@ -154,12 +204,20 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 // UnimplementedAuthServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAuthServiceHandler struct{}
 
+func (UnimplementedAuthServiceHandler) StartDevSession(context.Context, *connect.Request[v1.StartDevSessionRequest]) (*connect.Response[v1.StartDevSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.auth.v1.AuthService.StartDevSession is not implemented"))
+}
+
 func (UnimplementedAuthServiceHandler) GetCurrentSession(context.Context, *connect.Request[v1.GetCurrentSessionRequest]) (*connect.Response[v1.GetCurrentSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.auth.v1.AuthService.GetCurrentSession is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) RefreshSession(context.Context, *connect.Request[v1.RefreshSessionRequest]) (*connect.Response[v1.RefreshSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.auth.v1.AuthService.RefreshSession is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) ClearCurrentSession(context.Context, *connect.Request[v1.ClearCurrentSessionRequest]) (*connect.Response[v1.ClearCurrentSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.auth.v1.AuthService.ClearCurrentSession is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) UpdateUserPreferences(context.Context, *connect.Request[v1.UpdateUserPreferencesRequest]) (*connect.Response[v1.UpdateUserPreferencesResponse], error) {

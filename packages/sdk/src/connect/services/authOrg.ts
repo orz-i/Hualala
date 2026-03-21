@@ -1,5 +1,8 @@
 import type {
+  ClearCurrentSessionResponse,
   GetCurrentSessionResponse,
+  RefreshSessionResponse,
+  StartDevSessionResponse,
   UpdateUserPreferencesResponse,
 } from "../../gen/hualala/auth/v1/auth_service_pb";
 import type {
@@ -16,6 +19,13 @@ export function createAuthOrgClient(options: HualalaClientOptions = {}) {
   const client = createHualalaClient(options);
 
   return {
+    startDevSession() {
+      return client.unary<StartDevSessionResponse>(
+        "/hualala.auth.v1.AuthService/StartDevSession",
+        {},
+        "sdk: failed to start dev session",
+      );
+    },
     getCurrentSession() {
       return client.unary<GetCurrentSessionResponse>(
         "/hualala.auth.v1.AuthService/GetCurrentSession",
@@ -23,11 +33,18 @@ export function createAuthOrgClient(options: HualalaClientOptions = {}) {
         "sdk: failed to get current session",
       );
     },
-    refreshSession(refreshToken: string) {
-      return client.unary<GetCurrentSessionResponse>(
+    refreshSession(refreshToken = "dev-refresh") {
+      return client.unary<RefreshSessionResponse>(
         "/hualala.auth.v1.AuthService/RefreshSession",
         { refreshToken },
         "sdk: failed to refresh session",
+      );
+    },
+    clearCurrentSession() {
+      return client.unary<ClearCurrentSessionResponse>(
+        "/hualala.auth.v1.AuthService/ClearCurrentSession",
+        {},
+        "sdk: failed to clear current session",
       );
     },
     updateUserPreferences(body: {

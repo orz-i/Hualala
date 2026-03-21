@@ -74,6 +74,7 @@ export function createHualalaClient(options: HualalaClientOptions = {}): Hualala
   ) => {
     const response = await fetchFn(`${baseUrl}${path}`, {
       method: "POST",
+      credentials: "include",
       headers: withIdentityHeaders(
         {
           "Content-Type": "application/json",

@@ -19,6 +19,11 @@ import {
   retryShotWorkflowRun,
   startShotWorkflow,
 } from "../features/shot-workbench/mutateShotWorkflow";
+import {
+  clearCurrentSession,
+  ensureDevSession,
+  loadCurrentSession,
+} from "../features/session/sessionBootstrap";
 import { subscribeWorkbenchEvents } from "../features/subscribeWorkbenchEvents";
 import { App } from "./App";
 
@@ -47,6 +52,13 @@ vi.mock("../features/shot-workbench/mutateShotWorkflow", () => ({
   startShotWorkflow: vi.fn(),
   retryShotWorkflowRun: vi.fn(),
 }));
+vi.mock("../features/session/sessionBootstrap", () => ({
+  loadCurrentSession: vi.fn(),
+  ensureDevSession: vi.fn(),
+  clearCurrentSession: vi.fn(),
+  isUnauthenticatedSessionError: (error: unknown) =>
+    error instanceof Error && (error.message.includes("(401)") || error.message.includes("unauthenticated")),
+}));
 vi.mock("../features/subscribeWorkbenchEvents", () => ({
   subscribeWorkbenchEvents: vi.fn(),
 }));
@@ -64,6 +76,9 @@ const runSubmissionGateChecksMock = vi.mocked(runSubmissionGateChecks);
 const submitShotForReviewMock = vi.mocked(submitShotForReview);
 const startShotWorkflowMock = vi.mocked(startShotWorkflow);
 const retryShotWorkflowRunMock = vi.mocked(retryShotWorkflowRun);
+const loadCurrentSessionMock = vi.mocked(loadCurrentSession);
+const ensureDevSessionMock = vi.mocked(ensureDevSession);
+const clearCurrentSessionMock = vi.mocked(clearCurrentSession);
 const subscribeWorkbenchEventsMock = vi.mocked(subscribeWorkbenchEvents);
 
 let latestWorkbenchSubscription:
@@ -149,6 +164,19 @@ describe("App", () => {
     latestWorkbenchSubscriptionCleanup = vi.fn();
     window.localStorage.clear();
     window.localStorage.setItem(CREATOR_UI_LOCALE_STORAGE_KEY, "zh-CN");
+    loadCurrentSessionMock.mockResolvedValue({
+      sessionId: "dev:org-1:user-1",
+      orgId: "org-1",
+      userId: "user-1",
+      locale: "zh-CN",
+    });
+    ensureDevSessionMock.mockResolvedValue({
+      sessionId: "dev:org-1:user-1",
+      orgId: "org-1",
+      userId: "user-1",
+      locale: "zh-CN",
+    });
+    clearCurrentSessionMock.mockResolvedValue();
     deriveUploadFileMetadataMock.mockResolvedValue({
       fileName: "scene.png",
       sizeBytes: 1024,
@@ -182,6 +210,48 @@ describe("App", () => {
     retryShotWorkflowRunMock.mockResolvedValue(undefined);
   });
 
+  it("shows the dev session gate when no active session exists, then starts a dev session", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-session-1");
+    loadCurrentSessionMock
+      .mockRejectedValueOnce(new Error("sdk: failed to get current session (401)"))
+      .mockResolvedValueOnce({
+        sessionId: "dev:org-1:user-1",
+        orgId: "org-1",
+        userId: "user-1",
+        locale: "zh-CN",
+      });
+    loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-session-1"));
+    loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
+
+    render(<App />);
+
+    expect(await screen.findByText("尚未进入开发会话")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "进入开发会话" }));
+
+    await waitFor(() => {
+      expect(ensureDevSessionMock).toHaveBeenCalledTimes(1);
+    });
+    expect(await screen.findByText("shot-exec-shot-session-1")).toBeInTheDocument();
+  });
+
+  it("clears the active dev session and returns creator to the session gate", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-session-2");
+    loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-session-2"));
+    loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-shot-session-2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "清空开发会话" }));
+
+    await waitFor(() => {
+      expect(clearCurrentSessionMock).toHaveBeenCalledTimes(1);
+    });
+    expect(await screen.findByText("尚未进入开发会话")).toBeInTheDocument();
+  });
+
   it("prefers importBatchId from search params, loads the import workbench, and renders the live data", async () => {
     window.history.pushState({}, "", "/?importBatchId=batch-live-1&shotId=shot-live-1");
     loadImportBatchWorkbenchMock.mockResolvedValueOnce(createImportWorkbench("batch-live-1"));
@@ -192,7 +262,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(screen.getByText("正在加载导入工作台")).toBeInTheDocument();
+    expect(screen.getByText("正在建立开发会话")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(loadImportBatchWorkbenchMock).toHaveBeenCalledWith(
@@ -464,7 +534,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(screen.getByText("正在加载镜头工作台")).toBeInTheDocument();
+    expect(screen.getByText("正在建立开发会话")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(loadShotWorkbenchMock).toHaveBeenCalledWith(

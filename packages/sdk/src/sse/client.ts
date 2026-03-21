@@ -128,6 +128,7 @@ export function createSSEClient(options: HualalaClientOptions = {}): SSEClient {
             buildSSEUrl(baseUrl, organizationId, projectId),
             {
               method: "GET",
+              credentials: "include",
               headers,
               signal: activeAbortController.signal,
             },

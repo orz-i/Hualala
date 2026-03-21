@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hualala/auth/v1/auth_service.proto.
  */
 export const file_hualala_auth_v1_auth_service: GenFile = /*@__PURE__*/
-  fileDesc("CiJodWFsYWxhL2F1dGgvdjEvYXV0aF9zZXJ2aWNlLnByb3RvEg9odWFsYWxhLmF1dGgudjEiTgoHU2Vzc2lvbhISCgpzZXNzaW9uX2lkGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSDgoGb3JnX2lkGAMgASgJEg4KBmxvY2FsZRgEIAEoCSJMCg9Vc2VyUHJlZmVyZW5jZXMSDwoHdXNlcl9pZBgBIAEoCRIWCg5kaXNwbGF5X2xvY2FsZRgCIAEoCRIQCgh0aW1lem9uZRgDIAEoCSIaChhHZXRDdXJyZW50U2Vzc2lvblJlcXVlc3QiRgoZR2V0Q3VycmVudFNlc3Npb25SZXNwb25zZRIpCgdzZXNzaW9uGAEgASgLMhguaHVhbGFsYS5hdXRoLnYxLlNlc3Npb24iLgoVUmVmcmVzaFNlc3Npb25SZXF1ZXN0EhUKDXJlZnJlc2hfdG9rZW4YASABKAkiQwoWUmVmcmVzaFNlc3Npb25SZXNwb25zZRIpCgdzZXNzaW9uGAEgASgLMhguaHVhbGFsYS5hdXRoLnYxLlNlc3Npb24iWQocVXBkYXRlVXNlclByZWZlcmVuY2VzUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJEhYKDmRpc3BsYXlfbG9jYWxlGAIgASgJEhAKCHRpbWV6b25lGAMgASgJIlYKHVVwZGF0ZVVzZXJQcmVmZXJlbmNlc1Jlc3BvbnNlEjUKC3ByZWZlcmVuY2VzGAEgASgLMiAuaHVhbGFsYS5hdXRoLnYxLlVzZXJQcmVmZXJlbmNlczLUAgoLQXV0aFNlcnZpY2USagoRR2V0Q3VycmVudFNlc3Npb24SKS5odWFsYWxhLmF1dGgudjEuR2V0Q3VycmVudFNlc3Npb25SZXF1ZXN0GiouaHVhbGFsYS5hdXRoLnYxLkdldEN1cnJlbnRTZXNzaW9uUmVzcG9uc2USYQoOUmVmcmVzaFNlc3Npb24SJi5odWFsYWxhLmF1dGgudjEuUmVmcmVzaFNlc3Npb25SZXF1ZXN0GicuaHVhbGFsYS5hdXRoLnYxLlJlZnJlc2hTZXNzaW9uUmVzcG9uc2USdgoVVXBkYXRlVXNlclByZWZlcmVuY2VzEi0uaHVhbGFsYS5hdXRoLnYxLlVwZGF0ZVVzZXJQcmVmZXJlbmNlc1JlcXVlc3QaLi5odWFsYWxhLmF1dGgudjEuVXBkYXRlVXNlclByZWZlcmVuY2VzUmVzcG9uc2VCwQEKE2NvbS5odWFsYWxhLmF1dGgudjFCEEF1dGhTZXJ2aWNlUHJvdG9QAVo6Z2l0aHViLmNvbS9odWFsYWxhL2FwcHMvYmFja2VuZC9nZW4vaHVhbGFsYS9hdXRoL3YxO2F1dGh2MaICA0hBWKoCD0h1YWxhbGEuQXV0aC5WMcoCD0h1YWxhbGFcQXV0aFxWMeICG0h1YWxhbGFcQXV0aFxWMVxHUEJNZXRhZGF0YeoCEUh1YWxhbGE6OkF1dGg6OlYxYgZwcm90bzM");
+  fileDesc("CiJodWFsYWxhL2F1dGgvdjEvYXV0aF9zZXJ2aWNlLnByb3RvEg9odWFsYWxhLmF1dGgudjEiTgoHU2Vzc2lvbhISCgpzZXNzaW9uX2lkGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSDgoGb3JnX2lkGAMgASgJEg4KBmxvY2FsZRgEIAEoCSJMCg9Vc2VyUHJlZmVyZW5jZXMSDwoHdXNlcl9pZBgBIAEoCRIWCg5kaXNwbGF5X2xvY2FsZRgCIAEoCRIQCgh0aW1lem9uZRgDIAEoCSIaChhHZXRDdXJyZW50U2Vzc2lvblJlcXVlc3QiGAoWU3RhcnREZXZTZXNzaW9uUmVxdWVzdCJEChdTdGFydERldlNlc3Npb25SZXNwb25zZRIpCgdzZXNzaW9uGAEgASgLMhguaHVhbGFsYS5hdXRoLnYxLlNlc3Npb24iRgoZR2V0Q3VycmVudFNlc3Npb25SZXNwb25zZRIpCgdzZXNzaW9uGAEgASgLMhguaHVhbGFsYS5hdXRoLnYxLlNlc3Npb24iLgoVUmVmcmVzaFNlc3Npb25SZXF1ZXN0EhUKDXJlZnJlc2hfdG9rZW4YASABKAkiQwoWUmVmcmVzaFNlc3Npb25SZXNwb25zZRIpCgdzZXNzaW9uGAEgASgLMhguaHVhbGFsYS5hdXRoLnYxLlNlc3Npb24iHAoaQ2xlYXJDdXJyZW50U2Vzc2lvblJlcXVlc3QiHQobQ2xlYXJDdXJyZW50U2Vzc2lvblJlc3BvbnNlIlkKHFVwZGF0ZVVzZXJQcmVmZXJlbmNlc1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCRIWCg5kaXNwbGF5X2xvY2FsZRgCIAEoCRIQCgh0aW1lem9uZRgDIAEoCSJWCh1VcGRhdGVVc2VyUHJlZmVyZW5jZXNSZXNwb25zZRI1CgtwcmVmZXJlbmNlcxgBIAEoCzIgLmh1YWxhbGEuYXV0aC52MS5Vc2VyUHJlZmVyZW5jZXMyrAQKC0F1dGhTZXJ2aWNlEmQKD1N0YXJ0RGV2U2Vzc2lvbhInLmh1YWxhbGEuYXV0aC52MS5TdGFydERldlNlc3Npb25SZXF1ZXN0GiguaHVhbGFsYS5hdXRoLnYxLlN0YXJ0RGV2U2Vzc2lvblJlc3BvbnNlEmoKEUdldEN1cnJlbnRTZXNzaW9uEikuaHVhbGFsYS5hdXRoLnYxLkdldEN1cnJlbnRTZXNzaW9uUmVxdWVzdBoqLmh1YWxhbGEuYXV0aC52MS5HZXRDdXJyZW50U2Vzc2lvblJlc3BvbnNlEmEKDlJlZnJlc2hTZXNzaW9uEiYuaHVhbGFsYS5hdXRoLnYxLlJlZnJlc2hTZXNzaW9uUmVxdWVzdBonLmh1YWxhbGEuYXV0aC52MS5SZWZyZXNoU2Vzc2lvblJlc3BvbnNlEnAKE0NsZWFyQ3VycmVudFNlc3Npb24SKy5odWFsYWxhLmF1dGgudjEuQ2xlYXJDdXJyZW50U2Vzc2lvblJlcXVlc3QaLC5odWFsYWxhLmF1dGgudjEuQ2xlYXJDdXJyZW50U2Vzc2lvblJlc3BvbnNlEnYKFVVwZGF0ZVVzZXJQcmVmZXJlbmNlcxItLmh1YWxhbGEuYXV0aC52MS5VcGRhdGVVc2VyUHJlZmVyZW5jZXNSZXF1ZXN0Gi4uaHVhbGFsYS5hdXRoLnYxLlVwZGF0ZVVzZXJQcmVmZXJlbmNlc1Jlc3BvbnNlQsEBChNjb20uaHVhbGFsYS5hdXRoLnYxQhBBdXRoU2VydmljZVByb3RvUAFaOmdpdGh1Yi5jb20vaHVhbGFsYS9hcHBzL2JhY2tlbmQvZ2VuL2h1YWxhbGEvYXV0aC92MTthdXRodjGiAgNIQViqAg9IdWFsYWxhLkF1dGguVjHKAg9IdWFsYWxhXEF1dGhcVjHiAhtIdWFsYWxhXEF1dGhcVjFcR1BCTWV0YWRhdGHqAhFIdWFsYWxhOjpBdXRoOjpWMWIGcHJvdG8z");
 
 /**
  * @generated from message hualala.auth.v1.Session
@@ -85,6 +85,36 @@ export const GetCurrentSessionRequestSchema: GenMessage<GetCurrentSessionRequest
   messageDesc(file_hualala_auth_v1_auth_service, 2);
 
 /**
+ * @generated from message hualala.auth.v1.StartDevSessionRequest
+ */
+export type StartDevSessionRequest = Message<"hualala.auth.v1.StartDevSessionRequest"> & {
+};
+
+/**
+ * Describes the message hualala.auth.v1.StartDevSessionRequest.
+ * Use `create(StartDevSessionRequestSchema)` to create a new message.
+ */
+export const StartDevSessionRequestSchema: GenMessage<StartDevSessionRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_auth_v1_auth_service, 3);
+
+/**
+ * @generated from message hualala.auth.v1.StartDevSessionResponse
+ */
+export type StartDevSessionResponse = Message<"hualala.auth.v1.StartDevSessionResponse"> & {
+  /**
+   * @generated from field: hualala.auth.v1.Session session = 1;
+   */
+  session?: Session;
+};
+
+/**
+ * Describes the message hualala.auth.v1.StartDevSessionResponse.
+ * Use `create(StartDevSessionResponseSchema)` to create a new message.
+ */
+export const StartDevSessionResponseSchema: GenMessage<StartDevSessionResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_auth_v1_auth_service, 4);
+
+/**
  * @generated from message hualala.auth.v1.GetCurrentSessionResponse
  */
 export type GetCurrentSessionResponse = Message<"hualala.auth.v1.GetCurrentSessionResponse"> & {
@@ -99,7 +129,7 @@ export type GetCurrentSessionResponse = Message<"hualala.auth.v1.GetCurrentSessi
  * Use `create(GetCurrentSessionResponseSchema)` to create a new message.
  */
 export const GetCurrentSessionResponseSchema: GenMessage<GetCurrentSessionResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_auth_v1_auth_service, 3);
+  messageDesc(file_hualala_auth_v1_auth_service, 5);
 
 /**
  * @generated from message hualala.auth.v1.RefreshSessionRequest
@@ -116,7 +146,7 @@ export type RefreshSessionRequest = Message<"hualala.auth.v1.RefreshSessionReque
  * Use `create(RefreshSessionRequestSchema)` to create a new message.
  */
 export const RefreshSessionRequestSchema: GenMessage<RefreshSessionRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_auth_v1_auth_service, 4);
+  messageDesc(file_hualala_auth_v1_auth_service, 6);
 
 /**
  * @generated from message hualala.auth.v1.RefreshSessionResponse
@@ -133,7 +163,33 @@ export type RefreshSessionResponse = Message<"hualala.auth.v1.RefreshSessionResp
  * Use `create(RefreshSessionResponseSchema)` to create a new message.
  */
 export const RefreshSessionResponseSchema: GenMessage<RefreshSessionResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_auth_v1_auth_service, 5);
+  messageDesc(file_hualala_auth_v1_auth_service, 7);
+
+/**
+ * @generated from message hualala.auth.v1.ClearCurrentSessionRequest
+ */
+export type ClearCurrentSessionRequest = Message<"hualala.auth.v1.ClearCurrentSessionRequest"> & {
+};
+
+/**
+ * Describes the message hualala.auth.v1.ClearCurrentSessionRequest.
+ * Use `create(ClearCurrentSessionRequestSchema)` to create a new message.
+ */
+export const ClearCurrentSessionRequestSchema: GenMessage<ClearCurrentSessionRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_auth_v1_auth_service, 8);
+
+/**
+ * @generated from message hualala.auth.v1.ClearCurrentSessionResponse
+ */
+export type ClearCurrentSessionResponse = Message<"hualala.auth.v1.ClearCurrentSessionResponse"> & {
+};
+
+/**
+ * Describes the message hualala.auth.v1.ClearCurrentSessionResponse.
+ * Use `create(ClearCurrentSessionResponseSchema)` to create a new message.
+ */
+export const ClearCurrentSessionResponseSchema: GenMessage<ClearCurrentSessionResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_auth_v1_auth_service, 9);
 
 /**
  * @generated from message hualala.auth.v1.UpdateUserPreferencesRequest
@@ -160,7 +216,7 @@ export type UpdateUserPreferencesRequest = Message<"hualala.auth.v1.UpdateUserPr
  * Use `create(UpdateUserPreferencesRequestSchema)` to create a new message.
  */
 export const UpdateUserPreferencesRequestSchema: GenMessage<UpdateUserPreferencesRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_auth_v1_auth_service, 6);
+  messageDesc(file_hualala_auth_v1_auth_service, 10);
 
 /**
  * @generated from message hualala.auth.v1.UpdateUserPreferencesResponse
@@ -177,12 +233,20 @@ export type UpdateUserPreferencesResponse = Message<"hualala.auth.v1.UpdateUserP
  * Use `create(UpdateUserPreferencesResponseSchema)` to create a new message.
  */
 export const UpdateUserPreferencesResponseSchema: GenMessage<UpdateUserPreferencesResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_auth_v1_auth_service, 7);
+  messageDesc(file_hualala_auth_v1_auth_service, 11);
 
 /**
  * @generated from service hualala.auth.v1.AuthService
  */
 export const AuthService: GenService<{
+  /**
+   * @generated from rpc hualala.auth.v1.AuthService.StartDevSession
+   */
+  startDevSession: {
+    methodKind: "unary";
+    input: typeof StartDevSessionRequestSchema;
+    output: typeof StartDevSessionResponseSchema;
+  },
   /**
    * @generated from rpc hualala.auth.v1.AuthService.GetCurrentSession
    */
@@ -198,6 +262,14 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof RefreshSessionRequestSchema;
     output: typeof RefreshSessionResponseSchema;
+  },
+  /**
+   * @generated from rpc hualala.auth.v1.AuthService.ClearCurrentSession
+   */
+  clearCurrentSession: {
+    methodKind: "unary";
+    input: typeof ClearCurrentSessionRequestSchema;
+    output: typeof ClearCurrentSessionResponseSchema;
   },
   /**
    * @generated from rpc hualala.auth.v1.AuthService.UpdateUserPreferences

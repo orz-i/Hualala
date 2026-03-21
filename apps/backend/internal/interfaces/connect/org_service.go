@@ -18,6 +18,7 @@ func (h *orgHandler) ListMembers(ctx context.Context, req *connectrpc.Request[or
 	records, err := h.service.ListMembers(ctx, orgapp.ListMembersInput{
 		ActorOrgID:  req.Header().Get("X-Hualala-Org-Id"),
 		ActorUserID: req.Header().Get("X-Hualala-User-Id"),
+		CookieHeader: req.Header().Get("Cookie"),
 		OrgID:       req.Msg.GetOrgId(),
 	})
 	if err != nil {
@@ -36,6 +37,7 @@ func (h *orgHandler) ListRoles(ctx context.Context, req *connectrpc.Request[orgv
 	records, err := h.service.ListRoles(ctx, orgapp.ListRolesInput{
 		ActorOrgID:  req.Header().Get("X-Hualala-Org-Id"),
 		ActorUserID: req.Header().Get("X-Hualala-User-Id"),
+		CookieHeader: req.Header().Get("Cookie"),
 		OrgID:       req.Msg.GetOrgId(),
 	})
 	if err != nil {
@@ -54,6 +56,7 @@ func (h *orgHandler) UpdateMemberRole(ctx context.Context, req *connectrpc.Reque
 	record, err := h.service.UpdateMemberRole(ctx, orgapp.UpdateMemberRoleInput{
 		ActorOrgID:  req.Header().Get("X-Hualala-Org-Id"),
 		ActorUserID: req.Header().Get("X-Hualala-User-Id"),
+		CookieHeader: req.Header().Get("Cookie"),
 		OrgID:       req.Msg.GetOrgId(),
 		MemberID:    req.Msg.GetMemberId(),
 		RoleID:      req.Msg.GetRoleId(),
@@ -70,6 +73,7 @@ func (h *orgHandler) UpdateOrgLocaleSettings(ctx context.Context, req *connectrp
 	record, err := h.service.UpdateOrgLocaleSettings(ctx, orgapp.UpdateOrgLocaleSettingsInput{
 		ActorOrgID:       req.Header().Get("X-Hualala-Org-Id"),
 		ActorUserID:      req.Header().Get("X-Hualala-User-Id"),
+		CookieHeader:     req.Header().Get("Cookie"),
 		OrgID:            req.Msg.GetOrgId(),
 		DefaultLocale:    req.Msg.GetDefaultLocale(),
 		SupportedLocales: req.Msg.GetSupportedLocales(),

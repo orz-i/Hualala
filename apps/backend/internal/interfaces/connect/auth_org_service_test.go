@@ -2,6 +2,7 @@ package connect
 
 import (
 	"context"
+	"net/http/cookiejar"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -30,6 +31,27 @@ func TestAuthAndOrgRoutes(t *testing.T) {
 	authClient := authv1connect.NewAuthServiceClient(server.Client(), server.URL)
 	orgClient := orgv1connect.NewOrgServiceClient(server.Client(), server.URL)
 
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("cookiejar.New returned error: %v", err)
+	}
+	server.Client().Jar = jar
+	authClient = authv1connect.NewAuthServiceClient(server.Client(), server.URL)
+	orgClient = orgv1connect.NewOrgServiceClient(server.Client(), server.URL)
+
+	_, err = authClient.GetCurrentSession(ctx, connectrpc.NewRequest(&authv1.GetCurrentSessionRequest{}))
+	if err == nil {
+		t.Fatalf("expected unauthenticated error before starting dev session")
+	}
+
+	startResp, err := authClient.StartDevSession(ctx, connectrpc.NewRequest(&authv1.StartDevSessionRequest{}))
+	if err != nil {
+		t.Fatalf("StartDevSession returned error: %v", err)
+	}
+	if got := startResp.Msg.GetSession().GetUserId(); got != db.DefaultDevUserID {
+		t.Fatalf("expected dev user %q, got %q", db.DefaultDevUserID, got)
+	}
+
 	sessionResp, err := authClient.GetCurrentSession(ctx, connectrpc.NewRequest(&authv1.GetCurrentSessionRequest{}))
 	if err != nil {
 		t.Fatalf("GetCurrentSession returned error: %v", err)
@@ -43,8 +65,6 @@ func TestAuthAndOrgRoutes(t *testing.T) {
 		DisplayLocale: "en-US",
 		Timezone:      "America/Los_Angeles",
 	})
-	updateReq.Header().Set("X-Hualala-Org-Id", db.DefaultDevOrganizationID)
-	updateReq.Header().Set("X-Hualala-User-Id", db.DefaultDevUserID)
 	updateResp, err := authClient.UpdateUserPreferences(ctx, updateReq)
 	if err != nil {
 		t.Fatalf("UpdateUserPreferences returned error: %v", err)
@@ -54,8 +74,6 @@ func TestAuthAndOrgRoutes(t *testing.T) {
 	}
 
 	membersReq := connectrpc.NewRequest(&orgv1.ListMembersRequest{OrgId: db.DefaultDevOrganizationID})
-	membersReq.Header().Set("X-Hualala-Org-Id", db.DefaultDevOrganizationID)
-	membersReq.Header().Set("X-Hualala-User-Id", db.DefaultDevUserID)
 	membersResp, err := orgClient.ListMembers(ctx, membersReq)
 	if err != nil {
 		t.Fatalf("ListMembers returned error: %v", err)
@@ -69,14 +87,21 @@ func TestAuthAndOrgRoutes(t *testing.T) {
 		MemberId: db.DefaultDevMembershipID,
 		RoleId:   "55555555-5555-5555-5555-555555555555",
 	})
-	roleUpdateReq.Header().Set("X-Hualala-Org-Id", db.DefaultDevOrganizationID)
-	roleUpdateReq.Header().Set("X-Hualala-User-Id", db.DefaultDevUserID)
 	roleUpdateResp, err := orgClient.UpdateMemberRole(ctx, roleUpdateReq)
 	if err != nil {
 		t.Fatalf("UpdateMemberRole returned error: %v", err)
 	}
 	if got := roleUpdateResp.Msg.GetMember().GetRoleId(); got != "55555555-5555-5555-5555-555555555555" {
 		t.Fatalf("expected updated role id, got %q", got)
+	}
+
+	_, err = authClient.ClearCurrentSession(ctx, connectrpc.NewRequest(&authv1.ClearCurrentSessionRequest{}))
+	if err != nil {
+		t.Fatalf("ClearCurrentSession returned error: %v", err)
+	}
+	_, err = authClient.GetCurrentSession(ctx, connectrpc.NewRequest(&authv1.GetCurrentSessionRequest{}))
+	if err == nil {
+		t.Fatalf("expected unauthenticated error after clearing current session")
 	}
 }
 

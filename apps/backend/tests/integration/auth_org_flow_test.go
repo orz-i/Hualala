@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"net/http/cookiejar"
 	"testing"
 
 	connectrpc "connectrpc.com/connect"
@@ -22,12 +23,25 @@ func TestAuthOrgFlow(t *testing.T) {
 	authClient := authv1connect.NewAuthServiceClient(server.Client(), server.URL)
 	orgClient := orgv1connect.NewOrgServiceClient(server.Client(), server.URL)
 
-	t.Run("session fallback and refresh use bootstrap identity", func(t *testing.T) {
-		sessionResp, err := authClient.GetCurrentSession(ctx, connectrpc.NewRequest(&authv1.GetCurrentSessionRequest{}))
-		if err != nil {
-			t.Fatalf("GetCurrentSession returned error: %v", err)
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("cookiejar.New returned error: %v", err)
+	}
+	server.Client().Jar = jar
+	authClient = authv1connect.NewAuthServiceClient(server.Client(), server.URL)
+	orgClient = orgv1connect.NewOrgServiceClient(server.Client(), server.URL)
+
+	t.Run("dev session bootstrap refresh and clear use cookies", func(t *testing.T) {
+		_, err := authClient.GetCurrentSession(ctx, connectrpc.NewRequest(&authv1.GetCurrentSessionRequest{}))
+		if err == nil {
+			t.Fatalf("expected unauthenticated error before dev session bootstrap")
 		}
-		session := sessionResp.Msg.GetSession()
+
+		startResp, err := authClient.StartDevSession(ctx, connectrpc.NewRequest(&authv1.StartDevSessionRequest{}))
+		if err != nil {
+			t.Fatalf("StartDevSession returned error: %v", err)
+		}
+		session := startResp.Msg.GetSession()
 		if got := session.GetOrgId(); got != db.DefaultDevOrganizationID {
 			t.Fatalf("expected default org %q, got %q", db.DefaultDevOrganizationID, got)
 		}
@@ -39,8 +53,6 @@ func TestAuthOrgFlow(t *testing.T) {
 		}
 
 		refreshReq := connectrpc.NewRequest(&authv1.RefreshSessionRequest{RefreshToken: "dev-refresh"})
-		refreshReq.Header().Set("X-Hualala-Org-Id", db.DefaultDevOrganizationID)
-		refreshReq.Header().Set("X-Hualala-User-Id", db.DefaultDevUserID)
 		refreshResp, err := authClient.RefreshSession(ctx, refreshReq)
 		if err != nil {
 			t.Fatalf("RefreshSession returned error: %v", err)
@@ -48,16 +60,26 @@ func TestAuthOrgFlow(t *testing.T) {
 		if got := refreshResp.Msg.GetSession().GetSessionId(); got != session.GetSessionId() {
 			t.Fatalf("expected refresh to return same dev session id %q, got %q", session.GetSessionId(), got)
 		}
+
+		_, err = authClient.ClearCurrentSession(ctx, connectrpc.NewRequest(&authv1.ClearCurrentSessionRequest{}))
+		if err != nil {
+			t.Fatalf("ClearCurrentSession returned error: %v", err)
+		}
+		_, err = authClient.GetCurrentSession(ctx, connectrpc.NewRequest(&authv1.GetCurrentSessionRequest{}))
+		if err == nil {
+			t.Fatalf("expected unauthenticated error after clearing cookies")
+		}
 	})
 
 	t.Run("user preferences persist", func(t *testing.T) {
+		if _, err := authClient.StartDevSession(ctx, connectrpc.NewRequest(&authv1.StartDevSessionRequest{})); err != nil {
+			t.Fatalf("StartDevSession returned error: %v", err)
+		}
 		req := connectrpc.NewRequest(&authv1.UpdateUserPreferencesRequest{
 			UserId:        db.DefaultDevUserID,
 			DisplayLocale: "en-US",
 			Timezone:      "America/Los_Angeles",
 		})
-		req.Header().Set("X-Hualala-Org-Id", db.DefaultDevOrganizationID)
-		req.Header().Set("X-Hualala-User-Id", db.DefaultDevUserID)
 		resp, err := authClient.UpdateUserPreferences(ctx, req)
 		if err != nil {
 			t.Fatalf("UpdateUserPreferences returned error: %v", err)
@@ -82,6 +104,9 @@ func TestAuthOrgFlow(t *testing.T) {
 	})
 
 	t.Run("members roles and org locale settings use authz and persist", func(t *testing.T) {
+		if _, err := authClient.StartDevSession(ctx, connectrpc.NewRequest(&authv1.StartDevSessionRequest{})); err != nil {
+			t.Fatalf("StartDevSession returned error: %v", err)
+		}
 		editorRoleID := "55555555-5555-5555-5555-555555555555"
 		if err := repos.AuthOrg.SaveRole(ctx, org.Role{
 			ID:          editorRoleID,
@@ -93,8 +118,6 @@ func TestAuthOrgFlow(t *testing.T) {
 		}
 
 		membersReq := connectrpc.NewRequest(&orgv1.ListMembersRequest{OrgId: db.DefaultDevOrganizationID})
-		membersReq.Header().Set("X-Hualala-Org-Id", db.DefaultDevOrganizationID)
-		membersReq.Header().Set("X-Hualala-User-Id", db.DefaultDevUserID)
 		membersResp, err := orgClient.ListMembers(ctx, membersReq)
 		if err != nil {
 			t.Fatalf("ListMembers returned error: %v", err)
@@ -104,8 +127,6 @@ func TestAuthOrgFlow(t *testing.T) {
 		}
 
 		rolesReq := connectrpc.NewRequest(&orgv1.ListRolesRequest{OrgId: db.DefaultDevOrganizationID})
-		rolesReq.Header().Set("X-Hualala-Org-Id", db.DefaultDevOrganizationID)
-		rolesReq.Header().Set("X-Hualala-User-Id", db.DefaultDevUserID)
 		rolesResp, err := orgClient.ListRoles(ctx, rolesReq)
 		if err != nil {
 			t.Fatalf("ListRoles returned error: %v", err)
@@ -119,8 +140,6 @@ func TestAuthOrgFlow(t *testing.T) {
 			DefaultLocale:    "ja-JP",
 			SupportedLocales: []string{"ja-JP", "en-US"},
 		})
-		localeReq.Header().Set("X-Hualala-Org-Id", db.DefaultDevOrganizationID)
-		localeReq.Header().Set("X-Hualala-User-Id", db.DefaultDevUserID)
 		localeResp, err := orgClient.UpdateOrgLocaleSettings(ctx, localeReq)
 		if err != nil {
 			t.Fatalf("UpdateOrgLocaleSettings returned error: %v", err)
@@ -149,8 +168,6 @@ func TestAuthOrgFlow(t *testing.T) {
 			MemberId: db.DefaultDevMembershipID,
 			RoleId:   editorRoleID,
 		})
-		roleReq.Header().Set("X-Hualala-Org-Id", db.DefaultDevOrganizationID)
-		roleReq.Header().Set("X-Hualala-User-Id", db.DefaultDevUserID)
 		roleResp, err := orgClient.UpdateMemberRole(ctx, roleReq)
 		if err != nil {
 			t.Fatalf("UpdateMemberRole returned error: %v", err)
