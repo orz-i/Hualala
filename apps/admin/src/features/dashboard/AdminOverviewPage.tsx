@@ -1,6 +1,10 @@
-import { useEffect, useId, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import type { AdminTranslator, LocaleCode } from "../../i18n";
 import type { AdminGovernanceViewModel } from "./governance";
+import type {
+  WorkflowMonitorViewModel,
+  WorkflowRunDetailViewModel,
+} from "./workflow";
 
 type BudgetSnapshot = {
   projectId: string;
@@ -66,6 +70,8 @@ type BudgetFeedback = {
 type AdminOverviewPageProps = {
   overview: AdminOverviewViewModel;
   governance: AdminGovernanceViewModel;
+  workflowMonitor: WorkflowMonitorViewModel;
+  workflowRunDetail?: WorkflowRunDetailViewModel | null;
   locale: LocaleCode;
   t: AdminTranslator;
   onLocaleChange: (locale: LocaleCode) => void;
@@ -77,6 +83,10 @@ type AdminOverviewPageProps = {
   }) => void;
   onUpdateMemberRole?: (input: { memberId: string; roleId: string }) => void;
   onUpdateOrgLocaleSettings?: (input: { defaultLocale: string }) => void;
+  onWorkflowStatusFilterChange?: (status: string) => void;
+  onWorkflowTypeFilterChange?: (workflowType: string) => void;
+  onSelectWorkflowRun?: (workflowRunId: string) => void;
+  onCloseWorkflowDetail?: () => void;
   budgetFeedback?: BudgetFeedback;
 };
 
@@ -99,9 +109,34 @@ function formatCurrency(cents: number) {
   return `${(cents / 100).toFixed(2)} 元`;
 }
 
+function formatDateTime(value: string) {
+  if (!value) {
+    return "pending";
+  }
+
+  return value.replace("T", " ").replace(".000Z", "Z");
+}
+
+function listFocusableElements(container: HTMLElement) {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      [
+        "button:not([disabled])",
+        "[href]",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        "[tabindex]:not([tabindex='-1'])",
+      ].join(","),
+    ),
+  ).filter((element) => !element.hasAttribute("hidden"));
+}
+
 export function AdminOverviewPage({
   overview,
   governance,
+  workflowMonitor,
+  workflowRunDetail,
   locale,
   t,
   onLocaleChange,
@@ -109,6 +144,10 @@ export function AdminOverviewPage({
   onUpdateUserPreferences,
   onUpdateMemberRole,
   onUpdateOrgLocaleSettings,
+  onWorkflowStatusFilterChange,
+  onWorkflowTypeFilterChange,
+  onSelectWorkflowRun,
+  onCloseWorkflowDetail,
   budgetFeedback,
 }: AdminOverviewPageProps) {
   const latestEvaluation = overview.evaluationRuns[0];
@@ -116,6 +155,11 @@ export function AdminOverviewPage({
   const displayLocaleInputId = useId();
   const timezoneInputId = useId();
   const orgLocaleInputId = useId();
+  const workflowStatusFilterInputId = useId();
+  const workflowTypeFilterInputId = useId();
+  const workflowDetailTitleId = useId();
+  const workflowDialogRef = useRef<HTMLElement | null>(null);
+  const workflowCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const [budgetLimitYuan, setBudgetLimitYuan] = useState(
     (overview.budgetSnapshot.limitCents / 100).toFixed(2),
   );
@@ -152,6 +196,68 @@ export function AdminOverviewPage({
       Object.fromEntries(governance.members.map((member) => [member.memberId, member.roleId])),
     );
   }, [governance.members]);
+
+  useEffect(() => {
+    if (!workflowRunDetail) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const previousActiveElement =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    document.body.style.overflow = "hidden";
+    workflowCloseButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseWorkflowDetail?.();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const dialog = workflowDialogRef.current;
+      if (!dialog) {
+        return;
+      }
+
+      const focusableElements = listFocusableElements(dialog);
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      if (!firstElement || !lastElement) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      if (event.shiftKey && activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+        return;
+      }
+
+      if (!event.shiftKey && activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousActiveElement?.focus();
+    };
+  }, [onCloseWorkflowDetail, workflowRunDetail]);
 
   const recentChangePalette = (tone: RecentChangeSummary["tone"]) =>
     tone === "success"
@@ -435,6 +541,148 @@ export function AdminOverviewPage({
           }}
         >
           <article style={panelStyle}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "16px",
+                marginBottom: "16px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <h2 style={{ marginTop: 0, marginBottom: "8px", fontSize: "1.05rem" }}>
+                  {t("workflow.panel.title")}
+                </h2>
+                <p style={{ ...metricStyle, fontSize: "0.9rem" }}>
+                  {t("workflow.panel.summary", { count: workflowMonitor.runs.length })}
+                </p>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: "10px",
+                  flex: "1 1 360px",
+                }}
+              >
+                <label
+                  htmlFor={workflowStatusFilterInputId}
+                  style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}
+                >
+                  <span>{t("workflow.filter.status")}</span>
+                  <select
+                    id={workflowStatusFilterInputId}
+                    value={workflowMonitor.filters.status}
+                    onChange={(event) => {
+                      onWorkflowStatusFilterChange?.(event.target.value);
+                    }}
+                    style={{
+                      borderRadius: "12px",
+                      border: "1px solid rgba(148, 163, 184, 0.45)",
+                      padding: "8px 10px",
+                      font: "inherit",
+                      background: "#ffffff",
+                    }}
+                  >
+                    <option value="">{t("workflow.filter.option.all")}</option>
+                    <option value="running">{t("workflow.filter.option.running")}</option>
+                    <option value="failed">{t("workflow.filter.option.failed")}</option>
+                    <option value="succeeded">{t("workflow.filter.option.succeeded")}</option>
+                    <option value="cancelled">{t("workflow.filter.option.cancelled")}</option>
+                  </select>
+                </label>
+                <label
+                  htmlFor={workflowTypeFilterInputId}
+                  style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}
+                >
+                  <span>{t("workflow.filter.type")}</span>
+                  <select
+                    id={workflowTypeFilterInputId}
+                    value={workflowMonitor.filters.workflowType}
+                    onChange={(event) => {
+                      onWorkflowTypeFilterChange?.(event.target.value);
+                    }}
+                    style={{
+                      borderRadius: "12px",
+                      border: "1px solid rgba(148, 163, 184, 0.45)",
+                      padding: "8px 10px",
+                      font: "inherit",
+                      background: "#ffffff",
+                    }}
+                  >
+                    <option value="">{t("workflow.filter.option.all")}</option>
+                    <option value="shot_pipeline">shot_pipeline</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div style={{ display: "grid", gap: "12px" }}>
+              {workflowMonitor.runs.map((run) => (
+                <article
+                  key={run.id}
+                  style={{
+                    display: "grid",
+                    gap: "10px",
+                    padding: "14px 16px",
+                    borderRadius: "14px",
+                    background: "rgba(255, 255, 255, 0.82)",
+                    border: "1px solid rgba(148, 163, 184, 0.18)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <strong>{run.id}</strong>
+                    <button
+                      type="button"
+                      style={{
+                        border: 0,
+                        borderRadius: "999px",
+                        padding: "8px 14px",
+                        background: "#0f766e",
+                        color: "#ecfeff",
+                        cursor: "pointer",
+                      }}
+                      aria-label={t("workflow.detail.button", { id: run.id })}
+                      onClick={() => {
+                        onSelectWorkflowRun?.(run.id);
+                      }}
+                    >
+                      {t("workflow.detail.open")}
+                    </button>
+                  </div>
+                  <p style={metricStyle}>
+                    {t("workflow.run.summary", {
+                      workflowType: run.workflowType,
+                      status: run.status,
+                      provider: run.provider,
+                    })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("workflow.run.step", {
+                      currentStep: run.currentStep,
+                      attemptCount: run.attemptCount,
+                    })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("workflow.run.updatedAt", {
+                      updatedAt: formatDateTime(run.updatedAt),
+                    })}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </article>
+
+          <article style={panelStyle}>
             <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
               {t("governance.session.title")}
             </h2>
@@ -616,6 +864,155 @@ export function AdminOverviewPage({
           </article>
         </section>
       </section>
+      {workflowRunDetail ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.35)",
+            display: "grid",
+            placeItems: "center",
+            padding: "24px",
+          }}
+        >
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={workflowDetailTitleId}
+            ref={workflowDialogRef}
+            tabIndex={-1}
+            style={{
+              width: "min(820px, 100%)",
+              maxHeight: "calc(100vh - 48px)",
+              overflow: "auto",
+              borderRadius: "24px",
+              padding: "24px",
+              background: "#f8fafc",
+              boxShadow: "0 24px 48px rgba(15, 23, 42, 0.2)",
+              display: "grid",
+              gap: "18px",
+            }}
+            >
+              <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "16px",
+              }}
+              >
+                <div style={{ display: "grid", gap: "6px" }}>
+                  <h2 id={workflowDetailTitleId} style={{ margin: 0 }}>
+                    {t("workflow.detail.title")}
+                  </h2>
+                  <p style={metricStyle}>{workflowRunDetail.run.id}</p>
+                </div>
+              <button
+                type="button"
+                ref={workflowCloseButtonRef}
+                aria-label={t("workflow.detail.close")}
+                onClick={() => {
+                  onCloseWorkflowDetail?.();
+                }}
+                style={{
+                  border: 0,
+                  borderRadius: "999px",
+                  padding: "8px 14px",
+                  background: "#cbd5e1",
+                  color: "#0f172a",
+                  cursor: "pointer",
+                }}
+              >
+                {t("workflow.detail.close")}
+              </button>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: "12px",
+              }}
+            >
+              <p style={metricStyle}>
+                {t("workflow.detail.project", { projectId: workflowRunDetail.run.projectId })}
+              </p>
+              <p style={metricStyle}>
+                {t("workflow.detail.resource", { resourceId: workflowRunDetail.run.resourceId })}
+              </p>
+              <p style={metricStyle}>
+                {t("workflow.detail.provider", { provider: workflowRunDetail.run.provider })}
+              </p>
+              <p style={metricStyle}>
+                {t("workflow.detail.currentStep", { currentStep: workflowRunDetail.run.currentStep })}
+              </p>
+              <p style={metricStyle}>
+                {t("workflow.detail.attemptCount", { count: workflowRunDetail.run.attemptCount })}
+              </p>
+              <p style={metricStyle}>
+                {t("workflow.detail.lastError", {
+                  message: workflowRunDetail.run.lastError || "none",
+                })}
+              </p>
+              <p style={metricStyle}>
+                {t("workflow.detail.externalRequest", {
+                  externalRequestId: workflowRunDetail.run.externalRequestId || "pending",
+                })}
+              </p>
+              <p style={metricStyle}>
+                {t("workflow.detail.createdAt", {
+                  createdAt: formatDateTime(workflowRunDetail.run.createdAt),
+                })}
+              </p>
+              <p style={metricStyle}>
+                {t("workflow.detail.updatedAt", {
+                  updatedAt: formatDateTime(workflowRunDetail.run.updatedAt),
+                })}
+              </p>
+            </div>
+            <div style={{ display: "grid", gap: "12px" }}>
+              {workflowRunDetail.steps.map((step) => (
+                <article
+                  key={step.id}
+                  style={{
+                    display: "grid",
+                    gap: "6px",
+                    padding: "14px 16px",
+                    borderRadius: "14px",
+                    background: "#ffffff",
+                    border: "1px solid rgba(148, 163, 184, 0.2)",
+                  }}
+                >
+                  <strong>{step.stepKey}</strong>
+                  <p style={metricStyle}>
+                    {t("workflow.step.status", { status: step.status, order: step.stepOrder })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("workflow.step.errorCode", { errorCode: step.errorCode || "none" })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("workflow.step.errorMessage", {
+                      errorMessage: step.errorMessage || "none",
+                    })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("workflow.step.startedAt", {
+                      startedAt: formatDateTime(step.startedAt),
+                    })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("workflow.step.completedAt", {
+                      completedAt: formatDateTime(step.completedAt),
+                    })}
+                  </p>
+                  <p style={metricStyle}>
+                    {t("workflow.step.failedAt", { failedAt: formatDateTime(step.failedAt) })}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createTranslator } from "../../i18n";
 import { AdminOverviewPage } from "./AdminOverviewPage";
 import type { AdminGovernanceViewModel } from "./governance";
+import type { WorkflowMonitorViewModel, WorkflowRunDetailViewModel } from "./workflow";
 
 describe("AdminOverviewPage", () => {
   const overview = {
@@ -62,12 +63,78 @@ describe("AdminOverviewPage", () => {
       supportedLocales: ["zh-CN"],
     },
   };
+  const workflowMonitor: WorkflowMonitorViewModel = {
+    filters: {
+      status: "",
+      workflowType: "",
+    },
+    runs: [
+      {
+        id: "workflow-run-1",
+        projectId: "project-live-1",
+        resourceId: "shot-exec-live-1",
+        workflowType: "shot_pipeline",
+        status: "running",
+        provider: "seedance",
+        currentStep: "attempt_1.gateway",
+        attemptCount: 1,
+        lastError: "",
+        externalRequestId: "request-1",
+        createdAt: "2024-03-09T16:00:00.000Z",
+        updatedAt: "2024-03-09T16:05:00.000Z",
+      },
+      {
+        id: "workflow-run-2",
+        projectId: "project-live-1",
+        resourceId: "shot-exec-live-2",
+        workflowType: "shot_pipeline",
+        status: "failed",
+        provider: "seedance",
+        currentStep: "attempt_2.gateway",
+        attemptCount: 2,
+        lastError: "gateway timeout",
+        externalRequestId: "request-2",
+        createdAt: "2024-03-09T16:06:00.000Z",
+        updatedAt: "2024-03-09T16:10:00.000Z",
+      },
+    ],
+  };
+  const workflowDetail: WorkflowRunDetailViewModel = {
+    run: workflowMonitor.runs[1]!,
+    steps: [
+      {
+        id: "step-1",
+        workflowRunId: "workflow-run-2",
+        stepKey: "attempt_2.dispatch",
+        stepOrder: 1,
+        status: "completed",
+        errorCode: "",
+        errorMessage: "",
+        startedAt: "2024-03-09T16:06:00.000Z",
+        completedAt: "2024-03-09T16:06:05.000Z",
+        failedAt: "",
+      },
+      {
+        id: "step-2",
+        workflowRunId: "workflow-run-2",
+        stepKey: "attempt_2.gateway",
+        stepOrder: 2,
+        status: "failed",
+        errorCode: "provider_error",
+        errorMessage: "gateway timeout",
+        startedAt: "2024-03-09T16:06:06.000Z",
+        completedAt: "",
+        failedAt: "2024-03-09T16:10:00.000Z",
+      },
+    ],
+  };
 
   it("renders budget, billing, and review overview cards", () => {
     render(
       <AdminOverviewPage
         overview={overview}
         governance={governance}
+        workflowMonitor={workflowMonitor}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
         onLocaleChange={() => {}}
@@ -91,6 +158,9 @@ describe("AdminOverviewPage", () => {
     expect(screen.getByDisplayValue("Asia/Shanghai")).toBeInTheDocument();
     expect(screen.getByText("组织成员与语言设置")).toBeInTheDocument();
     expect(screen.getByText("Administrator")).toBeInTheDocument();
+    expect(screen.getByText("工作流监控")).toBeInTheDocument();
+    expect(screen.getByText("workflow-run-1")).toBeInTheDocument();
+    expect(screen.getByText(/attempt_1\.gateway/)).toBeInTheDocument();
   });
 
   it("allows submitting a new budget limit", () => {
@@ -100,6 +170,7 @@ describe("AdminOverviewPage", () => {
       <AdminOverviewPage
         overview={overview}
         governance={governance}
+        workflowMonitor={workflowMonitor}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
         onLocaleChange={() => {}}
@@ -129,6 +200,7 @@ describe("AdminOverviewPage", () => {
       <AdminOverviewPage
         overview={overview}
         governance={governance}
+        workflowMonitor={workflowMonitor}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
         onLocaleChange={() => {}}
@@ -166,6 +238,7 @@ describe("AdminOverviewPage", () => {
         locale="en-US"
         t={createTranslator("en-US")}
         onLocaleChange={onLocaleChange}
+        workflowMonitor={workflowMonitor}
         onUpdateUserPreferences={onUpdateUserPreferences}
         onUpdateMemberRole={onUpdateMemberRole}
         onUpdateOrgLocaleSettings={onUpdateOrgLocaleSettings}
@@ -178,6 +251,7 @@ describe("AdminOverviewPage", () => {
     expect(screen.getByText("budget_reserved · 180.00 元")).toBeInTheDocument();
     expect(screen.getByText("Recent evaluation result")).toBeInTheDocument();
     expect(screen.getByText("passed · 0 failed checks")).toBeInTheDocument();
+    expect(screen.getByText("Workflow Monitor")).toBeInTheDocument();
 
     fireEvent.change(screen.getByTestId("ui-locale-select"), {
       target: { value: "zh-CN" },
@@ -195,6 +269,7 @@ describe("AdminOverviewPage", () => {
       <AdminOverviewPage
         overview={overview}
         governance={governance}
+        workflowMonitor={workflowMonitor}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
         onLocaleChange={() => {}}
@@ -231,5 +306,74 @@ describe("AdminOverviewPage", () => {
     expect(onUpdateOrgLocaleSettings).toHaveBeenCalledWith({
       defaultLocale: "en-US",
     });
+  });
+
+  it("filters workflow runs and opens the workflow detail drawer", () => {
+    const onWorkflowStatusFilterChange = vi.fn();
+    const onWorkflowTypeFilterChange = vi.fn();
+    const onSelectWorkflowRun = vi.fn();
+    const onCloseWorkflowDetail = vi.fn();
+
+    render(
+      <AdminOverviewPage
+        overview={overview}
+        governance={governance}
+        workflowMonitor={workflowMonitor}
+        workflowRunDetail={workflowDetail}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onWorkflowStatusFilterChange={onWorkflowStatusFilterChange}
+        onWorkflowTypeFilterChange={onWorkflowTypeFilterChange}
+        onSelectWorkflowRun={onSelectWorkflowRun}
+        onCloseWorkflowDetail={onCloseWorkflowDetail}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("工作流状态过滤"), {
+      target: { value: "failed" },
+    });
+    fireEvent.change(screen.getByLabelText("工作流类型过滤"), {
+      target: { value: "shot_pipeline" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "查看工作流详情 workflow-run-2" }));
+
+    expect(onWorkflowStatusFilterChange).toHaveBeenCalledWith("failed");
+    expect(onWorkflowTypeFilterChange).toHaveBeenCalledWith("shot_pipeline");
+    expect(onSelectWorkflowRun).toHaveBeenCalledWith("workflow-run-2");
+    expect(screen.getByRole("dialog", { name: "工作流详情" })).toBeInTheDocument();
+    expect(screen.getByText(/provider_error/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "关闭工作流详情" }));
+    expect(onCloseWorkflowDetail).toHaveBeenCalled();
+  });
+
+  it("traps focus inside the workflow detail dialog and locks background scroll", async () => {
+    const onCloseWorkflowDetail = vi.fn();
+
+    render(
+      <AdminOverviewPage
+        overview={overview}
+        governance={governance}
+        workflowMonitor={workflowMonitor}
+        workflowRunDetail={workflowDetail}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onCloseWorkflowDetail={onCloseWorkflowDetail}
+      />,
+    );
+
+    const closeButton = screen.getByRole("button", { name: "关闭工作流详情" });
+    await waitFor(() => {
+      expect(closeButton).toHaveFocus();
+    });
+    expect(document.body.style.overflow).toBe("hidden");
+
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(closeButton).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onCloseWorkflowDetail).toHaveBeenCalled();
   });
 });

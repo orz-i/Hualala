@@ -11,6 +11,7 @@ type SubscribeAdminRecentChangesOptions = {
   baseUrl?: string;
   fetchFn?: HualalaFetch;
   onChange: (change: RecentChangeSummary) => void;
+  onWorkflowUpdated?: () => void;
   onError?: (error: Error) => void;
 };
 
@@ -76,6 +77,7 @@ export function subscribeAdminRecentChanges({
   baseUrl,
   fetchFn,
   onChange,
+  onWorkflowUpdated,
   onError,
 }: SubscribeAdminRecentChangesOptions) {
   const client = createSSEClient({
@@ -87,6 +89,9 @@ export function subscribeAdminRecentChanges({
     organizationId,
     projectId,
     onEvent: (event) => {
+      if (event.eventType === "workflow.updated") {
+        onWorkflowUpdated?.();
+      }
       const change = mapEventToRecentChange(event);
       if (change) {
         onChange(change);

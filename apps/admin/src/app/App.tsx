@@ -1,12 +1,21 @@
-import { startTransition, useEffect, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useLocaleState } from "../i18n";
 import {
   AdminOverviewPage,
   type AdminOverviewViewModel,
+  type RecentChangeSummary,
 } from "../features/dashboard/AdminOverviewPage";
 import type { AdminGovernanceViewModel } from "../features/dashboard/governance";
 import { loadAdminOverview } from "../features/dashboard/loadAdminOverview";
 import { loadGovernancePanel } from "../features/dashboard/loadGovernancePanel";
+import { loadWorkflowMonitorPanel } from "../features/dashboard/loadWorkflowMonitorPanel";
+import { loadWorkflowRunDetails } from "../features/dashboard/loadWorkflowRunDetails";
 import { updateBudgetPolicy } from "../features/dashboard/mutateBudgetPolicy";
 import {
   updateMemberRole,
@@ -14,7 +23,10 @@ import {
   updateUserPreferences,
 } from "../features/dashboard/mutateGovernance";
 import { subscribeAdminRecentChanges } from "../features/dashboard/subscribeRecentChanges";
-import type { RecentChangeSummary } from "../features/dashboard/AdminOverviewPage";
+import type {
+  WorkflowMonitorViewModel,
+  WorkflowRunDetailViewModel,
+} from "../features/dashboard/workflow";
 
 function waitForFeedbackPaint() {
   return new Promise((resolve) => {
@@ -72,11 +84,22 @@ export function App() {
   const { locale, setLocale, t } = useLocaleState();
   const [overview, setOverview] = useState<AdminOverviewViewModel | null>(null);
   const [governance, setGovernance] = useState<AdminGovernanceViewModel | null>(null);
+  const [workflowMonitor, setWorkflowMonitor] = useState<WorkflowMonitorViewModel | null>(null);
+  const [workflowRunDetail, setWorkflowRunDetail] =
+    useState<WorkflowRunDetailViewModel | null>(null);
+  const [selectedWorkflowRunId, setSelectedWorkflowRunId] = useState<string | null>(null);
+  const [workflowStatusFilter, setWorkflowStatusFilter] = useState("");
+  const [workflowTypeFilter, setWorkflowTypeFilter] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [budgetFeedback, setBudgetFeedback] = useState<{
     tone: "pending" | "success" | "error";
     message: string;
   } | null>(null);
+  const workflowRefreshStateRef = useRef({
+    running: false,
+    queued: false,
+  });
+  const refreshWorkflowSilentlyRef = useRef<() => Promise<void>>(async () => {});
 
   const searchParams = new URLSearchParams(window.location.search);
   const projectId = searchParams.get("projectId") ?? "project-demo-001";
@@ -85,23 +108,81 @@ export function App() {
   const userId = searchParams.get("userId") ?? undefined;
   const subscriptionOrgId = orgId ?? governance?.currentSession.orgId;
 
-  const refreshOverview = async () => {
+  const refreshOverview = useCallback(async () => {
     const nextOverview = await loadAdminOverview({ projectId, shotExecutionId });
     startTransition(() => {
       setOverview(nextOverview);
       setErrorMessage("");
     });
-  };
+  }, [projectId, shotExecutionId]);
 
-  const refreshGovernance = async () => {
+  const refreshGovernance = useCallback(async () => {
     const nextGovernance = await loadGovernancePanel({ orgId, userId });
     startTransition(() => {
       setGovernance(nextGovernance);
     });
-  };
+  }, [orgId, userId]);
+
+  const refreshWorkflowMonitor = useCallback(async () => {
+    const nextWorkflowMonitor = await loadWorkflowMonitorPanel({
+      projectId,
+      status: workflowStatusFilter,
+      workflowType: workflowTypeFilter,
+      orgId,
+      userId,
+    });
+    startTransition(() => {
+      setWorkflowMonitor(nextWorkflowMonitor);
+    });
+  }, [orgId, projectId, userId, workflowStatusFilter, workflowTypeFilter]);
+
+  const refreshWorkflowRunDetail = useCallback(
+    async (workflowRunId: string) => {
+      const nextWorkflowRunDetail = await loadWorkflowRunDetails({
+        workflowRunId,
+        orgId,
+        userId,
+      });
+      startTransition(() => {
+        setWorkflowRunDetail(nextWorkflowRunDetail);
+      });
+    },
+    [orgId, userId],
+  );
+
+  const refreshWorkflowSilently = useCallback(async () => {
+    if (workflowRefreshStateRef.current.running) {
+      workflowRefreshStateRef.current.queued = true;
+      return;
+    }
+
+    workflowRefreshStateRef.current.running = true;
+
+    try {
+      await refreshWorkflowMonitor();
+      if (selectedWorkflowRunId) {
+        await refreshWorkflowRunDetail(selectedWorkflowRunId);
+      }
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "admin: unknown workflow refresh error";
+      console.warn(message);
+    } finally {
+      workflowRefreshStateRef.current.running = false;
+      if (workflowRefreshStateRef.current.queued) {
+        workflowRefreshStateRef.current.queued = false;
+        void refreshWorkflowSilently();
+      }
+    }
+  }, [refreshWorkflowMonitor, refreshWorkflowRunDetail, selectedWorkflowRunId]);
+
+  useEffect(() => {
+    refreshWorkflowSilentlyRef.current = refreshWorkflowSilently;
+  }, [refreshWorkflowSilently]);
 
   useEffect(() => {
     let cancelled = false;
+
     loadAdminOverview({ projectId, shotExecutionId })
       .then((nextOverview) => {
         if (cancelled) {
@@ -148,6 +229,80 @@ export function App() {
   }, [orgId, projectId, shotExecutionId, userId]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    loadWorkflowMonitorPanel({
+      projectId,
+      status: workflowStatusFilter,
+      workflowType: workflowTypeFilter,
+      orgId,
+      userId,
+    })
+      .then((nextWorkflowMonitor) => {
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setWorkflowMonitor(nextWorkflowMonitor);
+        });
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : "admin: unknown workflow monitor error";
+        console.warn(message);
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setWorkflowMonitor({
+            filters: {
+              status: workflowStatusFilter,
+              workflowType: workflowTypeFilter,
+            },
+            runs: [],
+          });
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, projectId, userId, workflowStatusFilter, workflowTypeFilter]);
+
+  useEffect(() => {
+    if (!selectedWorkflowRunId) {
+      startTransition(() => {
+        setWorkflowRunDetail(null);
+      });
+      return;
+    }
+
+    let cancelled = false;
+    loadWorkflowRunDetails({
+      workflowRunId: selectedWorkflowRunId,
+      orgId,
+      userId,
+    })
+      .then((nextWorkflowRunDetail) => {
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setWorkflowRunDetail(nextWorkflowRunDetail);
+        });
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : "admin: unknown workflow detail error";
+        console.warn(message);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, selectedWorkflowRunId, userId]);
+
+  useEffect(() => {
     if (!overview || !subscriptionOrgId) {
       return;
     }
@@ -168,11 +323,21 @@ export function App() {
           });
         });
       },
+      onWorkflowUpdated: () => {
+        void refreshWorkflowSilentlyRef.current();
+      },
+      onError: (error) => {
+        console.warn(error.message);
+      },
     });
   }, [overview ? "ready" : "idle", projectId, subscriptionOrgId]);
 
   if (errorMessage) {
-    return <main style={{ padding: "32px" }}>{t("app.error.load", { message: errorMessage })}</main>;
+    return (
+      <main style={{ padding: "32px" }}>
+        {t("app.error.load", { message: errorMessage })}
+      </main>
+    );
   }
 
   if (!overview) {
@@ -182,11 +347,22 @@ export function App() {
   const effectiveGovernance = governance ?? buildFallbackGovernance(orgId, userId);
   const effectiveOrgId = orgId ?? effectiveGovernance.currentSession.orgId;
   const effectiveUserId = userId ?? effectiveGovernance.currentSession.userId;
+  const effectiveWorkflowMonitor =
+    workflowMonitor ??
+    ({
+      filters: {
+        status: workflowStatusFilter,
+        workflowType: workflowTypeFilter,
+      },
+      runs: [],
+    } satisfies WorkflowMonitorViewModel);
 
   return (
     <AdminOverviewPage
       overview={overview}
       governance={effectiveGovernance}
+      workflowMonitor={effectiveWorkflowMonitor}
+      workflowRunDetail={workflowRunDetail}
       locale={locale}
       t={t}
       onLocaleChange={setLocale}
@@ -248,6 +424,27 @@ export function App() {
           defaultLocale: input.defaultLocale,
         });
         await refreshGovernance();
+      }}
+      onWorkflowStatusFilterChange={(status) => {
+        startTransition(() => {
+          setWorkflowStatusFilter(status);
+        });
+      }}
+      onWorkflowTypeFilterChange={(workflowType) => {
+        startTransition(() => {
+          setWorkflowTypeFilter(workflowType);
+        });
+      }}
+      onSelectWorkflowRun={(workflowRunId) => {
+        startTransition(() => {
+          setSelectedWorkflowRunId(workflowRunId);
+        });
+      }}
+      onCloseWorkflowDetail={() => {
+        startTransition(() => {
+          setSelectedWorkflowRunId(null);
+          setWorkflowRunDetail(null);
+        });
       }}
     />
   );
