@@ -2,9 +2,10 @@ package connect
 
 import (
 	"context"
-	"net/http/cookiejar"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	connectrpc "connectrpc.com/connect"
@@ -126,6 +127,43 @@ func TestOrgRouteRejectsMissingPermission(t *testing.T) {
 	_, err := orgClient.UpdateOrgLocaleSettings(ctx, req)
 	if err == nil {
 		t.Fatalf("expected permission denied error")
+	}
+}
+
+func TestStartDevSessionSetsSecureCookiesForForwardedHTTPS(t *testing.T) {
+	store := db.NewMemoryStore()
+	seedAuthOrgRuntimeStore(store)
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, NewRouteDependencies(runtime.NewFactory(store).Services()))
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	req, err := http.NewRequest(http.MethodPost, server.URL+"/hualala.auth.v1.AuthService/StartDevSession", strings.NewReader("{}"))
+	if err != nil {
+		t.Fatalf("http.NewRequest returned error: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Connect-Protocol-Version", "1")
+	req.Header.Set("X-Forwarded-Proto", "https")
+
+	resp, err := server.Client().Do(req)
+	if err != nil {
+		t.Fatalf("Do returned error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 response, got %d", resp.StatusCode)
+	}
+	values := resp.Header.Values("Set-Cookie")
+	if len(values) == 0 {
+		t.Fatalf("expected Set-Cookie headers to be present")
+	}
+	for _, value := range values {
+		if !strings.Contains(value, "Secure") {
+			t.Fatalf("expected Set-Cookie %q to include Secure", value)
+		}
 	}
 }
 

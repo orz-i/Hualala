@@ -29,7 +29,7 @@ func (h *authHandler) GetCurrentSession(ctx context.Context, req *connectrpc.Req
 	}), nil
 }
 
-func (h *authHandler) StartDevSession(ctx context.Context, _ *connectrpc.Request[authv1.StartDevSessionRequest]) (*connectrpc.Response[authv1.StartDevSessionResponse], error) {
+func (h *authHandler) StartDevSession(ctx context.Context, req *connectrpc.Request[authv1.StartDevSessionRequest]) (*connectrpc.Response[authv1.StartDevSessionResponse], error) {
 	record, err := h.service.StartDevSession(ctx)
 	if err != nil {
 		return nil, asConnectError(err)
@@ -37,7 +37,7 @@ func (h *authHandler) StartDevSession(ctx context.Context, _ *connectrpc.Request
 	resp := connectrpc.NewResponse(&authv1.StartDevSessionResponse{
 		Session: mapSession(record),
 	})
-	authsession.SetDevSessionCookies(resp.Header(), record.OrgID, record.UserID)
+	authsession.SetDevSessionCookies(resp.Header(), record.OrgID, record.UserID, authsession.ShouldUseSecureCookies(req.Header()))
 	return resp, nil
 }
 
@@ -54,16 +54,16 @@ func (h *authHandler) RefreshSession(ctx context.Context, req *connectrpc.Reques
 	resp := connectrpc.NewResponse(&authv1.RefreshSessionResponse{
 		Session: mapSession(record),
 	})
-	authsession.SetDevSessionCookies(resp.Header(), record.OrgID, record.UserID)
+	authsession.SetDevSessionCookies(resp.Header(), record.OrgID, record.UserID, authsession.ShouldUseSecureCookies(req.Header()))
 	return resp, nil
 }
 
-func (h *authHandler) ClearCurrentSession(ctx context.Context, _ *connectrpc.Request[authv1.ClearCurrentSessionRequest]) (*connectrpc.Response[authv1.ClearCurrentSessionResponse], error) {
+func (h *authHandler) ClearCurrentSession(ctx context.Context, req *connectrpc.Request[authv1.ClearCurrentSessionRequest]) (*connectrpc.Response[authv1.ClearCurrentSessionResponse], error) {
 	if err := h.service.ClearCurrentSession(ctx); err != nil {
 		return nil, asConnectError(err)
 	}
 	resp := connectrpc.NewResponse(&authv1.ClearCurrentSessionResponse{})
-	authsession.ClearDevSessionCookies(resp.Header())
+	authsession.ClearDevSessionCookies(resp.Header(), authsession.ShouldUseSecureCookies(req.Header()))
 	return resp, nil
 }
 

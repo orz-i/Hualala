@@ -81,6 +81,32 @@ func TestAuthorizerResolvePrincipalRejectsPartialOverrideWithSessionCookie(t *te
 	}
 }
 
+func TestAuthorizerResolvePrincipalRejectsForgedSessionCookie(t *testing.T) {
+	store := db.NewMemoryStore()
+	seedAuthorizerStore(store)
+	store.Users["user-extra"] = auth.User{
+		ID:                "user-extra",
+		Email:             "extra@hualala.local",
+		DisplayName:       "Extra User",
+		PreferredUILocale: "zh-CN",
+	}
+	store.Memberships["membership-extra"] = org.Member{
+		ID:     "membership-extra",
+		OrgID:  db.DefaultDevOrganizationID,
+		UserID: "user-extra",
+		RoleID: db.DefaultDevRoleID,
+		Status: "active",
+	}
+	authorizer := NewAuthorizer(store)
+
+	_, err := authorizer.ResolvePrincipal(context.Background(), ResolvePrincipalInput{
+		CookieHeader: authsession.SessionCookieName + "=" + db.DefaultDevOrganizationID + ":user-extra",
+	})
+	if err == nil {
+		t.Fatalf("expected forged session cookie to be rejected")
+	}
+}
+
 func TestAuthorizerResolveDevPrincipalUsesBootstrapIdentity(t *testing.T) {
 	store := db.NewMemoryStore()
 	seedAuthorizerStore(store)
