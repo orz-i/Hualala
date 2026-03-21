@@ -205,7 +205,7 @@ func (s *Service) executeGateway(ctx context.Context, run workflow.WorkflowRun, 
 		gatewayStep.FailedAt = time.Now().UTC()
 		gatewayStep.UpdatedAt = gatewayStep.FailedAt
 		if persistErr := s.repo.SaveWorkflowStep(ctx, gatewayStep); persistErr != nil {
-			return workflow.WorkflowRun{}, persistErr
+			return workflow.WorkflowRun{}, fmt.Errorf("workflowapp: save failed workflow step: %w (original execution error: %w)", persistErr, err)
 		}
 		run.Status = workflow.StatusFailed
 		run.LastError = err.Error()
