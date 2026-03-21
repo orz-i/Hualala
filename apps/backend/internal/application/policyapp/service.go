@@ -72,13 +72,34 @@ func (s *Service) EvaluateUploadResumeAllowed(session asset.UploadSession) Uploa
 
 func (s *Service) EvaluateWorkflowRecoveryAllowed(run workflow.WorkflowRun) error {
 	switch strings.TrimSpace(run.Status) {
-	case workflow.StatusFailed, workflow.StatusRunning:
+	case workflow.StatusFailed:
 		return nil
+	case workflow.StatusRunning:
+		return errors.New("policyapp: running workflow run cannot be retried")
+	case workflow.StatusPending:
+		return errors.New("policyapp: pending workflow run cannot be retried")
 	case workflow.StatusCancelled:
 		return errors.New("policyapp: cancelled workflow run cannot be retried")
 	case workflow.StatusCompleted:
 		return errors.New("policyapp: completed workflow run cannot be retried")
 	default:
-		return errors.New("policyapp: workflow run is not recoverable")
+		return errors.New("policyapp: workflow run cannot be retried")
+	}
+}
+
+func (s *Service) EvaluateWorkflowCancellationAllowed(run workflow.WorkflowRun) error {
+	switch strings.TrimSpace(run.Status) {
+	case workflow.StatusRunning:
+		return nil
+	case workflow.StatusPending:
+		return errors.New("policyapp: pending workflow run cannot be cancelled")
+	case workflow.StatusFailed:
+		return errors.New("policyapp: failed workflow run cannot be cancelled")
+	case workflow.StatusCompleted:
+		return errors.New("policyapp: completed workflow run cannot be cancelled")
+	case workflow.StatusCancelled:
+		return errors.New("policyapp: cancelled workflow run cannot be cancelled")
+	default:
+		return errors.New("policyapp: workflow run cannot be cancelled")
 	}
 }
