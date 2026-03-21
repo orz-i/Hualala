@@ -157,9 +157,12 @@ type GatewayResultStore interface {
 
 type WorkflowRepository interface {
 	GenerateWorkflowRunID() string
+	GenerateWorkflowStepID() string
 	SaveWorkflowRun(ctx context.Context, record workflow.WorkflowRun) error
+	SaveWorkflowStep(ctx context.Context, record workflow.WorkflowStep) error
 	GetWorkflowRun(workflowRunID string) (workflow.WorkflowRun, bool)
-	ListWorkflowRuns(projectID, resourceID string) []workflow.WorkflowRun
+	ListWorkflowSteps(workflowRunID string) []workflow.WorkflowStep
+	ListWorkflowRuns(projectID, resourceID, status, workflowType string) []workflow.WorkflowRun
 }
 
 func (s *MemoryStore) save(ctx context.Context, mutate func()) error {
@@ -191,6 +194,7 @@ func (s *MemoryStore) GenerateBudgetID() string            { return s.NextBudget
 func (s *MemoryStore) GenerateUsageRecordID() string       { return s.NextUsageRecordID() }
 func (s *MemoryStore) GenerateBillingEventID() string      { return s.NextBillingEventID() }
 func (s *MemoryStore) GenerateWorkflowRunID() string       { return s.NextWorkflowRunID() }
+func (s *MemoryStore) GenerateWorkflowStepID() string      { return s.NextWorkflowStepID() }
 func (s *MemoryStore) GenerateGatewayExternalRequestID() string {
 	return s.NextGatewayExternalRequestID()
 }
@@ -668,18 +672,48 @@ func (s *MemoryStore) SaveWorkflowRun(ctx context.Context, record workflow.Workf
 	return s.save(ctx, func() { s.WorkflowRuns[record.ID] = record })
 }
 
+func (s *MemoryStore) SaveWorkflowStep(ctx context.Context, record workflow.WorkflowStep) error {
+	return s.save(ctx, func() { s.WorkflowSteps[record.ID] = record })
+}
+
 func (s *MemoryStore) GetWorkflowRun(workflowRunID string) (workflow.WorkflowRun, bool) {
 	record, ok := s.WorkflowRuns[workflowRunID]
 	return record, ok
 }
 
-func (s *MemoryStore) ListWorkflowRuns(projectID, resourceID string) []workflow.WorkflowRun {
+func (s *MemoryStore) ListWorkflowSteps(workflowRunID string) []workflow.WorkflowStep {
+	items := make([]workflow.WorkflowStep, 0)
+	for _, record := range s.WorkflowSteps {
+		if record.WorkflowRunID != workflowRunID {
+			continue
+		}
+		items = append(items, record)
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].StepOrder != items[j].StepOrder {
+			return items[i].StepOrder < items[j].StepOrder
+		}
+		if !items[i].CreatedAt.Equal(items[j].CreatedAt) {
+			return items[i].CreatedAt.Before(items[j].CreatedAt)
+		}
+		return items[i].ID < items[j].ID
+	})
+	return items
+}
+
+func (s *MemoryStore) ListWorkflowRuns(projectID, resourceID, status, workflowType string) []workflow.WorkflowRun {
 	items := make([]workflow.WorkflowRun, 0)
 	for _, record := range s.WorkflowRuns {
 		if projectID != "" && record.ProjectID != projectID {
 			continue
 		}
 		if resourceID != "" && record.ResourceID != resourceID {
+			continue
+		}
+		if status != "" && record.Status != status {
+			continue
+		}
+		if workflowType != "" && record.WorkflowType != workflowType {
 			continue
 		}
 		items = append(items, record)

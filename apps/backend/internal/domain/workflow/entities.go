@@ -30,8 +30,14 @@ type WorkflowRun struct {
 type WorkflowStep struct {
 	ID            string
 	WorkflowRunID string
-	Name          string
+	StepKey       string
+	StepOrder     int
 	Status        string
+	ErrorCode     string
+	ErrorMessage  string
+	StartedAt     time.Time
+	CompletedAt   time.Time
+	FailedAt      time.Time
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }

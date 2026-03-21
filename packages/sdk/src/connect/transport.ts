@@ -52,7 +52,12 @@ export type HualalaClient = {
       resourceId: string;
     }): Promise<StartWorkflowResponse>;
     getWorkflowRun(body: { workflowRunId: string }): Promise<GetWorkflowRunResponse>;
-    listWorkflowRuns(body: { projectId: string; resourceId?: string }): Promise<ListWorkflowRunsResponse>;
+    listWorkflowRuns(body: {
+      projectId: string;
+      resourceId?: string;
+      status?: string;
+      workflowType?: string;
+    }): Promise<ListWorkflowRunsResponse>;
     cancelWorkflowRun(body: { workflowRunId: string }): Promise<CancelWorkflowRunResponse>;
     retryWorkflowRun(body: { workflowRunId: string }): Promise<RetryWorkflowRunResponse>;
   };

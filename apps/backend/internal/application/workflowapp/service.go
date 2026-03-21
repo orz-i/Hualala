@@ -41,9 +41,15 @@ type GetWorkflowRunInput struct {
 	WorkflowRunID string
 }
 
+type ListWorkflowStepsInput struct {
+	WorkflowRunID string
+}
+
 type ListWorkflowRunsInput struct {
-	ProjectID  string
-	ResourceID string
+	ProjectID    string
+	ResourceID   string
+	Status       string
+	WorkflowType string
 }
 
 type CancelWorkflowRunInput struct {
@@ -87,7 +93,7 @@ func (s *Service) StartWorkflow(ctx context.Context, input StartWorkflowInput) (
 		WorkflowType:   strings.TrimSpace(input.WorkflowType),
 		ResourceID:     strings.TrimSpace(input.ResourceID),
 		Status:         workflow.StatusPending,
-		CurrentStep:    "dispatch",
+		CurrentStep:    attemptStepKey(1, "dispatch"),
 		AttemptCount:   1,
 		Provider:       normalizeProvider(input.Provider),
 		IdempotencyKey: normalizeIdempotencyKey(input),
@@ -97,7 +103,7 @@ func (s *Service) StartWorkflow(ctx context.Context, input StartWorkflowInput) (
 	if err := s.repo.SaveWorkflowRun(ctx, run); err != nil {
 		return workflow.WorkflowRun{}, err
 	}
-	return s.dispatchWorkflow(ctx, run)
+	return s.runAttempt(ctx, run)
 }
 
 func (s *Service) GetWorkflowRun(_ context.Context, input GetWorkflowRunInput) (workflow.WorkflowRun, error) {
@@ -108,6 +114,13 @@ func (s *Service) GetWorkflowRun(_ context.Context, input GetWorkflowRunInput) (
 	return record, nil
 }
 
+func (s *Service) ListWorkflowSteps(_ context.Context, input ListWorkflowStepsInput) ([]workflow.WorkflowStep, error) {
+	if s == nil || s.repo == nil {
+		return nil, errors.New("workflowapp: repository is required")
+	}
+	return s.repo.ListWorkflowSteps(strings.TrimSpace(input.WorkflowRunID)), nil
+}
+
 func (s *Service) ListWorkflowRuns(_ context.Context, input ListWorkflowRunsInput) ([]workflow.WorkflowRun, error) {
 	if s == nil || s.repo == nil {
 		return nil, errors.New("workflowapp: repository is required")
@@ -115,6 +128,8 @@ func (s *Service) ListWorkflowRuns(_ context.Context, input ListWorkflowRunsInpu
 	return s.repo.ListWorkflowRuns(
 		strings.TrimSpace(input.ProjectID),
 		strings.TrimSpace(input.ResourceID),
+		strings.TrimSpace(input.Status),
+		strings.TrimSpace(input.WorkflowType),
 	), nil
 }
 
@@ -144,26 +159,36 @@ func (s *Service) RetryWorkflowRun(ctx context.Context, input RetryWorkflowRunIn
 	}
 	record.AttemptCount++
 	record.LastError = ""
-	record.Status = workflow.StatusRunning
+	record.Status = workflow.StatusPending
+	record.CurrentStep = attemptStepKey(record.AttemptCount, "dispatch")
 	record.UpdatedAt = time.Now().UTC()
 	if err := s.repo.SaveWorkflowRun(ctx, record); err != nil {
 		return workflow.WorkflowRun{}, err
 	}
-	s.publishWorkflowUpdated(record)
-	return s.executeGateway(ctx, record)
+	return s.runAttempt(ctx, record)
 }
 
-func (s *Service) dispatchWorkflow(ctx context.Context, run workflow.WorkflowRun) (workflow.WorkflowRun, error) {
+func (s *Service) runAttempt(ctx context.Context, run workflow.WorkflowRun) (workflow.WorkflowRun, error) {
+	dispatchStep, err := s.createAttemptStep(ctx, run, "dispatch", workflow.StatusCompleted)
+	if err != nil {
+		return workflow.WorkflowRun{}, err
+	}
+	_ = dispatchStep
+	gatewayStep, err := s.createAttemptStep(ctx, run, "gateway", workflow.StatusRunning)
+	if err != nil {
+		return workflow.WorkflowRun{}, err
+	}
 	run.Status = workflow.StatusRunning
+	run.CurrentStep = gatewayStep.StepKey
 	run.UpdatedAt = time.Now().UTC()
 	if err := s.repo.SaveWorkflowRun(ctx, run); err != nil {
 		return workflow.WorkflowRun{}, err
 	}
 	s.publishWorkflowUpdated(run)
-	return s.executeGateway(ctx, run)
+	return s.executeGateway(ctx, run, gatewayStep)
 }
 
-func (s *Service) executeGateway(ctx context.Context, run workflow.WorkflowRun) (workflow.WorkflowRun, error) {
+func (s *Service) executeGateway(ctx context.Context, run workflow.WorkflowRun, gatewayStep workflow.WorkflowStep) (workflow.WorkflowRun, error) {
 	if s.executor == nil {
 		return run, nil
 	}
@@ -175,6 +200,13 @@ func (s *Service) executeGateway(ctx context.Context, run workflow.WorkflowRun) 
 		ExternalRequestID: run.ExternalRequestID,
 	})
 	if err != nil {
+		gatewayStep.Status = workflow.StatusFailed
+		gatewayStep.ErrorMessage = err.Error()
+		gatewayStep.FailedAt = time.Now().UTC()
+		gatewayStep.UpdatedAt = gatewayStep.FailedAt
+		if persistErr := s.repo.SaveWorkflowStep(ctx, gatewayStep); persistErr != nil {
+			return workflow.WorkflowRun{}, fmt.Errorf("workflowapp: save failed workflow step: %w (original execution error: %w)", persistErr, err)
+		}
 		run.Status = workflow.StatusFailed
 		run.LastError = err.Error()
 		run.UpdatedAt = time.Now().UTC()
@@ -184,13 +216,45 @@ func (s *Service) executeGateway(ctx context.Context, run workflow.WorkflowRun) 
 		s.publishWorkflowUpdated(run)
 		return run, nil
 	}
+	gatewayStep.Status = workflow.StatusCompleted
+	gatewayStep.CompletedAt = time.Now().UTC()
+	gatewayStep.UpdatedAt = gatewayStep.CompletedAt
+	if err := s.repo.SaveWorkflowStep(ctx, gatewayStep); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
 	run.ExternalRequestID = result.ExternalRequestID
+	run.Provider = normalizeProvider(result.Provider)
+	run.LastError = ""
 	run.UpdatedAt = time.Now().UTC()
 	if err := s.repo.SaveWorkflowRun(ctx, run); err != nil {
 		return workflow.WorkflowRun{}, err
 	}
 	s.publishWorkflowUpdated(run)
 	return run, nil
+}
+
+func (s *Service) createAttemptStep(ctx context.Context, run workflow.WorkflowRun, suffix string, status string) (workflow.WorkflowStep, error) {
+	now := time.Now().UTC()
+	step := workflow.WorkflowStep{
+		ID:            s.repo.GenerateWorkflowStepID(),
+		WorkflowRunID: run.ID,
+		StepKey:       attemptStepKey(run.AttemptCount, suffix),
+		StepOrder:     attemptStepOrder(run.AttemptCount, suffix),
+		Status:        status,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	switch status {
+	case workflow.StatusRunning:
+		step.StartedAt = now
+	case workflow.StatusCompleted:
+		step.StartedAt = now
+		step.CompletedAt = now
+	}
+	if err := s.repo.SaveWorkflowStep(ctx, step); err != nil {
+		return workflow.WorkflowStep{}, err
+	}
+	return step, nil
 }
 
 func (s *Service) publishWorkflowUpdated(run workflow.WorkflowRun) {
@@ -230,4 +294,18 @@ func normalizeIdempotencyKey(input StartWorkflowInput) string {
 		return strings.TrimSpace(input.IdempotencyKey)
 	}
 	return fmt.Sprintf("%s:%s", strings.TrimSpace(input.WorkflowType), strings.TrimSpace(input.ResourceID))
+}
+
+func attemptStepKey(attempt int, suffix string) string {
+	return fmt.Sprintf("attempt_%d.%s", attempt, strings.TrimSpace(suffix))
+}
+
+func attemptStepOrder(attempt int, suffix string) int {
+	base := (attempt - 1) * 2
+	switch strings.TrimSpace(suffix) {
+	case "dispatch":
+		return base + 1
+	default:
+		return base + 2
+	}
 }
