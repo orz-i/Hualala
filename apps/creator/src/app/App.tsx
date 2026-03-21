@@ -1,4 +1,11 @@
-import { startTransition, useEffect, useRef, useState, type MutableRefObject } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
 import { type CreatorMessageKey, useLocaleState } from "../i18n";
 import {
   ImportBatchWorkbenchPage,
@@ -131,7 +138,7 @@ export function App() {
     };
   }, []);
 
-  const refreshImportWorkbench = async () => {
+  const refreshImportWorkbench = useCallback(async () => {
     const { importBatchId, orgId, userId } = getRequestContext();
     if (!importBatchId) {
       return;
@@ -142,9 +149,9 @@ export function App() {
       setErrorMessage("");
     });
     return nextWorkbench;
-  };
+  }, []);
 
-  const refreshShotWorkbench = async () => {
+  const refreshShotWorkbench = useCallback(async () => {
     const { shotId, orgId, userId } = getRequestContext();
     const nextWorkbench = await loadShotWorkbench({ shotId, orgId, userId });
     startTransition(() => {
@@ -152,9 +159,9 @@ export function App() {
       setErrorMessage("");
     });
     return nextWorkbench;
-  };
+  }, []);
 
-  const scheduleSilentRefresh = (
+  const scheduleSilentRefresh = useCallback((
     stateRef: MutableRefObject<{ inFlight: boolean; queued: boolean }>,
     refresh: () => Promise<unknown>,
     scope: "shot" | "import",
@@ -178,7 +185,7 @@ export function App() {
         state.inFlight = false;
       }
     })();
-  };
+  }, []);
 
   useEffect(() => {
     if (
@@ -202,6 +209,8 @@ export function App() {
     });
   }, [
     importWorkbench?.importBatch.id,
+    refreshShotWorkbench,
+    scheduleSilentRefresh,
     shotWorkbench?.shotExecution.id,
     shotWorkbench?.shotExecution.orgId,
     shotWorkbench?.shotExecution.projectId,
@@ -231,6 +240,8 @@ export function App() {
     importWorkbench?.importBatch.id,
     importWorkbench?.importBatch.orgId,
     importWorkbench?.importBatch.projectId,
+    refreshImportWorkbench,
+    scheduleSilentRefresh,
     shotWorkbench?.shotExecution.id,
   ]);
 
