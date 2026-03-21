@@ -10,6 +10,7 @@ export * from "./sse/client";
 export * from "./sse/types";
 export * from "./upload/client";
 export * from "./upload/types";
+export * from "./session/bootstrap";
 export * from "./gen/hualala/auth/v1/auth_service_pb";
 export * from "./gen/hualala/asset/v1/asset_pb";
 export * from "./gen/hualala/billing/v1/billing_pb";

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hualala/apps/backend/internal/domain/org"
+	"github.com/hualala/apps/backend/internal/platform/authsession"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
@@ -20,23 +21,65 @@ type Authorizer struct {
 	repo db.AuthOrgRepository
 }
 
+type ResolvePrincipalInput struct {
+	HeaderOrgID  string
+	HeaderUserID string
+	CookieHeader string
+}
+
 func NewAuthorizer(repo db.AuthOrgRepository) Authorizer {
 	return Authorizer{repo: repo}
 }
 
-func (a Authorizer) ResolvePrincipal(_ context.Context, headerOrgID string, headerUserID string) (Principal, error) {
+func (a Authorizer) ResolvePrincipal(_ context.Context, input ResolvePrincipalInput) (Principal, error) {
 	if a.repo == nil {
 		return Principal{}, errors.New("unauthenticated: repository is required")
 	}
-	orgID := strings.TrimSpace(headerOrgID)
-	if orgID == "" {
-		orgID = db.DefaultDevOrganizationID
+	orgID := strings.TrimSpace(input.HeaderOrgID)
+	userID := strings.TrimSpace(input.HeaderUserID)
+	if (orgID == "") != (userID == "") {
+		return Principal{}, errors.New("unauthenticated: explicit override requires both org and user")
 	}
-	userID := strings.TrimSpace(headerUserID)
-	if userID == "" {
-		userID = db.DefaultDevUserID
+	if orgID == "" || userID == "" {
+		sessionPrincipal, ok := authsession.ResolvePrincipal(input.CookieHeader)
+		if !ok {
+			return Principal{}, errors.New("unauthenticated: active session not found")
+		}
+		if orgID == "" {
+			orgID = sessionPrincipal.OrgID
+		}
+		if userID == "" {
+			userID = sessionPrincipal.UserID
+		}
 	}
 	membership, ok := a.repo.FindMembership(orgID, userID)
+	if !ok || strings.TrimSpace(membership.Status) != "active" {
+		return Principal{}, errors.New("unauthenticated: active membership not found")
+	}
+	return Principal{
+		OrgID:        membership.OrgID,
+		UserID:       membership.UserID,
+		MembershipID: membership.ID,
+		RoleID:       membership.RoleID,
+	}, nil
+}
+
+func (a Authorizer) ResolveDevPrincipal(ctx context.Context) (Principal, error) {
+	return a.ResolvePrincipal(ctx, ResolvePrincipalInput{
+		HeaderOrgID:  db.DefaultDevOrganizationID,
+		HeaderUserID: db.DefaultDevUserID,
+	})
+}
+
+func (a Authorizer) ResolveRefreshPrincipal(_ context.Context, cookieHeader string, refreshToken string) (Principal, error) {
+	if a.repo == nil {
+		return Principal{}, errors.New("unauthenticated: repository is required")
+	}
+	sessionPrincipal, err := authsession.ResolveRefreshPrincipal(cookieHeader, refreshToken)
+	if err != nil {
+		return Principal{}, errors.New("unauthenticated: refresh session is unavailable")
+	}
+	membership, ok := a.repo.FindMembership(sessionPrincipal.OrgID, sessionPrincipal.UserID)
 	if !ok || strings.TrimSpace(membership.Status) != "active" {
 		return Principal{}, errors.New("unauthenticated: active membership not found")
 	}

@@ -59,4 +59,59 @@ describe("auth/org sdk client", () => {
       }),
     });
   });
+
+  it("starts clears and refreshes dev session through auth service routes", async () => {
+    const fetchFn = vi.fn<
+      (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+    >(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/hualala.auth.v1.AuthService/StartDevSession")) {
+        return new Response(
+          JSON.stringify({
+            session: {
+              sessionId: "dev:org-1:user-1",
+              orgId: "org-1",
+              userId: "user-1",
+              locale: "zh-CN",
+            },
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.endsWith("/hualala.auth.v1.AuthService/ClearCurrentSession")) {
+        return new Response(null, { status: 200 });
+      }
+      return new Response(
+        JSON.stringify({
+          session: {
+            sessionId: "dev:org-1:user-1",
+            orgId: "org-1",
+            userId: "user-1",
+            locale: "zh-CN",
+          },
+        }),
+        { status: 200 },
+      );
+    });
+
+    const client = createAuthOrgClient({
+      baseUrl: "http://127.0.0.1:8080",
+      fetchFn,
+    });
+
+    const start = await client.startDevSession();
+    const refresh = await client.refreshSession();
+    const cleared = await client.clearCurrentSession();
+
+    expect(start.session?.sessionId).toBe("dev:org-1:user-1");
+    expect(refresh.session?.sessionId).toBe("dev:org-1:user-1");
+    expect(cleared).toEqual({});
+    expect(fetchFn).toHaveBeenNthCalledWith(
+      2,
+      "http://127.0.0.1:8080/hualala.auth.v1.AuthService/RefreshSession",
+      expect.objectContaining({
+        body: JSON.stringify({ refreshToken: "dev-refresh" }),
+      }),
+    );
+  });
 });

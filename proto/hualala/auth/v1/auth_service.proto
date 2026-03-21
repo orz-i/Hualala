@@ -5,8 +5,10 @@ package hualala.auth.v1;
 option go_package = "github.com/hualala/apps/backend/gen/hualala/auth/v1;authv1";
 
 service AuthService {
+  rpc StartDevSession(StartDevSessionRequest) returns (StartDevSessionResponse);
   rpc GetCurrentSession(GetCurrentSessionRequest) returns (GetCurrentSessionResponse);
   rpc RefreshSession(RefreshSessionRequest) returns (RefreshSessionResponse);
+  rpc ClearCurrentSession(ClearCurrentSessionRequest) returns (ClearCurrentSessionResponse);
   rpc UpdateUserPreferences(UpdateUserPreferencesRequest) returns (UpdateUserPreferencesResponse);
 }
 
@@ -25,6 +27,12 @@ message UserPreferences {
 
 message GetCurrentSessionRequest {}
 
+message StartDevSessionRequest {}
+
+message StartDevSessionResponse {
+  Session session = 1;
+}
+
 message GetCurrentSessionResponse {
   Session session = 1;
 }
@@ -36,6 +44,10 @@ message RefreshSessionRequest {
 message RefreshSessionResponse {
   Session session = 1;
 }
+
+message ClearCurrentSessionRequest {}
+
+message ClearCurrentSessionResponse {}
 
 message UpdateUserPreferencesRequest {
   string user_id = 1;

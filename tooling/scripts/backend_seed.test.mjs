@@ -9,6 +9,15 @@ import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 const scriptPath = join(process.cwd(), "tooling", "scripts", "backend_seed.mjs");
+const testSessionCookies = [
+  "hualala_dev_session=11111111-1111-1111-1111-111111111111:22222222-2222-2222-2222-222222222222; Path=/; HttpOnly; SameSite=Lax",
+  "hualala_dev_refresh_principal=11111111-1111-1111-1111-111111111111:22222222-2222-2222-2222-222222222222; Path=/; HttpOnly; SameSite=Lax",
+];
+
+function hasDevSessionCookie(req) {
+  const cookieHeader = req.headers.cookie ?? "";
+  return /hualala_dev_session=/.test(cookieHeader) && /hualala_dev_refresh_principal=/.test(cookieHeader);
+}
 
 test("seedPhase1Backend returns generated ids and urls from public APIs", async () => {
   const requests = [];
@@ -30,6 +39,17 @@ test("seedPhase1Backend returns generated ids and urls from public APIs", async 
     };
 
     switch (req.url) {
+      case "/hualala.auth.v1.AuthService/StartDevSession":
+        res.setHeader("Set-Cookie", testSessionCookies);
+        respond({
+          session: {
+            sessionId: "dev:org-1:user-1",
+            orgId: "11111111-1111-1111-1111-111111111111",
+            userId: "22222222-2222-2222-2222-222222222222",
+            locale: "zh-CN",
+          },
+        });
+        break;
       case "/hualala.project.v1.ProjectService/CreateProject":
         respond({ project: { projectId: `project-${counter}`, orgId: "org-1", title: "P" } });
         break;
@@ -64,6 +84,11 @@ test("seedPhase1Backend returns generated ids and urls from public APIs", async 
         respond({ shotReview: { id: `review-${counter}`, shotExecutionId: "shot-exec-1", conclusion: "approved", commentLocale: "zh-CN" } });
         break;
       case "/upload/sessions":
+        if (!hasDevSessionCookie(req)) {
+          res.statusCode = 401;
+          res.end(JSON.stringify({ error: "missing session cookie" }));
+          return;
+        }
         respond({ session_id: `upload-session-${counter}` });
         break;
       case "/hualala.execution.v1.ExecutionService/SelectPrimaryAsset":
@@ -71,6 +96,11 @@ test("seedPhase1Backend returns generated ids and urls from public APIs", async 
         break;
       default:
         if (req.url?.startsWith("/upload/sessions/") && req.url.endsWith("/complete")) {
+          if (!hasDevSessionCookie(req)) {
+            res.statusCode = 401;
+            res.end(JSON.stringify({ error: "missing session cookie" }));
+            return;
+          }
           respond({ asset_id: `media-asset-${counter}` });
           return;
         }
@@ -106,6 +136,7 @@ test("seedPhase1Backend returns generated ids and urls from public APIs", async 
     assert.equal(result.admin.operatorId, "22222222-2222-2222-2222-222222222222");
     assert.equal(bootstrapCalls.length, 1);
     assert.match(result.urls.admin, /\?projectId=.*&shotExecutionId=.*/);
+    assert.ok(requests.some((entry) => entry.url === "/hualala.auth.v1.AuthService/StartDevSession"));
     assert.ok(requests.some((entry) => entry.url === "/hualala.project.v1.ProjectService/CreateEpisode"));
     assert.ok(requests.some((entry) => entry.url === "/hualala.content.v1.ContentService/CreateScene"));
     assert.ok(requests.some((entry) => entry.url === "/hualala.content.v1.ContentService/CreateShot"));
@@ -125,6 +156,18 @@ test("backend_seed cli writes the generated backend seed artifact", async () => 
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
     const url = req.url ?? "";
+    if (url === "/hualala.auth.v1.AuthService/StartDevSession") {
+      res.setHeader("Set-Cookie", testSessionCookies);
+      res.end(JSON.stringify({
+        session: {
+          sessionId: "dev:org-1:user-1",
+          orgId: "11111111-1111-1111-1111-111111111111",
+          userId: "22222222-2222-2222-2222-222222222222",
+          locale: "zh-CN",
+        },
+      }));
+      return;
+    }
     if (url === "/hualala.project.v1.ProjectService/CreateProject") {
       res.end(JSON.stringify({ project: { projectId: "project-10", orgId: "11111111-1111-1111-1111-111111111111", title: "P" } }));
       return;
@@ -172,11 +215,21 @@ test("backend_seed cli writes the generated backend seed artifact", async () => 
       return;
     }
     if (url === "/upload/sessions") {
+      if (!hasDevSessionCookie(req)) {
+        res.statusCode = 401;
+        res.end(JSON.stringify({ error: "missing session cookie" }));
+        return;
+      }
       const count = (globalThis.__seedUploadCount__ = (globalThis.__seedUploadCount__ ?? 0) + 1);
       res.end(JSON.stringify({ session_id: `upload-session-${count}` }));
       return;
     }
     if (url.startsWith("/upload/sessions/") && url.endsWith("/complete")) {
+      if (!hasDevSessionCookie(req)) {
+        res.statusCode = 401;
+        res.end(JSON.stringify({ error: "missing session cookie" }));
+        return;
+      }
       const count = globalThis.__seedUploadCount__ ?? 1;
       res.end(JSON.stringify({ asset_id: `media-asset-${count}` }));
       return;
@@ -237,6 +290,20 @@ test("backend_seed cli writes the generated backend seed artifact", async () => 
 
 test("seedPhase1Backend surfaces backend request failures", async () => {
   const server = createServer((req, res) => {
+    if (req.url === "/hualala.auth.v1.AuthService/StartDevSession") {
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Set-Cookie", testSessionCookies);
+      res.end(JSON.stringify({
+        session: {
+          sessionId: "dev:org-1:user-1",
+          orgId: "11111111-1111-1111-1111-111111111111",
+          userId: "22222222-2222-2222-2222-222222222222",
+          locale: "zh-CN",
+        },
+      }));
+      return;
+    }
     if (req.url === "/hualala.project.v1.ProjectService/CreateProject") {
       res.statusCode = 503;
       res.setHeader("Content-Type", "application/json");

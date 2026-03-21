@@ -12,6 +12,7 @@ test("admin real smoke: loads overview through vite proxy and updates budget", a
   });
 
   await page.goto(seed.urls.admin);
+  await page.getByRole("button", { name: "进入开发会话" }).click();
 
   await expect(page.getByText(seed.admin.projectId)).toBeVisible();
   await expect(page.getByRole("heading", { name: "最近变更" })).toBeVisible();

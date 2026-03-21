@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { mockConnectRoutes } from "./fixtures/mockConnectRoutes";
 
+async function enterDevSession(page) {
+  await page.getByRole("button", { name: "进入开发会话" }).click();
+}
+
 test("creator smoke: shot workbench actions complete with refreshed feedback", async ({
   page,
 }) => {
@@ -9,6 +13,7 @@ test("creator smoke: shot workbench actions complete with refreshed feedback", a
   });
 
   await page.goto("http://127.0.0.1:4174/?shotId=shot-live-1");
+  await enterDevSession(page);
 
   await expect(page.getByText("shot-exec-live-1")).toBeVisible();
   await expect(page.getByText("1 个候选素材")).toBeVisible();
@@ -37,6 +42,7 @@ test("creator smoke: shot workbench keeps content on action failure", async ({ p
   });
 
   await page.goto("http://127.0.0.1:4174/?shotId=shot-live-1");
+  await enterDevSession(page);
 
   await expect(page.getByText("shot-exec-live-1")).toBeVisible();
   await page.getByRole("button", { name: "Gate 检查" }).click();
@@ -52,6 +58,7 @@ test("creator smoke: import workbench actions complete with refreshed feedback",
   });
 
   await page.goto("http://127.0.0.1:4174/?importBatchId=batch-live-1");
+  await enterDevSession(page);
 
   await expect(page.getByText("batch-live-1")).toBeVisible();
   await expect(page.getByText("1 个上传会话")).toBeVisible();
@@ -73,6 +80,7 @@ test("creator smoke: import workbench keeps content on action failure", async ({
   });
 
   await page.goto("http://127.0.0.1:4174/?importBatchId=batch-live-1");
+  await enterDevSession(page);
 
   await expect(page.getByText("batch-live-1")).toBeVisible();
   await page.getByRole("button", { name: "确认匹配" }).click();

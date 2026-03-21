@@ -79,6 +79,7 @@ describe("createUploadClient", () => {
       1,
       "http://127.0.0.1:8080/upload/sessions",
       expect.objectContaining({
+        credentials: "include",
         method: "POST",
         headers: expect.objectContaining({
           "Content-Type": "application/json",
@@ -100,6 +101,7 @@ describe("createUploadClient", () => {
       2,
       "http://127.0.0.1:8080/upload/sessions/upload-session-1",
       expect.objectContaining({
+        credentials: "include",
         method: "GET",
       }),
     );
@@ -107,6 +109,7 @@ describe("createUploadClient", () => {
       3,
       "http://127.0.0.1:8080/upload/sessions/upload-session-1/retry",
       expect.objectContaining({
+        credentials: "include",
         method: "POST",
       }),
     );
@@ -114,6 +117,7 @@ describe("createUploadClient", () => {
       4,
       "http://127.0.0.1:8080/upload/sessions/upload-session-1/complete",
       expect.objectContaining({
+        credentials: "include",
         method: "POST",
         body: JSON.stringify({
           shot_execution_id: "shot-exec-1",
@@ -139,6 +143,36 @@ describe("createUploadClient", () => {
 
     await expect(client.retrySession("upload-session-1")).rejects.toThrow(
       "upload session expired",
+    );
+  });
+
+  it("does not inject identity headers when no explicit override is provided", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          session_id: "upload-session-1",
+          status: "pending",
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const client = createUploadClient({
+      baseUrl: "http://127.0.0.1:8080/",
+      fetchFn,
+    });
+
+    await client.getSession("upload-session-1");
+
+    expect(fetchFn).toHaveBeenCalledWith(
+      "http://127.0.0.1:8080/upload/sessions/upload-session-1",
+      expect.objectContaining({
+        credentials: "include",
+        headers: expect.not.objectContaining({
+          "X-Hualala-Org-Id": expect.anything(),
+          "X-Hualala-User-Id": expect.anything(),
+        }),
+      }),
     );
   });
 });

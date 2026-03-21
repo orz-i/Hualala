@@ -18,6 +18,88 @@ async function assertOk(response, label) {
   throw new Error(`${label} (${response.status}): ${body}`);
 }
 
+function splitSetCookieHeader(value) {
+  if (!value) {
+    return [];
+  }
+
+  const cookies = [];
+  let start = 0;
+  let inExpires = false;
+  for (let index = 0; index < value.length; index += 1) {
+    const slice = value.slice(index, index + 8).toLowerCase();
+    if (slice === "expires=") {
+      inExpires = true;
+      continue;
+    }
+    if (inExpires && value[index] === ";") {
+      inExpires = false;
+      continue;
+    }
+    if (!inExpires && value[index] === ",") {
+      cookies.push(value.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  cookies.push(value.slice(start).trim());
+  return cookies.filter(Boolean);
+}
+
+function getSetCookieHeaders(response) {
+  if (typeof response.headers.getSetCookie === "function") {
+    return response.headers.getSetCookie();
+  }
+  return splitSetCookieHeader(response.headers.get("set-cookie"));
+}
+
+function buildCookieHeader(setCookieHeaders) {
+  return setCookieHeaders
+    .map((entry) => entry.split(";", 1)[0]?.trim())
+    .filter(Boolean)
+    .join("; ");
+}
+
+function mergeCookieHeaders(existingCookieHeader, sessionCookieHeader) {
+  const existing = existingCookieHeader?.trim();
+  if (!existing) {
+    return sessionCookieHeader;
+  }
+  if (!sessionCookieHeader) {
+    return existing;
+  }
+  return `${existing}; ${sessionCookieHeader}`;
+}
+
+function withCookieHeader(fetchFn, cookieHeader) {
+  return (url, init = {}) => {
+    const mergedHeaders = {
+      ...(init.headers ?? {}),
+      Cookie: mergeCookieHeaders(init.headers?.Cookie ?? init.headers?.cookie, cookieHeader),
+    };
+    return fetchFn(url, {
+      ...init,
+      headers: mergedHeaders,
+    });
+  };
+}
+
+async function startDevSession(fetchFn, baseUrl) {
+  const response = await fetchFn(`${baseUrl}/hualala.auth.v1.AuthService/StartDevSession`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Connect-Protocol-Version": "1",
+    },
+    body: JSON.stringify({}),
+  });
+  await assertOk(response, "backend-seed: failed to start dev session");
+  const cookieHeader = buildCookieHeader(getSetCookieHeaders(response));
+  if (!cookieHeader) {
+    throw new Error("backend-seed: start dev session did not return session cookies");
+  }
+  return cookieHeader;
+}
+
 async function postConnect(fetchFn, baseUrl, path, body) {
   const response = await fetchFn(`${baseUrl}${path}`, {
     method: "POST",
@@ -267,9 +349,11 @@ export async function seedPhase1Backend({
   const bootstrap = await bootstrapFn();
   const orgId = bootstrap.organization_id;
   const operatorId = bootstrap.user_id;
+  const sessionCookieHeader = await startDevSession(fetchFn, resolvedBaseUrl);
+  const sessionFetchFn = withCookieHeader(fetchFn, sessionCookieHeader);
 
   const adminDataset = await createShotDataset({
-    fetchFn,
+    fetchFn: sessionFetchFn,
     baseUrl: resolvedBaseUrl,
     orgId,
     operatorId,
@@ -285,7 +369,7 @@ export async function seedPhase1Backend({
   });
 
   const importDataset = await createShotDataset({
-    fetchFn,
+    fetchFn: sessionFetchFn,
     baseUrl: resolvedBaseUrl,
     orgId,
     operatorId,

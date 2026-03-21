@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { GetCurrentSessionRequest, GetCurrentSessionResponse, RefreshSessionRequest, RefreshSessionResponse, UpdateUserPreferencesRequest, UpdateUserPreferencesResponse } from "./auth_service_pb.js";
+import { ClearCurrentSessionRequest, ClearCurrentSessionResponse, GetCurrentSessionRequest, GetCurrentSessionResponse, RefreshSessionRequest, RefreshSessionResponse, StartDevSessionRequest, StartDevSessionResponse, UpdateUserPreferencesRequest, UpdateUserPreferencesResponse } from "./auth_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -12,6 +12,15 @@ import { MethodKind } from "@bufbuild/protobuf";
 export const AuthService = {
   typeName: "hualala.auth.v1.AuthService",
   methods: {
+    /**
+     * @generated from rpc hualala.auth.v1.AuthService.StartDevSession
+     */
+    startDevSession: {
+      name: "StartDevSession",
+      I: StartDevSessionRequest,
+      O: StartDevSessionResponse,
+      kind: MethodKind.Unary,
+    },
     /**
      * @generated from rpc hualala.auth.v1.AuthService.GetCurrentSession
      */
@@ -28,6 +37,15 @@ export const AuthService = {
       name: "RefreshSession",
       I: RefreshSessionRequest,
       O: RefreshSessionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.auth.v1.AuthService.ClearCurrentSession
+     */
+    clearCurrentSession: {
+      name: "ClearCurrentSession",
+      I: ClearCurrentSessionRequest,
+      O: ClearCurrentSessionResponse,
       kind: MethodKind.Unary,
     },
     /**

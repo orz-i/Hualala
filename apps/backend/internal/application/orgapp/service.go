@@ -18,18 +18,21 @@ type Service struct {
 type ListMembersInput struct {
 	ActorOrgID  string
 	ActorUserID string
+	CookieHeader string
 	OrgID       string
 }
 
 type ListRolesInput struct {
 	ActorOrgID  string
 	ActorUserID string
+	CookieHeader string
 	OrgID       string
 }
 
 type UpdateMemberRoleInput struct {
 	ActorOrgID  string
 	ActorUserID string
+	CookieHeader string
 	OrgID       string
 	MemberID    string
 	RoleID      string
@@ -38,6 +41,7 @@ type UpdateMemberRoleInput struct {
 type UpdateOrgLocaleSettingsInput struct {
 	ActorOrgID       string
 	ActorUserID      string
+	CookieHeader     string
 	OrgID            string
 	DefaultLocale    string
 	SupportedLocales []string
@@ -48,7 +52,7 @@ func NewService(repo db.AuthOrgRepository, authorizer authz.Authorizer) *Service
 }
 
 func (s *Service) ListMembers(ctx context.Context, input ListMembersInput) ([]org.Member, error) {
-	principal, err := s.resolveOrgPrincipal(ctx, input.ActorOrgID, input.ActorUserID, input.OrgID, "org.members.read")
+	principal, err := s.resolveOrgPrincipal(ctx, input.ActorOrgID, input.ActorUserID, input.CookieHeader, input.OrgID, "org.members.read")
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +60,7 @@ func (s *Service) ListMembers(ctx context.Context, input ListMembersInput) ([]or
 }
 
 func (s *Service) ListRoles(ctx context.Context, input ListRolesInput) ([]org.Role, error) {
-	principal, err := s.resolveOrgPrincipal(ctx, input.ActorOrgID, input.ActorUserID, input.OrgID, "org.roles.read")
+	principal, err := s.resolveOrgPrincipal(ctx, input.ActorOrgID, input.ActorUserID, input.CookieHeader, input.OrgID, "org.roles.read")
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +68,7 @@ func (s *Service) ListRoles(ctx context.Context, input ListRolesInput) ([]org.Ro
 }
 
 func (s *Service) UpdateMemberRole(ctx context.Context, input UpdateMemberRoleInput) (org.Member, error) {
-	principal, err := s.resolveOrgPrincipal(ctx, input.ActorOrgID, input.ActorUserID, input.OrgID, "org.members.write")
+	principal, err := s.resolveOrgPrincipal(ctx, input.ActorOrgID, input.ActorUserID, input.CookieHeader, input.OrgID, "org.members.write")
 	if err != nil {
 		return org.Member{}, err
 	}
@@ -90,7 +94,7 @@ func (s *Service) UpdateMemberRole(ctx context.Context, input UpdateMemberRoleIn
 }
 
 func (s *Service) UpdateOrgLocaleSettings(ctx context.Context, input UpdateOrgLocaleSettingsInput) (org.OrgLocaleSettings, error) {
-	principal, err := s.resolveOrgPrincipal(ctx, input.ActorOrgID, input.ActorUserID, input.OrgID, "org.settings.write")
+	principal, err := s.resolveOrgPrincipal(ctx, input.ActorOrgID, input.ActorUserID, input.CookieHeader, input.OrgID, "org.settings.write")
 	if err != nil {
 		return org.OrgLocaleSettings{}, err
 	}
@@ -114,7 +118,7 @@ func (s *Service) UpdateOrgLocaleSettings(ctx context.Context, input UpdateOrgLo
 	}, nil
 }
 
-func (s *Service) resolveOrgPrincipal(ctx context.Context, actorOrgID string, actorUserID string, targetOrgID string, permissionCode string) (authz.Principal, error) {
+func (s *Service) resolveOrgPrincipal(ctx context.Context, actorOrgID string, actorUserID string, cookieHeader string, targetOrgID string, permissionCode string) (authz.Principal, error) {
 	if s == nil || s.repo == nil {
 		return authz.Principal{}, errors.New("orgapp: repository is required")
 	}
@@ -122,7 +126,11 @@ func (s *Service) resolveOrgPrincipal(ctx context.Context, actorOrgID string, ac
 	if target == "" {
 		return authz.Principal{}, errors.New("orgapp: org_id is required")
 	}
-	principal, err := s.authorizer.ResolvePrincipal(ctx, actorOrgID, actorUserID)
+	principal, err := s.authorizer.ResolvePrincipal(ctx, authz.ResolvePrincipalInput{
+		HeaderOrgID:  actorOrgID,
+		HeaderUserID: actorUserID,
+		CookieHeader: cookieHeader,
+	})
 	if err != nil {
 		return authz.Principal{}, err
 	}

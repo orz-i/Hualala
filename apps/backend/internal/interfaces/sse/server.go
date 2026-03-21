@@ -3,8 +3,10 @@ package sse
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/hualala/apps/backend/internal/platform/authz"
 	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
@@ -22,11 +24,11 @@ func publishEvent(publisher *events.Publisher, event events.Event) {
 	}
 }
 
-func RegisterRoutes(mux *http.ServeMux, publisher *events.Publisher) {
-	registerRoutesWithHeartbeatInterval(mux, publisher, defaultHeartbeatInterval)
+func RegisterRoutes(mux *http.ServeMux, publisher *events.Publisher, authorizer authz.Authorizer) {
+	registerRoutesWithHeartbeatInterval(mux, publisher, authorizer, defaultHeartbeatInterval)
 }
 
-func registerRoutesWithHeartbeatInterval(mux *http.ServeMux, publisher *events.Publisher, heartbeatInterval time.Duration) {
+func registerRoutesWithHeartbeatInterval(mux *http.ServeMux, publisher *events.Publisher, authorizer authz.Authorizer, heartbeatInterval time.Duration) {
 	if publisher == nil {
 		publisher = events.NewPublisher()
 	}
@@ -37,8 +39,25 @@ func registerRoutesWithHeartbeatInterval(mux *http.ServeMux, publisher *events.P
 			return
 		}
 
-		organizationID := r.URL.Query().Get("organization_id")
-		projectID := r.URL.Query().Get("project_id")
+		principal, err := authorizer.ResolvePrincipal(r.Context(), authz.ResolvePrincipalInput{
+			HeaderOrgID:  r.Header.Get("X-Hualala-Org-Id"),
+			HeaderUserID: r.Header.Get("X-Hualala-User-Id"),
+			CookieHeader: r.Header.Get("Cookie"),
+		})
+		if err != nil {
+			writeSSEError(w, err)
+			return
+		}
+
+		organizationID := strings.TrimSpace(r.URL.Query().Get("organization_id"))
+		if organizationID == "" {
+			organizationID = principal.OrgID
+		}
+		if organizationID != principal.OrgID {
+			writeSSEError(w, fmt.Errorf("permission denied: organization does not match current session"))
+			return
+		}
+		projectID := strings.TrimSpace(r.URL.Query().Get("project_id"))
 		lastEventID := r.Header.Get("Last-Event-ID")
 		flusher, ok := w.(http.Flusher)
 		if !ok {
@@ -89,4 +108,20 @@ func writeEvent(w http.ResponseWriter, event events.Event) {
 	_, _ = fmt.Fprintf(w, "id: %s\n", event.ID)
 	_, _ = fmt.Fprintf(w, "event: %s\n", event.EventType)
 	_, _ = fmt.Fprintf(w, "data: %s\n\n", event.Payload)
+}
+
+func writeSSEError(w http.ResponseWriter, err error) {
+	if err == nil {
+		http.Error(w, "sse: unknown error", http.StatusInternalServerError)
+		return
+	}
+	if strings.Contains(err.Error(), "unauthenticated") {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	if strings.Contains(err.Error(), "permission denied") {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	http.Error(w, err.Error(), http.StatusBadRequest)
 }

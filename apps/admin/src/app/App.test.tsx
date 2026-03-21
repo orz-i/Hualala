@@ -19,6 +19,11 @@ import {
   selectPrimaryAssetForImportBatch,
 } from "../features/dashboard/mutateAssetMonitor";
 import {
+  clearCurrentSession,
+  ensureDevSession,
+  loadCurrentSession,
+} from "../features/session/sessionBootstrap";
+import {
   cancelWorkflowRun,
   retryWorkflowRun,
 } from "../features/dashboard/mutateWorkflowRun";
@@ -64,6 +69,13 @@ vi.mock("../features/dashboard/mutateAssetMonitor", () => ({
   confirmImportBatchItems: vi.fn(),
   selectPrimaryAssetForImportBatch: vi.fn(),
 }));
+vi.mock("../features/session/sessionBootstrap", () => ({
+  loadCurrentSession: vi.fn(),
+  ensureDevSession: vi.fn(),
+  clearCurrentSession: vi.fn(),
+  isUnauthenticatedSessionError: (error: unknown) =>
+    error instanceof Error && (error.message.includes("(401)") || error.message.includes("unauthenticated")),
+}));
 vi.mock("../features/dashboard/mutateWorkflowRun", () => ({
   retryWorkflowRun: vi.fn(),
   cancelWorkflowRun: vi.fn(),
@@ -86,6 +98,9 @@ const loadAssetProvenanceDetailsMock = vi.mocked(loadAssetProvenanceDetails);
 const confirmImportBatchItemMock = vi.mocked(confirmImportBatchItem);
 const confirmImportBatchItemsMock = vi.mocked(confirmImportBatchItems);
 const selectPrimaryAssetForImportBatchMock = vi.mocked(selectPrimaryAssetForImportBatch);
+const loadCurrentSessionMock = vi.mocked(loadCurrentSession);
+const ensureDevSessionMock = vi.mocked(ensureDevSession);
+const clearCurrentSessionMock = vi.mocked(clearCurrentSession);
 const retryWorkflowRunMock = vi.mocked(retryWorkflowRun);
 const cancelWorkflowRunMock = vi.mocked(cancelWorkflowRun);
 const subscribeAdminRecentChangesMock = vi.mocked(subscribeAdminRecentChanges);
@@ -242,6 +257,19 @@ describe("Admin App", () => {
     vi.resetAllMocks();
     window.localStorage.clear();
     window.localStorage.setItem(ADMIN_UI_LOCALE_STORAGE_KEY, "zh-CN");
+    loadCurrentSessionMock.mockResolvedValue({
+      sessionId: "dev:org-demo-001:user-demo-001",
+      orgId: "org-demo-001",
+      userId: "user-demo-001",
+      locale: "zh-CN",
+    });
+    ensureDevSessionMock.mockResolvedValue({
+      sessionId: "dev:org-demo-001:user-demo-001",
+      orgId: "org-demo-001",
+      userId: "user-demo-001",
+      locale: "zh-CN",
+    });
+    clearCurrentSessionMock.mockResolvedValue();
     subscribeAdminRecentChangesMock.mockReturnValue(() => {});
     loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-demo-001"));
     loadWorkflowRunDetailsMock.mockResolvedValue(createWorkflowDetail("project-demo-001"));
@@ -257,6 +285,50 @@ describe("Admin App", () => {
     cancelWorkflowRunMock.mockResolvedValue(undefined);
   });
 
+  it("shows the dev session gate when no active session exists, then starts a dev session", async () => {
+    window.history.pushState({}, "", "/?projectId=project-session-1&shotExecutionId=shot-exec-session-1");
+    loadCurrentSessionMock
+      .mockRejectedValueOnce(new Error("sdk: failed to get current session (401)"))
+      .mockResolvedValueOnce({
+        sessionId: "dev:org-demo-001:user-demo-001",
+        orgId: "org-demo-001",
+        userId: "user-demo-001",
+        locale: "zh-CN",
+      });
+    loadAdminOverviewMock.mockResolvedValue(createOverview("project-session-1", "shot-exec-session-1"));
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-demo-001", "user-demo-001"));
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-session-1"));
+
+    render(<App />);
+
+    expect(await screen.findByText("尚未进入开发会话")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "进入开发会话" }));
+
+    await waitFor(() => {
+      expect(ensureDevSessionMock).toHaveBeenCalledTimes(1);
+    });
+    expect(await screen.findByText("project-session-1")).toBeInTheDocument();
+  });
+
+  it("clears the active dev session and returns to the session gate", async () => {
+    window.history.pushState({}, "", "/?projectId=project-session-2&shotExecutionId=shot-exec-session-2");
+    loadAdminOverviewMock.mockResolvedValue(createOverview("project-session-2", "shot-exec-session-2"));
+    loadGovernancePanelMock.mockResolvedValue(createGovernance("org-demo-001", "user-demo-001"));
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-session-2"));
+
+    render(<App />);
+
+    expect(await screen.findByText("project-session-2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "清空开发会话" }));
+
+    await waitFor(() => {
+      expect(clearCurrentSessionMock).toHaveBeenCalledTimes(1);
+    });
+    expect(await screen.findByText("尚未进入开发会话")).toBeInTheDocument();
+  });
+
   it("reads projectId and shotExecutionId from search params, then renders the live overview", async () => {
     window.history.pushState(
       {},
@@ -269,7 +341,7 @@ describe("Admin App", () => {
 
     render(<App />);
 
-    expect(screen.getByText("正在加载管理概览")).toBeInTheDocument();
+    expect(screen.getByText("正在建立开发会话")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(loadAdminOverviewMock).toHaveBeenCalledWith({

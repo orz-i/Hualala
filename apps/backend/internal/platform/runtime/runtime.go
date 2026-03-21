@@ -34,6 +34,7 @@ type RepositorySet struct {
 type ServiceSet struct {
 	AuthService      *authapp.Service
 	OrgService       *orgapp.Service
+	Authorizer       authz.Authorizer
 	ExecutionService *executionapp.Service
 	AssetService     *assetapp.Service
 	ReviewService    *reviewapp.Service
@@ -82,6 +83,7 @@ func (f Factory) Services() ServiceSet {
 	return ServiceSet{
 		AuthService:      authapp.NewService(repos.AuthOrg, authorizer),
 		OrgService:       orgapp.NewService(repos.AuthOrg, authorizer),
+		Authorizer:       authorizer,
 		ExecutionService: executionapp.NewService(repos.Executions, repos.ProjectContent, repos.Assets, repos.ReviewBilling, repos.EventPublisher),
 		AssetService:     assetapp.NewService(repos.Assets, repos.Executions, repos.EventPublisher),
 		ReviewService:    reviewapp.NewService(repos.Executions, repos.ReviewBilling, repos.EventPublisher),
@@ -95,6 +97,7 @@ func (f Factory) Services() ServiceSet {
 			Assets:         repos.Assets,
 			Executions:     repos.Executions,
 			Policy:         policyService,
+			Authorizer:     authorizer,
 			EventPublisher: repos.EventPublisher,
 		}),
 		EventPublisher: repos.EventPublisher,
