@@ -104,8 +104,22 @@ type AdminOverviewPageProps = {
   budgetFeedback?: BudgetFeedback;
   workflowActionFeedback?: BudgetFeedback;
   workflowActionPending?: boolean;
+  assetActionFeedback?: BudgetFeedback;
+  assetActionPending?: boolean;
   onRetryWorkflowRun?: (workflowRunId: string) => void;
   onCancelWorkflowRun?: (workflowRunId: string) => void;
+  selectedImportItemIds?: string[];
+  onToggleImportBatchItemSelection?: (input: {
+    itemId: string;
+    checked: boolean;
+  }) => void;
+  onConfirmImportBatchItem?: (input: { importBatchId: string; itemId: string }) => void;
+  onConfirmSelectedImportBatchItems?: (input: {
+    importBatchId: string;
+    itemIds: string[];
+  }) => void;
+  onConfirmAllImportBatchItems?: (input: { importBatchId: string }) => void;
+  onSelectPrimaryAsset?: (input: { shotExecutionId: string; assetId: string }) => void;
 };
 
 const panelStyle: CSSProperties = {
@@ -147,6 +161,16 @@ const workflowActionButtonToneStyles = {
   close: {
     background: "#cbd5e1",
     color: "#0f172a",
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  confirm: {
+    background: "#0369a1",
+    color: "#f0f9ff",
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  primary: {
+    background: "#166534",
+    color: "#f0fdf4",
     cursor: "pointer",
   } satisfies CSSProperties,
 };
@@ -290,8 +314,16 @@ export function AdminOverviewPage({
   budgetFeedback,
   workflowActionFeedback,
   workflowActionPending,
+  assetActionFeedback,
+  assetActionPending,
   onRetryWorkflowRun,
   onCancelWorkflowRun,
+  selectedImportItemIds = [],
+  onToggleImportBatchItemSelection,
+  onConfirmImportBatchItem,
+  onConfirmSelectedImportBatchItems,
+  onConfirmAllImportBatchItems,
+  onSelectPrimaryAsset,
 }: AdminOverviewPageProps) {
   const latestEvaluation = overview.evaluationRuns[0];
   const budgetInputId = useId();
@@ -334,6 +366,19 @@ export function AdminOverviewPage({
       : workflowActionFeedback?.tone === "pending"
         ? { color: "#92400e" }
         : { color: "#115e59" };
+  const assetFeedbackPalette =
+    assetActionFeedback?.tone === "error"
+      ? { color: "#991b1b" }
+      : assetActionFeedback?.tone === "pending"
+        ? { color: "#92400e" }
+        : { color: "#115e59" };
+  const actionableImportItems = importBatchDetail
+    ? importBatchDetail.items.filter((item) => item.status !== "confirmed" && Boolean(item.assetId))
+    : [];
+  const actionableImportItemIds = actionableImportItems.map((item) => item.id);
+  const selectedActionableImportItemIds = selectedImportItemIds.filter((itemId) =>
+    actionableImportItemIds.includes(itemId),
+  );
 
   useEffect(() => {
     setBudgetLimitYuan((overview.budgetSnapshot.limitCents / 100).toFixed(2));
@@ -1185,6 +1230,17 @@ export function AdminOverviewPage({
                 {t("asset.detail.close")}
               </button>
             </div>
+            {assetActionFeedback ? (
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "0.9rem",
+                  ...assetFeedbackPalette,
+                }}
+              >
+                {assetActionFeedback.message}
+              </p>
+            ) : null}
             <div
               style={{
                 display: "grid",
@@ -1249,7 +1305,62 @@ export function AdminOverviewPage({
             </section>
 
             <section style={{ display: "grid", gap: "12px" }}>
-              <h3 style={{ margin: 0 }}>{t("asset.detail.items")}</h3>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ display: "grid", gap: "6px" }}>
+                  <h3 style={{ margin: 0 }}>{t("asset.detail.items")}</h3>
+                  <p style={metricStyle}>
+                    {t("asset.action.selection.summary", {
+                      selectedCount: selectedActionableImportItemIds.length,
+                      actionableCount: actionableImportItemIds.length,
+                    })}
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    disabled={Boolean(assetActionPending) || selectedActionableImportItemIds.length === 0}
+                    onClick={() => {
+                      onConfirmSelectedImportBatchItems?.({
+                        importBatchId: importBatchDetail.batch.id,
+                        itemIds: selectedActionableImportItemIds,
+                      });
+                    }}
+                    style={{
+                      ...workflowActionButtonBaseStyle,
+                      ...(assetActionPending || selectedActionableImportItemIds.length === 0
+                        ? workflowActionButtonToneStyles.pending
+                        : workflowActionButtonToneStyles.confirm),
+                    }}
+                  >
+                    {t("asset.action.confirmSelected.button")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={Boolean(assetActionPending) || actionableImportItemIds.length === 0}
+                    onClick={() => {
+                      onConfirmAllImportBatchItems?.({
+                        importBatchId: importBatchDetail.batch.id,
+                      });
+                    }}
+                    style={{
+                      ...workflowActionButtonBaseStyle,
+                      ...(assetActionPending || actionableImportItemIds.length === 0
+                        ? workflowActionButtonToneStyles.pending
+                        : workflowActionButtonToneStyles.confirm),
+                    }}
+                  >
+                    {t("asset.action.confirmAll.button")}
+                  </button>
+                </div>
+              </div>
               {importBatchDetail.items.map((item) => (
                 <article
                   key={item.id}
@@ -1266,6 +1377,59 @@ export function AdminOverviewPage({
                   <p style={metricStyle}>
                     {t("asset.item.summary", { status: item.status, assetId: item.assetId || "none" })}
                   </p>
+                  {item.status !== "confirmed" && item.assetId ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          color: "#334155",
+                          fontSize: "0.95rem",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          aria-label={t("asset.action.selection.item", { itemId: item.id })}
+                          checked={selectedImportItemIds.includes(item.id)}
+                          disabled={Boolean(assetActionPending)}
+                          onChange={(event) => {
+                            onToggleImportBatchItemSelection?.({
+                              itemId: item.id,
+                              checked: event.currentTarget.checked,
+                            });
+                          }}
+                        />
+                        {t("asset.action.selection.label")}
+                      </label>
+                      <button
+                        type="button"
+                        disabled={Boolean(assetActionPending)}
+                        aria-label={t("asset.action.confirm.buttonLabel", { itemId: item.id })}
+                        onClick={() => {
+                          onConfirmImportBatchItem?.({
+                            importBatchId: importBatchDetail.batch.id,
+                            itemId: item.id,
+                          });
+                        }}
+                        style={{
+                          ...workflowActionButtonBaseStyle,
+                          ...(assetActionPending
+                            ? workflowActionButtonToneStyles.pending
+                            : workflowActionButtonToneStyles.confirm),
+                        }}
+                      >
+                        {t("asset.action.confirm.button")}
+                      </button>
+                    </div>
+                  ) : null}
                 </article>
               ))}
             </section>
@@ -1296,23 +1460,48 @@ export function AdminOverviewPage({
                       {t("asset.candidate.assetId", { assetId: candidate.assetId || "none" })}
                     </span>
                     {candidate.assetId ? (
-                      <button
-                        type="button"
-                        aria-label={t("asset.provenance.button", { assetId: candidate.assetId })}
-                        onClick={() => {
-                          onSelectAssetProvenance?.(candidate.assetId);
-                        }}
-                        style={{
-                          border: 0,
-                          borderRadius: "999px",
-                          padding: "8px 14px",
-                          background: "#0f766e",
-                          color: "#ecfeff",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {t("asset.provenance.open")}
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          aria-label={t("asset.provenance.button", { assetId: candidate.assetId })}
+                          onClick={() => {
+                            onSelectAssetProvenance?.(candidate.assetId);
+                          }}
+                          style={{
+                            border: 0,
+                            borderRadius: "999px",
+                            padding: "8px 14px",
+                            background: "#0f766e",
+                            color: "#ecfeff",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {t("asset.provenance.open")}
+                        </button>
+                        {candidate.shotExecutionId ? (
+                          <button
+                            type="button"
+                            disabled={Boolean(assetActionPending)}
+                            aria-label={t("asset.action.selectPrimary.buttonLabel", {
+                              candidateId: candidate.id,
+                            })}
+                            onClick={() => {
+                              onSelectPrimaryAsset?.({
+                                shotExecutionId: candidate.shotExecutionId,
+                                assetId: candidate.assetId,
+                              });
+                            }}
+                            style={{
+                              ...workflowActionButtonBaseStyle,
+                              ...(assetActionPending
+                                ? workflowActionButtonToneStyles.pending
+                                : workflowActionButtonToneStyles.primary),
+                            }}
+                          >
+                            {t("asset.action.selectPrimary.button")}
+                          </button>
+                        ) : null}
+                      </>
                     ) : null}
                   </div>
                 </article>
