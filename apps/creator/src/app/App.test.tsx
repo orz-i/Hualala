@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { CREATOR_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { loadImportBatchWorkbench } from "../features/import-batches/loadImportBatchWorkbench";
 import {
@@ -14,6 +14,7 @@ import {
   runSubmissionGateChecks,
   submitShotForReview,
 } from "../features/shot-workbench/mutateShotWorkbench";
+import { subscribeWorkbenchEvents } from "../features/subscribeWorkbenchEvents";
 import { App } from "./App";
 
 vi.mock("../features/shot-workbench/loadShotWorkbench", () => ({
@@ -34,6 +35,9 @@ vi.mock("../features/shot-workbench/mutateShotWorkbench", () => ({
   runSubmissionGateChecks: vi.fn(),
   submitShotForReview: vi.fn(),
 }));
+vi.mock("../features/subscribeWorkbenchEvents", () => ({
+  subscribeWorkbenchEvents: vi.fn(),
+}));
 
 const loadShotWorkbenchMock = vi.mocked(loadShotWorkbench);
 const loadImportBatchWorkbenchMock = vi.mocked(loadImportBatchWorkbench);
@@ -45,6 +49,18 @@ const retryUploadSessionForImportBatchMock = vi.mocked(retryUploadSessionForImpo
 const selectPrimaryAssetForImportBatchMock = vi.mocked(selectPrimaryAssetForImportBatch);
 const runSubmissionGateChecksMock = vi.mocked(runSubmissionGateChecks);
 const submitShotForReviewMock = vi.mocked(submitShotForReview);
+const subscribeWorkbenchEventsMock = vi.mocked(subscribeWorkbenchEvents);
+
+let latestWorkbenchSubscription:
+  | {
+      organizationId: string;
+      projectId: string;
+      workbenchKind: "shot" | "import";
+      onRefreshNeeded: () => void;
+      onError?: (error: Error) => void;
+    }
+  | undefined;
+let latestWorkbenchSubscriptionCleanup: ReturnType<typeof vi.fn>;
 
 function createImportWorkbench(batchId: string, status = "matched_pending_confirm") {
   return {
@@ -83,6 +99,8 @@ function createShotWorkbench(shotId: string, status = "candidate_ready", conclus
     shotExecution: {
       id: `shot-exec-${shotId}`,
       shotId,
+      orgId: "org-1",
+      projectId: "project-1",
       status,
       primaryAssetId: `asset-${shotId}`,
     },
@@ -100,6 +118,8 @@ function createShotWorkbench(shotId: string, status = "candidate_ready", conclus
 describe("App", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    latestWorkbenchSubscription = undefined;
+    latestWorkbenchSubscriptionCleanup = vi.fn();
     window.localStorage.clear();
     window.localStorage.setItem(CREATOR_UI_LOCALE_STORAGE_KEY, "zh-CN");
     deriveUploadFileMetadataMock.mockResolvedValue({
@@ -125,6 +145,11 @@ describe("App", () => {
       status: "pending",
       retry_count: 1,
     } as never);
+    subscribeWorkbenchEventsMock.mockImplementation((options) => {
+      latestWorkbenchSubscription = options;
+      latestWorkbenchSubscriptionCleanup = vi.fn();
+      return latestWorkbenchSubscriptionCleanup;
+    });
   });
 
   it("prefers importBatchId from search params, loads the import workbench, and renders the live data", async () => {
@@ -371,6 +396,24 @@ describe("App", () => {
     expect(loadImportBatchWorkbenchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("subscribes to import workbench SSE after the first successful load", async () => {
+    window.history.pushState({}, "", "/?importBatchId=batch-live-subscribe");
+    loadImportBatchWorkbenchMock.mockResolvedValue(createImportWorkbench("batch-live-subscribe"));
+
+    render(<App />);
+
+    expect(await screen.findByText("batch-live-subscribe")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(subscribeWorkbenchEventsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "org-1",
+          projectId: "project-1",
+          workbenchKind: "import",
+        }),
+      );
+    });
+  });
+
   it("reads shotId from search params, loads the workbench, and renders the live data", async () => {
     window.history.pushState({}, "", "/?shotId=shot-live-1");
     loadShotWorkbenchMock.mockResolvedValueOnce(createShotWorkbench("shot-live-1"));
@@ -433,6 +476,24 @@ describe("App", () => {
     expect(await screen.findByText(/submitted_for_review/)).toBeInTheDocument();
   });
 
+  it("subscribes to shot workbench SSE after the first successful load", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-live-subscribe");
+    loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-live-subscribe"));
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-shot-live-subscribe")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(subscribeWorkbenchEventsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "org-1",
+          projectId: "project-1",
+          workbenchKind: "shot",
+        }),
+      );
+    });
+  });
+
   it("keeps the current shot workbench visible and surfaces an action error when gate checks fail", async () => {
     window.history.pushState({}, "", "/?shotId=shot-live-2");
     loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-live-2"));
@@ -447,6 +508,109 @@ describe("App", () => {
     expect(await screen.findByText("Gate 检查失败：network down")).toBeInTheDocument();
     expect(screen.getByText("shot-exec-shot-live-2")).toBeInTheDocument();
     expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("silently refreshes the shot workbench when a subscribed event arrives", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-sse-1");
+    loadShotWorkbenchMock
+      .mockResolvedValueOnce(createShotWorkbench("shot-sse-1", "candidate_ready", "pending"))
+      .mockResolvedValueOnce(createShotWorkbench("shot-sse-1", "submitted_for_review", "approved"));
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-shot-sse-1")).toBeInTheDocument();
+    expect(latestWorkbenchSubscription?.workbenchKind).toBe("shot");
+
+    await act(async () => {
+      latestWorkbenchSubscription?.onRefreshNeeded();
+    });
+
+    expect(await screen.findByText(/submitted_for_review/)).toBeInTheDocument();
+    expect(screen.queryByText("正在执行 Gate 检查")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gate 检查失败")).not.toBeInTheDocument();
+    expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("silently refreshes the import workbench without clearing the selected file", async () => {
+    window.history.pushState({}, "", "/?importBatchId=batch-sse-1");
+    loadImportBatchWorkbenchMock
+      .mockResolvedValueOnce(createImportWorkbench("batch-sse-1"))
+      .mockResolvedValueOnce({
+        ...createImportWorkbench("batch-sse-1", "confirmed"),
+        uploadSessions: [
+          {
+            id: "upload-session-created",
+            status: "uploaded",
+            fileName: "scene.png",
+            checksum: "sha256:abc",
+            sizeBytes: 1024,
+            retryCount: 0,
+            resumeHint: "upload complete for scene.png",
+          },
+        ],
+      });
+
+    render(<App />);
+
+    expect(await screen.findByText("batch-sse-1")).toBeInTheDocument();
+
+    const file = new File(["demo"], "scene.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("选择本地文件"), {
+      target: { files: [file] },
+    });
+
+    expect(await screen.findByText("文件名：scene.png")).toBeInTheDocument();
+    expect(latestWorkbenchSubscription?.workbenchKind).toBe("import");
+
+    await act(async () => {
+      latestWorkbenchSubscription?.onRefreshNeeded();
+    });
+
+    expect(await screen.findByText("当前状态 confirmed，来源 upload_session")).toBeInTheDocument();
+    expect(screen.getByText("文件名：scene.png")).toBeInTheDocument();
+    expect(screen.queryByText("正在登记上传文件")).not.toBeInTheDocument();
+    expect(screen.queryByText("上传登记失败")).not.toBeInTheDocument();
+    expect(loadImportBatchWorkbenchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("queues only one additional shot refresh while a silent refresh is already in flight", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-sse-queued");
+    let resolveFirstRefresh: ((value: ReturnType<typeof createShotWorkbench>) => void) | undefined;
+    loadShotWorkbenchMock.mockResolvedValueOnce(
+      createShotWorkbench("shot-sse-queued", "candidate_ready", "pending"),
+    );
+    loadShotWorkbenchMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFirstRefresh = resolve as typeof resolveFirstRefresh;
+        }) as never,
+    );
+    loadShotWorkbenchMock.mockResolvedValueOnce(
+      createShotWorkbench("shot-sse-queued", "submitted_for_review", "approved"),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-shot-sse-queued")).toBeInTheDocument();
+
+    act(() => {
+      latestWorkbenchSubscription?.onRefreshNeeded();
+      latestWorkbenchSubscription?.onRefreshNeeded();
+      latestWorkbenchSubscription?.onRefreshNeeded();
+    });
+
+    await waitFor(() => {
+      expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(2);
+    });
+
+    await act(async () => {
+      resolveFirstRefresh?.(createShotWorkbench("shot-sse-queued", "candidate_ready", "pending"));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(3);
+    });
   });
 
   it("switches locale, persists it, and renders english shot feedback", async () => {

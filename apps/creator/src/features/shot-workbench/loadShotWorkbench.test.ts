@@ -16,6 +16,8 @@ describe("loadShotWorkbench", () => {
         shotExecution: {
           id: "shot-exec-1",
           shotId: "shot-1",
+          orgId: "org-1",
+          projectId: "project-1",
           status: "submitted_for_review",
           primaryAssetId: "asset-1",
         },
@@ -49,6 +51,8 @@ describe("loadShotWorkbench", () => {
       displayLocale: "zh-CN",
     });
     expect(result.shotExecution.id).toBe("shot-exec-1");
+    expect(result.shotExecution.orgId).toBe("org-1");
+    expect(result.shotExecution.projectId).toBe("project-1");
     expect(result.candidateAssets).toHaveLength(1);
     expect(result.reviewSummary.latestConclusion).toBe("approved");
     expect(result.latestEvaluationRun?.status).toBe("passed");

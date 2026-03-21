@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { type CreatorMessageKey, useLocaleState } from "../i18n";
 import {
   ImportBatchWorkbenchPage,
@@ -24,6 +24,7 @@ import {
   buildImportFeedback,
   buildShotFeedback,
 } from "../features/shared/buildActionFeedback";
+import { subscribeWorkbenchEvents } from "../features/subscribeWorkbenchEvents";
 import { ShotWorkbenchPage, type ShotWorkbenchViewModel } from "../features/shot-workbench/ShotWorkbenchPage";
 
 function waitForFeedbackPaint() {
@@ -77,6 +78,8 @@ export function App() {
   const [importActionFeedback, setImportActionFeedback] = useState<ActionFeedbackModel | null>(
     null,
   );
+  const shotRefreshStateRef = useRef({ inFlight: false, queued: false });
+  const importRefreshStateRef = useRef({ inFlight: false, queued: false });
 
   useEffect(() => {
     let cancelled = false;
@@ -150,6 +153,86 @@ export function App() {
     });
     return nextWorkbench;
   };
+
+  const scheduleSilentRefresh = (
+    stateRef: MutableRefObject<{ inFlight: boolean; queued: boolean }>,
+    refresh: () => Promise<unknown>,
+    scope: "shot" | "import",
+  ) => {
+    const state = stateRef.current;
+    if (state.inFlight) {
+      state.queued = true;
+      return;
+    }
+
+    state.inFlight = true;
+    void (async () => {
+      try {
+        do {
+          state.queued = false;
+          await refresh();
+        } while (state.queued);
+      } catch (error: unknown) {
+        console.warn(`creator: ${scope} sse refresh failed`, error);
+      } finally {
+        state.inFlight = false;
+      }
+    })();
+  };
+
+  useEffect(() => {
+    if (
+      !shotWorkbench?.shotExecution.orgId ||
+      !shotWorkbench.shotExecution.projectId ||
+      importWorkbench?.importBatch.id
+    ) {
+      return;
+    }
+
+    return subscribeWorkbenchEvents({
+      organizationId: shotWorkbench.shotExecution.orgId,
+      projectId: shotWorkbench.shotExecution.projectId,
+      workbenchKind: "shot",
+      onRefreshNeeded: () => {
+        scheduleSilentRefresh(shotRefreshStateRef, refreshShotWorkbench, "shot");
+      },
+      onError: (error) => {
+        console.warn("creator: shot sse subscription failed", error);
+      },
+    });
+  }, [
+    importWorkbench?.importBatch.id,
+    shotWorkbench?.shotExecution.id,
+    shotWorkbench?.shotExecution.orgId,
+    shotWorkbench?.shotExecution.projectId,
+  ]);
+
+  useEffect(() => {
+    if (
+      !importWorkbench?.importBatch.orgId ||
+      !importWorkbench.importBatch.projectId ||
+      shotWorkbench?.shotExecution.id
+    ) {
+      return;
+    }
+
+    return subscribeWorkbenchEvents({
+      organizationId: importWorkbench.importBatch.orgId,
+      projectId: importWorkbench.importBatch.projectId,
+      workbenchKind: "import",
+      onRefreshNeeded: () => {
+        scheduleSilentRefresh(importRefreshStateRef, refreshImportWorkbench, "import");
+      },
+      onError: (error) => {
+        console.warn("creator: import sse subscription failed", error);
+      },
+    });
+  }, [
+    importWorkbench?.importBatch.id,
+    importWorkbench?.importBatch.orgId,
+    importWorkbench?.importBatch.projectId,
+    shotWorkbench?.shotExecution.id,
+  ]);
 
   const runImportAction = async <T,>({
     pendingMessageKey,
