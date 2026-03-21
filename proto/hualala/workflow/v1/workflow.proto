@@ -41,6 +41,7 @@ message GetWorkflowRunResponse {
 
 message ListWorkflowRunsRequest {
   string project_id = 1;
+  string resource_id = 2;
 }
 
 message ListWorkflowRunsResponse {

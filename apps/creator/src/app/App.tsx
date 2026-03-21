@@ -329,6 +329,48 @@ export function App() {
     }
   };
 
+  const runShotAction = async ({
+    pendingMessageKey,
+    successMessageKey,
+    errorMessageKey,
+    unknownErrorMessage,
+    action,
+  }: {
+    pendingMessageKey: CreatorMessageKey;
+    successMessageKey: CreatorMessageKey;
+    errorMessageKey: CreatorMessageKey;
+    unknownErrorMessage: string;
+    action: () => Promise<void>;
+  }) => {
+    startTransition(() => {
+      setShotActionFeedback({
+        tone: "pending",
+        message: t(pendingMessageKey),
+      });
+    });
+
+    try {
+      await waitForFeedbackPaint();
+      await action();
+      startTransition(() => {
+        setShotActionFeedback({
+          tone: "success",
+          message: t(successMessageKey),
+        });
+      });
+      return true;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : unknownErrorMessage;
+      startTransition(() => {
+        setShotActionFeedback({
+          tone: "error",
+          message: t(errorMessageKey, { message }),
+        });
+      });
+      return false;
+    }
+  };
+
   if (errorMessage) {
     return <main style={{ padding: "32px" }}>{t("app.error.load", { message: errorMessage })}</main>;
   }
@@ -560,71 +602,37 @@ export function App() {
         }}
         onStartWorkflow={async (input) => {
           const { userId } = getRequestContext();
-
-          startTransition(() => {
-            setShotActionFeedback({
-              tone: "pending",
-              message: t("feedback.pending.startWorkflow"),
-            });
+          await runShotAction({
+            pendingMessageKey: "feedback.pending.startWorkflow",
+            successMessageKey: "feedback.success.startWorkflow",
+            errorMessageKey: "feedback.error.startWorkflow",
+            unknownErrorMessage: "creator: unknown workflow start error",
+            action: async () => {
+              await startShotWorkflow({
+                ...input,
+                workflowType: "shot_pipeline",
+                userId,
+              });
+              await refreshShotWorkbench();
+            },
           });
-          try {
-            await waitForFeedbackPaint();
-            await startShotWorkflow({
-              ...input,
-              workflowType: "shot_pipeline",
-              userId,
-            });
-            await refreshShotWorkbench();
-            startTransition(() => {
-              setShotActionFeedback({
-                tone: "success",
-                message: t("feedback.success.startWorkflow"),
-              });
-            });
-          } catch (error: unknown) {
-            const message =
-              error instanceof Error ? error.message : "creator: unknown workflow start error";
-            startTransition(() => {
-              setShotActionFeedback({
-                tone: "error",
-                message: t("feedback.error.startWorkflow", { message }),
-              });
-            });
-          }
         }}
         onRetryWorkflowRun={async (input) => {
           const { orgId, userId } = getRequestContext();
-
-          startTransition(() => {
-            setShotActionFeedback({
-              tone: "pending",
-              message: t("feedback.pending.retryWorkflow"),
-            });
+          await runShotAction({
+            pendingMessageKey: "feedback.pending.retryWorkflow",
+            successMessageKey: "feedback.success.retryWorkflow",
+            errorMessageKey: "feedback.error.retryWorkflow",
+            unknownErrorMessage: "creator: unknown workflow retry error",
+            action: async () => {
+              await retryShotWorkflowRun({
+                ...input,
+                orgId,
+                userId,
+              });
+              await refreshShotWorkbench();
+            },
           });
-          try {
-            await waitForFeedbackPaint();
-            await retryShotWorkflowRun({
-              ...input,
-              orgId,
-              userId,
-            });
-            await refreshShotWorkbench();
-            startTransition(() => {
-              setShotActionFeedback({
-                tone: "success",
-                message: t("feedback.success.retryWorkflow"),
-              });
-            });
-          } catch (error: unknown) {
-            const message =
-              error instanceof Error ? error.message : "creator: unknown workflow retry error";
-            startTransition(() => {
-              setShotActionFeedback({
-                tone: "error",
-                message: t("feedback.error.retryWorkflow", { message }),
-              });
-            });
-          }
         }}
       />
     );

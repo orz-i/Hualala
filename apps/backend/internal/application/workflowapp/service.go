@@ -42,7 +42,8 @@ type GetWorkflowRunInput struct {
 }
 
 type ListWorkflowRunsInput struct {
-	ProjectID string
+	ProjectID  string
+	ResourceID string
 }
 
 type CancelWorkflowRunInput struct {
@@ -111,7 +112,10 @@ func (s *Service) ListWorkflowRuns(_ context.Context, input ListWorkflowRunsInpu
 	if s == nil || s.repo == nil {
 		return nil, errors.New("workflowapp: repository is required")
 	}
-	return s.repo.ListWorkflowRuns(strings.TrimSpace(input.ProjectID)), nil
+	return s.repo.ListWorkflowRuns(
+		strings.TrimSpace(input.ProjectID),
+		strings.TrimSpace(input.ResourceID),
+	), nil
 }
 
 func (s *Service) CancelWorkflowRun(ctx context.Context, input CancelWorkflowRunInput) (workflow.WorkflowRun, error) {

@@ -60,6 +60,7 @@ describe("loadShotWorkflowPanel", () => {
     );
     expect(listWorkflowRunsMock).toHaveBeenCalledWith({
       projectId: "project-1",
+      resourceId: "shot-exec-1",
     });
     expect(result.latestWorkflowRun).toEqual({
       id: "workflow-run-3",

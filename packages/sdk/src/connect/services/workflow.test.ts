@@ -72,6 +72,7 @@ describe("createWorkflowClient", () => {
     });
     await client.listWorkflowRuns({
       projectId: "project-1",
+      resourceId: "shot-exec-1",
     });
     await client.cancelWorkflowRun({
       workflowRunId: "workflow-run-1",
@@ -102,6 +103,7 @@ describe("createWorkflowClient", () => {
       expect.objectContaining({
         body: JSON.stringify({
           projectId: "project-1",
+          resourceId: "shot-exec-1",
         }),
       }),
     );

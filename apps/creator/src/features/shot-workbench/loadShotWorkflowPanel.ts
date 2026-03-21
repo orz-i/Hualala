@@ -10,16 +10,6 @@ type LoadShotWorkflowPanelOptions = {
   fetchFn?: HualalaFetch;
 };
 
-type ListWorkflowRunsResponse = {
-  workflowRuns?: Array<{
-    id?: string;
-    workflowType?: string;
-    status?: string;
-    resourceId?: string;
-    projectId?: string;
-  }>;
-};
-
 export async function loadShotWorkflowPanel({
   projectId,
   shotExecutionId,
@@ -36,13 +26,11 @@ export async function loadShotWorkflowPanel({
       userId,
     },
   });
-  const payload = (await client.listWorkflowRuns({
+  const payload = await client.listWorkflowRuns({
     projectId,
-  })) as ListWorkflowRunsResponse;
-
-  const latestWorkflowRun = (payload.workflowRuns ?? []).find(
-    (record) => record.resourceId === shotExecutionId,
-  );
+    resourceId: shotExecutionId,
+  });
+  const latestWorkflowRun = payload.workflowRuns?.[0];
 
   if (!latestWorkflowRun?.id) {
     return {

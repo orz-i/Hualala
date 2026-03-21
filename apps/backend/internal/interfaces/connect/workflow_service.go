@@ -44,7 +44,8 @@ func (h *workflowHandler) GetWorkflowRun(ctx context.Context, req *connectrpc.Re
 
 func (h *workflowHandler) ListWorkflowRuns(ctx context.Context, req *connectrpc.Request[workflowv1.ListWorkflowRunsRequest]) (*connectrpc.Response[workflowv1.ListWorkflowRunsResponse], error) {
 	records, err := h.service.ListWorkflowRuns(ctx, workflowapp.ListWorkflowRunsInput{
-		ProjectID: req.Msg.GetProjectId(),
+		ProjectID:  req.Msg.GetProjectId(),
+		ResourceID: req.Msg.GetResourceId(),
 	})
 	if err != nil {
 		return nil, asConnectError(err)

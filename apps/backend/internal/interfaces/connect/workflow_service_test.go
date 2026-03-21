@@ -59,7 +59,8 @@ func TestWorkflowRoutes(t *testing.T) {
 	}
 
 	listed, err := client.ListWorkflowRuns(ctx, connectrpc.NewRequest(&workflowv1.ListWorkflowRunsRequest{
-		ProjectId: "project-1",
+		ProjectId:  "project-1",
+		ResourceId: "batch-1",
 	}))
 	if err != nil {
 		t.Fatalf("ListWorkflowRuns returned error: %v", err)
