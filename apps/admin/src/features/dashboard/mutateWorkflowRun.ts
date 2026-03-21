@@ -24,24 +24,18 @@ function createClient(options: WorkflowMutationOptions) {
 
 export async function retryWorkflowRun({
   workflowRunId,
-  orgId,
-  userId,
-  baseUrl,
-  fetchFn,
+  ...options
 }: WorkflowRunActionInput): Promise<void> {
-  await createClient({ orgId, userId, baseUrl, fetchFn }).retryWorkflowRun({
+  await createClient(options).retryWorkflowRun({
     workflowRunId,
   });
 }
 
 export async function cancelWorkflowRun({
   workflowRunId,
-  orgId,
-  userId,
-  baseUrl,
-  fetchFn,
+  ...options
 }: WorkflowRunActionInput): Promise<void> {
-  await createClient({ orgId, userId, baseUrl, fetchFn }).cancelWorkflowRun({
+  await createClient(options).cancelWorkflowRun({
     workflowRunId,
   });
 }

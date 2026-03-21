@@ -109,6 +109,34 @@ const metricStyle: CSSProperties = {
   fontSize: "0.95rem",
 };
 
+const workflowActionButtonBaseStyle: CSSProperties = {
+  border: 0,
+  borderRadius: "999px",
+  padding: "8px 14px",
+};
+
+const workflowActionButtonToneStyles = {
+  retry: {
+    background: "#b45309",
+    color: "#fffbeb",
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  cancel: {
+    background: "#991b1b",
+    color: "#fef2f2",
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  pending: {
+    background: "#94a3b8",
+    cursor: "not-allowed",
+  } satisfies CSSProperties,
+  close: {
+    background: "#cbd5e1",
+    color: "#0f172a",
+    cursor: "pointer",
+  } satisfies CSSProperties,
+};
+
 function formatCurrency(cents: number) {
   return `${(cents / 100).toFixed(2)} 元`;
 }
@@ -938,12 +966,10 @@ export function AdminOverviewPage({
                         onRetryWorkflowRun?.(workflowRunDetail.run.id);
                       }}
                       style={{
-                        border: 0,
-                        borderRadius: "999px",
-                        padding: "8px 14px",
-                        background: workflowActionPending ? "#94a3b8" : "#b45309",
-                        color: "#fffbeb",
-                        cursor: workflowActionPending ? "not-allowed" : "pointer",
+                        ...workflowActionButtonBaseStyle,
+                        ...(workflowActionPending
+                          ? workflowActionButtonToneStyles.pending
+                          : workflowActionButtonToneStyles.retry),
                       }}
                     >
                       {t("workflow.action.retry.button")}
@@ -957,12 +983,10 @@ export function AdminOverviewPage({
                         onCancelWorkflowRun?.(workflowRunDetail.run.id);
                       }}
                       style={{
-                        border: 0,
-                        borderRadius: "999px",
-                        padding: "8px 14px",
-                        background: workflowActionPending ? "#94a3b8" : "#991b1b",
-                        color: "#fef2f2",
-                        cursor: workflowActionPending ? "not-allowed" : "pointer",
+                        ...workflowActionButtonBaseStyle,
+                        ...(workflowActionPending
+                          ? workflowActionButtonToneStyles.pending
+                          : workflowActionButtonToneStyles.cancel),
                       }}
                     >
                       {t("workflow.action.cancel.button")}
@@ -976,12 +1000,8 @@ export function AdminOverviewPage({
                       onCloseWorkflowDetail?.();
                     }}
                     style={{
-                      border: 0,
-                      borderRadius: "999px",
-                      padding: "8px 14px",
-                      background: "#cbd5e1",
-                      color: "#0f172a",
-                      cursor: "pointer",
+                      ...workflowActionButtonBaseStyle,
+                      ...workflowActionButtonToneStyles.close,
                     }}
                   >
                     {t("workflow.detail.close")}
