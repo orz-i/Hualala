@@ -12,6 +12,7 @@ type SubscribeAdminRecentChangesOptions = {
   fetchFn?: HualalaFetch;
   onChange: (change: RecentChangeSummary) => void;
   onWorkflowUpdated?: () => void;
+  onAssetImportBatchUpdated?: () => void;
   onError?: (error: Error) => void;
 };
 
@@ -78,6 +79,7 @@ export function subscribeAdminRecentChanges({
   fetchFn,
   onChange,
   onWorkflowUpdated,
+  onAssetImportBatchUpdated,
   onError,
 }: SubscribeAdminRecentChangesOptions) {
   const client = createSSEClient({
@@ -91,6 +93,9 @@ export function subscribeAdminRecentChanges({
     onEvent: (event) => {
       if (event.eventType === "workflow.updated") {
         onWorkflowUpdated?.();
+      }
+      if (event.eventType === "asset.import_batch.updated") {
+        onAssetImportBatchUpdated?.();
       }
       const change = mapEventToRecentChange(event);
       if (change) {

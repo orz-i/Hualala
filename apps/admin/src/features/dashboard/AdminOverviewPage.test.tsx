@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createTranslator } from "../../i18n";
 import { AdminOverviewPage } from "./AdminOverviewPage";
+import {
+  createAssetBatchDetail,
+  createAssetMonitor,
+  createAssetProvenanceDetail,
+} from "./assetMonitor.test-data";
 import type { AdminGovernanceViewModel } from "./governance";
 import type { WorkflowMonitorViewModel, WorkflowRunDetailViewModel } from "./workflow";
 
@@ -99,6 +104,9 @@ describe("AdminOverviewPage", () => {
       },
     ],
   };
+  const assetMonitor = createAssetMonitor("project-live-1");
+  const assetDetail = createAssetBatchDetail("project-live-1");
+  const assetProvenanceDetail = createAssetProvenanceDetail("project-live-1");
   const workflowDetail: WorkflowRunDetailViewModel = {
     run: workflowMonitor.runs[1]!,
     steps: [
@@ -163,6 +171,7 @@ describe("AdminOverviewPage", () => {
         overview={overview}
         governance={governance}
         workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
         onLocaleChange={() => {}}
@@ -187,6 +196,8 @@ describe("AdminOverviewPage", () => {
     expect(screen.getByText("组织成员与语言设置")).toBeInTheDocument();
     expect(screen.getByText("Administrator")).toBeInTheDocument();
     expect(screen.getByText("工作流监控")).toBeInTheDocument();
+    expect(screen.getByText("资产监控")).toBeInTheDocument();
+    expect(screen.getByText("import-batch-1")).toBeInTheDocument();
     expect(screen.getByText("workflow-run-1")).toBeInTheDocument();
     expect(screen.getByText(/attempt_1\.gateway/)).toBeInTheDocument();
   });
@@ -199,6 +210,7 @@ describe("AdminOverviewPage", () => {
         overview={overview}
         governance={governance}
         workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
         onLocaleChange={() => {}}
@@ -229,6 +241,7 @@ describe("AdminOverviewPage", () => {
         overview={overview}
         governance={governance}
         workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
         onLocaleChange={() => {}}
@@ -267,6 +280,7 @@ describe("AdminOverviewPage", () => {
         t={createTranslator("en-US")}
         onLocaleChange={onLocaleChange}
         workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
         onUpdateUserPreferences={onUpdateUserPreferences}
         onUpdateMemberRole={onUpdateMemberRole}
         onUpdateOrgLocaleSettings={onUpdateOrgLocaleSettings}
@@ -280,6 +294,7 @@ describe("AdminOverviewPage", () => {
     expect(screen.getByText("Recent evaluation result")).toBeInTheDocument();
     expect(screen.getByText("passed · 0 failed checks")).toBeInTheDocument();
     expect(screen.getByText("Workflow Monitor")).toBeInTheDocument();
+    expect(screen.getByText("Asset Monitor")).toBeInTheDocument();
 
     fireEvent.change(screen.getByTestId("ui-locale-select"), {
       target: { value: "zh-CN" },
@@ -298,6 +313,7 @@ describe("AdminOverviewPage", () => {
         overview={overview}
         governance={governance}
         workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
         onLocaleChange={() => {}}
@@ -347,6 +363,7 @@ describe("AdminOverviewPage", () => {
         overview={overview}
         governance={governance}
         workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
         workflowRunDetail={workflowDetail}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
@@ -376,6 +393,65 @@ describe("AdminOverviewPage", () => {
     expect(onCloseWorkflowDetail).toHaveBeenCalled();
   });
 
+  it("filters asset batches and opens detail plus provenance dialogs", () => {
+    const onAssetStatusFilterChange = vi.fn();
+    const onAssetSourceTypeFilterChange = vi.fn();
+    const onSelectImportBatch = vi.fn();
+    const onCloseImportBatchDetail = vi.fn();
+    const onSelectAssetProvenance = vi.fn();
+    const onCloseAssetProvenance = vi.fn();
+
+    render(
+      <AdminOverviewPage
+        overview={overview}
+        governance={governance}
+        workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
+        importBatchDetail={assetDetail}
+        assetProvenanceDetail={assetProvenanceDetail}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onAssetStatusFilterChange={onAssetStatusFilterChange}
+        onAssetSourceTypeFilterChange={onAssetSourceTypeFilterChange}
+        onSelectImportBatch={onSelectImportBatch}
+        onCloseImportBatchDetail={onCloseImportBatchDetail}
+        onSelectAssetProvenance={onSelectAssetProvenance}
+        onCloseAssetProvenance={onCloseAssetProvenance}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("资产状态过滤"), {
+      target: { value: "confirmed" },
+    });
+    fireEvent.change(screen.getByLabelText("资产来源过滤"), {
+      target: { value: "upload_session" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "查看导入批次详情 import-batch-1" }));
+
+    expect(onAssetStatusFilterChange).toHaveBeenCalledWith("confirmed");
+    expect(onAssetSourceTypeFilterChange).toHaveBeenCalledWith("upload_session");
+    expect(onSelectImportBatch).toHaveBeenCalledWith("import-batch-1");
+
+    expect(screen.getByRole("dialog", { name: "导入批次详情" })).toBeInTheDocument();
+    expect(screen.getByText("hero.png")).toBeInTheDocument();
+    expect(screen.getByText("candidate-1")).toBeInTheDocument();
+    expect(screen.getAllByText("media-asset-1").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "查看资源来源 media-asset-1" })[0]!);
+
+    expect(onSelectAssetProvenance).toHaveBeenCalledWith("media-asset-1");
+    expect(screen.getByRole("dialog", { name: "资源来源详情" })).toBeInTheDocument();
+    expect(screen.getByText(/source_type=upload_session/)).toBeInTheDocument();
+    expect(screen.getByText("候选资源 ID：candidate-1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "关闭资源来源详情" }));
+    expect(onCloseAssetProvenance).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "关闭导入批次详情" }));
+    expect(onCloseImportBatchDetail).toHaveBeenCalled();
+  });
+
   it("traps focus inside the workflow detail dialog and locks background scroll", async () => {
     const onCloseWorkflowDetail = vi.fn();
 
@@ -384,6 +460,7 @@ describe("AdminOverviewPage", () => {
         overview={overview}
         governance={governance}
         workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
         workflowRunDetail={workflowDetail}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
@@ -412,6 +489,7 @@ describe("AdminOverviewPage", () => {
       <AdminOverviewPage
         overview={overview}
         governance={governance}
+        assetMonitor={assetMonitor}
         workflowMonitor={workflowMonitor}
         workflowRunDetail={workflowDetail}
         locale="zh-CN"
@@ -439,6 +517,7 @@ describe("AdminOverviewPage", () => {
         overview={overview}
         governance={governance}
         workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
         workflowRunDetail={runningWorkflowDetail}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
@@ -459,6 +538,7 @@ describe("AdminOverviewPage", () => {
         overview={overview}
         governance={governance}
         workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
         workflowRunDetail={succeededWorkflowDetail}
         locale="zh-CN"
         t={createTranslator("zh-CN")}
