@@ -57,10 +57,27 @@ func TestWorkflowRoutes(t *testing.T) {
 	if got := fetched.Msg.GetWorkflowRun().GetId(); got != runID {
 		t.Fatalf("expected workflow run %q, got %q", runID, got)
 	}
+	if got := fetched.Msg.GetWorkflowRun().GetProvider(); got != "memory-provider" {
+		t.Fatalf("expected provider memory-provider, got %q", got)
+	}
+	if got := fetched.Msg.GetWorkflowRun().GetCurrentStep(); got != "attempt_1.gateway" {
+		t.Fatalf("expected current_step attempt_1.gateway, got %q", got)
+	}
+	if got := fetched.Msg.GetWorkflowRun().GetAttemptCount(); got != 1 {
+		t.Fatalf("expected attempt_count 1, got %d", got)
+	}
+	if len(fetched.Msg.GetWorkflowSteps()) != 2 {
+		t.Fatalf("expected 2 workflow steps, got %d", len(fetched.Msg.GetWorkflowSteps()))
+	}
+	if got := fetched.Msg.GetWorkflowSteps()[0].GetStepKey(); got != "attempt_1.dispatch" {
+		t.Fatalf("expected first workflow step attempt_1.dispatch, got %q", got)
+	}
 
 	listed, err := client.ListWorkflowRuns(ctx, connectrpc.NewRequest(&workflowv1.ListWorkflowRunsRequest{
-		ProjectId:  "project-1",
-		ResourceId: "batch-1",
+		ProjectId:    "project-1",
+		ResourceId:   "batch-1",
+		Status:       "running",
+		WorkflowType: "asset.import",
 	}))
 	if err != nil {
 		t.Fatalf("ListWorkflowRuns returned error: %v", err)
@@ -107,5 +124,8 @@ func TestWorkflowRoutes(t *testing.T) {
 	}
 	if got := retried.Msg.GetWorkflowRun().GetResourceId(); got != "batch-2" {
 		t.Fatalf("expected retried resource_id %q, got %q", "batch-2", got)
+	}
+	if got := retried.Msg.GetWorkflowRun().GetAttemptCount(); got != 2 {
+		t.Fatalf("expected retried attempt_count 2, got %d", got)
 	}
 }

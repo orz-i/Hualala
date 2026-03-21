@@ -14,6 +14,11 @@ describe("createWorkflowClient", () => {
               status: "running",
               resourceId: "shot-exec-1",
               projectId: "project-1",
+              provider: "seedance",
+              currentStep: "attempt_1.gateway",
+              attemptCount: 1,
+              lastError: "",
+              externalRequestId: "external-request-1",
             },
           }),
           { status: 200 },
@@ -28,7 +33,28 @@ describe("createWorkflowClient", () => {
               status: "running",
               resourceId: "shot-exec-1",
               projectId: "project-1",
+              provider: "seedance",
+              currentStep: "attempt_1.gateway",
+              attemptCount: 1,
+              lastError: "",
+              externalRequestId: "external-request-1",
             },
+            workflowSteps: [
+              {
+                id: "workflow-step-1",
+                workflowRunId: "workflow-run-1",
+                stepKey: "attempt_1.dispatch",
+                stepOrder: 1,
+                status: "completed",
+              },
+              {
+                id: "workflow-step-2",
+                workflowRunId: "workflow-run-1",
+                stepKey: "attempt_1.gateway",
+                stepOrder: 2,
+                status: "running",
+              },
+            ],
           }),
           { status: 200 },
         ),
@@ -43,6 +69,10 @@ describe("createWorkflowClient", () => {
                 status: "running",
                 resourceId: "shot-exec-1",
                 projectId: "project-1",
+                provider: "seedance",
+                currentStep: "attempt_1.gateway",
+                attemptCount: 1,
+                externalRequestId: "external-request-1",
               },
             ],
           }),
@@ -67,12 +97,17 @@ describe("createWorkflowClient", () => {
       workflowType: "shot_pipeline",
       resourceId: "shot-exec-1",
     });
-    await client.getWorkflowRun({
+    const fetched = await client.getWorkflowRun({
       workflowRunId: "workflow-run-1",
     });
+    expect(fetched.workflowSteps?.[0]?.stepKey).toBe("attempt_1.dispatch");
+    expect(fetched.workflowRun?.currentStep).toBe("attempt_1.gateway");
+
     await client.listWorkflowRuns({
       projectId: "project-1",
       resourceId: "shot-exec-1",
+      status: "running",
+      workflowType: "shot_pipeline",
     });
     await client.cancelWorkflowRun({
       workflowRunId: "workflow-run-1",
@@ -104,6 +139,8 @@ describe("createWorkflowClient", () => {
         body: JSON.stringify({
           projectId: "project-1",
           resourceId: "shot-exec-1",
+          status: "running",
+          workflowType: "shot_pipeline",
         }),
       }),
     );

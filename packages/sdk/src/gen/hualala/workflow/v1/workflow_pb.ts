@@ -4,13 +4,15 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file hualala/workflow/v1/workflow.proto.
  */
 export const file_hualala_workflow_v1_workflow: GenFile = /*@__PURE__*/
-  fileDesc("CiJodWFsYWxhL3dvcmtmbG93L3YxL3dvcmtmbG93LnByb3RvEhNodWFsYWxhLndvcmtmbG93LnYxImkKC1dvcmtmbG93UnVuEgoKAmlkGAEgASgJEhUKDXdvcmtmbG93X3R5cGUYAiABKAkSDgoGc3RhdHVzGAMgASgJEhMKC3Jlc291cmNlX2lkGAQgASgJEhIKCnByb2plY3RfaWQYBSABKAkibwoUU3RhcnRXb3JrZmxvd1JlcXVlc3QSFQoNd29ya2Zsb3dfdHlwZRgBIAEoCRITCgtyZXNvdXJjZV9pZBgCIAEoCRIXCg9vcmdhbml6YXRpb25faWQYAyABKAkSEgoKcHJvamVjdF9pZBgEIAEoCSJPChVTdGFydFdvcmtmbG93UmVzcG9uc2USNgoMd29ya2Zsb3dfcnVuGAEgASgLMiAuaHVhbGFsYS53b3JrZmxvdy52MS5Xb3JrZmxvd1J1biIwChVHZXRXb3JrZmxvd1J1blJlcXVlc3QSFwoPd29ya2Zsb3dfcnVuX2lkGAEgASgJIlAKFkdldFdvcmtmbG93UnVuUmVzcG9uc2USNgoMd29ya2Zsb3dfcnVuGAEgASgLMiAuaHVhbGFsYS53b3JrZmxvdy52MS5Xb3JrZmxvd1J1biJCChdMaXN0V29ya2Zsb3dSdW5zUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhMKC3Jlc291cmNlX2lkGAIgASgJIlMKGExpc3RXb3JrZmxvd1J1bnNSZXNwb25zZRI3Cg13b3JrZmxvd19ydW5zGAEgAygLMiAuaHVhbGFsYS53b3JrZmxvdy52MS5Xb3JrZmxvd1J1biIzChhDYW5jZWxXb3JrZmxvd1J1blJlcXVlc3QSFwoPd29ya2Zsb3dfcnVuX2lkGAEgASgJIlMKGUNhbmNlbFdvcmtmbG93UnVuUmVzcG9uc2USNgoMd29ya2Zsb3dfcnVuGAEgASgLMiAuaHVhbGFsYS53b3JrZmxvdy52MS5Xb3JrZmxvd1J1biIyChdSZXRyeVdvcmtmbG93UnVuUmVxdWVzdBIXCg93b3JrZmxvd19ydW5faWQYASABKAkiUgoYUmV0cnlXb3JrZmxvd1J1blJlc3BvbnNlEjYKDHdvcmtmbG93X3J1bhgBIAEoCzIgLmh1YWxhbGEud29ya2Zsb3cudjEuV29ya2Zsb3dSdW4yugQKD1dvcmtmbG93U2VydmljZRJmCg1TdGFydFdvcmtmbG93EikuaHVhbGFsYS53b3JrZmxvdy52MS5TdGFydFdvcmtmbG93UmVxdWVzdBoqLmh1YWxhbGEud29ya2Zsb3cudjEuU3RhcnRXb3JrZmxvd1Jlc3BvbnNlEmkKDkdldFdvcmtmbG93UnVuEiouaHVhbGFsYS53b3JrZmxvdy52MS5HZXRXb3JrZmxvd1J1blJlcXVlc3QaKy5odWFsYWxhLndvcmtmbG93LnYxLkdldFdvcmtmbG93UnVuUmVzcG9uc2USbwoQTGlzdFdvcmtmbG93UnVucxIsLmh1YWxhbGEud29ya2Zsb3cudjEuTGlzdFdvcmtmbG93UnVuc1JlcXVlc3QaLS5odWFsYWxhLndvcmtmbG93LnYxLkxpc3RXb3JrZmxvd1J1bnNSZXNwb25zZRJyChFDYW5jZWxXb3JrZmxvd1J1bhItLmh1YWxhbGEud29ya2Zsb3cudjEuQ2FuY2VsV29ya2Zsb3dSdW5SZXF1ZXN0Gi4uaHVhbGFsYS53b3JrZmxvdy52MS5DYW5jZWxXb3JrZmxvd1J1blJlc3BvbnNlEm8KEFJldHJ5V29ya2Zsb3dSdW4SLC5odWFsYWxhLndvcmtmbG93LnYxLlJldHJ5V29ya2Zsb3dSdW5SZXF1ZXN0Gi0uaHVhbGFsYS53b3JrZmxvdy52MS5SZXRyeVdvcmtmbG93UnVuUmVzcG9uc2VC2gEKF2NvbS5odWFsYWxhLndvcmtmbG93LnYxQg1Xb3JrZmxvd1Byb3RvUAFaQmdpdGh1Yi5jb20vaHVhbGFsYS9hcHBzL2JhY2tlbmQvZ2VuL2h1YWxhbGEvd29ya2Zsb3cvdjE7d29ya2Zsb3d2MaICA0hXWKoCE0h1YWxhbGEuV29ya2Zsb3cuVjHKAhNIdWFsYWxhXFdvcmtmbG93XFYx4gIfSHVhbGFsYVxXb3JrZmxvd1xWMVxHUEJNZXRhZGF0YeoCFUh1YWxhbGE6OldvcmtmbG93OjpWMWIGcHJvdG8z");
+  fileDesc("CiJodWFsYWxhL3dvcmtmbG93L3YxL3dvcmtmbG93LnByb3RvEhNodWFsYWxhLndvcmtmbG93LnYxIrkCCgtXb3JrZmxvd1J1bhIKCgJpZBgBIAEoCRIVCg13b3JrZmxvd190eXBlGAIgASgJEg4KBnN0YXR1cxgDIAEoCRITCgtyZXNvdXJjZV9pZBgEIAEoCRISCgpwcm9qZWN0X2lkGAUgASgJEhAKCHByb3ZpZGVyGAYgASgJEhQKDGN1cnJlbnRfc3RlcBgHIAEoCRIVCg1hdHRlbXB0X2NvdW50GAggASgFEhIKCmxhc3RfZXJyb3IYCSABKAkSGwoTZXh0ZXJuYWxfcmVxdWVzdF9pZBgKIAEoCRIuCgpjcmVhdGVkX2F0GAsgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAwgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKlAgoMV29ya2Zsb3dTdGVwEgoKAmlkGAEgASgJEhcKD3dvcmtmbG93X3J1bl9pZBgCIAEoCRIQCghzdGVwX2tleRgDIAEoCRISCgpzdGVwX29yZGVyGAQgASgFEg4KBnN0YXR1cxgFIAEoCRISCgplcnJvcl9jb2RlGAYgASgJEhUKDWVycm9yX21lc3NhZ2UYByABKAkSLgoKc3RhcnRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMY29tcGxldGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBItCglmYWlsZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIm8KFFN0YXJ0V29ya2Zsb3dSZXF1ZXN0EhUKDXdvcmtmbG93X3R5cGUYASABKAkSEwoLcmVzb3VyY2VfaWQYAiABKAkSFwoPb3JnYW5pemF0aW9uX2lkGAMgASgJEhIKCnByb2plY3RfaWQYBCABKAkiTwoVU3RhcnRXb3JrZmxvd1Jlc3BvbnNlEjYKDHdvcmtmbG93X3J1bhgBIAEoCzIgLmh1YWxhbGEud29ya2Zsb3cudjEuV29ya2Zsb3dSdW4iMAoVR2V0V29ya2Zsb3dSdW5SZXF1ZXN0EhcKD3dvcmtmbG93X3J1bl9pZBgBIAEoCSKLAQoWR2V0V29ya2Zsb3dSdW5SZXNwb25zZRI2Cgx3b3JrZmxvd19ydW4YASABKAsyIC5odWFsYWxhLndvcmtmbG93LnYxLldvcmtmbG93UnVuEjkKDndvcmtmbG93X3N0ZXBzGAIgAygLMiEuaHVhbGFsYS53b3JrZmxvdy52MS5Xb3JrZmxvd1N0ZXAiaQoXTGlzdFdvcmtmbG93UnVuc1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRITCgtyZXNvdXJjZV9pZBgCIAEoCRIOCgZzdGF0dXMYAyABKAkSFQoNd29ya2Zsb3dfdHlwZRgEIAEoCSJTChhMaXN0V29ya2Zsb3dSdW5zUmVzcG9uc2USNwoNd29ya2Zsb3dfcnVucxgBIAMoCzIgLmh1YWxhbGEud29ya2Zsb3cudjEuV29ya2Zsb3dSdW4iMwoYQ2FuY2VsV29ya2Zsb3dSdW5SZXF1ZXN0EhcKD3dvcmtmbG93X3J1bl9pZBgBIAEoCSJTChlDYW5jZWxXb3JrZmxvd1J1blJlc3BvbnNlEjYKDHdvcmtmbG93X3J1bhgBIAEoCzIgLmh1YWxhbGEud29ya2Zsb3cudjEuV29ya2Zsb3dSdW4iMgoXUmV0cnlXb3JrZmxvd1J1blJlcXVlc3QSFwoPd29ya2Zsb3dfcnVuX2lkGAEgASgJIlIKGFJldHJ5V29ya2Zsb3dSdW5SZXNwb25zZRI2Cgx3b3JrZmxvd19ydW4YASABKAsyIC5odWFsYWxhLndvcmtmbG93LnYxLldvcmtmbG93UnVuMroECg9Xb3JrZmxvd1NlcnZpY2USZgoNU3RhcnRXb3JrZmxvdxIpLmh1YWxhbGEud29ya2Zsb3cudjEuU3RhcnRXb3JrZmxvd1JlcXVlc3QaKi5odWFsYWxhLndvcmtmbG93LnYxLlN0YXJ0V29ya2Zsb3dSZXNwb25zZRJpCg5HZXRXb3JrZmxvd1J1bhIqLmh1YWxhbGEud29ya2Zsb3cudjEuR2V0V29ya2Zsb3dSdW5SZXF1ZXN0GisuaHVhbGFsYS53b3JrZmxvdy52MS5HZXRXb3JrZmxvd1J1blJlc3BvbnNlEm8KEExpc3RXb3JrZmxvd1J1bnMSLC5odWFsYWxhLndvcmtmbG93LnYxLkxpc3RXb3JrZmxvd1J1bnNSZXF1ZXN0Gi0uaHVhbGFsYS53b3JrZmxvdy52MS5MaXN0V29ya2Zsb3dSdW5zUmVzcG9uc2UScgoRQ2FuY2VsV29ya2Zsb3dSdW4SLS5odWFsYWxhLndvcmtmbG93LnYxLkNhbmNlbFdvcmtmbG93UnVuUmVxdWVzdBouLmh1YWxhbGEud29ya2Zsb3cudjEuQ2FuY2VsV29ya2Zsb3dSdW5SZXNwb25zZRJvChBSZXRyeVdvcmtmbG93UnVuEiwuaHVhbGFsYS53b3JrZmxvdy52MS5SZXRyeVdvcmtmbG93UnVuUmVxdWVzdBotLmh1YWxhbGEud29ya2Zsb3cudjEuUmV0cnlXb3JrZmxvd1J1blJlc3BvbnNlQtoBChdjb20uaHVhbGFsYS53b3JrZmxvdy52MUINV29ya2Zsb3dQcm90b1ABWkJnaXRodWIuY29tL2h1YWxhbGEvYXBwcy9iYWNrZW5kL2dlbi9odWFsYWxhL3dvcmtmbG93L3YxO3dvcmtmbG93djGiAgNIV1iqAhNIdWFsYWxhLldvcmtmbG93LlYxygITSHVhbGFsYVxXb3JrZmxvd1xWMeICH0h1YWxhbGFcV29ya2Zsb3dcVjFcR1BCTWV0YWRhdGHqAhVIdWFsYWxhOjpXb3JrZmxvdzo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message hualala.workflow.v1.WorkflowRun
@@ -40,6 +42,41 @@ export type WorkflowRun = Message<"hualala.workflow.v1.WorkflowRun"> & {
    * @generated from field: string project_id = 5;
    */
   projectId: string;
+
+  /**
+   * @generated from field: string provider = 6;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: string current_step = 7;
+   */
+  currentStep: string;
+
+  /**
+   * @generated from field: int32 attempt_count = 8;
+   */
+  attemptCount: number;
+
+  /**
+   * @generated from field: string last_error = 9;
+   */
+  lastError: string;
+
+  /**
+   * @generated from field: string external_request_id = 10;
+   */
+  externalRequestId: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 11;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 12;
+   */
+  updatedAt?: Timestamp;
 };
 
 /**
@@ -48,6 +85,68 @@ export type WorkflowRun = Message<"hualala.workflow.v1.WorkflowRun"> & {
  */
 export const WorkflowRunSchema: GenMessage<WorkflowRun> = /*@__PURE__*/
   messageDesc(file_hualala_workflow_v1_workflow, 0);
+
+/**
+ * @generated from message hualala.workflow.v1.WorkflowStep
+ */
+export type WorkflowStep = Message<"hualala.workflow.v1.WorkflowStep"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string workflow_run_id = 2;
+   */
+  workflowRunId: string;
+
+  /**
+   * @generated from field: string step_key = 3;
+   */
+  stepKey: string;
+
+  /**
+   * @generated from field: int32 step_order = 4;
+   */
+  stepOrder: number;
+
+  /**
+   * @generated from field: string status = 5;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string error_code = 6;
+   */
+  errorCode: string;
+
+  /**
+   * @generated from field: string error_message = 7;
+   */
+  errorMessage: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 8;
+   */
+  startedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp completed_at = 9;
+   */
+  completedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp failed_at = 10;
+   */
+  failedAt?: Timestamp;
+};
+
+/**
+ * Describes the message hualala.workflow.v1.WorkflowStep.
+ * Use `create(WorkflowStepSchema)` to create a new message.
+ */
+export const WorkflowStepSchema: GenMessage<WorkflowStep> = /*@__PURE__*/
+  messageDesc(file_hualala_workflow_v1_workflow, 1);
 
 /**
  * @generated from message hualala.workflow.v1.StartWorkflowRequest
@@ -79,7 +178,7 @@ export type StartWorkflowRequest = Message<"hualala.workflow.v1.StartWorkflowReq
  * Use `create(StartWorkflowRequestSchema)` to create a new message.
  */
 export const StartWorkflowRequestSchema: GenMessage<StartWorkflowRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_workflow_v1_workflow, 1);
+  messageDesc(file_hualala_workflow_v1_workflow, 2);
 
 /**
  * @generated from message hualala.workflow.v1.StartWorkflowResponse
@@ -96,7 +195,7 @@ export type StartWorkflowResponse = Message<"hualala.workflow.v1.StartWorkflowRe
  * Use `create(StartWorkflowResponseSchema)` to create a new message.
  */
 export const StartWorkflowResponseSchema: GenMessage<StartWorkflowResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_workflow_v1_workflow, 2);
+  messageDesc(file_hualala_workflow_v1_workflow, 3);
 
 /**
  * @generated from message hualala.workflow.v1.GetWorkflowRunRequest
@@ -113,7 +212,7 @@ export type GetWorkflowRunRequest = Message<"hualala.workflow.v1.GetWorkflowRunR
  * Use `create(GetWorkflowRunRequestSchema)` to create a new message.
  */
 export const GetWorkflowRunRequestSchema: GenMessage<GetWorkflowRunRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_workflow_v1_workflow, 3);
+  messageDesc(file_hualala_workflow_v1_workflow, 4);
 
 /**
  * @generated from message hualala.workflow.v1.GetWorkflowRunResponse
@@ -123,6 +222,11 @@ export type GetWorkflowRunResponse = Message<"hualala.workflow.v1.GetWorkflowRun
    * @generated from field: hualala.workflow.v1.WorkflowRun workflow_run = 1;
    */
   workflowRun?: WorkflowRun;
+
+  /**
+   * @generated from field: repeated hualala.workflow.v1.WorkflowStep workflow_steps = 2;
+   */
+  workflowSteps: WorkflowStep[];
 };
 
 /**
@@ -130,7 +234,7 @@ export type GetWorkflowRunResponse = Message<"hualala.workflow.v1.GetWorkflowRun
  * Use `create(GetWorkflowRunResponseSchema)` to create a new message.
  */
 export const GetWorkflowRunResponseSchema: GenMessage<GetWorkflowRunResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_workflow_v1_workflow, 4);
+  messageDesc(file_hualala_workflow_v1_workflow, 5);
 
 /**
  * @generated from message hualala.workflow.v1.ListWorkflowRunsRequest
@@ -145,6 +249,16 @@ export type ListWorkflowRunsRequest = Message<"hualala.workflow.v1.ListWorkflowR
    * @generated from field: string resource_id = 2;
    */
   resourceId: string;
+
+  /**
+   * @generated from field: string status = 3;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string workflow_type = 4;
+   */
+  workflowType: string;
 };
 
 /**
@@ -152,7 +266,7 @@ export type ListWorkflowRunsRequest = Message<"hualala.workflow.v1.ListWorkflowR
  * Use `create(ListWorkflowRunsRequestSchema)` to create a new message.
  */
 export const ListWorkflowRunsRequestSchema: GenMessage<ListWorkflowRunsRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_workflow_v1_workflow, 5);
+  messageDesc(file_hualala_workflow_v1_workflow, 6);
 
 /**
  * @generated from message hualala.workflow.v1.ListWorkflowRunsResponse
@@ -169,7 +283,7 @@ export type ListWorkflowRunsResponse = Message<"hualala.workflow.v1.ListWorkflow
  * Use `create(ListWorkflowRunsResponseSchema)` to create a new message.
  */
 export const ListWorkflowRunsResponseSchema: GenMessage<ListWorkflowRunsResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_workflow_v1_workflow, 6);
+  messageDesc(file_hualala_workflow_v1_workflow, 7);
 
 /**
  * @generated from message hualala.workflow.v1.CancelWorkflowRunRequest
@@ -186,7 +300,7 @@ export type CancelWorkflowRunRequest = Message<"hualala.workflow.v1.CancelWorkfl
  * Use `create(CancelWorkflowRunRequestSchema)` to create a new message.
  */
 export const CancelWorkflowRunRequestSchema: GenMessage<CancelWorkflowRunRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_workflow_v1_workflow, 7);
+  messageDesc(file_hualala_workflow_v1_workflow, 8);
 
 /**
  * @generated from message hualala.workflow.v1.CancelWorkflowRunResponse
@@ -203,7 +317,7 @@ export type CancelWorkflowRunResponse = Message<"hualala.workflow.v1.CancelWorkf
  * Use `create(CancelWorkflowRunResponseSchema)` to create a new message.
  */
 export const CancelWorkflowRunResponseSchema: GenMessage<CancelWorkflowRunResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_workflow_v1_workflow, 8);
+  messageDesc(file_hualala_workflow_v1_workflow, 9);
 
 /**
  * @generated from message hualala.workflow.v1.RetryWorkflowRunRequest
@@ -220,7 +334,7 @@ export type RetryWorkflowRunRequest = Message<"hualala.workflow.v1.RetryWorkflow
  * Use `create(RetryWorkflowRunRequestSchema)` to create a new message.
  */
 export const RetryWorkflowRunRequestSchema: GenMessage<RetryWorkflowRunRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_workflow_v1_workflow, 9);
+  messageDesc(file_hualala_workflow_v1_workflow, 10);
 
 /**
  * @generated from message hualala.workflow.v1.RetryWorkflowRunResponse
@@ -237,7 +351,7 @@ export type RetryWorkflowRunResponse = Message<"hualala.workflow.v1.RetryWorkflo
  * Use `create(RetryWorkflowRunResponseSchema)` to create a new message.
  */
 export const RetryWorkflowRunResponseSchema: GenMessage<RetryWorkflowRunResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_workflow_v1_workflow, 10);
+  messageDesc(file_hualala_workflow_v1_workflow, 11);
 
 /**
  * @generated from service hualala.workflow.v1.WorkflowService

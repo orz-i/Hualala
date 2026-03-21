@@ -9,6 +9,7 @@ package workflowv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -22,14 +23,21 @@ const (
 )
 
 type WorkflowRun struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	WorkflowType  string                 `protobuf:"bytes,2,opt,name=workflow_type,json=workflowType,proto3" json:"workflow_type,omitempty"`
-	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	ResourceId    string                 `protobuf:"bytes,4,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
-	ProjectId     string                 `protobuf:"bytes,5,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	WorkflowType      string                 `protobuf:"bytes,2,opt,name=workflow_type,json=workflowType,proto3" json:"workflow_type,omitempty"`
+	Status            string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	ResourceId        string                 `protobuf:"bytes,4,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	ProjectId         string                 `protobuf:"bytes,5,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Provider          string                 `protobuf:"bytes,6,opt,name=provider,proto3" json:"provider,omitempty"`
+	CurrentStep       string                 `protobuf:"bytes,7,opt,name=current_step,json=currentStep,proto3" json:"current_step,omitempty"`
+	AttemptCount      int32                  `protobuf:"varint,8,opt,name=attempt_count,json=attemptCount,proto3" json:"attempt_count,omitempty"`
+	LastError         string                 `protobuf:"bytes,9,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	ExternalRequestId string                 `protobuf:"bytes,10,opt,name=external_request_id,json=externalRequestId,proto3" json:"external_request_id,omitempty"`
+	CreatedAt         *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt         *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *WorkflowRun) Reset() {
@@ -97,6 +105,171 @@ func (x *WorkflowRun) GetProjectId() string {
 	return ""
 }
 
+func (x *WorkflowRun) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *WorkflowRun) GetCurrentStep() string {
+	if x != nil {
+		return x.CurrentStep
+	}
+	return ""
+}
+
+func (x *WorkflowRun) GetAttemptCount() int32 {
+	if x != nil {
+		return x.AttemptCount
+	}
+	return 0
+}
+
+func (x *WorkflowRun) GetLastError() string {
+	if x != nil {
+		return x.LastError
+	}
+	return ""
+}
+
+func (x *WorkflowRun) GetExternalRequestId() string {
+	if x != nil {
+		return x.ExternalRequestId
+	}
+	return ""
+}
+
+func (x *WorkflowRun) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *WorkflowRun) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type WorkflowStep struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	WorkflowRunId string                 `protobuf:"bytes,2,opt,name=workflow_run_id,json=workflowRunId,proto3" json:"workflow_run_id,omitempty"`
+	StepKey       string                 `protobuf:"bytes,3,opt,name=step_key,json=stepKey,proto3" json:"step_key,omitempty"`
+	StepOrder     int32                  `protobuf:"varint,4,opt,name=step_order,json=stepOrder,proto3" json:"step_order,omitempty"`
+	Status        string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	ErrorCode     string                 `protobuf:"bytes,6,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,7,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	CompletedAt   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	FailedAt      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=failed_at,json=failedAt,proto3" json:"failed_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorkflowStep) Reset() {
+	*x = WorkflowStep{}
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkflowStep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkflowStep) ProtoMessage() {}
+
+func (x *WorkflowStep) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkflowStep.ProtoReflect.Descriptor instead.
+func (*WorkflowStep) Descriptor() ([]byte, []int) {
+	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *WorkflowStep) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *WorkflowStep) GetWorkflowRunId() string {
+	if x != nil {
+		return x.WorkflowRunId
+	}
+	return ""
+}
+
+func (x *WorkflowStep) GetStepKey() string {
+	if x != nil {
+		return x.StepKey
+	}
+	return ""
+}
+
+func (x *WorkflowStep) GetStepOrder() int32 {
+	if x != nil {
+		return x.StepOrder
+	}
+	return 0
+}
+
+func (x *WorkflowStep) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *WorkflowStep) GetErrorCode() string {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return ""
+}
+
+func (x *WorkflowStep) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *WorkflowStep) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *WorkflowStep) GetCompletedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CompletedAt
+	}
+	return nil
+}
+
+func (x *WorkflowStep) GetFailedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FailedAt
+	}
+	return nil
+}
+
 type StartWorkflowRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	WorkflowType   string                 `protobuf:"bytes,1,opt,name=workflow_type,json=workflowType,proto3" json:"workflow_type,omitempty"`
@@ -109,7 +282,7 @@ type StartWorkflowRequest struct {
 
 func (x *StartWorkflowRequest) Reset() {
 	*x = StartWorkflowRequest{}
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[1]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -121,7 +294,7 @@ func (x *StartWorkflowRequest) String() string {
 func (*StartWorkflowRequest) ProtoMessage() {}
 
 func (x *StartWorkflowRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[1]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -134,7 +307,7 @@ func (x *StartWorkflowRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartWorkflowRequest.ProtoReflect.Descriptor instead.
 func (*StartWorkflowRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{1}
+	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *StartWorkflowRequest) GetWorkflowType() string {
@@ -174,7 +347,7 @@ type StartWorkflowResponse struct {
 
 func (x *StartWorkflowResponse) Reset() {
 	*x = StartWorkflowResponse{}
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[2]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -186,7 +359,7 @@ func (x *StartWorkflowResponse) String() string {
 func (*StartWorkflowResponse) ProtoMessage() {}
 
 func (x *StartWorkflowResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[2]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -199,7 +372,7 @@ func (x *StartWorkflowResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartWorkflowResponse.ProtoReflect.Descriptor instead.
 func (*StartWorkflowResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{2}
+	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *StartWorkflowResponse) GetWorkflowRun() *WorkflowRun {
@@ -218,7 +391,7 @@ type GetWorkflowRunRequest struct {
 
 func (x *GetWorkflowRunRequest) Reset() {
 	*x = GetWorkflowRunRequest{}
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[3]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -230,7 +403,7 @@ func (x *GetWorkflowRunRequest) String() string {
 func (*GetWorkflowRunRequest) ProtoMessage() {}
 
 func (x *GetWorkflowRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[3]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -243,7 +416,7 @@ func (x *GetWorkflowRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkflowRunRequest.ProtoReflect.Descriptor instead.
 func (*GetWorkflowRunRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{3}
+	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetWorkflowRunRequest) GetWorkflowRunId() string {
@@ -256,13 +429,14 @@ func (x *GetWorkflowRunRequest) GetWorkflowRunId() string {
 type GetWorkflowRunResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	WorkflowRun   *WorkflowRun           `protobuf:"bytes,1,opt,name=workflow_run,json=workflowRun,proto3" json:"workflow_run,omitempty"`
+	WorkflowSteps []*WorkflowStep        `protobuf:"bytes,2,rep,name=workflow_steps,json=workflowSteps,proto3" json:"workflow_steps,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetWorkflowRunResponse) Reset() {
 	*x = GetWorkflowRunResponse{}
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[4]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -274,7 +448,7 @@ func (x *GetWorkflowRunResponse) String() string {
 func (*GetWorkflowRunResponse) ProtoMessage() {}
 
 func (x *GetWorkflowRunResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[4]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -287,7 +461,7 @@ func (x *GetWorkflowRunResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkflowRunResponse.ProtoReflect.Descriptor instead.
 func (*GetWorkflowRunResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{4}
+	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetWorkflowRunResponse) GetWorkflowRun() *WorkflowRun {
@@ -297,17 +471,26 @@ func (x *GetWorkflowRunResponse) GetWorkflowRun() *WorkflowRun {
 	return nil
 }
 
+func (x *GetWorkflowRunResponse) GetWorkflowSteps() []*WorkflowStep {
+	if x != nil {
+		return x.WorkflowSteps
+	}
+	return nil
+}
+
 type ListWorkflowRunsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	ResourceId    string                 `protobuf:"bytes,2,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	WorkflowType  string                 `protobuf:"bytes,4,opt,name=workflow_type,json=workflowType,proto3" json:"workflow_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListWorkflowRunsRequest) Reset() {
 	*x = ListWorkflowRunsRequest{}
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[5]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -319,7 +502,7 @@ func (x *ListWorkflowRunsRequest) String() string {
 func (*ListWorkflowRunsRequest) ProtoMessage() {}
 
 func (x *ListWorkflowRunsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[5]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -332,7 +515,7 @@ func (x *ListWorkflowRunsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkflowRunsRequest.ProtoReflect.Descriptor instead.
 func (*ListWorkflowRunsRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{5}
+	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListWorkflowRunsRequest) GetProjectId() string {
@@ -349,6 +532,20 @@ func (x *ListWorkflowRunsRequest) GetResourceId() string {
 	return ""
 }
 
+func (x *ListWorkflowRunsRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListWorkflowRunsRequest) GetWorkflowType() string {
+	if x != nil {
+		return x.WorkflowType
+	}
+	return ""
+}
+
 type ListWorkflowRunsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	WorkflowRuns  []*WorkflowRun         `protobuf:"bytes,1,rep,name=workflow_runs,json=workflowRuns,proto3" json:"workflow_runs,omitempty"`
@@ -358,7 +555,7 @@ type ListWorkflowRunsResponse struct {
 
 func (x *ListWorkflowRunsResponse) Reset() {
 	*x = ListWorkflowRunsResponse{}
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[6]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -370,7 +567,7 @@ func (x *ListWorkflowRunsResponse) String() string {
 func (*ListWorkflowRunsResponse) ProtoMessage() {}
 
 func (x *ListWorkflowRunsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[6]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -383,7 +580,7 @@ func (x *ListWorkflowRunsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkflowRunsResponse.ProtoReflect.Descriptor instead.
 func (*ListWorkflowRunsResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{6}
+	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListWorkflowRunsResponse) GetWorkflowRuns() []*WorkflowRun {
@@ -402,7 +599,7 @@ type CancelWorkflowRunRequest struct {
 
 func (x *CancelWorkflowRunRequest) Reset() {
 	*x = CancelWorkflowRunRequest{}
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[7]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -414,7 +611,7 @@ func (x *CancelWorkflowRunRequest) String() string {
 func (*CancelWorkflowRunRequest) ProtoMessage() {}
 
 func (x *CancelWorkflowRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[7]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -427,7 +624,7 @@ func (x *CancelWorkflowRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelWorkflowRunRequest.ProtoReflect.Descriptor instead.
 func (*CancelWorkflowRunRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{7}
+	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CancelWorkflowRunRequest) GetWorkflowRunId() string {
@@ -446,7 +643,7 @@ type CancelWorkflowRunResponse struct {
 
 func (x *CancelWorkflowRunResponse) Reset() {
 	*x = CancelWorkflowRunResponse{}
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[8]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -458,7 +655,7 @@ func (x *CancelWorkflowRunResponse) String() string {
 func (*CancelWorkflowRunResponse) ProtoMessage() {}
 
 func (x *CancelWorkflowRunResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[8]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -471,7 +668,7 @@ func (x *CancelWorkflowRunResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelWorkflowRunResponse.ProtoReflect.Descriptor instead.
 func (*CancelWorkflowRunResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{8}
+	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CancelWorkflowRunResponse) GetWorkflowRun() *WorkflowRun {
@@ -490,7 +687,7 @@ type RetryWorkflowRunRequest struct {
 
 func (x *RetryWorkflowRunRequest) Reset() {
 	*x = RetryWorkflowRunRequest{}
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[9]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -502,7 +699,7 @@ func (x *RetryWorkflowRunRequest) String() string {
 func (*RetryWorkflowRunRequest) ProtoMessage() {}
 
 func (x *RetryWorkflowRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[9]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -515,7 +712,7 @@ func (x *RetryWorkflowRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetryWorkflowRunRequest.ProtoReflect.Descriptor instead.
 func (*RetryWorkflowRunRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{9}
+	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RetryWorkflowRunRequest) GetWorkflowRunId() string {
@@ -534,7 +731,7 @@ type RetryWorkflowRunResponse struct {
 
 func (x *RetryWorkflowRunResponse) Reset() {
 	*x = RetryWorkflowRunResponse{}
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[10]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -546,7 +743,7 @@ func (x *RetryWorkflowRunResponse) String() string {
 func (*RetryWorkflowRunResponse) ProtoMessage() {}
 
 func (x *RetryWorkflowRunResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[10]
+	mi := &file_hualala_workflow_v1_workflow_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -559,7 +756,7 @@ func (x *RetryWorkflowRunResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetryWorkflowRunResponse.ProtoReflect.Descriptor instead.
 func (*RetryWorkflowRunResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{10}
+	return file_hualala_workflow_v1_workflow_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *RetryWorkflowRunResponse) GetWorkflowRun() *WorkflowRun {
@@ -573,7 +770,7 @@ var File_hualala_workflow_v1_workflow_proto protoreflect.FileDescriptor
 
 const file_hualala_workflow_v1_workflow_proto_rawDesc = "" +
 	"\n" +
-	"\"hualala/workflow/v1/workflow.proto\x12\x13hualala.workflow.v1\"\x9a\x01\n" +
+	"\"hualala/workflow/v1/workflow.proto\x12\x13hualala.workflow.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc3\x03\n" +
 	"\vWorkflowRun\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12#\n" +
 	"\rworkflow_type\x18\x02 \x01(\tR\fworkflowType\x12\x16\n" +
@@ -581,7 +778,33 @@ const file_hualala_workflow_v1_workflow_proto_rawDesc = "" +
 	"\vresource_id\x18\x04 \x01(\tR\n" +
 	"resourceId\x12\x1d\n" +
 	"\n" +
-	"project_id\x18\x05 \x01(\tR\tprojectId\"\xa4\x01\n" +
+	"project_id\x18\x05 \x01(\tR\tprojectId\x12\x1a\n" +
+	"\bprovider\x18\x06 \x01(\tR\bprovider\x12!\n" +
+	"\fcurrent_step\x18\a \x01(\tR\vcurrentStep\x12#\n" +
+	"\rattempt_count\x18\b \x01(\x05R\fattemptCount\x12\x1d\n" +
+	"\n" +
+	"last_error\x18\t \x01(\tR\tlastError\x12.\n" +
+	"\x13external_request_id\x18\n" +
+	" \x01(\tR\x11externalRequestId\x129\n" +
+	"\n" +
+	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x8f\x03\n" +
+	"\fWorkflowStep\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12&\n" +
+	"\x0fworkflow_run_id\x18\x02 \x01(\tR\rworkflowRunId\x12\x19\n" +
+	"\bstep_key\x18\x03 \x01(\tR\astepKey\x12\x1d\n" +
+	"\n" +
+	"step_order\x18\x04 \x01(\x05R\tstepOrder\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"error_code\x18\x06 \x01(\tR\terrorCode\x12#\n" +
+	"\rerror_message\x18\a \x01(\tR\ferrorMessage\x129\n" +
+	"\n" +
+	"started_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12=\n" +
+	"\fcompleted_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\x127\n" +
+	"\tfailed_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\bfailedAt\"\xa4\x01\n" +
 	"\x14StartWorkflowRequest\x12#\n" +
 	"\rworkflow_type\x18\x01 \x01(\tR\fworkflowType\x12\x1f\n" +
 	"\vresource_id\x18\x02 \x01(\tR\n" +
@@ -592,14 +815,17 @@ const file_hualala_workflow_v1_workflow_proto_rawDesc = "" +
 	"\x15StartWorkflowResponse\x12C\n" +
 	"\fworkflow_run\x18\x01 \x01(\v2 .hualala.workflow.v1.WorkflowRunR\vworkflowRun\"?\n" +
 	"\x15GetWorkflowRunRequest\x12&\n" +
-	"\x0fworkflow_run_id\x18\x01 \x01(\tR\rworkflowRunId\"]\n" +
+	"\x0fworkflow_run_id\x18\x01 \x01(\tR\rworkflowRunId\"\xa7\x01\n" +
 	"\x16GetWorkflowRunResponse\x12C\n" +
-	"\fworkflow_run\x18\x01 \x01(\v2 .hualala.workflow.v1.WorkflowRunR\vworkflowRun\"Y\n" +
+	"\fworkflow_run\x18\x01 \x01(\v2 .hualala.workflow.v1.WorkflowRunR\vworkflowRun\x12H\n" +
+	"\x0eworkflow_steps\x18\x02 \x03(\v2!.hualala.workflow.v1.WorkflowStepR\rworkflowSteps\"\x96\x01\n" +
 	"\x17ListWorkflowRunsRequest\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x1f\n" +
 	"\vresource_id\x18\x02 \x01(\tR\n" +
-	"resourceId\"a\n" +
+	"resourceId\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12#\n" +
+	"\rworkflow_type\x18\x04 \x01(\tR\fworkflowType\"a\n" +
 	"\x18ListWorkflowRunsResponse\x12E\n" +
 	"\rworkflow_runs\x18\x01 \x03(\v2 .hualala.workflow.v1.WorkflowRunR\fworkflowRuns\"B\n" +
 	"\x18CancelWorkflowRunRequest\x12&\n" +
@@ -630,41 +856,49 @@ func file_hualala_workflow_v1_workflow_proto_rawDescGZIP() []byte {
 	return file_hualala_workflow_v1_workflow_proto_rawDescData
 }
 
-var file_hualala_workflow_v1_workflow_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_hualala_workflow_v1_workflow_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_hualala_workflow_v1_workflow_proto_goTypes = []any{
 	(*WorkflowRun)(nil),               // 0: hualala.workflow.v1.WorkflowRun
-	(*StartWorkflowRequest)(nil),      // 1: hualala.workflow.v1.StartWorkflowRequest
-	(*StartWorkflowResponse)(nil),     // 2: hualala.workflow.v1.StartWorkflowResponse
-	(*GetWorkflowRunRequest)(nil),     // 3: hualala.workflow.v1.GetWorkflowRunRequest
-	(*GetWorkflowRunResponse)(nil),    // 4: hualala.workflow.v1.GetWorkflowRunResponse
-	(*ListWorkflowRunsRequest)(nil),   // 5: hualala.workflow.v1.ListWorkflowRunsRequest
-	(*ListWorkflowRunsResponse)(nil),  // 6: hualala.workflow.v1.ListWorkflowRunsResponse
-	(*CancelWorkflowRunRequest)(nil),  // 7: hualala.workflow.v1.CancelWorkflowRunRequest
-	(*CancelWorkflowRunResponse)(nil), // 8: hualala.workflow.v1.CancelWorkflowRunResponse
-	(*RetryWorkflowRunRequest)(nil),   // 9: hualala.workflow.v1.RetryWorkflowRunRequest
-	(*RetryWorkflowRunResponse)(nil),  // 10: hualala.workflow.v1.RetryWorkflowRunResponse
+	(*WorkflowStep)(nil),              // 1: hualala.workflow.v1.WorkflowStep
+	(*StartWorkflowRequest)(nil),      // 2: hualala.workflow.v1.StartWorkflowRequest
+	(*StartWorkflowResponse)(nil),     // 3: hualala.workflow.v1.StartWorkflowResponse
+	(*GetWorkflowRunRequest)(nil),     // 4: hualala.workflow.v1.GetWorkflowRunRequest
+	(*GetWorkflowRunResponse)(nil),    // 5: hualala.workflow.v1.GetWorkflowRunResponse
+	(*ListWorkflowRunsRequest)(nil),   // 6: hualala.workflow.v1.ListWorkflowRunsRequest
+	(*ListWorkflowRunsResponse)(nil),  // 7: hualala.workflow.v1.ListWorkflowRunsResponse
+	(*CancelWorkflowRunRequest)(nil),  // 8: hualala.workflow.v1.CancelWorkflowRunRequest
+	(*CancelWorkflowRunResponse)(nil), // 9: hualala.workflow.v1.CancelWorkflowRunResponse
+	(*RetryWorkflowRunRequest)(nil),   // 10: hualala.workflow.v1.RetryWorkflowRunRequest
+	(*RetryWorkflowRunResponse)(nil),  // 11: hualala.workflow.v1.RetryWorkflowRunResponse
+	(*timestamppb.Timestamp)(nil),     // 12: google.protobuf.Timestamp
 }
 var file_hualala_workflow_v1_workflow_proto_depIdxs = []int32{
-	0,  // 0: hualala.workflow.v1.StartWorkflowResponse.workflow_run:type_name -> hualala.workflow.v1.WorkflowRun
-	0,  // 1: hualala.workflow.v1.GetWorkflowRunResponse.workflow_run:type_name -> hualala.workflow.v1.WorkflowRun
-	0,  // 2: hualala.workflow.v1.ListWorkflowRunsResponse.workflow_runs:type_name -> hualala.workflow.v1.WorkflowRun
-	0,  // 3: hualala.workflow.v1.CancelWorkflowRunResponse.workflow_run:type_name -> hualala.workflow.v1.WorkflowRun
-	0,  // 4: hualala.workflow.v1.RetryWorkflowRunResponse.workflow_run:type_name -> hualala.workflow.v1.WorkflowRun
-	1,  // 5: hualala.workflow.v1.WorkflowService.StartWorkflow:input_type -> hualala.workflow.v1.StartWorkflowRequest
-	3,  // 6: hualala.workflow.v1.WorkflowService.GetWorkflowRun:input_type -> hualala.workflow.v1.GetWorkflowRunRequest
-	5,  // 7: hualala.workflow.v1.WorkflowService.ListWorkflowRuns:input_type -> hualala.workflow.v1.ListWorkflowRunsRequest
-	7,  // 8: hualala.workflow.v1.WorkflowService.CancelWorkflowRun:input_type -> hualala.workflow.v1.CancelWorkflowRunRequest
-	9,  // 9: hualala.workflow.v1.WorkflowService.RetryWorkflowRun:input_type -> hualala.workflow.v1.RetryWorkflowRunRequest
-	2,  // 10: hualala.workflow.v1.WorkflowService.StartWorkflow:output_type -> hualala.workflow.v1.StartWorkflowResponse
-	4,  // 11: hualala.workflow.v1.WorkflowService.GetWorkflowRun:output_type -> hualala.workflow.v1.GetWorkflowRunResponse
-	6,  // 12: hualala.workflow.v1.WorkflowService.ListWorkflowRuns:output_type -> hualala.workflow.v1.ListWorkflowRunsResponse
-	8,  // 13: hualala.workflow.v1.WorkflowService.CancelWorkflowRun:output_type -> hualala.workflow.v1.CancelWorkflowRunResponse
-	10, // 14: hualala.workflow.v1.WorkflowService.RetryWorkflowRun:output_type -> hualala.workflow.v1.RetryWorkflowRunResponse
-	10, // [10:15] is the sub-list for method output_type
-	5,  // [5:10] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	12, // 0: hualala.workflow.v1.WorkflowRun.created_at:type_name -> google.protobuf.Timestamp
+	12, // 1: hualala.workflow.v1.WorkflowRun.updated_at:type_name -> google.protobuf.Timestamp
+	12, // 2: hualala.workflow.v1.WorkflowStep.started_at:type_name -> google.protobuf.Timestamp
+	12, // 3: hualala.workflow.v1.WorkflowStep.completed_at:type_name -> google.protobuf.Timestamp
+	12, // 4: hualala.workflow.v1.WorkflowStep.failed_at:type_name -> google.protobuf.Timestamp
+	0,  // 5: hualala.workflow.v1.StartWorkflowResponse.workflow_run:type_name -> hualala.workflow.v1.WorkflowRun
+	0,  // 6: hualala.workflow.v1.GetWorkflowRunResponse.workflow_run:type_name -> hualala.workflow.v1.WorkflowRun
+	1,  // 7: hualala.workflow.v1.GetWorkflowRunResponse.workflow_steps:type_name -> hualala.workflow.v1.WorkflowStep
+	0,  // 8: hualala.workflow.v1.ListWorkflowRunsResponse.workflow_runs:type_name -> hualala.workflow.v1.WorkflowRun
+	0,  // 9: hualala.workflow.v1.CancelWorkflowRunResponse.workflow_run:type_name -> hualala.workflow.v1.WorkflowRun
+	0,  // 10: hualala.workflow.v1.RetryWorkflowRunResponse.workflow_run:type_name -> hualala.workflow.v1.WorkflowRun
+	2,  // 11: hualala.workflow.v1.WorkflowService.StartWorkflow:input_type -> hualala.workflow.v1.StartWorkflowRequest
+	4,  // 12: hualala.workflow.v1.WorkflowService.GetWorkflowRun:input_type -> hualala.workflow.v1.GetWorkflowRunRequest
+	6,  // 13: hualala.workflow.v1.WorkflowService.ListWorkflowRuns:input_type -> hualala.workflow.v1.ListWorkflowRunsRequest
+	8,  // 14: hualala.workflow.v1.WorkflowService.CancelWorkflowRun:input_type -> hualala.workflow.v1.CancelWorkflowRunRequest
+	10, // 15: hualala.workflow.v1.WorkflowService.RetryWorkflowRun:input_type -> hualala.workflow.v1.RetryWorkflowRunRequest
+	3,  // 16: hualala.workflow.v1.WorkflowService.StartWorkflow:output_type -> hualala.workflow.v1.StartWorkflowResponse
+	5,  // 17: hualala.workflow.v1.WorkflowService.GetWorkflowRun:output_type -> hualala.workflow.v1.GetWorkflowRunResponse
+	7,  // 18: hualala.workflow.v1.WorkflowService.ListWorkflowRuns:output_type -> hualala.workflow.v1.ListWorkflowRunsResponse
+	9,  // 19: hualala.workflow.v1.WorkflowService.CancelWorkflowRun:output_type -> hualala.workflow.v1.CancelWorkflowRunResponse
+	11, // 20: hualala.workflow.v1.WorkflowService.RetryWorkflowRun:output_type -> hualala.workflow.v1.RetryWorkflowRunResponse
+	16, // [16:21] is the sub-list for method output_type
+	11, // [11:16] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_hualala_workflow_v1_workflow_proto_init() }
@@ -678,7 +912,7 @@ func file_hualala_workflow_v1_workflow_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hualala_workflow_v1_workflow_proto_rawDesc), len(file_hualala_workflow_v1_workflow_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
