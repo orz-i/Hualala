@@ -240,6 +240,83 @@ func TestCancelWorkflowRunAddsCancelAuditStep(t *testing.T) {
 	}
 }
 
+func TestCancelWorkflowRunReusesExistingCancelAuditStep(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	service := NewService(store, store.Publisher(), nil, policyapp.NewService(store))
+
+	record := workflow.WorkflowRun{
+		ID:           store.NextWorkflowRunID(),
+		OrgID:        "org-1",
+		ProjectID:    "project-1",
+		ResourceID:   "shot-exec-1",
+		WorkflowType: "shot_pipeline",
+		Status:       workflow.StatusRunning,
+		AttemptCount: 2,
+		CurrentStep:  "attempt_2.gateway",
+		LastError:    "provider failed",
+		CreatedAt:    time.Now().UTC().Add(-2 * time.Minute),
+		UpdatedAt:    time.Now().UTC().Add(-1 * time.Minute),
+	}
+	if err := store.SaveWorkflowRun(ctx, record); err != nil {
+		t.Fatalf("SaveWorkflowRun returned error: %v", err)
+	}
+	if err := store.SaveWorkflowStep(ctx, workflow.WorkflowStep{
+		ID:            store.NextWorkflowStepID(),
+		WorkflowRunID: record.ID,
+		StepKey:       "attempt_2.dispatch",
+		StepOrder:     3,
+		Status:        workflow.StatusCompleted,
+		StartedAt:     time.Now().UTC().Add(-45 * time.Second),
+		CompletedAt:   time.Now().UTC().Add(-45 * time.Second),
+		CreatedAt:     time.Now().UTC().Add(-45 * time.Second),
+		UpdatedAt:     time.Now().UTC().Add(-45 * time.Second),
+	}); err != nil {
+		t.Fatalf("SaveWorkflowStep dispatch returned error: %v", err)
+	}
+	if err := store.SaveWorkflowStep(ctx, workflow.WorkflowStep{
+		ID:            store.NextWorkflowStepID(),
+		WorkflowRunID: record.ID,
+		StepKey:       "attempt_2.gateway",
+		StepOrder:     4,
+		Status:        workflow.StatusRunning,
+		StartedAt:     time.Now().UTC().Add(-30 * time.Second),
+		CreatedAt:     time.Now().UTC().Add(-30 * time.Second),
+		UpdatedAt:     time.Now().UTC().Add(-30 * time.Second),
+	}); err != nil {
+		t.Fatalf("SaveWorkflowStep gateway returned error: %v", err)
+	}
+	cancelStep := workflow.WorkflowStep{
+		ID:            store.NextWorkflowStepID(),
+		WorkflowRunID: record.ID,
+		StepKey:       "attempt_2.cancel",
+		StepOrder:     5,
+		Status:        workflow.StatusCompleted,
+		StartedAt:     time.Now().UTC().Add(-5 * time.Second),
+		CompletedAt:   time.Now().UTC().Add(-5 * time.Second),
+		CreatedAt:     time.Now().UTC().Add(-5 * time.Second),
+		UpdatedAt:     time.Now().UTC().Add(-5 * time.Second),
+	}
+	if err := store.SaveWorkflowStep(ctx, cancelStep); err != nil {
+		t.Fatalf("SaveWorkflowStep cancel returned error: %v", err)
+	}
+
+	cancelled, err := service.CancelWorkflowRun(ctx, CancelWorkflowRunInput{WorkflowRunID: record.ID})
+	if err != nil {
+		t.Fatalf("CancelWorkflowRun returned error: %v", err)
+	}
+	if got := cancelled.CurrentStep; got != "attempt_2.cancel" {
+		t.Fatalf("expected current_step attempt_2.cancel, got %q", got)
+	}
+	steps := store.ListWorkflowSteps(record.ID)
+	if len(steps) != 3 {
+		t.Fatalf("expected existing cancel step to be reused, got %d steps", len(steps))
+	}
+	if got := steps[2].ID; got != cancelStep.ID {
+		t.Fatalf("expected cancel step id %q to be reused, got %q", cancelStep.ID, got)
+	}
+}
+
 func TestCancelWorkflowRunRejectsNonRunningStatuses(t *testing.T) {
 	ctx := context.Background()
 	testCases := []struct {

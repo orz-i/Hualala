@@ -147,6 +147,18 @@ func (s *Service) CancelWorkflowRun(ctx context.Context, input CancelWorkflowRun
 			return workflow.WorkflowRun{}, err
 		}
 	}
+	cancelKey := attemptStepKey(record.AttemptCount, "cancel")
+	if s.hasWorkflowStep(record.ID, cancelKey) {
+		record.Status = workflow.StatusCancelled
+		record.CurrentStep = cancelKey
+		record.LastError = ""
+		record.UpdatedAt = time.Now().UTC()
+		if err := s.repo.SaveWorkflowRun(ctx, record); err != nil {
+			return workflow.WorkflowRun{}, err
+		}
+		s.publishWorkflowUpdated(record)
+		return record, nil
+	}
 	cancelStep, err := s.createAttemptStep(ctx, record, "cancel", workflow.StatusCompleted)
 	if err != nil {
 		return workflow.WorkflowRun{}, err
@@ -277,20 +289,23 @@ func (s *Service) nextAttemptStepOrder(run workflow.WorkflowRun, suffix string) 
 	if strings.TrimSpace(suffix) != "cancel" {
 		return attemptStepOrder(run.AttemptCount, suffix)
 	}
-	maxOrder := 0
+	steps := s.repo.ListWorkflowSteps(run.ID)
 	prefix := fmt.Sprintf("attempt_%d.", run.AttemptCount)
-	for _, step := range s.repo.ListWorkflowSteps(run.ID) {
-		if !strings.HasPrefix(step.StepKey, prefix) {
-			continue
-		}
-		if step.StepOrder > maxOrder {
-			maxOrder = step.StepOrder
+	for i := len(steps) - 1; i >= 0; i-- {
+		if strings.HasPrefix(steps[i].StepKey, prefix) {
+			return steps[i].StepOrder + 1
 		}
 	}
-	if maxOrder == 0 {
-		return attemptStepOrder(run.AttemptCount, suffix)
+	return attemptStepOrder(run.AttemptCount, suffix)
+}
+
+func (s *Service) hasWorkflowStep(workflowRunID string, stepKey string) bool {
+	for _, step := range s.repo.ListWorkflowSteps(workflowRunID) {
+		if step.StepKey == stepKey {
+			return true
+		}
 	}
-	return maxOrder + 1
+	return false
 }
 
 func (s *Service) publishWorkflowUpdated(run workflow.WorkflowRun) {
