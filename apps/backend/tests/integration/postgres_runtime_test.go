@@ -39,7 +39,12 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const integrationSSEReplayTimeout = 5 * time.Second
+const (
+	integrationSSEReplayTimeout       = 5 * time.Second
+	shotWorkbenchBudgetLimitCents     = 500
+	shotWorkbenchEstimatedCostCents   = 120
+	shotWorkbenchRemainingBudgetCents = shotWorkbenchBudgetLimitCents - shotWorkbenchEstimatedCostCents
+)
 
 func TestOpenStoreReturnsNativePostgresRuntime(t *testing.T) {
 	cfg := config.Load()
@@ -683,18 +688,22 @@ func TestShotWorkbenchReviewBudgetPersistsAcrossReopen(t *testing.T) {
 		scenario = seedShotWorkbenchPersistenceScenario(t, runtimeStore, server, services, "Shot Workbench Persistence Project")
 	})
 
-	t.Run("verify public interfaces after reopen", func(t *testing.T) {
-		if scenario.Project.ID == "" || scenario.Shot.ID == "" || scenario.ShotExecutionID == "" {
-			t.Fatal("expected seeded shot workbench scenario")
-		}
+	if scenario.Project.ID == "" || scenario.Shot.ID == "" || scenario.ShotExecutionID == "" {
+		t.Fatal("expected seeded shot workbench scenario")
+	}
+
+	openReopenedRuntime := func(t *testing.T) (db.RuntimeStore, *httptest.Server) {
+		t.Helper()
 
 		reloadedStore, reloadCloseFn := openNativeIntegrationRuntimeStore(t, storeKey)
 		reloadedServer, _ := newUploadIntegrationHTTPServer(t, reloadedStore)
-		defer closeUploadIntegrationResources(reloadedServer, reloadCloseFn)()
+		t.Cleanup(closeUploadIntegrationResources(reloadedServer, reloadCloseFn))
+		return reloadedStore, reloadedServer
+	}
 
+	t.Run("verify workbench query after reopen", func(t *testing.T) {
+		_, reloadedServer := openReopenedRuntime(t)
 		executionClient := executionv1connect.NewExecutionServiceClient(reloadedServer.Client(), reloadedServer.URL)
-		reviewClient := reviewv1connect.NewReviewServiceClient(reloadedServer.Client(), reloadedServer.URL)
-		billingClient := billingv1connect.NewBillingServiceClient(reloadedServer.Client(), reloadedServer.URL)
 
 		workbench, err := executionClient.GetShotWorkbench(context.Background(), connectrpc.NewRequest(&executionv1.GetShotWorkbenchRequest{
 			ShotId: scenario.Shot.ID,
@@ -729,6 +738,11 @@ func TestShotWorkbenchReviewBudgetPersistsAcrossReopen(t *testing.T) {
 		if got := workbench.Msg.GetWorkbench().GetReviewSummary().GetLatestReviewId(); got != scenario.ReviewID {
 			t.Fatalf("expected reopened latest review id %q, got %q", scenario.ReviewID, got)
 		}
+	})
+
+	t.Run("verify review queries after reopen", func(t *testing.T) {
+		_, reloadedServer := openReopenedRuntime(t)
+		reviewClient := reviewv1connect.NewReviewServiceClient(reloadedServer.Client(), reloadedServer.URL)
 
 		evaluationRuns, err := reviewClient.ListEvaluationRuns(context.Background(), connectrpc.NewRequest(&reviewv1.ListEvaluationRunsRequest{
 			ShotExecutionId: scenario.ShotExecutionID,
@@ -755,6 +769,11 @@ func TestShotWorkbenchReviewBudgetPersistsAcrossReopen(t *testing.T) {
 		if got := shotReviews.Msg.GetShotReviews()[0].GetConclusion(); got != "approved" {
 			t.Fatalf("expected reopened review conclusion approved, got %q", got)
 		}
+	})
+
+	t.Run("verify billing queries after reopen", func(t *testing.T) {
+		_, reloadedServer := openReopenedRuntime(t)
+		billingClient := billingv1connect.NewBillingServiceClient(reloadedServer.Client(), reloadedServer.URL)
 
 		budgetSnapshot, err := billingClient.GetBudgetSnapshot(context.Background(), connectrpc.NewRequest(&billingv1.GetBudgetSnapshotRequest{
 			ProjectId: scenario.Project.ID,
@@ -762,8 +781,8 @@ func TestShotWorkbenchReviewBudgetPersistsAcrossReopen(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetBudgetSnapshot returned error after reopen: %v", err)
 		}
-		if got := budgetSnapshot.Msg.GetBudgetSnapshot().GetRemainingBudgetCents(); got != 380 {
-			t.Fatalf("expected reopened remaining budget 380, got %d", got)
+		if got := budgetSnapshot.Msg.GetBudgetSnapshot().GetRemainingBudgetCents(); got != shotWorkbenchRemainingBudgetCents {
+			t.Fatalf("expected reopened remaining budget %d, got %d", shotWorkbenchRemainingBudgetCents, got)
 		}
 
 		billingEvents, err := billingClient.ListBillingEvents(context.Background(), connectrpc.NewRequest(&billingv1.ListBillingEventsRequest{
@@ -781,6 +800,10 @@ func TestShotWorkbenchReviewBudgetPersistsAcrossReopen(t *testing.T) {
 		if got := billingEvents.Msg.GetBillingEvents()[0].GetShotExecutionId(); got != scenario.ShotExecutionID {
 			t.Fatalf("expected reopened billing shot_execution_id %q, got %q", scenario.ShotExecutionID, got)
 		}
+	})
+
+	t.Run("verify direct store state after reopen", func(t *testing.T) {
+		reloadedStore, _ := openReopenedRuntime(t)
 
 		record, ok := reloadedStore.GetShotExecution(scenario.ShotExecutionID)
 		if !ok {
@@ -841,11 +864,11 @@ func TestShotWorkbenchReviewBudgetPersistsAcrossReopen(t *testing.T) {
 		if !ok {
 			t.Fatalf("expected budget for project %q after reopen", scenario.Project.ID)
 		}
-		if got := budgetRecord.ReservedCents; got != 120 {
-			t.Fatalf("expected stored reserved budget 120, got %d", got)
+		if got := budgetRecord.ReservedCents; got != shotWorkbenchEstimatedCostCents {
+			t.Fatalf("expected stored reserved budget %d, got %d", shotWorkbenchEstimatedCostCents, got)
 		}
-		if got := budgetRecord.LimitCents - budgetRecord.ReservedCents; got != 380 {
-			t.Fatalf("expected stored remaining budget 380, got %d", got)
+		if got := budgetRecord.LimitCents - budgetRecord.ReservedCents; got != shotWorkbenchRemainingBudgetCents {
+			t.Fatalf("expected stored remaining budget %d, got %d", shotWorkbenchRemainingBudgetCents, got)
 		}
 
 		storedBillingEvents := reloadedStore.ListBillingEventsByProject(scenario.Project.ID)
@@ -1065,13 +1088,13 @@ func seedShotWorkbenchPersistenceScenario(t *testing.T, runtimeStore db.RuntimeS
 	budgetPolicy, err := billingClient.UpdateBudgetPolicy(context.Background(), connectrpc.NewRequest(&billingv1.UpdateBudgetPolicyRequest{
 		ProjectId:  projectRecord.ID,
 		OrgId:      projectRecord.OrganizationID,
-		LimitCents: 500,
+		LimitCents: shotWorkbenchBudgetLimitCents,
 	}))
 	if err != nil {
 		t.Fatalf("UpdateBudgetPolicy returned error: %v", err)
 	}
-	if got := budgetPolicy.Msg.GetBudgetPolicy().GetLimitCents(); got != 500 {
-		t.Fatalf("expected budget limit 500, got %d", got)
+	if got := budgetPolicy.Msg.GetBudgetPolicy().GetLimitCents(); got != shotWorkbenchBudgetLimitCents {
+		t.Fatalf("expected budget limit %d, got %d", shotWorkbenchBudgetLimitCents, got)
 	}
 
 	run, err := executionClient.StartShotExecutionRun(context.Background(), connectrpc.NewRequest(&executionv1.StartShotExecutionRunRequest{
@@ -1080,7 +1103,7 @@ func seedShotWorkbenchPersistenceScenario(t *testing.T, runtimeStore db.RuntimeS
 		ProjectId:          projectRecord.ID,
 		OrgId:              projectRecord.OrganizationID,
 		TriggerType:        "manual",
-		EstimatedCostCents: 120,
+		EstimatedCostCents: shotWorkbenchEstimatedCostCents,
 	}))
 	if err != nil {
 		t.Fatalf("StartShotExecutionRun returned error: %v", err)
