@@ -477,10 +477,14 @@ describe("App", () => {
     expect(loadShotWorkbenchMock).not.toHaveBeenCalled();
     expect(await screen.findByText("batch-live-1")).toBeInTheDocument();
     expect(screen.getByText("candidate_ready")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "确认匹配" })).toBeDisabled();
+    const confirmMatchesButton = screen.getByRole("button", { name: "确认匹配" });
+    expect(confirmMatchesButton).toBeDisabled();
 
     fireEvent.click(screen.getByLabelText("选择条目 item-batch-live-1-2"));
-    fireEvent.click(screen.getByRole("button", { name: "确认匹配" }));
+    await waitFor(() => {
+      expect(confirmMatchesButton).toBeEnabled();
+    });
+    fireEvent.click(confirmMatchesButton);
 
     await waitFor(() => {
       expect(confirmImportBatchItemsMock).toHaveBeenCalledWith({
@@ -492,7 +496,7 @@ describe("App", () => {
     expect(screen.getByText("当前批次状态：confirmed")).toBeInTheDocument();
     expect(screen.getByText("当前执行状态：primary_selected")).toBeInTheDocument();
     expect(screen.getByText("已选 0 条")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "确认匹配" })).toBeDisabled();
+    expect(confirmMatchesButton).toBeDisabled();
 
     fireEvent.click(
       within(
