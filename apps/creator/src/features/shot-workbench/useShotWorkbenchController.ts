@@ -25,6 +25,31 @@ type UseShotWorkbenchControllerOptions = {
   userId?: string;
 };
 
+function formatActionErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+
+  try {
+    const json = JSON.stringify(error);
+    if (typeof json === "string" && json && json !== "{}") {
+      return json;
+    }
+  } catch {
+    // Ignore JSON stringification failures and fall through to String().
+  }
+
+  const stringified = String(error);
+  if (stringified && stringified !== "[object Object]" && stringified !== "undefined") {
+    return stringified;
+  }
+
+  return fallback;
+}
+
 async function loadShotWorkbenchState({
   shotId,
   orgId,
@@ -158,12 +183,14 @@ export function useShotWorkbenchController({
   const runShotAction = useCallback(
     async ({
       pendingMessage,
+      unknownErrorMessage,
       action,
       onSuccess,
       onError,
     }: {
       pendingMessage: string;
-      action: () => Promise<void>;
+      unknownErrorMessage: string;
+      action: () => Promise<unknown>;
       onSuccess: () => void;
       onError: (message: string) => void;
     }) => {
@@ -181,7 +208,7 @@ export function useShotWorkbenchController({
           onSuccess();
         });
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "creator: unknown shot error";
+        const message = formatActionErrorMessage(error, unknownErrorMessage);
         startTransition(() => {
           onError(message);
         });
@@ -194,6 +221,7 @@ export function useShotWorkbenchController({
     async (input: { shotExecutionId: string }) => {
       await runShotAction({
         pendingMessage: t("feedback.pending.runGateChecks"),
+        unknownErrorMessage: "creator: unknown gate check error",
         action: async () => {
           const result = await runSubmissionGateChecks({
             ...input,
@@ -231,6 +259,7 @@ export function useShotWorkbenchController({
     async (input: { shotExecutionId: string }) => {
       await runShotAction({
         pendingMessage: t("feedback.pending.submitReview"),
+        unknownErrorMessage: "creator: unknown submit review error",
         action: async () => {
           await submitShotForReview({
             ...input,
@@ -266,6 +295,7 @@ export function useShotWorkbenchController({
     async (input: { shotExecutionId: string; projectId: string; orgId: string }) => {
       await runShotAction({
         pendingMessage: t("feedback.pending.startWorkflow"),
+        unknownErrorMessage: "creator: unknown workflow start error",
         action: async () => {
           await startShotWorkflow({
             ...input,
@@ -295,6 +325,7 @@ export function useShotWorkbenchController({
     async (input: { workflowRunId: string }) => {
       await runShotAction({
         pendingMessage: t("feedback.pending.retryWorkflow"),
+        unknownErrorMessage: "creator: unknown workflow retry error",
         action: async () => {
           await retryShotWorkflowRun({
             ...input,
