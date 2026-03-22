@@ -3,6 +3,7 @@ import type { CreatorTranslator } from "../../i18n";
 import { subscribeWorkbenchEvents } from "../subscribeWorkbenchEvents";
 import type { ActionFeedbackModel } from "../shared/ActionFeedback";
 import { buildShotFeedback } from "../shared/buildActionFeedback";
+import { useAssetProvenanceState } from "../shared/useAssetProvenanceState";
 import { useQueuedSilentRefresh } from "../shared/useQueuedSilentRefresh";
 import { waitForFeedbackPaint } from "../shared/waitForFeedbackPaint";
 import { loadShotReviewTimeline } from "./loadShotReviewTimeline";
@@ -105,6 +106,20 @@ export function useShotWorkbenchController({
     useState<ShotWorkflowPanelViewModel | null>(null);
   const [feedback, setFeedback] = useState<ActionFeedbackModel | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const {
+    selectedAssetId,
+    assetProvenanceDetail,
+    assetProvenanceStatus,
+    assetProvenancePending,
+    assetProvenanceErrorMessage,
+    handleOpenAssetProvenance,
+    handleCloseAssetProvenance,
+    resetAssetProvenance,
+  } = useAssetProvenanceState({
+    t,
+    orgId,
+    userId,
+  });
 
   const refreshShotWorkbench = useCallback(async () => {
     const nextState = await loadShotWorkbenchState({
@@ -127,6 +142,7 @@ export function useShotWorkbenchController({
 
   useEffect(() => {
     if (!enabled) {
+      resetAssetProvenance();
       startTransition(() => {
         setShotWorkbench(null);
         setShotWorkflowPanel(null);
@@ -137,6 +153,7 @@ export function useShotWorkbenchController({
     }
 
     let cancelled = false;
+    resetAssetProvenance();
 
     loadShotWorkbenchState({
       shotId,
@@ -170,7 +187,7 @@ export function useShotWorkbenchController({
     return () => {
       cancelled = true;
     };
-  }, [enabled, orgId, shotId, t, userId]);
+  }, [enabled, orgId, resetAssetProvenance, shotId, t, userId]);
 
   useEffect(() => {
     if (
@@ -404,9 +421,16 @@ export function useShotWorkbenchController({
     shotWorkflowPanel,
     feedback,
     errorMessage,
+    selectedAssetId,
+    assetProvenanceDetail,
+    assetProvenanceStatus,
+    assetProvenancePending,
+    assetProvenanceErrorMessage,
     handleRunSubmissionGateChecks,
     handleSubmitShotForReview,
     handleSelectPrimaryAsset,
+    handleOpenAssetProvenance,
+    handleCloseAssetProvenance,
     handleStartWorkflow,
     handleRetryWorkflowRun,
   };

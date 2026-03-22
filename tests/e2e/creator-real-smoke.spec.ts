@@ -21,6 +21,10 @@ test("creator real smoke: shot workbench completes gate checks against backend",
   await expect(page.getByText("1 个候选素材")).toBeVisible();
   await expect(page.getByRole("heading", { name: "候选清单" })).toBeVisible();
   await expect(page.getByText(/主素材：/)).toBeVisible();
+  await page.getByRole("button", { name: "查看来源" }).click();
+  await expect(page.getByRole("dialog", { name: "素材来源详情" })).toBeVisible();
+  await expect(page.getByText("正在加载素材来源详情")).toBeVisible();
+  await page.getByRole("button", { name: "关闭来源详情" }).click();
   await page.getByRole("button", { name: "发起工作流" }).click();
   await expect(page.getByText("工作流已发起")).toBeVisible();
   await expect(page.getByText(/当前步骤：/)).toBeVisible();
@@ -59,6 +63,10 @@ test("creator real smoke: import workbench confirms matches and selects primary 
   await expect(page.getByText(seed.creatorImport.importBatchId)).toBeVisible();
   await expect(page.getByText("1 个上传会话")).toBeVisible();
   await expect(page.getByRole("heading", { name: "候选素材池" })).toBeVisible();
+  await page.getByRole("button", { name: "查看来源" }).click();
+  await expect(page.getByRole("dialog", { name: "素材来源详情" })).toBeVisible();
+  await expect(page.getByText("正在加载素材来源详情")).toBeVisible();
+  await page.getByRole("button", { name: "关闭来源详情" }).click();
   await page.getByRole("checkbox").first().check();
 
   await page.getByRole("button", { name: "确认匹配" }).click();

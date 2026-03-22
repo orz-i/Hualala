@@ -239,11 +239,18 @@ export function App() {
           onLocaleChange={setLocale}
           selectedUploadFile={importWorkbenchController.selectedUploadFile}
           feedback={importWorkbenchController.feedback ?? undefined}
+          assetProvenanceDetail={importWorkbenchController.assetProvenanceDetail}
+          assetProvenancePending={importWorkbenchController.assetProvenancePending}
+          assetProvenanceErrorMessage={
+            importWorkbenchController.assetProvenanceErrorMessage || undefined
+          }
           onChooseUploadFile={importWorkbenchController.handleChooseUploadFile}
           onRegisterSelectedUpload={importWorkbenchController.handleRegisterSelectedUpload}
           onRetryUploadSession={importWorkbenchController.handleRetryUploadSession}
           onConfirmMatches={importWorkbenchController.handleConfirmMatches}
           onSelectPrimaryAsset={importWorkbenchController.handleSelectPrimaryAsset}
+          onOpenAssetProvenance={importWorkbenchController.handleOpenAssetProvenance}
+          onCloseAssetProvenance={importWorkbenchController.handleCloseAssetProvenance}
         />
       </>
     );
@@ -260,9 +267,16 @@ export function App() {
           t={t}
           onLocaleChange={setLocale}
           feedback={shotWorkbenchController.feedback ?? undefined}
+          assetProvenanceDetail={shotWorkbenchController.assetProvenanceDetail}
+          assetProvenancePending={shotWorkbenchController.assetProvenancePending}
+          assetProvenanceErrorMessage={
+            shotWorkbenchController.assetProvenanceErrorMessage || undefined
+          }
           onRunSubmissionGateChecks={shotWorkbenchController.handleRunSubmissionGateChecks}
           onSubmitShotForReview={shotWorkbenchController.handleSubmitShotForReview}
           onSelectPrimaryAsset={shotWorkbenchController.handleSelectPrimaryAsset}
+          onOpenAssetProvenance={shotWorkbenchController.handleOpenAssetProvenance}
+          onCloseAssetProvenance={shotWorkbenchController.handleCloseAssetProvenance}
           onStartWorkflow={shotWorkbenchController.handleStartWorkflow}
           onRetryWorkflowRun={shotWorkbenchController.handleRetryWorkflowRun}
         />

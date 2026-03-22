@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import type { CreatorTranslator, LocaleCode } from "../../i18n";
 import { ActionFeedback, type ActionFeedbackModel } from "../shared/ActionFeedback";
+import { AssetProvenanceDialog } from "../shared/AssetProvenanceDialog";
+import type { AssetProvenanceDetailViewModel } from "../shared/assetProvenance";
 
 type CandidateAssetSummary = {
   id: string;
@@ -100,6 +102,11 @@ export type ShotWorkbenchPageProps = {
     shotExecutionId: string;
     assetId: string;
   }) => void;
+  assetProvenanceDetail?: AssetProvenanceDetailViewModel | null;
+  assetProvenancePending?: boolean;
+  assetProvenanceErrorMessage?: string;
+  onOpenAssetProvenance?: (assetId: string) => void;
+  onCloseAssetProvenance?: () => void;
   onRetryWorkflowRun?: (input: { workflowRunId: string }) => void;
   feedback?: ActionFeedbackModel;
 };
@@ -129,6 +136,11 @@ export function ShotWorkbenchPage({
   onSubmitShotForReview,
   onStartWorkflow,
   onSelectPrimaryAsset,
+  assetProvenanceDetail,
+  assetProvenancePending,
+  assetProvenanceErrorMessage,
+  onOpenAssetProvenance,
+  onCloseAssetProvenance,
   onRetryWorkflowRun,
   feedback,
 }: ShotWorkbenchPageProps) {
@@ -512,6 +524,8 @@ export function ShotWorkbenchPage({
                   Boolean(onSelectPrimaryAsset) &&
                   Boolean(candidate.assetId) &&
                   !isPrimary;
+                const canOpenAssetProvenance =
+                  Boolean(onOpenAssetProvenance) && Boolean(candidate.assetId);
 
                 return (
                   <article
@@ -540,42 +554,75 @@ export function ShotWorkbenchPage({
                         sourceRunId: candidate.sourceRunId || t("shot.timeline.none"),
                       })}
                     </p>
-                    {isPrimary ? (
-                      <strong style={{ color: "#0f766e" }}>{t("shot.list.primaryBadge")}</strong>
-                    ) : (
+                    <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                      {isPrimary ? (
+                        <strong style={{ color: "#0f766e", alignSelf: "center" }}>
+                          {t("shot.list.primaryBadge")}
+                        </strong>
+                      ) : (
+                        <button
+                          type="button"
+                          style={{
+                            width: "fit-content",
+                            border: 0,
+                            borderRadius: "999px",
+                            padding: "10px 16px",
+                            background: "#0f766e",
+                            color: "#ecfeff",
+                            cursor: canSelectPrimary ? "pointer" : "not-allowed",
+                            opacity: canSelectPrimary ? 1 : 0.55,
+                          }}
+                          disabled={!canSelectPrimary}
+                          onClick={() => {
+                            if (!canSelectPrimary) {
+                              return;
+                            }
+                            onSelectPrimaryAsset?.({
+                              shotExecutionId:
+                                candidate.shotExecutionId || workbench.shotExecution.id,
+                              assetId: candidate.assetId,
+                            });
+                          }}
+                        >
+                          {t("shot.actions.selectPrimaryAsset")}
+                        </button>
+                      )}
                       <button
                         type="button"
                         style={{
                           width: "fit-content",
-                          border: 0,
                           borderRadius: "999px",
+                          border: "1px solid rgba(15, 23, 42, 0.18)",
                           padding: "10px 16px",
-                          background: "#0f766e",
-                          color: "#ecfeff",
-                          cursor: canSelectPrimary ? "pointer" : "not-allowed",
-                          opacity: canSelectPrimary ? 1 : 0.55,
+                          background: "#ffffff",
+                          color: "#0f172a",
+                          cursor: canOpenAssetProvenance ? "pointer" : "not-allowed",
+                          opacity: canOpenAssetProvenance ? 1 : 0.55,
                         }}
-                        disabled={!canSelectPrimary}
+                        disabled={!canOpenAssetProvenance}
                         onClick={() => {
-                          if (!canSelectPrimary) {
+                          if (!candidate.assetId) {
                             return;
                           }
-                          onSelectPrimaryAsset?.({
-                            shotExecutionId:
-                              candidate.shotExecutionId || workbench.shotExecution.id,
-                            assetId: candidate.assetId,
-                          });
+                          onOpenAssetProvenance?.(candidate.assetId);
                         }}
                       >
-                        {t("shot.actions.selectPrimaryAsset")}
+                        {t("asset.provenance.button")}
                       </button>
-                    )}
+                    </div>
                   </article>
                 );
               })}
             </div>
           )}
         </section>
+        <AssetProvenanceDialog
+          assetProvenanceDetail={assetProvenanceDetail}
+          assetProvenancePending={assetProvenancePending}
+          assetProvenanceErrorMessage={assetProvenanceErrorMessage}
+          onCloseAssetProvenance={onCloseAssetProvenance}
+          t={t}
+        />
       </section>
     </main>
   );

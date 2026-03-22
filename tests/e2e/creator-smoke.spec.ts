@@ -83,9 +83,60 @@ function buildCreatorShotWorkbench({
   };
 }
 
+function buildCreatorAssetProvenancePayload(assetId: string) {
+  const isSecondCandidate = assetId === "asset-live-2";
+
+  return {
+    asset: {
+      id: assetId,
+      projectId: "project-live-1",
+      sourceType: "upload_session",
+      rightsStatus: "clear",
+      importBatchId: "import-batch-live-1",
+      locale: "zh-CN",
+      aiAnnotated: true,
+    },
+    provenanceSummary:
+      "source_type=upload_session import_batch_id=import-batch-live-1 rights_status=clear",
+    candidateAssetId: isSecondCandidate ? "candidate-live-2" : "candidate-live-1",
+    shotExecutionId: "shot-exec-live-1",
+    sourceRunId: isSecondCandidate ? "source-run-live-2" : "source-run-live-1",
+    importBatchId: "import-batch-live-1",
+    variantCount: 2,
+  };
+}
+
 async function mockCreatorCandidatePoolShotRoutes(page: Page) {
   let reviewPhase: "initial" | "afterGate" | "afterSubmit" = "initial";
   let primaryAssetId = "asset-live-1";
+
+  await page.addInitScript(
+    ({ provenancePayload }) => {
+      const originalFetch = globalThis.fetch.bind(globalThis);
+      const patchedFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        if (url.includes("/hualala.asset.v1.AssetService/GetAssetProvenanceSummary")) {
+          return new Response(JSON.stringify(provenancePayload), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+        }
+        return originalFetch(input, init);
+      };
+      window.fetch = patchedFetch;
+      globalThis.fetch = patchedFetch;
+    },
+    {
+      provenancePayload: buildCreatorAssetProvenancePayload("asset-live-2"),
+    },
+  );
 
   await page.route("**/hualala.execution.v1.ExecutionService/RunSubmissionGateChecks", async (route) => {
     reviewPhase = "afterGate";
@@ -202,6 +253,16 @@ async function mockCreatorCandidatePoolShotRoutes(page: Page) {
       body: JSON.stringify({ shotReviews }),
     });
   });
+  await page.route(
+    /\/hualala\.asset\.v1\.AssetService\/GetAssetProvenanceSummary$/,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(buildCreatorAssetProvenancePayload("asset-live-2")),
+      });
+    },
+  );
 }
 
 async function mockCreatorCandidatePoolImportRoutes(page: Page) {
@@ -210,6 +271,34 @@ async function mockCreatorCandidatePoolImportRoutes(page: Page) {
     confirmedItemIds: [] as string[],
     selectedPrimaryAssetId: "",
   };
+
+  await page.addInitScript(
+    ({ provenancePayload }) => {
+      const originalFetch = globalThis.fetch.bind(globalThis);
+      const patchedFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        if (url.includes("/hualala.asset.v1.AssetService/GetAssetProvenanceSummary")) {
+          return new Response(JSON.stringify(provenancePayload), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+        }
+        return originalFetch(input, init);
+      };
+      window.fetch = patchedFetch;
+      globalThis.fetch = patchedFetch;
+    },
+    {
+      provenancePayload: buildCreatorAssetProvenancePayload("asset-live-2"),
+    },
+  );
 
   const buildImportWorkbench = () => ({
     importBatch: {
@@ -294,6 +383,16 @@ async function mockCreatorCandidatePoolImportRoutes(page: Page) {
       body: JSON.stringify({}),
     });
   });
+  await page.route(
+    /\/hualala\.asset\.v1\.AssetService\/GetAssetProvenanceSummary$/,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(buildCreatorAssetProvenancePayload("asset-live-2")),
+      });
+    },
+  );
 
   return requests;
 }
@@ -330,6 +429,11 @@ test("creator smoke: shot workbench actions complete with refreshed feedback", a
     .locator("article")
     .filter({ hasText: "Candidate: candidate-live-2" })
     .first();
+  await secondShotCandidate.getByRole("button", { name: "View provenance" }).click();
+  await expect(page.getByRole("dialog", { name: "Asset provenance" })).toBeVisible();
+  await expect(page.getByText("Loading asset provenance")).toBeVisible();
+  await page.getByRole("button", { name: "Close provenance" }).click();
+  await expect(page.getByRole("dialog", { name: "Asset provenance" })).toHaveCount(0);
   await secondShotCandidate.getByRole("button", { name: "Set as primary asset" }).click();
   await expect(page.getByText("Shot primary asset updated")).toBeVisible();
   await expect(page.getByText("Primary asset: asset-live-2")).toBeVisible();
@@ -422,6 +526,11 @@ test("creator smoke: import workbench actions complete with refreshed feedback",
     .locator("article")
     .filter({ hasText: "Candidate: candidate-live-2" })
     .first();
+  await secondImportCandidate.getByRole("button", { name: "View provenance" }).click();
+  await expect(page.getByRole("dialog", { name: "Asset provenance" })).toBeVisible();
+  await expect(page.getByText("Loading asset provenance")).toBeVisible();
+  await page.getByRole("button", { name: "Close provenance" }).click();
+  await expect(page.getByRole("dialog", { name: "Asset provenance" })).toHaveCount(0);
   await secondImportCandidate
     .getByRole("button", { name: "Set as primary asset" })
     .click();

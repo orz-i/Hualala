@@ -1,6 +1,8 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import type { CreatorTranslator, LocaleCode } from "../../i18n";
 import { ActionFeedback, type ActionFeedbackModel } from "../shared/ActionFeedback";
+import { AssetProvenanceDialog } from "../shared/AssetProvenanceDialog";
+import type { AssetProvenanceDetailViewModel } from "../shared/assetProvenance";
 
 type ImportBatchSummary = {
   id: string;
@@ -70,6 +72,11 @@ type ImportBatchWorkbenchPageProps = {
     shotExecutionId: string;
     assetId: string;
   }) => void;
+  assetProvenanceDetail?: AssetProvenanceDetailViewModel | null;
+  assetProvenancePending?: boolean;
+  assetProvenanceErrorMessage?: string;
+  onOpenAssetProvenance?: (assetId: string) => void;
+  onCloseAssetProvenance?: () => void;
   feedback?: ActionFeedbackModel;
 };
 
@@ -99,6 +106,11 @@ export function ImportBatchWorkbenchPage({
   onRetryUploadSession,
   onConfirmMatches,
   onSelectPrimaryAsset,
+  assetProvenanceDetail,
+  assetProvenancePending,
+  assetProvenanceErrorMessage,
+  onOpenAssetProvenance,
+  onCloseAssetProvenance,
   feedback,
 }: ImportBatchWorkbenchPageProps) {
   const currentExecution = workbench.shotExecutions[0];
@@ -430,6 +442,8 @@ export function ImportBatchWorkbenchPage({
                   Boolean(onSelectPrimaryAsset) &&
                   Boolean(candidate.assetId) &&
                   Boolean(candidate.shotExecutionId || currentExecution?.id);
+                const canOpenAssetProvenance =
+                  Boolean(onOpenAssetProvenance) && Boolean(candidate.assetId);
 
                 return (
                   <article
@@ -466,39 +480,69 @@ export function ImportBatchWorkbenchPage({
                           t("import.execution.primaryAsset.empty"),
                       })}
                     </p>
-                    <button
-                      type="button"
-                      style={{
-                        width: "fit-content",
-                        marginTop: "8px",
-                        border: 0,
-                        borderRadius: "999px",
-                        padding: "10px 16px",
-                        background: "#0f766e",
-                        color: "#ecfeff",
-                        cursor: canSelectPrimary ? "pointer" : "not-allowed",
-                        opacity: canSelectPrimary ? 1 : 0.55,
-                      }}
-                      disabled={!canSelectPrimary}
-                      onClick={() => {
-                        if (!canSelectPrimary) {
-                          return;
-                        }
-                        onSelectPrimaryAsset?.({
-                          shotExecutionId:
-                            candidate.shotExecutionId || currentExecution?.id || "",
-                          assetId: candidate.assetId,
-                        });
-                      }}
-                    >
-                      {t("import.actions.selectPrimaryAsset")}
-                    </button>
+                    <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "8px" }}>
+                      <button
+                        type="button"
+                        style={{
+                          width: "fit-content",
+                          border: 0,
+                          borderRadius: "999px",
+                          padding: "10px 16px",
+                          background: "#0f766e",
+                          color: "#ecfeff",
+                          cursor: canSelectPrimary ? "pointer" : "not-allowed",
+                          opacity: canSelectPrimary ? 1 : 0.55,
+                        }}
+                        disabled={!canSelectPrimary}
+                        onClick={() => {
+                          if (!canSelectPrimary) {
+                            return;
+                          }
+                          onSelectPrimaryAsset?.({
+                            shotExecutionId:
+                              candidate.shotExecutionId || currentExecution?.id || "",
+                            assetId: candidate.assetId,
+                          });
+                        }}
+                      >
+                        {t("import.actions.selectPrimaryAsset")}
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          width: "fit-content",
+                          borderRadius: "999px",
+                          border: "1px solid rgba(15, 23, 42, 0.18)",
+                          padding: "10px 16px",
+                          background: "#ffffff",
+                          color: "#0f172a",
+                          cursor: canOpenAssetProvenance ? "pointer" : "not-allowed",
+                          opacity: canOpenAssetProvenance ? 1 : 0.55,
+                        }}
+                        disabled={!canOpenAssetProvenance}
+                        onClick={() => {
+                          if (!candidate.assetId) {
+                            return;
+                          }
+                          onOpenAssetProvenance?.(candidate.assetId);
+                        }}
+                      >
+                        {t("asset.provenance.button")}
+                      </button>
+                    </div>
                   </article>
                 );
               })}
             </div>
           )}
         </section>
+        <AssetProvenanceDialog
+          assetProvenanceDetail={assetProvenanceDetail}
+          assetProvenancePending={assetProvenancePending}
+          assetProvenanceErrorMessage={assetProvenanceErrorMessage}
+          onCloseAssetProvenance={onCloseAssetProvenance}
+          t={t}
+        />
       </section>
     </main>
   );
