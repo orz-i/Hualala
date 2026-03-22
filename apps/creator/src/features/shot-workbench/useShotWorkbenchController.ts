@@ -10,6 +10,7 @@ import { loadShotWorkflowPanel } from "./loadShotWorkflowPanel";
 import { loadShotWorkbench } from "./loadShotWorkbench";
 import {
   runSubmissionGateChecks,
+  selectPrimaryAssetForShotWorkbench,
   submitShotForReview,
 } from "./mutateShotWorkbench";
 import { retryShotWorkflowRun, startShotWorkflow } from "./mutateShotWorkflow";
@@ -367,6 +368,36 @@ export function useShotWorkbenchController({
     [orgId, refreshShotWorkbench, runShotAction, t, userId],
   );
 
+  const handleSelectPrimaryAsset = useCallback(
+    async (input: { shotExecutionId: string; assetId: string }) => {
+      await runShotAction({
+        pendingMessage: t("feedback.pending.selectShotPrimary"),
+        unknownErrorMessage: "creator: unknown shot select primary error",
+        action: async () => {
+          await selectPrimaryAssetForShotWorkbench({
+            ...input,
+            orgId,
+            userId,
+          });
+          await refreshShotWorkbench();
+        },
+        onSuccess: () => {
+          setFeedback({
+            tone: "success",
+            message: t("feedback.success.selectShotPrimary"),
+          });
+        },
+        onError: (message) => {
+          setFeedback({
+            tone: "error",
+            message: t("feedback.error.selectShotPrimary", { message }),
+          });
+        },
+      });
+    },
+    [orgId, refreshShotWorkbench, runShotAction, t, userId],
+  );
+
   return {
     shotWorkbench,
     shotWorkflowPanel,
@@ -374,6 +405,7 @@ export function useShotWorkbenchController({
     errorMessage,
     handleRunSubmissionGateChecks,
     handleSubmitShotForReview,
+    handleSelectPrimaryAsset,
     handleStartWorkflow,
     handleRetryWorkflowRun,
   };

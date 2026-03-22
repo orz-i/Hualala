@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createTranslator } from "../../i18n";
 import { ImportBatchWorkbenchPage } from "./ImportBatchWorkbenchPage";
 
@@ -22,8 +22,24 @@ describe("ImportBatchWorkbenchPage", () => {
         resumeHint: "",
       },
     ],
-    items: [{ id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" }],
-    candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
+    items: [
+      { id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" },
+      { id: "item-2", status: "matched_pending_confirm", assetId: "asset-2" },
+    ],
+    candidateAssets: [
+      {
+        id: "candidate-1",
+        assetId: "asset-1",
+        shotExecutionId: "shot-exec-1",
+        sourceRunId: "source-run-1",
+      },
+      {
+        id: "candidate-2",
+        assetId: "asset-2",
+        shotExecutionId: "shot-exec-2",
+        sourceRunId: "source-run-2",
+      },
+    ],
     shotExecutions: [{ id: "shot-exec-1", status: "candidate_ready", primaryAssetId: "" }],
   };
 
@@ -38,13 +54,19 @@ describe("ImportBatchWorkbenchPage", () => {
     );
 
     expect(screen.getByText("batch-1")).toBeInTheDocument();
-    expect(screen.getByText(/matched_pending_confirm/)).toBeInTheDocument();
+    expect(
+      screen.getByText("当前状态 matched_pending_confirm，来源 upload_session"),
+    ).toBeInTheDocument();
     expect(screen.getByText("1 个上传会话")).toBeInTheDocument();
-    expect(screen.getByText("1 个候选素材")).toBeInTheDocument();
+    expect(screen.getByText("2 个候选素材")).toBeInTheDocument();
+    expect(screen.getByText("2 个批次条目")).toBeInTheDocument();
+    expect(screen.getByText("已选 0 条")).toBeInTheDocument();
+    expect(screen.getByText("来源运行：source-run-2")).toBeInTheDocument();
+    expect(screen.getByText("镜头执行：shot-exec-2")).toBeInTheDocument();
     expect(screen.getByText("candidate_ready")).toBeInTheDocument();
   });
 
-  it("emits confirm and primary asset actions with the current workbench ids", () => {
+  it("requires explicit item selection before confirming matches and emits the selected candidate asset ids", () => {
     const onConfirmMatches = vi.fn();
     const onSelectPrimaryAsset = vi.fn();
 
@@ -59,16 +81,29 @@ describe("ImportBatchWorkbenchPage", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "确认匹配" }));
-    fireEvent.click(screen.getByRole("button", { name: "设为主素材" }));
+    const confirmButton = screen.getByRole("button", { name: "确认匹配" });
+    expect(confirmButton).toBeDisabled();
+
+    fireEvent.click(screen.getByLabelText("选择条目 item-2"));
+    expect(screen.getByText("已选 1 条")).toBeInTheDocument();
+
+    fireEvent.click(confirmButton);
+
+    const secondCandidateCard = screen.getByText("候选：candidate-2").closest("article");
+    expect(secondCandidateCard).not.toBeNull();
+    fireEvent.click(
+      within(secondCandidateCard as HTMLElement).getByRole("button", {
+        name: "设为主素材",
+      }),
+    );
 
     expect(onConfirmMatches).toHaveBeenCalledWith({
       importBatchId: "batch-1",
-      itemIds: ["item-1"],
+      itemIds: ["item-2"],
     });
     expect(onSelectPrimaryAsset).toHaveBeenCalledWith({
-      shotExecutionId: "shot-exec-1",
-      assetId: "asset-1",
+      shotExecutionId: "shot-exec-2",
+      assetId: "asset-2",
     });
   });
 
@@ -193,6 +228,7 @@ describe("ImportBatchWorkbenchPage", () => {
 
     expect(screen.getByText("Import Workbench")).toBeInTheDocument();
     expect(screen.getByText("Upload Sessions")).toBeInTheDocument();
+    expect(screen.getByText("Candidate Pool")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Confirm matches" })).toBeInTheDocument();
 
     fireEvent.change(screen.getByTestId("ui-locale-select"), {
@@ -200,5 +236,68 @@ describe("ImportBatchWorkbenchPage", () => {
     });
 
     expect(onLocaleChange).toHaveBeenCalledWith("zh-CN");
+  });
+
+  it("clears the local item selection when a refreshed workbench instance is received", () => {
+    const { rerender } = render(
+      <ImportBatchWorkbenchPage
+        workbench={workbench}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("选择条目 item-1"));
+    expect(screen.getByText("已选 1 条")).toBeInTheDocument();
+
+    rerender(
+      <ImportBatchWorkbenchPage
+        workbench={{
+          ...workbench,
+          importBatch: {
+            ...workbench.importBatch,
+            status: "confirmed",
+          },
+        }}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("已选 0 条")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "确认匹配" })).toBeDisabled();
+  });
+
+  it("does not allow selecting items with empty ids and never submits blank item ids", () => {
+    const onConfirmMatches = vi.fn();
+
+    render(
+      <ImportBatchWorkbenchPage
+        workbench={{
+          ...workbench,
+          items: [
+            { id: "", status: "matched_pending_confirm", assetId: "asset-empty" },
+            { id: "item-2", status: "matched_pending_confirm", assetId: "asset-2" },
+          ],
+        }}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onConfirmMatches={onConfirmMatches}
+      />,
+    );
+
+    const emptyIdCheckbox = screen.getByLabelText("选择条目 item-1");
+    expect(emptyIdCheckbox).toBeDisabled();
+
+    fireEvent.click(screen.getByLabelText("选择条目 item-2"));
+    fireEvent.click(screen.getByRole("button", { name: "确认匹配" }));
+
+    expect(onConfirmMatches).toHaveBeenCalledWith({
+      importBatchId: "batch-1",
+      itemIds: ["item-2"],
+    });
   });
 });

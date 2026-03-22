@@ -23,6 +23,8 @@ type GetShotWorkbenchResponse = {
     candidateAssets?: Array<{
       id?: string;
       assetId?: string;
+      shotExecutionId?: string;
+      sourceRunId?: string;
     }>;
     reviewSummary?: {
       latestConclusion?: string;
@@ -71,6 +73,8 @@ export async function loadShotWorkbench({
     candidateAssets: (workbench.candidateAssets ?? []).map((candidate) => ({
       id: candidate.id ?? "",
       assetId: candidate.assetId ?? "",
+      shotExecutionId: candidate.shotExecutionId ?? "",
+      sourceRunId: candidate.sourceRunId ?? "",
     })),
     reviewSummary: {
       latestConclusion: workbench.reviewSummary?.latestConclusion ?? "pending",

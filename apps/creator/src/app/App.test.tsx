@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CREATOR_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { loadImportBatchWorkbench } from "../features/import-batches/loadImportBatchWorkbench";
 import {
@@ -14,6 +14,7 @@ import { loadShotReviewTimeline } from "../features/shot-workbench/loadShotRevie
 import { loadShotWorkflowPanel } from "../features/shot-workbench/loadShotWorkflowPanel";
 import {
   runSubmissionGateChecks,
+  selectPrimaryAssetForShotWorkbench,
   submitShotForReview,
 } from "../features/shot-workbench/mutateShotWorkbench";
 import {
@@ -50,6 +51,7 @@ vi.mock("../features/import-batches/mutateImportBatchWorkbench", () => ({
 }));
 vi.mock("../features/shot-workbench/mutateShotWorkbench", () => ({
   runSubmissionGateChecks: vi.fn(),
+  selectPrimaryAssetForShotWorkbench: vi.fn(),
   submitShotForReview: vi.fn(),
 }));
 vi.mock("../features/shot-workbench/mutateShotWorkflow", () => ({
@@ -78,6 +80,7 @@ const deriveUploadFileMetadataMock = vi.mocked(deriveUploadFileMetadata);
 const retryUploadSessionForImportBatchMock = vi.mocked(retryUploadSessionForImportBatch);
 const selectPrimaryAssetForImportBatchMock = vi.mocked(selectPrimaryAssetForImportBatch);
 const runSubmissionGateChecksMock = vi.mocked(runSubmissionGateChecks);
+const selectPrimaryAssetForShotWorkbenchMock = vi.mocked(selectPrimaryAssetForShotWorkbench);
 const submitShotForReviewMock = vi.mocked(submitShotForReview);
 const startShotWorkflowMock = vi.mocked(startShotWorkflow);
 const retryShotWorkflowRunMock = vi.mocked(retryShotWorkflowRun);
@@ -118,12 +121,43 @@ function createImportWorkbench(batchId: string, status = "matched_pending_confir
       },
     ],
     items: [{ id: `item-${batchId}`, status, assetId: `asset-${batchId}` }],
-    candidateAssets: [{ id: `candidate-${batchId}`, assetId: `asset-${batchId}` }],
+    candidateAssets: [
+      {
+        id: `candidate-${batchId}`,
+        assetId: `asset-${batchId}`,
+        shotExecutionId: `shot-exec-${batchId}`,
+        sourceRunId: `source-run-${batchId}`,
+      },
+    ],
     shotExecutions: [
       {
         id: `shot-exec-${batchId}`,
         status: status === "matched_pending_confirm" ? "candidate_ready" : "primary_selected",
         primaryAssetId: status === "matched_pending_confirm" ? "" : `asset-${batchId}`,
+      },
+    ],
+  };
+}
+
+function createImportWorkbenchWithPool(batchId: string, status = "matched_pending_confirm") {
+  return {
+    ...createImportWorkbench(batchId, status),
+    items: [
+      { id: `item-${batchId}-1`, status, assetId: `asset-${batchId}-1` },
+      { id: `item-${batchId}-2`, status, assetId: `asset-${batchId}-2` },
+    ],
+    candidateAssets: [
+      {
+        id: `candidate-${batchId}-1`,
+        assetId: `asset-${batchId}-1`,
+        shotExecutionId: `shot-exec-${batchId}`,
+        sourceRunId: `source-run-${batchId}-1`,
+      },
+      {
+        id: `candidate-${batchId}-2`,
+        assetId: `asset-${batchId}-2`,
+        shotExecutionId: `shot-exec-${batchId}`,
+        sourceRunId: `source-run-${batchId}-2`,
       },
     ],
   };
@@ -139,7 +173,14 @@ function createShotWorkbench(shotId: string, status = "candidate_ready", conclus
       status,
       primaryAssetId: `asset-${shotId}`,
     },
-    candidateAssets: [{ id: `candidate-${shotId}`, assetId: `asset-${shotId}` }],
+    candidateAssets: [
+      {
+        id: `candidate-${shotId}`,
+        assetId: `asset-${shotId}`,
+        shotExecutionId: `shot-exec-${shotId}`,
+        sourceRunId: `source-run-${shotId}`,
+      },
+    ],
     reviewSummary: {
       latestConclusion: conclusion,
     },
@@ -151,6 +192,39 @@ function createShotWorkbench(shotId: string, status = "candidate_ready", conclus
       evaluationRuns: [],
       shotReviews: [],
     },
+  };
+}
+
+function createShotWorkbenchWithPool(
+  shotId: string,
+  status = "candidate_ready",
+  conclusion = "pending",
+  primaryAssetId = `asset-${shotId}-1`,
+) {
+  return {
+    ...createShotWorkbench(shotId, status, conclusion),
+    shotExecution: {
+      id: `shot-exec-${shotId}`,
+      shotId,
+      orgId: "org-1",
+      projectId: "project-1",
+      status,
+      primaryAssetId,
+    },
+    candidateAssets: [
+      {
+        id: `candidate-${shotId}-1`,
+        assetId: `asset-${shotId}-1`,
+        shotExecutionId: `shot-exec-${shotId}`,
+        sourceRunId: `source-run-${shotId}-1`,
+      },
+      {
+        id: `candidate-${shotId}-2`,
+        assetId: `asset-${shotId}-2`,
+        shotExecutionId: `shot-exec-${shotId}`,
+        sourceRunId: `source-run-${shotId}-2`,
+      },
+    ],
   };
 }
 
@@ -307,11 +381,31 @@ describe("App", () => {
     expect(await screen.findByText("尚未进入开发会话")).toBeInTheDocument();
   });
 
-  it("prefers importBatchId from search params, loads the import workbench, and renders the live data", async () => {
+  it("prefers importBatchId from search params, requires explicit selection, and refreshes the candidate pool actions", async () => {
     window.history.pushState({}, "", "/?importBatchId=batch-live-1&shotId=shot-live-1");
-    loadImportBatchWorkbenchMock.mockResolvedValueOnce(createImportWorkbench("batch-live-1"));
-    loadImportBatchWorkbenchMock.mockResolvedValueOnce(createImportWorkbench("batch-live-1", "confirmed"));
-    loadImportBatchWorkbenchMock.mockResolvedValueOnce(createImportWorkbench("batch-live-1", "confirmed"));
+    loadImportBatchWorkbenchMock.mockResolvedValueOnce(
+      createImportWorkbenchWithPool("batch-live-1"),
+    );
+    loadImportBatchWorkbenchMock.mockResolvedValueOnce({
+      ...createImportWorkbenchWithPool("batch-live-1", "confirmed"),
+      shotExecutions: [
+        {
+          id: "shot-exec-batch-live-1",
+          status: "primary_selected",
+          primaryAssetId: "",
+        },
+      ],
+    });
+    loadImportBatchWorkbenchMock.mockResolvedValueOnce({
+      ...createImportWorkbenchWithPool("batch-live-1", "confirmed"),
+      shotExecutions: [
+        {
+          id: "shot-exec-batch-live-1",
+          status: "primary_selected",
+          primaryAssetId: "asset-batch-live-1-2",
+        },
+      ],
+    });
     confirmImportBatchItemsMock.mockResolvedValue(undefined);
     selectPrimaryAssetForImportBatchMock.mockResolvedValue(undefined);
 
@@ -330,25 +424,33 @@ describe("App", () => {
     expect(loadShotWorkbenchMock).not.toHaveBeenCalled();
     expect(await screen.findByText("batch-live-1")).toBeInTheDocument();
     expect(screen.getByText("candidate_ready")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "确认匹配" })).toBeDisabled();
 
+    fireEvent.click(screen.getByLabelText("选择条目 item-batch-live-1-2"));
     fireEvent.click(screen.getByRole("button", { name: "确认匹配" }));
 
     await waitFor(() => {
       expect(confirmImportBatchItemsMock).toHaveBeenCalledWith({
         importBatchId: "batch-live-1",
-        itemIds: ["item-batch-live-1"],
+        itemIds: ["item-batch-live-1-2"],
       });
     });
     expect(await screen.findByText("匹配确认已完成")).toBeInTheDocument();
     expect(screen.getByText("当前批次状态：confirmed")).toBeInTheDocument();
     expect(screen.getByText("当前执行状态：primary_selected")).toBeInTheDocument();
+    expect(screen.getByText("已选 0 条")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "确认匹配" })).toBeDisabled();
 
-    fireEvent.click(screen.getByRole("button", { name: "设为主素材" }));
+    fireEvent.click(
+      within(
+        screen.getByText("候选：candidate-batch-live-1-2").closest("article") as HTMLElement,
+      ).getByRole("button", { name: "设为主素材" }),
+    );
 
     await waitFor(() => {
       expect(selectPrimaryAssetForImportBatchMock).toHaveBeenCalledWith({
         shotExecutionId: "shot-exec-batch-live-1",
-        assetId: "asset-batch-live-1",
+        assetId: "asset-batch-live-1-2",
       });
     });
 
@@ -356,7 +458,7 @@ describe("App", () => {
       expect(loadImportBatchWorkbenchMock).toHaveBeenCalledTimes(3);
     });
     expect(screen.getByText("主素材选择已完成")).toBeInTheDocument();
-    expect(screen.getByText("当前主素材：asset-batch-live-1")).toBeInTheDocument();
+    expect(screen.getByText("当前主素材：asset-batch-live-1-2")).toBeInTheDocument();
   });
 
   it("keeps the current import workbench visible and surfaces an action error when confirm matches fails", async () => {
@@ -368,6 +470,7 @@ describe("App", () => {
 
     expect(await screen.findByText("batch-live-2")).toBeInTheDocument();
 
+    fireEvent.click(screen.getByLabelText("选择条目 item-batch-live-2"));
     fireEvent.click(screen.getByRole("button", { name: "确认匹配" }));
 
     expect(await screen.findByText("匹配确认失败：network down")).toBeInTheDocument();
@@ -377,14 +480,20 @@ describe("App", () => {
 
   it("keeps the current import workbench visible and surfaces an action error when select primary asset fails", async () => {
     window.history.pushState({}, "", "/?importBatchId=batch-live-3");
-    loadImportBatchWorkbenchMock.mockResolvedValue(createImportWorkbench("batch-live-3", "confirmed"));
+    loadImportBatchWorkbenchMock.mockResolvedValue(
+      createImportWorkbenchWithPool("batch-live-3", "confirmed"),
+    );
     selectPrimaryAssetForImportBatchMock.mockRejectedValue(new Error("network down"));
 
     render(<App />);
 
     expect(await screen.findByText("batch-live-3")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "设为主素材" }));
+    fireEvent.click(
+      within(
+        screen.getByText("候选：candidate-batch-live-3-2").closest("article") as HTMLElement,
+      ).getByRole("button", { name: "设为主素材" }),
+    );
 
     expect(await screen.findByText("主素材选择失败：network down")).toBeInTheDocument();
     expect(screen.getByText("batch-live-3")).toBeInTheDocument();
@@ -657,6 +766,62 @@ describe("App", () => {
     });
 
     expect(await screen.findByText(/submitted_for_review/)).toBeInTheDocument();
+  });
+
+  it("selects a shot primary asset and refreshes workbench, review timeline, and workflow panel together", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-primary-select");
+    loadShotWorkbenchMock
+      .mockResolvedValueOnce(
+        createShotWorkbenchWithPool("shot-primary-select", "candidate_ready", "pending"),
+      )
+      .mockResolvedValueOnce(
+        createShotWorkbenchWithPool(
+          "shot-primary-select",
+          "candidate_ready",
+          "approved",
+          "asset-shot-primary-select-2",
+        ),
+      );
+    loadShotReviewTimelineMock
+      .mockResolvedValueOnce(
+        createShotReviewTimeline("shot-primary-select", "pending", "pending"),
+      )
+      .mockResolvedValueOnce(
+        createShotReviewTimeline("shot-primary-select", "passed", "approved"),
+      );
+    loadShotWorkflowPanelMock
+      .mockResolvedValueOnce(createShotWorkflowPanel("running", "workflow-run-1"))
+      .mockResolvedValueOnce(createShotWorkflowPanel("failed", "workflow-run-2"));
+    selectPrimaryAssetForShotWorkbenchMock.mockResolvedValue(undefined);
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-shot-primary-select")).toBeInTheDocument();
+
+    fireEvent.click(
+      within(
+        screen
+          .getByText("候选：candidate-shot-primary-select-2")
+          .closest("article") as HTMLElement,
+      ).getByRole("button", { name: "设为主素材" }),
+    );
+
+    await waitFor(() => {
+      expect(selectPrimaryAssetForShotWorkbenchMock).toHaveBeenCalledWith({
+        shotExecutionId: "shot-exec-shot-primary-select",
+        assetId: "asset-shot-primary-select-2",
+        orgId: undefined,
+        userId: undefined,
+      });
+    });
+
+    expect(await screen.findByText("镜头主素材已更新")).toBeInTheDocument();
+    expect(screen.getByText("主素材：asset-shot-primary-select-2")).toBeInTheDocument();
+    expect(screen.getByText("review-shot-primary-select-approved")).toBeInTheDocument();
+    expect(screen.getByText(/workflow-run-2/)).toBeInTheDocument();
+    expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(2);
+    expect(loadShotReviewTimelineMock).toHaveBeenCalledTimes(2);
+    expect(loadShotWorkflowPanelMock).toHaveBeenCalledTimes(2);
   });
 
   it("subscribes to shot workbench SSE after the first successful load", async () => {

@@ -31,20 +31,110 @@ async function enterDevSession(page) {
   await page.getByRole("button", { name: "进入开发会话" }).click();
 }
 
-async function mockCreatorReviewTimelineRoutes(page: Page) {
-  let phase: "initial" | "afterGate" | "afterSubmit" = "initial";
+function delay(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function buildCreatorShotWorkbench({
+  reviewPhase,
+  primaryAssetId,
+}: {
+  reviewPhase: "initial" | "afterGate" | "afterSubmit";
+  primaryAssetId: string;
+}) {
+  return {
+    workbench: {
+      shotExecution: {
+        id: "shot-exec-live-1",
+        shotId: "shot-live-1",
+        orgId: "org-1",
+        projectId: "project-live-1",
+        status: reviewPhase === "afterSubmit" ? "submitted_for_review" : "candidate_ready",
+        primaryAssetId,
+      },
+      candidateAssets: [
+        {
+          id: "candidate-live-1",
+          assetId: "asset-live-1",
+          shotExecutionId: "shot-exec-live-1",
+          sourceRunId: "source-run-live-1",
+        },
+        {
+          id: "candidate-live-2",
+          assetId: "asset-live-2",
+          shotExecutionId: "shot-exec-live-1",
+          sourceRunId: "source-run-live-2",
+        },
+      ],
+      reviewSummary: {
+        latestConclusion:
+          reviewPhase === "afterSubmit"
+            ? "approved"
+            : reviewPhase === "afterGate"
+              ? "passed"
+              : "pending",
+      },
+      latestEvaluationRun: {
+        id: reviewPhase === "initial" ? "eval-live-pending" : "eval-live-passed",
+        status: reviewPhase === "initial" ? "pending" : "passed",
+      },
+    },
+  };
+}
+
+async function mockCreatorCandidatePoolShotRoutes(page: Page) {
+  let reviewPhase: "initial" | "afterGate" | "afterSubmit" = "initial";
+  let primaryAssetId = "asset-live-1";
 
   await page.route("**/hualala.execution.v1.ExecutionService/RunSubmissionGateChecks", async (route) => {
-    phase = "afterGate";
-    await route.fallback();
+    reviewPhase = "afterGate";
+    await delay(120);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        passedChecks: ["asset_selected", "review_ready"],
+        failedChecks: ["copyright_missing"],
+      }),
+    });
   });
   await page.route("**/hualala.execution.v1.ExecutionService/SubmitShotForReview", async (route) => {
-    phase = "afterSubmit";
-    await route.fallback();
+    reviewPhase = "afterSubmit";
+    await delay(120);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({}),
+    });
+  });
+  await page.route("**/hualala.execution.v1.ExecutionService/SelectPrimaryAsset", async (route) => {
+    const body = route.request().postDataJSON() as {
+      shotExecutionId?: string;
+      assetId?: string;
+    };
+    primaryAssetId = body.assetId ?? primaryAssetId;
+    await delay(120);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({}),
+    });
+  });
+  await page.route("**/hualala.execution.v1.ExecutionService/GetShotWorkbench", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        buildCreatorShotWorkbench({
+          reviewPhase,
+          primaryAssetId,
+        }),
+      ),
+    });
   });
   await page.route("**/hualala.review.v1.ReviewService/ListEvaluationRuns", async (route) => {
     const evaluationRuns =
-      phase === "initial"
+      reviewPhase === "initial"
         ? [
             {
               id: "eval-live-pending",
@@ -76,7 +166,7 @@ async function mockCreatorReviewTimelineRoutes(page: Page) {
   });
   await page.route("**/hualala.review.v1.ReviewService/ListShotReviews", async (route) => {
     const shotReviews =
-      phase === "afterSubmit"
+      reviewPhase === "afterSubmit"
         ? [
             {
               id: "review-live-passed",
@@ -89,7 +179,7 @@ async function mockCreatorReviewTimelineRoutes(page: Page) {
               commentLocale: "en-US",
             },
           ]
-        : phase === "afterGate"
+        : reviewPhase === "afterGate"
           ? [
               {
                 id: "review-live-passed",
@@ -113,22 +203,124 @@ async function mockCreatorReviewTimelineRoutes(page: Page) {
   });
 }
 
+async function mockCreatorCandidatePoolImportRoutes(page: Page) {
+  let phase: "initial" | "afterConfirm" | "afterSelect" = "initial";
+  const requests = {
+    confirmedItemIds: [] as string[],
+    selectedPrimaryAssetId: "",
+  };
+
+  const buildImportWorkbench = () => ({
+    importBatch: {
+      id: "batch-live-1",
+      status: phase === "initial" ? "matched_pending_confirm" : "confirmed",
+      sourceType: "upload_session",
+    },
+    uploadSessions: [
+      {
+        id: "upload-session-live-1",
+        status: "completed",
+      },
+    ],
+    items: [
+      {
+        id: "item-live-1",
+        status: phase === "initial" ? "matched_pending_confirm" : "confirmed",
+        assetId: "asset-live-1",
+      },
+      {
+        id: "item-live-2",
+        status: phase === "initial" ? "matched_pending_confirm" : "confirmed",
+        assetId: "asset-live-2",
+      },
+    ],
+    candidateAssets: [
+      {
+        id: "candidate-live-1",
+        assetId: "asset-live-1",
+        shotExecutionId: "shot-exec-live-1",
+        sourceRunId: "source-run-live-1",
+      },
+      {
+        id: "candidate-live-2",
+        assetId: "asset-live-2",
+        shotExecutionId: "shot-exec-live-1",
+        sourceRunId: "source-run-live-2",
+      },
+    ],
+    shotExecutions: [
+      {
+        id: "shot-exec-live-1",
+        status: phase === "initial" ? "candidate_ready" : "primary_selected",
+        primaryAssetId: phase === "afterSelect" ? "asset-live-2" : "",
+      },
+    ],
+  });
+
+  await page.route("**/hualala.asset.v1.AssetService/GetImportBatchWorkbench", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(buildImportWorkbench()),
+    });
+  });
+  await page.route(
+    "**/hualala.asset.v1.AssetService/BatchConfirmImportBatchItems",
+    async (route) => {
+      const body = route.request().postDataJSON() as {
+        itemIds?: string[];
+      };
+      requests.confirmedItemIds = [...(body.itemIds ?? [])];
+      phase = "afterConfirm";
+      await delay(120);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({}),
+      });
+    },
+  );
+  await page.route("**/hualala.execution.v1.ExecutionService/SelectPrimaryAsset", async (route) => {
+    const body = route.request().postDataJSON() as {
+      assetId?: string;
+    };
+    requests.selectedPrimaryAssetId = body.assetId ?? "";
+    phase = "afterSelect";
+    await delay(120);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({}),
+    });
+  });
+
+  return requests;
+}
+
 test("creator smoke: shot workbench actions complete with refreshed feedback", async ({
   page,
 }) => {
   await mockConnectRoutes(page, {
     creatorShot: "success",
   });
-  await mockCreatorReviewTimelineRoutes(page);
+  await mockCreatorCandidatePoolShotRoutes(page);
 
   await page.goto("http://127.0.0.1:4174/?shotId=shot-live-1");
   await enterDevSession(page);
 
   await expect(page.getByText("shot-exec-live-1")).toBeVisible();
-  await expect(page.getByText("1 个候选素材")).toBeVisible();
+  await expect(page.getByText("2 个候选素材")).toBeVisible();
   await page.getByTestId("ui-locale-select").selectOption("en-US");
   await expect(page.getByRole("heading", { name: "Review Outcome" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Review Timeline" })).toBeVisible();
+  await expect(page.getByText("Source run: source-run-live-2")).toBeVisible();
+  const secondShotCandidate = page
+    .locator("article")
+    .filter({ hasText: "Candidate: candidate-live-2" })
+    .first();
+  await secondShotCandidate.getByRole("button", { name: "Set as primary asset" }).click();
+  await expect(page.getByText("Shot primary asset updated")).toBeVisible();
+  await expect(page.getByText("Primary asset: asset-live-2")).toBeVisible();
   await expect(page.getByText("review-live-pending")).toBeVisible();
   await page.reload();
   await expect(page.getByTestId("ui-locale-select")).toHaveValue("en-US");
@@ -172,22 +364,41 @@ test("creator smoke: import workbench actions complete with refreshed feedback",
   await mockConnectRoutes(page, {
     creatorImport: "success",
   });
+  const importRequests = await mockCreatorCandidatePoolImportRoutes(page);
 
   await page.goto("http://127.0.0.1:4174/?importBatchId=batch-live-1");
   await enterDevSession(page);
 
   await expect(page.getByText("batch-live-1")).toBeVisible();
   await expect(page.getByText("1 个上传会话")).toBeVisible();
+  await expect(page.getByText("2 个批次条目")).toBeVisible();
+  await expect(page.getByRole("button", { name: "确认匹配" })).toBeDisabled();
+
+  await page.getByLabel("选择条目 item-live-2").check();
+  await expect(page.getByText("已选 1 条")).toBeVisible();
 
   await page.getByRole("button", { name: "确认匹配" }).click();
   await expect(page.getByText("正在确认匹配")).toBeVisible();
   await expect(page.getByText("匹配确认已完成")).toBeVisible();
   await expect(page.getByText("当前批次状态：confirmed")).toBeVisible();
   await expect(page.getByText("当前执行状态：primary_selected")).toBeVisible();
+  expect(importRequests.confirmedItemIds).toEqual(["item-live-2"]);
+  await expect(page.getByText("已选 0 条")).toBeVisible();
 
-  await page.getByRole("button", { name: "设为主素材" }).click();
-  await expect(page.getByText("主素材选择已完成")).toBeVisible();
-  await expect(page.getByText("当前主素材：asset-live-1")).toBeVisible();
+  await page.getByTestId("ui-locale-select").selectOption("en-US");
+  await expect(page.getByRole("heading", { name: "Candidate Pool" })).toBeVisible();
+  await expect(page.getByText("Source run: source-run-live-2")).toBeVisible();
+
+  const secondImportCandidate = page
+    .locator("article")
+    .filter({ hasText: "Candidate: candidate-live-2" })
+    .first();
+  await secondImportCandidate
+    .getByRole("button", { name: "Set as primary asset" })
+    .click();
+  await expect(page.getByText("Primary asset selected")).toBeVisible();
+  expect(importRequests.selectedPrimaryAssetId).toBe("asset-live-2");
+  await expect(page.getByText("Primary asset: asset-live-2")).toBeVisible();
 });
 
 test("creator smoke: import workbench keeps content on action failure", async ({ page }) => {
@@ -199,6 +410,7 @@ test("creator smoke: import workbench keeps content on action failure", async ({
   await enterDevSession(page);
 
   await expect(page.getByText("batch-live-1")).toBeVisible();
+  await page.getByRole("checkbox").first().check();
   await page.getByRole("button", { name: "确认匹配" }).click();
   await expect(page.getByText("匹配确认失败")).toBeVisible();
   await expect(page.getByText("batch-live-1")).toBeVisible();

@@ -262,6 +262,7 @@ export function App() {
           feedback={shotWorkbenchController.feedback ?? undefined}
           onRunSubmissionGateChecks={shotWorkbenchController.handleRunSubmissionGateChecks}
           onSubmitShotForReview={shotWorkbenchController.handleSubmitShotForReview}
+          onSelectPrimaryAsset={shotWorkbenchController.handleSelectPrimaryAsset}
           onStartWorkflow={shotWorkbenchController.handleStartWorkflow}
           onRetryWorkflowRun={shotWorkbenchController.handleRetryWorkflowRun}
         />

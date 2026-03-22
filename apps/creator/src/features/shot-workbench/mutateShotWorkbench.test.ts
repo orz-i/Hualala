@@ -1,5 +1,9 @@
 import { createExecutionClient } from "@hualala/sdk";
-import { runSubmissionGateChecks, submitShotForReview } from "./mutateShotWorkbench";
+import {
+  runSubmissionGateChecks,
+  selectPrimaryAssetForShotWorkbench,
+  submitShotForReview,
+} from "./mutateShotWorkbench";
 
 vi.mock("@hualala/sdk", () => ({
   createExecutionClient: vi.fn(),
@@ -53,6 +57,25 @@ describe("mutateShotWorkbench", () => {
 
     expect(submitShotForReviewMock).toHaveBeenCalledWith({
       shotExecutionId: "shot-exec-1",
+    });
+  });
+
+  it("selects a primary asset via the sdk execution client", async () => {
+    const selectPrimaryAssetMock = vi.fn().mockResolvedValue({});
+    vi.mocked(createExecutionClient).mockReturnValue({
+      selectPrimaryAsset: selectPrimaryAssetMock,
+    } as never);
+
+    await selectPrimaryAssetForShotWorkbench({
+      shotExecutionId: "shot-exec-2",
+      assetId: "asset-2",
+      baseUrl: "http://localhost:8080/",
+      fetchFn: vi.fn(),
+    });
+
+    expect(selectPrimaryAssetMock).toHaveBeenCalledWith({
+      shotExecutionId: "shot-exec-2",
+      assetId: "asset-2",
     });
   });
 });

@@ -21,7 +21,14 @@ describe("loadShotWorkbench", () => {
           status: "submitted_for_review",
           primaryAssetId: "asset-1",
         },
-        candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
+        candidateAssets: [
+          {
+            id: "candidate-1",
+            assetId: "asset-1",
+            shotExecutionId: "shot-exec-1",
+            sourceRunId: "source-run-1",
+          },
+        ],
         reviewSummary: {
           latestConclusion: "approved",
         },
@@ -53,12 +60,64 @@ describe("loadShotWorkbench", () => {
     expect(result.shotExecution.id).toBe("shot-exec-1");
     expect(result.shotExecution.orgId).toBe("org-1");
     expect(result.shotExecution.projectId).toBe("project-1");
-    expect(result.candidateAssets).toHaveLength(1);
+    expect(result.candidateAssets).toEqual([
+      {
+        id: "candidate-1",
+        assetId: "asset-1",
+        shotExecutionId: "shot-exec-1",
+        sourceRunId: "source-run-1",
+      },
+    ]);
     expect(result.reviewSummary.latestConclusion).toBe("approved");
     expect(result.latestEvaluationRun?.status).toBe("passed");
     expect(result.reviewTimeline).toEqual({
       evaluationRuns: [],
       shotReviews: [],
     });
+  });
+
+  it("preserves candidate asset order and falls back missing candidate fields to empty strings", async () => {
+    const getShotWorkbenchMock = vi.fn().mockResolvedValue({
+      workbench: {
+        shotExecution: {
+          id: "shot-exec-2",
+          shotId: "shot-2",
+        },
+        candidateAssets: [
+          {
+            id: "candidate-2",
+            assetId: "asset-2",
+            shotExecutionId: "shot-exec-2",
+            sourceRunId: "source-run-2",
+          },
+          {
+            id: "candidate-3",
+          },
+        ],
+      },
+    });
+    vi.mocked(createExecutionClient).mockReturnValue({
+      getShotWorkbench: getShotWorkbenchMock,
+    } as never);
+
+    const result = await loadShotWorkbench({
+      shotId: "shot-2",
+      fetchFn: vi.fn(),
+    });
+
+    expect(result.candidateAssets).toEqual([
+      {
+        id: "candidate-2",
+        assetId: "asset-2",
+        shotExecutionId: "shot-exec-2",
+        sourceRunId: "source-run-2",
+      },
+      {
+        id: "candidate-3",
+        assetId: "",
+        shotExecutionId: "",
+        sourceRunId: "",
+      },
+    ]);
   });
 });

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createTranslator } from "../../i18n";
 import { ShotWorkbenchPage } from "./ShotWorkbenchPage";
 
@@ -12,7 +12,20 @@ describe("ShotWorkbenchPage", () => {
       status: "submitted_for_review",
       primaryAssetId: "asset-1",
     },
-    candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
+    candidateAssets: [
+      {
+        id: "candidate-1",
+        assetId: "asset-1",
+        shotExecutionId: "shot-exec-1",
+        sourceRunId: "source-run-1",
+      },
+      {
+        id: "candidate-2",
+        assetId: "asset-2",
+        shotExecutionId: "shot-exec-1",
+        sourceRunId: "source-run-2",
+      },
+    ],
     reviewSummary: {
       latestConclusion: "approved",
     },
@@ -61,7 +74,7 @@ describe("ShotWorkbenchPage", () => {
 
     expect(screen.getByText("shot-exec-1")).toBeInTheDocument();
     expect(screen.getByText(/submitted_for_review/)).toBeInTheDocument();
-    expect(screen.getByText("1 个候选素材")).toBeInTheDocument();
+    expect(screen.getByText("2 个候选素材")).toBeInTheDocument();
     expect(screen.getByText("approved")).toBeInTheDocument();
     expect(screen.getAllByText("最近评估：passed").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("主素材：asset-1")).toBeInTheDocument();
@@ -70,17 +83,20 @@ describe("ShotWorkbenchPage", () => {
     expect(screen.getByText("评审记录")).toBeInTheDocument();
     expect(screen.getByText("通过检查：asset_selected")).toBeInTheDocument();
     expect(screen.getByText("评论语言：zh-CN")).toBeInTheDocument();
+    expect(screen.getByText("来源运行：source-run-1")).toBeInTheDocument();
+    expect(screen.getByText("当前主素材")).toBeInTheDocument();
     expect(screen.getByText(/workflow-run-1/)).toBeInTheDocument();
     expect(screen.getByText(/shot_pipeline/)).toBeInTheDocument();
     expect(screen.getByText(/failed/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "重试工作流" })).toBeInTheDocument();
   });
 
-  it("triggers gate check and submit review actions for the current shot execution", () => {
+  it("triggers gate check, submit review, workflow, and select primary actions for the current shot execution", () => {
     const onRunSubmissionGateChecks = vi.fn();
     const onSubmitShotForReview = vi.fn();
     const onStartWorkflow = vi.fn();
     const onRetryWorkflowRun = vi.fn();
+    const onSelectPrimaryAsset = vi.fn();
 
     render(
       <ShotWorkbenchPage
@@ -93,13 +109,22 @@ describe("ShotWorkbenchPage", () => {
         onSubmitShotForReview={onSubmitShotForReview}
         onStartWorkflow={onStartWorkflow}
         onRetryWorkflowRun={onRetryWorkflowRun}
+        onSelectPrimaryAsset={onSelectPrimaryAsset}
       />,
     );
+
+    const nonPrimaryCandidateCard = screen.getByText("候选：candidate-2").closest("article");
+    expect(nonPrimaryCandidateCard).not.toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Gate 检查" }));
     fireEvent.click(screen.getByRole("button", { name: "提交评审" }));
     fireEvent.click(screen.getByRole("button", { name: "发起工作流" }));
     fireEvent.click(screen.getByRole("button", { name: "重试工作流" }));
+    fireEvent.click(
+      within(nonPrimaryCandidateCard as HTMLElement).getByRole("button", {
+        name: "设为主素材",
+      }),
+    );
 
     expect(onRunSubmissionGateChecks).toHaveBeenCalledWith({
       shotExecutionId: "shot-exec-1",
@@ -114,6 +139,10 @@ describe("ShotWorkbenchPage", () => {
     });
     expect(onRetryWorkflowRun).toHaveBeenCalledWith({
       workflowRunId: "workflow-run-1",
+    });
+    expect(onSelectPrimaryAsset).toHaveBeenCalledWith({
+      shotExecutionId: "shot-exec-1",
+      assetId: "asset-2",
     });
   });
 
@@ -187,6 +216,7 @@ describe("ShotWorkbenchPage", () => {
     expect(screen.getByText("Workflow Run")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run Gate Checks" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start Workflow" })).toBeInTheDocument();
+    expect(screen.getByText("Source run: source-run-2")).toBeInTheDocument();
     expect(screen.getByText("Workflow running")).toBeInTheDocument();
 
     fireEvent.change(screen.getByTestId("ui-locale-select"), {
@@ -233,5 +263,52 @@ describe("ShotWorkbenchPage", () => {
     );
 
     expect(screen.getByText("评审时间线暂不可用")).toBeInTheDocument();
+  });
+
+  it("renders an empty candidate list message when the shot has no candidate assets", () => {
+    render(
+      <ShotWorkbenchPage
+        workbench={{
+          ...workbench,
+          candidateAssets: [],
+        }}
+        workflowPanel={workflowPanel}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("尚无候选素材")).toBeInTheDocument();
+  });
+
+  it("does not mark a candidate as primary when both asset ids are empty", () => {
+    render(
+      <ShotWorkbenchPage
+        workbench={{
+          ...workbench,
+          shotExecution: {
+            ...workbench.shotExecution,
+            primaryAssetId: "",
+          },
+          candidateAssets: [
+            {
+              id: "candidate-empty",
+              assetId: "",
+              shotExecutionId: "shot-exec-1",
+              sourceRunId: "source-run-empty",
+            },
+          ],
+        }}
+        workflowPanel={workflowPanel}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onSelectPrimaryAsset={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("当前主素材")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "设为主素材" })).toBeDisabled();
   });
 });

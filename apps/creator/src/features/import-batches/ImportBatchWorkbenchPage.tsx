@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import type { CreatorTranslator, LocaleCode } from "../../i18n";
 import { ActionFeedback, type ActionFeedbackModel } from "../shared/ActionFeedback";
 
@@ -29,6 +29,8 @@ type ImportBatchItemSummary = {
 type CandidateAssetSummary = {
   id: string;
   assetId: string;
+  shotExecutionId: string;
+  sourceRunId: string;
 };
 
 type ShotExecutionSummary = {
@@ -100,12 +102,18 @@ export function ImportBatchWorkbenchPage({
   feedback,
 }: ImportBatchWorkbenchPageProps) {
   const currentExecution = workbench.shotExecutions[0];
-  const currentItem = workbench.items[0];
-  const currentCandidate = workbench.candidateAssets[0];
   const latestUploadSession = workbench.uploadSessions.at(-1);
   const latestExpiredUploadSession = [...workbench.uploadSessions]
     .reverse()
     .find((session) => session.status === "expired");
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setSelectedItemIds([]);
+  }, [workbench]);
+
+  const validSelectedItemIds = [...new Set(selectedItemIds.filter(Boolean))];
+  const selectedItemCount = validSelectedItemIds.length;
 
   return (
     <main
@@ -298,6 +306,67 @@ export function ImportBatchWorkbenchPage({
             </h2>
             <p style={metricStyle}>{t("import.matching.candidateCount", { count: workbench.candidateAssets.length })}</p>
             <p style={metricStyle}>{t("import.matching.itemCount", { count: workbench.items.length })}</p>
+            <p style={metricStyle}>{t("import.matching.selectedCount", { count: selectedItemCount })}</p>
+            <div style={{ display: "grid", gap: "12px", marginTop: "16px" }}>
+              <h3 style={{ margin: 0, fontSize: "1rem" }}>{t("import.matching.itemsTitle")}</h3>
+              {workbench.items.length === 0 ? (
+                <p style={metricStyle}>{t("import.matching.itemsEmpty")}</p>
+              ) : (
+                workbench.items.map((item, index) => {
+                  const isSelected = selectedItemIds.includes(item.id);
+                  const isSelectable = Boolean(item.id);
+                  return (
+                    <label
+                      key={item.id || index}
+                      style={{
+                        display: "grid",
+                        gap: "6px",
+                        padding: "14px 16px",
+                        borderRadius: "14px",
+                        background: "rgba(255, 255, 255, 0.82)",
+                        border: "1px solid rgba(148, 163, 184, 0.18)",
+                        cursor: isSelectable ? "pointer" : "not-allowed",
+                        opacity: isSelectable ? 1 : 0.7,
+                      }}
+                    >
+                      <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <input
+                          type="checkbox"
+                          aria-label={t("import.matching.selectItem", {
+                            id: item.id || `item-${index + 1}`,
+                          })}
+                          disabled={!isSelectable}
+                          checked={isSelected}
+                          onChange={() => {
+                            if (!isSelectable) {
+                              return;
+                            }
+                            setSelectedItemIds((current) =>
+                              isSelected
+                                ? current.filter((itemId) => itemId !== item.id)
+                                : [...current, item.id],
+                            );
+                          }}
+                        />
+                        <strong>
+                          {t("import.matching.selectItem", {
+                            id: item.id || `item-${index + 1}`,
+                          })}
+                        </strong>
+                      </span>
+                      <p style={metricStyle}>
+                        {t("import.matching.itemStatus", { status: item.status })}
+                      </p>
+                      <p style={metricStyle}>
+                        {t("import.matching.itemAssetId", {
+                          assetId: item.assetId || t("import.execution.primaryAsset.empty"),
+                        })}
+                      </p>
+                    </label>
+                  );
+                })
+              )}
+            </div>
             <button
               type="button"
               style={{
@@ -307,15 +376,18 @@ export function ImportBatchWorkbenchPage({
                 padding: "10px 16px",
                 background: "#1d4ed8",
                 color: "#eff6ff",
-                cursor: "pointer",
+                cursor:
+                  onConfirmMatches && selectedItemCount > 0 ? "pointer" : "not-allowed",
+                opacity: onConfirmMatches && selectedItemCount > 0 ? 1 : 0.55,
               }}
+              disabled={!onConfirmMatches || selectedItemCount === 0}
               onClick={() => {
-                if (!currentItem || !onConfirmMatches) {
+                if (!onConfirmMatches || selectedItemCount === 0) {
                   return;
                 }
                 onConfirmMatches({
                   importBatchId: workbench.importBatch.id,
-                  itemIds: [currentItem.id],
+                  itemIds: validSelectedItemIds,
                 });
               }}
             >
@@ -336,30 +408,96 @@ export function ImportBatchWorkbenchPage({
                   currentExecution?.primaryAssetId || t("import.execution.primaryAsset.empty"),
               })}
             </p>
-            <button
-              type="button"
+          </article>
+        </section>
+
+        <section style={panelStyle}>
+          <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
+            {t("import.candidates.title")}
+          </h2>
+          {workbench.candidateAssets.length === 0 ? (
+            <p style={metricStyle}>{t("import.candidates.empty")}</p>
+          ) : (
+            <div
               style={{
-                marginTop: "16px",
-                border: 0,
-                borderRadius: "999px",
-                padding: "10px 16px",
-                background: "#0f766e",
-                color: "#ecfeff",
-                cursor: "pointer",
-              }}
-              onClick={() => {
-                if (!currentExecution || !currentCandidate || !onSelectPrimaryAsset) {
-                  return;
-                }
-                onSelectPrimaryAsset({
-                  shotExecutionId: currentExecution.id,
-                  assetId: currentCandidate.assetId,
-                });
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: "16px",
               }}
             >
-              {t("import.actions.selectPrimaryAsset")}
-            </button>
-          </article>
+              {workbench.candidateAssets.map((candidate, index) => {
+                const canSelectPrimary =
+                  Boolean(onSelectPrimaryAsset) &&
+                  Boolean(candidate.assetId) &&
+                  Boolean(candidate.shotExecutionId || currentExecution?.id);
+
+                return (
+                  <article
+                    key={candidate.id || index}
+                    style={{
+                      display: "grid",
+                      gap: "8px",
+                      padding: "14px 16px",
+                      borderRadius: "14px",
+                      background: "rgba(255, 255, 255, 0.82)",
+                      border: "1px solid rgba(148, 163, 184, 0.18)",
+                    }}
+                  >
+                    <strong>
+                      {t("import.candidates.candidateId", {
+                        id: candidate.id || `candidate-${index + 1}`,
+                      })}
+                    </strong>
+                    <p style={metricStyle}>
+                      {t("import.candidates.assetId", {
+                        assetId: candidate.assetId || t("import.execution.primaryAsset.empty"),
+                      })}
+                    </p>
+                    <p style={metricStyle}>
+                      {t("import.candidates.sourceRunId", {
+                        sourceRunId: candidate.sourceRunId || t("import.execution.primaryAsset.empty"),
+                      })}
+                    </p>
+                    <p style={metricStyle}>
+                      {t("import.candidates.shotExecutionId", {
+                        shotExecutionId:
+                          candidate.shotExecutionId ||
+                          currentExecution?.id ||
+                          t("import.execution.primaryAsset.empty"),
+                      })}
+                    </p>
+                    <button
+                      type="button"
+                      style={{
+                        width: "fit-content",
+                        marginTop: "8px",
+                        border: 0,
+                        borderRadius: "999px",
+                        padding: "10px 16px",
+                        background: "#0f766e",
+                        color: "#ecfeff",
+                        cursor: canSelectPrimary ? "pointer" : "not-allowed",
+                        opacity: canSelectPrimary ? 1 : 0.55,
+                      }}
+                      disabled={!canSelectPrimary}
+                      onClick={() => {
+                        if (!canSelectPrimary) {
+                          return;
+                        }
+                        onSelectPrimaryAsset?.({
+                          shotExecutionId:
+                            candidate.shotExecutionId || currentExecution?.id || "",
+                          assetId: candidate.assetId,
+                        });
+                      }}
+                    >
+                      {t("import.actions.selectPrimaryAsset")}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
       </section>
     </main>
