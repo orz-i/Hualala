@@ -162,7 +162,7 @@ func (s *Service) StartShotExecutionRun(ctx context.Context, input StartShotExec
 			return execution.ShotExecutionRun{}, err
 		}
 	}
-	s.publishShotExecutionUpdated(shotExecution, map[string]any{
+	s.publishShotExecutionUpdated(ctx, shotExecution, map[string]any{
 		"shot_execution_id": shotExecution.ID,
 		"shot_id":           shotExecution.ShotID,
 		"status":            shotExecution.Status,
@@ -221,7 +221,7 @@ func (s *Service) SelectPrimaryAsset(ctx context.Context, input SelectPrimaryAss
 	if err := s.executions.SaveShotExecution(ctx, record); err != nil {
 		return execution.ShotExecution{}, err
 	}
-	s.publishShotExecutionUpdated(record, map[string]any{
+	s.publishShotExecutionUpdated(ctx, record, map[string]any{
 		"shot_execution_id": record.ID,
 		"shot_id":           record.ShotID,
 		"status":            record.Status,
@@ -276,7 +276,7 @@ func (s *Service) SubmitShotForReview(ctx context.Context, input SubmitShotForRe
 	if err := s.executions.SaveShotExecution(ctx, record); err != nil {
 		return execution.ShotExecution{}, err
 	}
-	s.publishShotExecutionUpdated(record, map[string]any{
+	s.publishShotExecutionUpdated(ctx, record, map[string]any{
 		"shot_execution_id": record.ID,
 		"shot_id":           record.ShotID,
 		"status":            record.Status,
@@ -435,7 +435,7 @@ func (s *Service) reserveBudgetForRun(ctx context.Context, shotExecution executi
 	return s.reviewBilling.SaveBillingEvent(ctx, billingEvent)
 }
 
-func (s *Service) publishShotExecutionUpdated(record execution.ShotExecution, payload map[string]any) {
+func (s *Service) publishShotExecutionUpdated(ctx context.Context, record execution.ShotExecution, payload map[string]any) {
 	if s == nil || s.eventPublisher == nil {
 		return
 	}
@@ -445,7 +445,7 @@ func (s *Service) publishShotExecutionUpdated(record execution.ShotExecution, pa
 		return
 	}
 
-	s.eventPublisher.Publish(events.Event{
+	s.eventPublisher.PublishWithContext(ctx, events.Event{
 		EventType:      "shot.execution.updated",
 		OrganizationID: record.OrgID,
 		ProjectID:      record.ProjectID,

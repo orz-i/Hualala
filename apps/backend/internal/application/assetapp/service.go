@@ -123,7 +123,7 @@ func (s *Service) CreateImportBatch(ctx context.Context, input CreateImportBatch
 	if err := s.assets.SaveImportBatch(ctx, record); err != nil {
 		return asset.ImportBatch{}, err
 	}
-	s.publishImportBatchUpdated(record.ID, record.OrgID, record.ProjectID, record.Status, "import_batch.created", "", "")
+	s.publishImportBatchUpdated(ctx, record.ID, record.OrgID, record.ProjectID, record.Status, "import_batch.created", "", "")
 	return record, nil
 }
 
@@ -196,7 +196,7 @@ func (s *Service) AddCandidateAsset(ctx context.Context, input AddCandidateAsset
 		return asset.CandidateAsset{}, err
 	}
 
-	s.publishImportBatchUpdated(importBatch.ID, importBatch.OrgID, importBatch.ProjectID, importBatch.Status, "candidate_asset.added", candidate.ID, "")
+	s.publishImportBatchUpdated(ctx, importBatch.ID, importBatch.OrgID, importBatch.ProjectID, importBatch.Status, "candidate_asset.added", candidate.ID, "")
 	return candidate, nil
 }
 
@@ -279,7 +279,7 @@ func (s *Service) BatchConfirmImportBatchItems(ctx context.Context, input BatchC
 		if err := s.assets.SaveImportBatch(ctx, batch); err != nil {
 			return nil, err
 		}
-		s.publishImportBatchUpdated(batch.ID, batch.OrgID, batch.ProjectID, batch.Status, "import_batch.confirmed", "", "")
+		s.publishImportBatchUpdated(ctx, batch.ID, batch.OrgID, batch.ProjectID, batch.Status, "import_batch.confirmed", "", "")
 	}
 
 	return confirmedItems, nil
@@ -388,7 +388,7 @@ func (s *Service) GetAssetProvenanceSummary(_ context.Context, input GetAssetPro
 	}, nil
 }
 
-func (s *Service) publishImportBatchUpdated(importBatchID string, organizationID string, projectID string, status string, reason string, candidateAssetID string, uploadSessionID string) {
+func (s *Service) publishImportBatchUpdated(ctx context.Context, importBatchID string, organizationID string, projectID string, status string, reason string, candidateAssetID string, uploadSessionID string) {
 	if s == nil || s.publisher == nil {
 		return
 	}
@@ -411,7 +411,7 @@ func (s *Service) publishImportBatchUpdated(importBatchID string, organizationID
 		return
 	}
 
-	s.publisher.Publish(events.Event{
+	s.publisher.PublishWithContext(ctx, events.Event{
 		EventType:      "asset.import_batch.updated",
 		OrganizationID: strings.TrimSpace(organizationID),
 		ProjectID:      projectID,

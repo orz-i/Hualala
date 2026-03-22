@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,7 +20,7 @@ import (
 )
 
 type IntegrationFixture struct {
-	Store    *db.MemoryStore
+	Store    db.RuntimeStore
 	Factory  runtime.Factory
 	Services runtime.ServiceSet
 }
@@ -37,10 +38,10 @@ func openIntegrationFixture(t *testing.T) *IntegrationFixture {
 }
 
 func (f *IntegrationFixture) ListProjectEvents(orgID string, projectID string) []events.Event {
-	if f == nil || f.Store == nil || f.Store.EventPublisher == nil {
+	if f == nil || f.Store == nil || f.Store.Publisher() == nil {
 		return nil
 	}
-	return f.Store.EventPublisher.List(orgID, projectID, "")
+	return f.Store.Publisher().List(orgID, projectID, "")
 }
 
 func (f *IntegrationFixture) ForceWorkflowRunState(t *testing.T, workflowRunID string, mutator func(*workflow.WorkflowRun)) workflow.WorkflowRun {
@@ -49,12 +50,14 @@ func (f *IntegrationFixture) ForceWorkflowRunState(t *testing.T, workflowRunID s
 	if f == nil || f.Store == nil {
 		t.Fatal("fixture store is required")
 	}
-	record, ok := f.Store.WorkflowRuns[workflowRunID]
+	record, ok := f.Store.GetWorkflowRun(workflowRunID)
 	if !ok {
 		t.Fatalf("workflow run %q not found", workflowRunID)
 	}
 	mutator(&record)
-	f.Store.WorkflowRuns[workflowRunID] = record
+	if err := f.Store.SaveWorkflowRun(context.Background(), record); err != nil {
+		t.Fatalf("SaveWorkflowRun returned error: %v", err)
+	}
 	return record
 }
 
@@ -65,7 +68,7 @@ func (f *IntegrationFixture) SeedBudget(t *testing.T, record billing.ProjectBudg
 		t.Fatal("fixture store is required")
 	}
 	if record.ID == "" {
-		record.ID = f.Store.NextBudgetID()
+		record.ID = f.Store.GenerateBudgetID()
 	}
 	if record.CreatedAt.IsZero() {
 		record.CreatedAt = time.Now().UTC()
@@ -73,7 +76,23 @@ func (f *IntegrationFixture) SeedBudget(t *testing.T, record billing.ProjectBudg
 	if record.UpdatedAt.IsZero() {
 		record.UpdatedAt = record.CreatedAt
 	}
-	f.Store.Budgets[record.ID] = record
+	if err := f.Store.SaveBudget(context.Background(), record); err != nil {
+		t.Fatalf("SaveBudget returned error: %v", err)
+	}
+	if record.ReservedCents > 0 {
+		usage := billing.UsageRecord{
+			ID:          f.Store.GenerateUsageRecordID(),
+			OrgID:       record.OrgID,
+			ProjectID:   record.ProjectID,
+			Meter:       "seeded_budget_reserve",
+			AmountCents: record.ReservedCents,
+			CreatedAt:   record.CreatedAt,
+		}
+		if err := f.Store.SaveUsageRecord(context.Background(), usage); err != nil {
+			t.Fatalf("SaveUsageRecord returned error: %v", err)
+		}
+		record.ReservedCents = usage.AmountCents
+	}
 	return record
 }
 

@@ -156,7 +156,7 @@ func (s *Service) CancelWorkflowRun(ctx context.Context, input CancelWorkflowRun
 		if err := s.repo.SaveWorkflowRun(ctx, record); err != nil {
 			return workflow.WorkflowRun{}, err
 		}
-		s.publishWorkflowUpdated(record)
+		s.publishWorkflowUpdated(ctx, record)
 		return record, nil
 	}
 	cancelStep, err := s.createAttemptStep(ctx, record, "cancel", workflow.StatusCompleted)
@@ -170,7 +170,7 @@ func (s *Service) CancelWorkflowRun(ctx context.Context, input CancelWorkflowRun
 	if err := s.repo.SaveWorkflowRun(ctx, record); err != nil {
 		return workflow.WorkflowRun{}, err
 	}
-	s.publishWorkflowUpdated(record)
+	s.publishWorkflowUpdated(ctx, record)
 	return record, nil
 }
 
@@ -211,7 +211,7 @@ func (s *Service) runAttempt(ctx context.Context, run workflow.WorkflowRun) (wor
 	if err := s.repo.SaveWorkflowRun(ctx, run); err != nil {
 		return workflow.WorkflowRun{}, err
 	}
-	s.publishWorkflowUpdated(run)
+	s.publishWorkflowUpdated(ctx, run)
 	return s.executeGateway(ctx, run, gatewayStep)
 }
 
@@ -241,7 +241,7 @@ func (s *Service) executeGateway(ctx context.Context, run workflow.WorkflowRun, 
 		if persistErr := s.repo.SaveWorkflowRun(ctx, run); persistErr != nil {
 			return workflow.WorkflowRun{}, persistErr
 		}
-		s.publishWorkflowUpdated(run)
+		s.publishWorkflowUpdated(ctx, run)
 		return run, nil
 	}
 	gatewayStep.Status = workflow.StatusCompleted
@@ -257,7 +257,7 @@ func (s *Service) executeGateway(ctx context.Context, run workflow.WorkflowRun, 
 	if err := s.repo.SaveWorkflowRun(ctx, run); err != nil {
 		return workflow.WorkflowRun{}, err
 	}
-	s.publishWorkflowUpdated(run)
+	s.publishWorkflowUpdated(ctx, run)
 	return run, nil
 }
 
@@ -308,7 +308,7 @@ func (s *Service) hasWorkflowStep(workflowRunID string, stepKey string) bool {
 	return false
 }
 
-func (s *Service) publishWorkflowUpdated(run workflow.WorkflowRun) {
+func (s *Service) publishWorkflowUpdated(ctx context.Context, run workflow.WorkflowRun) {
 	if s == nil || s.publisher == nil {
 		return
 	}
@@ -323,7 +323,7 @@ func (s *Service) publishWorkflowUpdated(run workflow.WorkflowRun) {
 	if err != nil {
 		return
 	}
-	s.publisher.Publish(events.Event{
+	s.publisher.PublishWithContext(ctx, events.Event{
 		EventType:      "workflow.updated",
 		OrganizationID: run.OrgID,
 		ProjectID:      run.ProjectID,

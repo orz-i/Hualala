@@ -42,8 +42,8 @@ func TestLoadFallsBackToSafeDefaults(t *testing.T) {
 	if got := cfg.DBDriver; got != "postgres" {
 		t.Fatalf("expected default DBDriver %q, got %q", "postgres", got)
 	}
-	if got := cfg.DatabaseURL; got != "postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable" {
-		t.Fatalf("expected default DatabaseURL %q, got %q", "postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable", got)
+	if got := cfg.DatabaseURL; got != "" {
+		t.Fatalf("expected default DatabaseURL to be empty, got %q", got)
 	}
 	if !cfg.AutoMigrate {
 		t.Fatalf("expected AutoMigrate to default to true")

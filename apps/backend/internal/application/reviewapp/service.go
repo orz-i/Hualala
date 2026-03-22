@@ -81,7 +81,7 @@ func (s *Service) CreateShotReview(ctx context.Context, input CreateShotReviewIn
 	if err := s.repo.SaveReview(ctx, record); err != nil {
 		return review.ShotReview{}, err
 	}
-	s.publishReviewEvent("shot.review.created", shotExecution.OrgID, shotExecution.ProjectID, "shot_review", record.ID, map[string]any{
+	s.publishReviewEvent(ctx, "shot.review.created", shotExecution.OrgID, shotExecution.ProjectID, "shot_review", record.ID, map[string]any{
 		"shot_execution_id": record.ShotExecutionID,
 		"review_id":         record.ID,
 		"conclusion":        record.Conclusion,
@@ -116,10 +116,10 @@ func (s *Service) CreateEvaluationRun(ctx context.Context, input CreateEvaluatio
 	if err := s.repo.SaveEvaluationRun(ctx, record); err != nil {
 		return review.EvaluationRun{}, err
 	}
-	s.publishReviewEvent("shot.evaluation.created", shotExecution.OrgID, shotExecution.ProjectID, "evaluation_run", record.ID, map[string]any{
-		"shot_execution_id": record.ShotExecutionID,
-		"evaluation_run_id": record.ID,
-		"status":            record.Status,
+	s.publishReviewEvent(ctx, "shot.evaluation.created", shotExecution.OrgID, shotExecution.ProjectID, "evaluation_run", record.ID, map[string]any{
+		"shot_execution_id":   record.ShotExecutionID,
+		"evaluation_run_id":   record.ID,
+		"status":              record.Status,
 		"failed_checks_count": len(record.FailedChecks),
 	})
 	return record, nil
@@ -160,7 +160,7 @@ func (s *Service) GetShotReviewSummary(ctx context.Context, input GetShotReviewS
 	}, nil
 }
 
-func (s *Service) publishReviewEvent(eventType string, organizationID string, projectID string, resourceType string, resourceID string, payload map[string]any) {
+func (s *Service) publishReviewEvent(ctx context.Context, eventType string, organizationID string, projectID string, resourceType string, resourceID string, payload map[string]any) {
 	if s == nil || s.eventPublisher == nil {
 		return
 	}
@@ -170,7 +170,7 @@ func (s *Service) publishReviewEvent(eventType string, organizationID string, pr
 		return
 	}
 
-	s.eventPublisher.Publish(events.Event{
+	s.eventPublisher.PublishWithContext(ctx, events.Event{
 		EventType:      eventType,
 		OrganizationID: organizationID,
 		ProjectID:      projectID,

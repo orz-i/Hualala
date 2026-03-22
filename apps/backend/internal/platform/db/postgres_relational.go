@@ -1083,6 +1083,11 @@ func clearMainTables(ctx context.Context, tx *sql.Tx) error {
 	statements := []string{
 		`DELETE FROM billing_events`,
 		`DELETE FROM usage_records`,
+		`DELETE FROM event_outbox`,
+		`DELETE FROM state_transitions`,
+		`DELETE FROM workflow_steps`,
+		`DELETE FROM workflow_runs`,
+		`DELETE FROM jobs`,
 		`DELETE FROM shot_reviews`,
 		`DELETE FROM evaluation_runs`,
 		`DELETE FROM shot_candidate_assets`,
