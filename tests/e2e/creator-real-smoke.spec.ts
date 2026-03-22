@@ -19,6 +19,8 @@ test("creator real smoke: shot workbench completes gate checks against backend",
 
   await expect(page.getByText(seed.creatorShot.shotExecutionId)).toBeVisible();
   await expect(page.getByText("1 个候选素材")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "候选清单" })).toBeVisible();
+  await expect(page.getByText(/主素材：/)).toBeVisible();
 
   await page.getByRole("button", { name: "Gate 检查" }).click();
   await expect(page.getByText("正在执行 Gate 检查")).toBeVisible();
@@ -50,6 +52,8 @@ test("creator real smoke: import workbench confirms matches and selects primary 
 
   await expect(page.getByText(seed.creatorImport.importBatchId)).toBeVisible();
   await expect(page.getByText("1 个上传会话")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "候选素材池" })).toBeVisible();
+  await page.getByRole("checkbox").first().check();
 
   await page.getByRole("button", { name: "确认匹配" }).click();
   await expect(page.getByText("正在确认匹配")).toBeVisible();

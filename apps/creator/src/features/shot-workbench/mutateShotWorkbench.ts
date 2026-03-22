@@ -60,3 +60,27 @@ export async function submitShotForReview({
     shotExecutionId,
   });
 }
+
+export async function selectPrimaryAssetForShotWorkbench({
+  shotExecutionId,
+  assetId,
+  orgId,
+  userId,
+  baseUrl,
+  fetchFn = fetch,
+}: ShotWorkbenchMutationInput & {
+  assetId: string;
+}): Promise<void> {
+  const client = createExecutionClient({
+    baseUrl,
+    fetchFn,
+    identity: {
+      orgId,
+      userId,
+    },
+  });
+  await client.selectPrimaryAsset({
+    shotExecutionId,
+    assetId,
+  });
+}

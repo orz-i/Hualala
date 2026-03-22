@@ -5,6 +5,8 @@ import { ActionFeedback, type ActionFeedbackModel } from "../shared/ActionFeedba
 type CandidateAssetSummary = {
   id: string;
   assetId: string;
+  shotExecutionId: string;
+  sourceRunId: string;
 };
 
 type ReviewSummary = {
@@ -77,6 +79,10 @@ export type ShotWorkbenchPageProps = {
     projectId: string;
     orgId: string;
   }) => void;
+  onSelectPrimaryAsset?: (input: {
+    shotExecutionId: string;
+    assetId: string;
+  }) => void;
   onRetryWorkflowRun?: (input: { workflowRunId: string }) => void;
   feedback?: ActionFeedbackModel;
 };
@@ -105,6 +111,7 @@ export function ShotWorkbenchPage({
   onRunSubmissionGateChecks,
   onSubmitShotForReview,
   onStartWorkflow,
+  onSelectPrimaryAsset,
   onRetryWorkflowRun,
   feedback,
 }: ShotWorkbenchPageProps) {
@@ -405,25 +412,79 @@ export function ShotWorkbenchPage({
 
         <section style={panelStyle}>
           <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("shot.list.title")}</h2>
-          <div style={{ display: "grid", gap: "12px" }}>
-            {workbench.candidateAssets.map((candidate) => (
-              <article
-                key={candidate.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: "12px",
-                  padding: "14px 16px",
-                  borderRadius: "14px",
-                  background: "rgba(255, 255, 255, 0.82)",
-                  border: "1px solid rgba(148, 163, 184, 0.18)",
-                }}
-              >
-                <span>{candidate.id}</span>
-                <strong>{candidate.assetId}</strong>
-              </article>
-            ))}
-          </div>
+          {workbench.candidateAssets.length === 0 ? (
+            <p style={metricStyle}>{t("shot.list.empty")}</p>
+          ) : (
+            <div style={{ display: "grid", gap: "12px" }}>
+              {workbench.candidateAssets.map((candidate, index) => {
+                const isPrimary = candidate.assetId === workbench.shotExecution.primaryAssetId;
+                const canSelectPrimary =
+                  Boolean(onSelectPrimaryAsset) &&
+                  Boolean(candidate.assetId) &&
+                  !isPrimary;
+
+                return (
+                  <article
+                    key={candidate.id || index}
+                    style={{
+                      display: "grid",
+                      gap: "10px",
+                      padding: "14px 16px",
+                      borderRadius: "14px",
+                      background: "rgba(255, 255, 255, 0.82)",
+                      border: "1px solid rgba(148, 163, 184, 0.18)",
+                    }}
+                  >
+                    <strong>
+                      {t("shot.list.candidateId", {
+                        id: candidate.id || `candidate-${index + 1}`,
+                      })}
+                    </strong>
+                    <p style={metricStyle}>
+                      {t("shot.list.assetId", {
+                        assetId: candidate.assetId || t("shot.timeline.none"),
+                      })}
+                    </p>
+                    <p style={metricStyle}>
+                      {t("shot.list.sourceRunId", {
+                        sourceRunId: candidate.sourceRunId || t("shot.timeline.none"),
+                      })}
+                    </p>
+                    {isPrimary ? (
+                      <strong style={{ color: "#0f766e" }}>{t("shot.list.primaryBadge")}</strong>
+                    ) : (
+                      <button
+                        type="button"
+                        style={{
+                          width: "fit-content",
+                          border: 0,
+                          borderRadius: "999px",
+                          padding: "10px 16px",
+                          background: "#0f766e",
+                          color: "#ecfeff",
+                          cursor: canSelectPrimary ? "pointer" : "not-allowed",
+                          opacity: canSelectPrimary ? 1 : 0.55,
+                        }}
+                        disabled={!canSelectPrimary}
+                        onClick={() => {
+                          if (!canSelectPrimary) {
+                            return;
+                          }
+                          onSelectPrimaryAsset?.({
+                            shotExecutionId:
+                              candidate.shotExecutionId || workbench.shotExecution.id,
+                            assetId: candidate.assetId,
+                          });
+                        }}
+                      >
+                        {t("shot.actions.selectPrimaryAsset")}
+                      </button>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
       </section>
     </main>

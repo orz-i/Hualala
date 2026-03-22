@@ -34,6 +34,8 @@ type GetImportBatchWorkbenchResponse = {
   candidateAssets?: Array<{
     id?: string;
     assetId?: string;
+    shotExecutionId?: string;
+    sourceRunId?: string;
   }>;
   shotExecutions?: Array<{
     id?: string;
@@ -92,6 +94,8 @@ export async function loadImportBatchWorkbench({
     candidateAssets: (payload.candidateAssets ?? []).map((candidate) => ({
       id: candidate.id ?? "",
       assetId: candidate.assetId ?? "",
+      shotExecutionId: candidate.shotExecutionId ?? "",
+      sourceRunId: candidate.sourceRunId ?? "",
     })),
     shotExecutions: (payload.shotExecutions ?? []).map((shotExecution) => ({
       id: shotExecution.id ?? "",

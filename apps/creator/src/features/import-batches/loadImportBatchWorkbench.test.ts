@@ -31,7 +31,14 @@ describe("loadImportBatchWorkbench", () => {
         },
       ],
       items: [{ id: "item-1", status: "matched_pending_confirm", assetId: "asset-1" }],
-      candidateAssets: [{ id: "candidate-1", assetId: "asset-1" }],
+      candidateAssets: [
+        {
+          id: "candidate-1",
+          assetId: "asset-1",
+          shotExecutionId: "shot-exec-1",
+          sourceRunId: "source-run-1",
+        },
+      ],
       shotExecutions: [{ id: "shot-exec-1", status: "candidate_ready", primaryAssetId: "" }],
     });
     vi.mocked(createAssetClient).mockReturnValue({
@@ -63,7 +70,56 @@ describe("loadImportBatchWorkbench", () => {
       retryCount: 2,
       resumeHint: "upload complete for scene.png",
     });
-    expect(result.candidateAssets).toHaveLength(1);
+    expect(result.candidateAssets).toEqual([
+      {
+        id: "candidate-1",
+        assetId: "asset-1",
+        shotExecutionId: "shot-exec-1",
+        sourceRunId: "source-run-1",
+      },
+    ]);
     expect(result.shotExecutions[0]?.status).toBe("candidate_ready");
+  });
+
+  it("preserves candidate asset order and falls back missing metadata to empty strings", async () => {
+    const getImportBatchWorkbenchMock = vi.fn().mockResolvedValue({
+      importBatch: {
+        id: "batch-2",
+      },
+      candidateAssets: [
+        {
+          id: "candidate-2",
+          assetId: "asset-2",
+          shotExecutionId: "shot-exec-2",
+          sourceRunId: "source-run-2",
+        },
+        {
+          id: "candidate-3",
+        },
+      ],
+    });
+    vi.mocked(createAssetClient).mockReturnValue({
+      getImportBatchWorkbench: getImportBatchWorkbenchMock,
+    } as never);
+
+    const result = await loadImportBatchWorkbench({
+      importBatchId: "batch-2",
+      fetchFn: vi.fn(),
+    });
+
+    expect(result.candidateAssets).toEqual([
+      {
+        id: "candidate-2",
+        assetId: "asset-2",
+        shotExecutionId: "shot-exec-2",
+        sourceRunId: "source-run-2",
+      },
+      {
+        id: "candidate-3",
+        assetId: "",
+        shotExecutionId: "",
+        sourceRunId: "",
+      },
+    ]);
   });
 });
