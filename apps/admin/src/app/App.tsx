@@ -389,7 +389,7 @@ export function App() {
       execute: (input: {
         orgId: string;
         userId: string;
-      }) => Promise<void>;
+      }) => Promise<unknown>;
     }) => {
       if (governanceActionPending) {
         return;
@@ -1085,7 +1085,7 @@ export function App() {
                 ...options,
                 displayLocale: input.displayLocale,
                 timezone: input.timezone,
-              }).then(() => undefined),
+              }),
           });
         }}
         onUpdateMemberRole={(input) => {
@@ -1097,7 +1097,7 @@ export function App() {
                 ...options,
                 memberId: input.memberId,
                 roleId: input.roleId,
-              }).then(() => undefined),
+              }),
           });
         }}
         onUpdateOrgLocaleSettings={(input) => {
@@ -1108,7 +1108,7 @@ export function App() {
               updateOrgLocaleSettings({
                 ...options,
                 defaultLocale: input.defaultLocale,
-              }).then(() => undefined),
+              }),
           });
         }}
         onCreateRole={(input) => {
@@ -1121,7 +1121,7 @@ export function App() {
                 code: input.code,
                 displayName: input.displayName,
                 permissionCodes: input.permissionCodes,
-              }).then(() => undefined),
+              }),
           });
         }}
         onUpdateRole={(input) => {
@@ -1134,7 +1134,7 @@ export function App() {
                 roleId: input.roleId,
                 displayName: input.displayName,
                 permissionCodes: input.permissionCodes,
-              }).then(() => undefined),
+              }),
           });
         }}
         onDeleteRole={(input) => {
