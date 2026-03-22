@@ -1,14 +1,41 @@
 import { expect, test } from "@playwright/test";
 import { mockConnectRoutes } from "./fixtures/mockConnectRoutes";
 
+const MOCK_ADMIN_URL =
+  "http://127.0.0.1:4173/?projectId=project-live-1&shotExecutionId=shot-exec-live-1&orgId=org-live-1";
+
+async function postJson<TResponse>(
+  page,
+  path: string,
+  body: Record<string, unknown>,
+): Promise<{ status: number; json: TResponse }> {
+  return page.evaluate(
+    async ({ requestPath, requestBody }) => {
+      const response = await fetch(requestPath, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+      return {
+        status: response.status,
+        json: await response.json(),
+      };
+    },
+    {
+      requestPath: path,
+      requestBody: body,
+    },
+  );
+}
+
 test("admin smoke: renders overview and updates budget", async ({ page }) => {
   await mockConnectRoutes(page, {
     admin: "success",
   });
 
-  await page.goto(
-    "http://127.0.0.1:4173/?projectId=project-live-1&shotExecutionId=shot-exec-live-1&orgId=org-live-1",
-  );
+  await page.goto(MOCK_ADMIN_URL);
   await page.getByRole("button", { name: "进入开发会话" }).click();
 
   await expect(page.getByText("project-live-1")).toBeVisible();
@@ -35,9 +62,7 @@ test("admin smoke: keeps overview visible on budget update failure", async ({ pa
     admin: "failure",
   });
 
-  await page.goto(
-    "http://127.0.0.1:4173/?projectId=project-live-1&shotExecutionId=shot-exec-live-1&orgId=org-live-1",
-  );
+  await page.goto(MOCK_ADMIN_URL);
   await page.getByRole("button", { name: "进入开发会话" }).click();
 
   await expect(page.getByText("project-live-1")).toBeVisible();
@@ -53,9 +78,7 @@ test("admin smoke: manages custom roles and permission edits", async ({ page }) 
     admin: "success",
   });
 
-  await page.goto(
-    "http://127.0.0.1:4173/?projectId=project-live-1&shotExecutionId=shot-exec-live-1&orgId=org-live-1",
-  );
+  await page.goto(MOCK_ADMIN_URL);
   await page.getByRole("button", { name: "进入开发会话" }).click();
 
   await expect(page.getByText("角色与权限编辑")).toBeVisible();
@@ -82,4 +105,66 @@ test("admin smoke: manages custom roles and permission edits", async ({ page }) 
   await producerCard.getByRole("button", { name: "删除角色" }).click();
   await expect(page.getByText("角色已删除")).toBeVisible();
   await expect(page.getByLabel("编辑角色 producer 的名称")).toHaveCount(0);
+});
+
+test("admin smoke: mock workflow and asset routes handle edge cases consistently", async ({
+  page,
+}) => {
+  await mockConnectRoutes(page, {
+    admin: "success",
+  });
+
+  await page.goto(MOCK_ADMIN_URL);
+
+  const workflowDetail = await postJson<{
+    workflowSteps: Array<{
+      completedAt?: { seconds: string; nanos: number };
+      failedAt?: { seconds: string; nanos: number };
+    }>;
+  }>(page, "/hualala.workflow.v1.WorkflowService/GetWorkflowRun", {
+    workflowRunId: "workflow-run-1",
+  });
+  expect(workflowDetail.status).toBe(200);
+  expect(workflowDetail.json.workflowSteps[1]).not.toHaveProperty("completedAt");
+  expect(workflowDetail.json.workflowSteps[1]?.failedAt?.seconds).toBeTruthy();
+
+  const missingRetry = await postJson<{ error: string }>(
+    page,
+    "/hualala.workflow.v1.WorkflowService/RetryWorkflowRun",
+    {
+      workflowRunId: "workflow-run-missing",
+    },
+  );
+  expect(missingRetry.status).toBe(404);
+  expect(missingRetry.json.error).toBe("workflow run not found");
+
+  const missingCancel = await postJson<{ error: string }>(
+    page,
+    "/hualala.workflow.v1.WorkflowService/CancelWorkflowRun",
+    {
+      workflowRunId: "workflow-run-missing",
+    },
+  );
+  expect(missingCancel.status).toBe(404);
+  expect(missingCancel.json.error).toBe("workflow run not found");
+
+  const missingAsset = await postJson<{ error: string }>(
+    page,
+    "/hualala.asset.v1.AssetService/GetAssetProvenanceSummary",
+    {
+      assetId: "",
+    },
+  );
+  expect(missingAsset.status).toBe(404);
+  expect(missingAsset.json.error).toBe("asset not found");
+
+  const unknownAsset = await postJson<{
+    asset: { id: string };
+    candidateAssetId: string;
+  }>(page, "/hualala.asset.v1.AssetService/GetAssetProvenanceSummary", {
+    assetId: "asset-missing",
+  });
+  expect(unknownAsset.status).toBe(200);
+  expect(unknownAsset.json.asset.id).toBe("asset-missing");
+  expect(unknownAsset.json.candidateAssetId).toBe("");
 });

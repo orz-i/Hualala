@@ -165,6 +165,12 @@ function createTimestamp(seconds: number): MockTimestamp {
   };
 }
 
+function bumpTimestamp(timestamp: MockTimestamp | undefined, secondsToAdd = 300): MockTimestamp {
+  const parsedSeconds = Number(timestamp?.seconds ?? 1710000000);
+  const baseSeconds = Number.isFinite(parsedSeconds) ? parsedSeconds : 1710000000;
+  return createTimestamp(baseSeconds + secondsToAdd);
+}
+
 function createWorkflowSteps({
   workflowRunId,
   attemptCount,
@@ -198,7 +204,10 @@ function createWorkflowSteps({
       errorCode: gatewayStatus === "failed" ? "provider_error" : "",
       errorMessage: gatewayStatus === "failed" ? lastError : "",
       startedAt: createTimestamp(gatewayStart),
-      completedAt: gatewayStatus === "running" ? undefined : createTimestamp(gatewayStart + 5),
+      completedAt:
+        gatewayStatus === "running" || gatewayStatus === "failed"
+          ? undefined
+          : createTimestamp(gatewayStart + 5),
       failedAt: gatewayStatus === "failed" ? createTimestamp(gatewayStart + 5) : undefined,
     },
   ];
@@ -380,9 +389,9 @@ function buildAssetProvenancePayload({
   assetId: string;
 }) {
   const sourceRunId = workflowRuns[0]?.id ?? "workflow-run-1";
-  const candidateAsset =
-    creatorImportState.candidateAssets.find((candidate) => candidate.assetId === assetId) ??
-    creatorImportState.candidateAssets[0];
+  const candidateAsset = creatorImportState.candidateAssets.find(
+    (candidate) => candidate.assetId === assetId,
+  );
 
   return {
     asset: {
@@ -738,30 +747,33 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
 
       if (pathname === "/hualala.workflow.v1.WorkflowService/RetryWorkflowRun") {
         const body = route.request().postDataJSON() as { workflowRunId?: string };
-        creatorShotWorkflowRuns = creatorShotWorkflowRuns.map((run) => {
-          if (run.id !== body.workflowRunId) {
-            return run;
-          }
-          const nextAttemptCount = run.attemptCount + 1;
-          return {
-            ...run,
-            status: "running",
-            currentStep: `attempt_${nextAttemptCount}.gateway`,
+        const recordIndex = creatorShotWorkflowRuns.findIndex((run) => run.id === body.workflowRunId);
+        if (recordIndex === -1) {
+          await route.fulfill(jsonResponse(404, { error: "workflow run not found" }));
+          return;
+        }
+        const current = creatorShotWorkflowRuns[recordIndex]!;
+        const nextAttemptCount = current.attemptCount + 1;
+        const record: MockWorkflowRun = {
+          ...current,
+          status: "running",
+          currentStep: `attempt_${nextAttemptCount}.gateway`,
+          attemptCount: nextAttemptCount,
+          lastError: "",
+          updatedAt: bumpTimestamp(current.updatedAt),
+          steps: createWorkflowSteps({
+            workflowRunId: current.id,
             attemptCount: nextAttemptCount,
+            gatewayStatus: "running",
             lastError: "",
-            updatedAt: createTimestamp(1710000600),
-            steps: createWorkflowSteps({
-              workflowRunId: run.id,
-              attemptCount: nextAttemptCount,
-              gatewayStatus: "running",
-              lastError: "",
-            }),
-          };
-        });
-        const record = creatorShotWorkflowRuns.find((run) => run.id === body.workflowRunId);
+          }),
+        };
+        creatorShotWorkflowRuns = creatorShotWorkflowRuns.map((run, index) =>
+          index === recordIndex ? record : run,
+        );
         await route.fulfill(
           jsonResponse(200, {
-            workflowRun: record ? summarizeWorkflowRun(record) : undefined,
+            workflowRun: summarizeWorkflowRun(record),
           }),
         );
         return;
@@ -769,28 +781,31 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
 
       if (pathname === "/hualala.workflow.v1.WorkflowService/CancelWorkflowRun") {
         const body = route.request().postDataJSON() as { workflowRunId?: string };
-        creatorShotWorkflowRuns = creatorShotWorkflowRuns.map((run) => {
-          if (run.id !== body.workflowRunId) {
-            return run;
-          }
-          return {
-            ...run,
-            status: "cancelled",
-            currentStep: `attempt_${run.attemptCount}.cancel`,
+        const recordIndex = creatorShotWorkflowRuns.findIndex((run) => run.id === body.workflowRunId);
+        if (recordIndex === -1) {
+          await route.fulfill(jsonResponse(404, { error: "workflow run not found" }));
+          return;
+        }
+        const current = creatorShotWorkflowRuns[recordIndex]!;
+        const record: MockWorkflowRun = {
+          ...current,
+          status: "cancelled",
+          currentStep: `attempt_${current.attemptCount}.cancel`,
+          lastError: "",
+          updatedAt: bumpTimestamp(current.updatedAt),
+          steps: createWorkflowSteps({
+            workflowRunId: current.id,
+            attemptCount: current.attemptCount,
+            gatewayStatus: "cancelled",
             lastError: "",
-            updatedAt: createTimestamp(1710000900),
-            steps: createWorkflowSteps({
-              workflowRunId: run.id,
-              attemptCount: run.attemptCount,
-              gatewayStatus: "cancelled",
-              lastError: "",
-            }),
-          };
-        });
-        const record = creatorShotWorkflowRuns.find((run) => run.id === body.workflowRunId);
+          }),
+        };
+        creatorShotWorkflowRuns = creatorShotWorkflowRuns.map((run, index) =>
+          index === recordIndex ? record : run,
+        );
         await route.fulfill(
           jsonResponse(200, {
-            workflowRun: record ? summarizeWorkflowRun(record) : undefined,
+            workflowRun: summarizeWorkflowRun(record),
           }),
         );
         return;
@@ -827,6 +842,11 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
 
       if (pathname === "/hualala.asset.v1.AssetService/GetAssetProvenanceSummary") {
         const body = route.request().postDataJSON() as { assetId?: string };
+        const assetId = body.assetId ?? creatorImportState.items[0]?.assetId;
+        if (!assetId) {
+          await route.fulfill(jsonResponse(404, { error: "asset not found" }));
+          return;
+        }
         await route.fulfill(
           jsonResponse(
             200,
@@ -835,7 +855,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
               creatorShotState,
               creatorImportState,
               workflowRuns: creatorShotWorkflowRuns,
-              assetId: body.assetId ?? creatorImportState.items[0]?.assetId ?? "",
+              assetId,
             }),
           ),
         );
@@ -1109,25 +1129,26 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       if (pathname === "/hualala.workflow.v1.WorkflowService/RetryWorkflowRun") {
         const body = route.request().postDataJSON() as { workflowRunId?: string };
         const current = creatorShotWorkflowRuns.find((run) => run.id === body.workflowRunId);
-        const nextAttemptCount = (current?.attemptCount ?? 1) + 1;
+        if (!current) {
+          await route.fulfill(jsonResponse(404, { error: "workflow run not found" }));
+          return;
+        }
+        const nextAttemptCount = current.attemptCount + 1;
         const workflowRun: MockWorkflowRun = {
-          id: current?.id ?? body.workflowRunId ?? "workflow-run-retry",
-          workflowType: current?.workflowType ?? "shot_pipeline",
+          id: current.id,
+          workflowType: current.workflowType,
           status: "running",
-          resourceId: current?.resourceId ?? creatorShotState.workbench.shotExecution.id,
-          projectId:
-            current?.projectId ??
-            creatorShotState.workbench.shotExecution.projectId ??
-            "project-live-1",
-          provider: current?.provider ?? "seedance",
+          resourceId: current.resourceId,
+          projectId: current.projectId,
+          provider: current.provider,
           currentStep: `attempt_${nextAttemptCount}.gateway`,
           attemptCount: nextAttemptCount,
           lastError: "",
-          externalRequestId: current?.externalRequestId ?? "request-retry",
-          createdAt: current?.createdAt ?? createTimestamp(1710000000),
-          updatedAt: createTimestamp(1710000600),
+          externalRequestId: current.externalRequestId,
+          createdAt: current.createdAt,
+          updatedAt: bumpTimestamp(current.updatedAt),
           steps: createWorkflowSteps({
-            workflowRunId: current?.id ?? body.workflowRunId ?? "workflow-run-retry",
+            workflowRunId: current.id,
             attemptCount: nextAttemptCount,
             gatewayStatus: "running",
             lastError: "",
