@@ -219,4 +219,60 @@ describe("asset monitor loaders", () => {
     expect(result.importBatchId).toBe("import-batch-9");
     expect(result.variantCount).toBe(2);
   });
+
+  it("throws when import batch detail payload is incomplete", async () => {
+    const fetchFn = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/hualala.asset.v1.AssetService/GetImportBatchWorkbench")) {
+        return new Response(
+          JSON.stringify({
+            importBatch: {
+              projectId: "project-live-1",
+            },
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response("unexpected", { status: 500 });
+    });
+
+    await expect(
+      loadImportBatchDetails({
+        importBatchId: "import-batch-missing",
+        orgId: "org-live-1",
+        userId: "user-live-1",
+        baseUrl: "http://127.0.0.1:8080",
+        fetchFn,
+      }),
+    ).rejects.toThrow("admin: import batch detail payload is incomplete");
+  });
+
+  it("throws when asset provenance payload is incomplete", async () => {
+    const fetchFn = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/hualala.asset.v1.AssetService/GetAssetProvenanceSummary")) {
+        return new Response(
+          JSON.stringify({
+            asset: {
+              projectId: "project-live-1",
+            },
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response("unexpected", { status: 500 });
+    });
+
+    await expect(
+      loadAssetProvenanceDetails({
+        assetId: "media-asset-missing",
+        orgId: "org-live-1",
+        userId: "user-live-1",
+        baseUrl: "http://127.0.0.1:8080",
+        fetchFn,
+      }),
+    ).rejects.toThrow("admin: asset provenance payload is incomplete");
+  });
 });
