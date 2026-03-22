@@ -112,6 +112,40 @@ type CreatorImportState = {
   afterSelect?: Omit<CreatorImportState, "afterConfirm" | "afterSelect">;
 };
 
+type MockTimestamp = {
+  seconds: string;
+  nanos: number;
+};
+
+type MockWorkflowStep = {
+  id: string;
+  workflowRunId: string;
+  stepKey: string;
+  stepOrder: number;
+  status: string;
+  errorCode?: string;
+  errorMessage?: string;
+  startedAt?: MockTimestamp;
+  completedAt?: MockTimestamp;
+  failedAt?: MockTimestamp;
+};
+
+type MockWorkflowRun = {
+  id: string;
+  workflowType: string;
+  status: string;
+  resourceId: string;
+  projectId: string;
+  provider: string;
+  currentStep: string;
+  attemptCount: number;
+  lastError: string;
+  externalRequestId: string;
+  createdAt: MockTimestamp;
+  updatedAt: MockTimestamp;
+  steps: MockWorkflowStep[];
+};
+
 function jsonResponse(status: number, payload: unknown) {
   return {
     status,
@@ -122,6 +156,251 @@ function jsonResponse(status: number, payload: unknown) {
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function createTimestamp(seconds: number): MockTimestamp {
+  return {
+    seconds: String(seconds),
+    nanos: 0,
+  };
+}
+
+function createWorkflowSteps({
+  workflowRunId,
+  attemptCount,
+  gatewayStatus,
+  lastError,
+}: {
+  workflowRunId: string;
+  attemptCount: number;
+  gatewayStatus: "running" | "failed" | "cancelled";
+  lastError: string;
+}): MockWorkflowStep[] {
+  const dispatchStart = 1710000000 + (attemptCount - 1) * 60;
+  const gatewayStart = dispatchStart + 10;
+
+  const steps: MockWorkflowStep[] = [
+    {
+      id: `${workflowRunId}-dispatch-${attemptCount}`,
+      workflowRunId,
+      stepKey: `attempt_${attemptCount}.dispatch`,
+      stepOrder: 1,
+      status: "completed",
+      startedAt: createTimestamp(dispatchStart),
+      completedAt: createTimestamp(dispatchStart + 5),
+    },
+    {
+      id: `${workflowRunId}-gateway-${attemptCount}`,
+      workflowRunId,
+      stepKey: `attempt_${attemptCount}.gateway`,
+      stepOrder: 2,
+      status: gatewayStatus === "cancelled" ? "completed" : gatewayStatus,
+      errorCode: gatewayStatus === "failed" ? "provider_error" : "",
+      errorMessage: gatewayStatus === "failed" ? lastError : "",
+      startedAt: createTimestamp(gatewayStart),
+      completedAt: gatewayStatus === "running" ? undefined : createTimestamp(gatewayStart + 5),
+      failedAt: gatewayStatus === "failed" ? createTimestamp(gatewayStart + 5) : undefined,
+    },
+  ];
+
+  if (gatewayStatus === "cancelled") {
+    steps.push({
+      id: `${workflowRunId}-cancel-${attemptCount}`,
+      workflowRunId,
+      stepKey: `attempt_${attemptCount}.cancel`,
+      stepOrder: 3,
+      status: "completed",
+      startedAt: createTimestamp(gatewayStart + 6),
+      completedAt: createTimestamp(gatewayStart + 8),
+    });
+  }
+
+  return steps;
+}
+
+function buildInitialWorkflowRuns({
+  projectId,
+  resourceId,
+}: {
+  projectId: string;
+  resourceId: string;
+}): MockWorkflowRun[] {
+  return [
+    {
+      id: "workflow-run-1",
+      workflowType: "shot_pipeline",
+      status: "failed",
+      resourceId,
+      projectId,
+      provider: "seedance",
+      currentStep: "attempt_1.gateway",
+      attemptCount: 1,
+      lastError: "provider rejected request",
+      externalRequestId: "request-1",
+      createdAt: createTimestamp(1710000000),
+      updatedAt: createTimestamp(1710000300),
+      steps: createWorkflowSteps({
+        workflowRunId: "workflow-run-1",
+        attemptCount: 1,
+        gatewayStatus: "failed",
+        lastError: "provider rejected request",
+      }),
+    },
+  ];
+}
+
+function summarizeWorkflowRun(record: MockWorkflowRun) {
+  return {
+    id: record.id,
+    projectId: record.projectId,
+    resourceId: record.resourceId,
+    workflowType: record.workflowType,
+    status: record.status,
+    provider: record.provider,
+    currentStep: record.currentStep,
+    attemptCount: record.attemptCount,
+    lastError: record.lastError,
+    externalRequestId: record.externalRequestId,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  };
+}
+
+function buildImportBatchSummary({
+  adminState,
+  creatorImportState,
+}: {
+  adminState: AdminState;
+  creatorImportState: CreatorImportState;
+}) {
+  return {
+    id: creatorImportState.importBatch.id,
+    orgId: adminState.governance.currentSession.orgId,
+    projectId: adminState.budgetSnapshot.projectId,
+    operatorId: adminState.governance.currentSession.userId,
+    sourceType: creatorImportState.importBatch.sourceType,
+    status: creatorImportState.importBatch.status,
+    uploadSessionCount: creatorImportState.uploadSessions.length,
+    itemCount: creatorImportState.items.length,
+    confirmedItemCount: creatorImportState.items.filter((item) => item.status === "confirmed").length,
+    candidateAssetCount: creatorImportState.candidateAssets.length,
+    mediaAssetCount: Array.from(
+      new Set(creatorImportState.items.map((item) => item.assetId).filter(Boolean)),
+    ).length,
+    updatedAt: "2024-03-09T16:10:00.000Z",
+  };
+}
+
+function buildImportBatchWorkbenchPayload({
+  adminState,
+  creatorShotState,
+  creatorImportState,
+  workflowRuns,
+}: {
+  adminState: AdminState;
+  creatorShotState: CreatorShotState;
+  creatorImportState: CreatorImportState;
+  workflowRuns: MockWorkflowRun[];
+}) {
+  const projectId = adminState.budgetSnapshot.projectId;
+  const orgId = adminState.governance.currentSession.orgId;
+  const operatorId = adminState.governance.currentSession.userId;
+  const shotExecutionId = creatorShotState.workbench.shotExecution.id;
+  const shotId = creatorShotState.workbench.shotExecution.shotId;
+  const sourceRunId = workflowRuns[0]?.id ?? "workflow-run-1";
+  const assetIds = Array.from(
+    new Set(
+      [
+        ...creatorImportState.items.map((item) => item.assetId),
+        ...creatorImportState.candidateAssets.map((candidate) => candidate.assetId),
+        ...creatorImportState.shotExecutions.map((execution) => execution.primaryAssetId),
+      ].filter(Boolean),
+    ),
+  );
+
+  return {
+    importBatch: {
+      id: creatorImportState.importBatch.id,
+      orgId,
+      projectId,
+      operatorId,
+      sourceType: creatorImportState.importBatch.sourceType,
+      status: creatorImportState.importBatch.status,
+    },
+    uploadSessions: creatorImportState.uploadSessions.map((session, index) => ({
+      id: session.id,
+      fileName: `upload-${index + 1}.png`,
+      checksum: `sha256:${session.id}`,
+      sizeBytes: 2048 + index,
+      retryCount: 0,
+      status: session.status,
+      resumeHint: `resume-${session.id}`,
+    })),
+    items: creatorImportState.items.map((item) => ({
+      id: item.id,
+      status: item.status,
+      assetId: item.assetId,
+    })),
+    candidateAssets: creatorImportState.candidateAssets.map((candidate) => ({
+      id: candidate.id,
+      shotExecutionId,
+      assetId: candidate.assetId,
+      sourceRunId,
+    })),
+    mediaAssets: assetIds.map((assetId) => ({
+      id: assetId,
+      projectId,
+      sourceType: creatorImportState.importBatch.sourceType,
+      rightsStatus: "clear",
+      importBatchId: creatorImportState.importBatch.id,
+      locale: "zh-CN",
+      aiAnnotated: true,
+    })),
+    shotExecutions: creatorImportState.shotExecutions.map((execution) => ({
+      id: execution.id,
+      shotId,
+      status: execution.status,
+      primaryAssetId: execution.primaryAssetId,
+      currentRunId: sourceRunId,
+    })),
+  };
+}
+
+function buildAssetProvenancePayload({
+  adminState,
+  creatorShotState,
+  creatorImportState,
+  workflowRuns,
+  assetId,
+}: {
+  adminState: AdminState;
+  creatorShotState: CreatorShotState;
+  creatorImportState: CreatorImportState;
+  workflowRuns: MockWorkflowRun[];
+  assetId: string;
+}) {
+  const sourceRunId = workflowRuns[0]?.id ?? "workflow-run-1";
+  const candidateAsset =
+    creatorImportState.candidateAssets.find((candidate) => candidate.assetId === assetId) ??
+    creatorImportState.candidateAssets[0];
+
+  return {
+    asset: {
+      id: assetId,
+      projectId: adminState.budgetSnapshot.projectId,
+      sourceType: creatorImportState.importBatch.sourceType,
+      rightsStatus: "clear",
+      importBatchId: creatorImportState.importBatch.id,
+      locale: "zh-CN",
+      aiAnnotated: true,
+    },
+    provenanceSummary: `source_type=${creatorImportState.importBatch.sourceType} import_batch_id=${creatorImportState.importBatch.id} rights_status=clear`,
+    candidateAssetId: candidateAsset?.id ?? "",
+    shotExecutionId: creatorShotState.workbench.shotExecution.id,
+    sourceRunId,
+    importBatchId: creatorImportState.importBatch.id,
+    variantCount: 2,
+  };
 }
 
 function withGovernance(state: Omit<AdminState, "governance"> & Partial<Pick<AdminState, "governance">>) {
@@ -341,13 +620,13 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
   let creatorShotState = clone(
     phase1DemoScenarios.creatorShot[scenario.creatorShot ?? "success"],
   );
-  let creatorShotWorkflowRuns: Array<{
-    id: string;
-    workflowType: string;
-    status: string;
-    resourceId: string;
-    projectId: string;
-  }> = [];
+  let creatorShotWorkflowRuns: MockWorkflowRun[] = scenario.admin
+    ? buildInitialWorkflowRuns({
+        projectId:
+          creatorShotState.workbench.shotExecution.projectId ?? adminState.budgetSnapshot.projectId,
+        resourceId: creatorShotState.workbench.shotExecution.id,
+      })
+    : [];
   let creatorImportState = clone(
     phase1DemoScenarios.creatorImport[scenario.creatorImport ?? "success"],
   );
@@ -432,6 +711,157 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     }
 
     if (scenario.admin) {
+      if (pathname === "/hualala.workflow.v1.WorkflowService/ListWorkflowRuns") {
+        await route.fulfill(
+          jsonResponse(200, {
+            workflowRuns: creatorShotWorkflowRuns.map((record) => summarizeWorkflowRun(record)),
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.workflow.v1.WorkflowService/GetWorkflowRun") {
+        const body = route.request().postDataJSON() as { workflowRunId?: string };
+        const record = creatorShotWorkflowRuns.find((run) => run.id === body.workflowRunId);
+        if (!record) {
+          await route.fulfill(jsonResponse(404, { error: "workflow run not found" }));
+          return;
+        }
+        await route.fulfill(
+          jsonResponse(200, {
+            workflowRun: summarizeWorkflowRun(record),
+            workflowSteps: record.steps,
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.workflow.v1.WorkflowService/RetryWorkflowRun") {
+        const body = route.request().postDataJSON() as { workflowRunId?: string };
+        creatorShotWorkflowRuns = creatorShotWorkflowRuns.map((run) => {
+          if (run.id !== body.workflowRunId) {
+            return run;
+          }
+          const nextAttemptCount = run.attemptCount + 1;
+          return {
+            ...run,
+            status: "running",
+            currentStep: `attempt_${nextAttemptCount}.gateway`,
+            attemptCount: nextAttemptCount,
+            lastError: "",
+            updatedAt: createTimestamp(1710000600),
+            steps: createWorkflowSteps({
+              workflowRunId: run.id,
+              attemptCount: nextAttemptCount,
+              gatewayStatus: "running",
+              lastError: "",
+            }),
+          };
+        });
+        const record = creatorShotWorkflowRuns.find((run) => run.id === body.workflowRunId);
+        await route.fulfill(
+          jsonResponse(200, {
+            workflowRun: record ? summarizeWorkflowRun(record) : undefined,
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.workflow.v1.WorkflowService/CancelWorkflowRun") {
+        const body = route.request().postDataJSON() as { workflowRunId?: string };
+        creatorShotWorkflowRuns = creatorShotWorkflowRuns.map((run) => {
+          if (run.id !== body.workflowRunId) {
+            return run;
+          }
+          return {
+            ...run,
+            status: "cancelled",
+            currentStep: `attempt_${run.attemptCount}.cancel`,
+            lastError: "",
+            updatedAt: createTimestamp(1710000900),
+            steps: createWorkflowSteps({
+              workflowRunId: run.id,
+              attemptCount: run.attemptCount,
+              gatewayStatus: "cancelled",
+              lastError: "",
+            }),
+          };
+        });
+        const record = creatorShotWorkflowRuns.find((run) => run.id === body.workflowRunId);
+        await route.fulfill(
+          jsonResponse(200, {
+            workflowRun: record ? summarizeWorkflowRun(record) : undefined,
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.asset.v1.AssetService/ListImportBatches") {
+        await route.fulfill(
+          jsonResponse(200, {
+            importBatches: [
+              buildImportBatchSummary({
+                adminState,
+                creatorImportState,
+              }),
+            ],
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.asset.v1.AssetService/GetImportBatchWorkbench") {
+        await route.fulfill(
+          jsonResponse(
+            200,
+            buildImportBatchWorkbenchPayload({
+              adminState,
+              creatorShotState,
+              creatorImportState,
+              workflowRuns: creatorShotWorkflowRuns,
+            }),
+          ),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.asset.v1.AssetService/GetAssetProvenanceSummary") {
+        const body = route.request().postDataJSON() as { assetId?: string };
+        await route.fulfill(
+          jsonResponse(
+            200,
+            buildAssetProvenancePayload({
+              adminState,
+              creatorShotState,
+              creatorImportState,
+              workflowRuns: creatorShotWorkflowRuns,
+              assetId: body.assetId ?? creatorImportState.items[0]?.assetId ?? "",
+            }),
+          ),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.asset.v1.AssetService/BatchConfirmImportBatchItems") {
+        await delay(120);
+        creatorImportState = {
+          ...clone(creatorImportState),
+          ...clone(creatorImportState.afterConfirm ?? creatorImportState),
+        };
+        await route.fulfill(jsonResponse(200, {}));
+        return;
+      }
+
+      if (pathname === "/hualala.execution.v1.ExecutionService/SelectPrimaryAsset") {
+        await delay(120);
+        creatorImportState = {
+          ...clone(creatorImportState),
+          ...clone(creatorImportState.afterSelect ?? creatorImportState),
+        };
+        await route.fulfill(jsonResponse(200, {}));
+        return;
+      }
+
       if (pathname === "/hualala.billing.v1.BillingService/UpdateBudgetPolicy") {
         await delay(120);
         if (scenario.admin === "failure") {
@@ -632,7 +1062,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       if (pathname === "/hualala.workflow.v1.WorkflowService/ListWorkflowRuns") {
         await route.fulfill(
           jsonResponse(200, {
-            workflowRuns: clone(creatorShotWorkflowRuns),
+            workflowRuns: creatorShotWorkflowRuns.map((record) => summarizeWorkflowRun(record)),
           }),
         );
         return;
@@ -644,7 +1074,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
           resourceId?: string;
           projectId?: string;
         };
-        const workflowRun = {
+        const workflowRun: MockWorkflowRun = {
           id: `workflow-run-${creatorShotWorkflowRuns.length + 1}`,
           workflowType: body.workflowType ?? "shot_pipeline",
           status: "running",
@@ -653,11 +1083,24 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
             body.projectId ??
             creatorShotState.workbench.shotExecution.projectId ??
             "project-live-1",
+          provider: "seedance",
+          currentStep: "attempt_1.gateway",
+          attemptCount: 1,
+          lastError: "",
+          externalRequestId: `request-${creatorShotWorkflowRuns.length + 1}`,
+          createdAt: createTimestamp(1710000000 + creatorShotWorkflowRuns.length * 60),
+          updatedAt: createTimestamp(1710000005 + creatorShotWorkflowRuns.length * 60),
+          steps: createWorkflowSteps({
+            workflowRunId: `workflow-run-${creatorShotWorkflowRuns.length + 1}`,
+            attemptCount: 1,
+            gatewayStatus: "running",
+            lastError: "",
+          }),
         };
         creatorShotWorkflowRuns = [workflowRun, ...clone(creatorShotWorkflowRuns)];
         await route.fulfill(
           jsonResponse(200, {
-            workflowRun,
+            workflowRun: summarizeWorkflowRun(workflowRun),
           }),
         );
         return;
@@ -666,7 +1109,8 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       if (pathname === "/hualala.workflow.v1.WorkflowService/RetryWorkflowRun") {
         const body = route.request().postDataJSON() as { workflowRunId?: string };
         const current = creatorShotWorkflowRuns.find((run) => run.id === body.workflowRunId);
-        const workflowRun = {
+        const nextAttemptCount = (current?.attemptCount ?? 1) + 1;
+        const workflowRun: MockWorkflowRun = {
           id: current?.id ?? body.workflowRunId ?? "workflow-run-retry",
           workflowType: current?.workflowType ?? "shot_pipeline",
           status: "running",
@@ -675,6 +1119,19 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
             current?.projectId ??
             creatorShotState.workbench.shotExecution.projectId ??
             "project-live-1",
+          provider: current?.provider ?? "seedance",
+          currentStep: `attempt_${nextAttemptCount}.gateway`,
+          attemptCount: nextAttemptCount,
+          lastError: "",
+          externalRequestId: current?.externalRequestId ?? "request-retry",
+          createdAt: current?.createdAt ?? createTimestamp(1710000000),
+          updatedAt: createTimestamp(1710000600),
+          steps: createWorkflowSteps({
+            workflowRunId: current?.id ?? body.workflowRunId ?? "workflow-run-retry",
+            attemptCount: nextAttemptCount,
+            gatewayStatus: "running",
+            lastError: "",
+          }),
         };
         creatorShotWorkflowRuns = [
           workflowRun,
@@ -682,7 +1139,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         ];
         await route.fulfill(
           jsonResponse(200, {
-            workflowRun,
+            workflowRun: summarizeWorkflowRun(workflowRun),
           }),
         );
         return;
