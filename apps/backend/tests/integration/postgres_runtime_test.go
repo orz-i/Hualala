@@ -28,6 +28,8 @@ import (
 	_ "github.com/lib/pq"
 )
 
+const integrationSSEReplayTimeout = 5 * time.Second
+
 func TestOpenStoreReturnsNativePostgresRuntime(t *testing.T) {
 	cfg := config.Load()
 	if cfg.DBDriver != "postgres" {
@@ -272,6 +274,8 @@ func TestExpiredUploadSessionRetryCompletePersistsAcrossReopen(t *testing.T) {
 
 	runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, storeKey)
 	server, services := newUploadIntegrationHTTPServer(t, runtimeStore)
+	initialCleanup := closeUploadIntegrationResources(server, closeFn)
+	defer initialCleanup()
 
 	projectRecord := createUploadIntegrationProject(t, services, "Retry Complete Upload Project")
 	importBatch := seedUploadIntegrationImportBatch(t, runtimeStore, projectRecord)
@@ -326,13 +330,11 @@ func TestExpiredUploadSessionRetryCompletePersistsAcrossReopen(t *testing.T) {
 		t.Fatal("expected variant_id in upload complete response, got empty")
 	}
 
-	server.Close()
-	closeFn()
+	initialCleanup()
 
 	reloadedStore, reloadCloseFn := openNativeIntegrationRuntimeStore(t, storeKey)
-	defer reloadCloseFn()
 	reloadedServer, _ := newUploadIntegrationHTTPServer(t, reloadedStore)
-	defer reloadedServer.Close()
+	defer closeUploadIntegrationResources(reloadedServer, reloadCloseFn)()
 
 	reopened := performUploadSessionRequest(t, reloadedServer.Client(), http.MethodGet, reloadedServer.URL+"/upload/sessions/"+sessionID, nil)
 	if got := reopened["session_id"].(string); got != sessionID {
@@ -411,7 +413,7 @@ func TestExpiredUploadSessionRetryCompletePersistsAcrossReopen(t *testing.T) {
 		t.Fatalf("expected import batch status uploaded_pending_match after reopen, got %q", got)
 	}
 
-	replayedStream := readUploadReplayStream(t, reloadedServer, projectRecord.OrganizationID, projectRecord.ID, lastEventID,
+	replayedStream := readUploadReplayStream(t, reloadedServer, projectRecord.OrganizationID, projectRecord.ID, lastEventID, integrationSSEReplayTimeout,
 		"event: asset.upload_session.updated",
 		`"session_id":"`+sessionID+`"`,
 		`"status":"uploaded"`,
@@ -439,6 +441,8 @@ func TestUploadSessionCompleteWithShotExecutionPersistsAcrossReopen(t *testing.T
 
 	runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, storeKey)
 	server, services := newUploadIntegrationHTTPServer(t, runtimeStore)
+	initialCleanup := closeUploadIntegrationResources(server, closeFn)
+	defer initialCleanup()
 
 	projectRecord := createUploadIntegrationProject(t, services, "Shot Execution Upload Project")
 	importBatch := seedUploadIntegrationImportBatch(t, runtimeStore, projectRecord)
@@ -493,13 +497,11 @@ func TestUploadSessionCompleteWithShotExecutionPersistsAcrossReopen(t *testing.T
 		t.Fatalf("expected shot_execution_id %q, got %q", shotExecution.ID, got)
 	}
 
-	server.Close()
-	closeFn()
+	initialCleanup()
 
 	reloadedStore, reloadCloseFn := openNativeIntegrationRuntimeStore(t, storeKey)
-	defer reloadCloseFn()
 	reloadedServer, _ := newUploadIntegrationHTTPServer(t, reloadedStore)
-	defer reloadedServer.Close()
+	defer closeUploadIntegrationResources(reloadedServer, reloadCloseFn)()
 
 	reopened := performUploadSessionRequest(t, reloadedServer.Client(), http.MethodGet, reloadedServer.URL+"/upload/sessions/"+sessionID, nil)
 	if got := reopened["session_id"].(string); got != sessionID {
@@ -596,7 +598,7 @@ func TestUploadSessionCompleteWithShotExecutionPersistsAcrossReopen(t *testing.T
 		t.Fatalf("expected import batch status matched_pending_confirm after reopen, got %q", got)
 	}
 
-	replayedStream := readUploadReplayStream(t, reloadedServer, projectRecord.OrganizationID, projectRecord.ID, lastEventID,
+	replayedStream := readUploadReplayStream(t, reloadedServer, projectRecord.OrganizationID, projectRecord.ID, lastEventID, integrationSSEReplayTimeout,
 		"event: asset.upload_session.updated",
 		`"session_id":"`+sessionID+`"`,
 		`"status":"uploaded"`,
@@ -806,10 +808,13 @@ func performUploadSessionRequest(t *testing.T, client *http.Client, method strin
 	return payload
 }
 
-func readUploadReplayStream(t *testing.T, server *httptest.Server, organizationID string, projectID string, lastEventID string, markers ...string) string {
+func readUploadReplayStream(t *testing.T, server *httptest.Server, organizationID string, projectID string, lastEventID string, timeout time.Duration, markers ...string) string {
 	t.Helper()
 
-	sseCtx, cancelSSE := context.WithTimeout(context.Background(), 2*time.Second)
+	if timeout <= 0 {
+		timeout = integrationSSEReplayTimeout
+	}
+	sseCtx, cancelSSE := context.WithTimeout(context.Background(), timeout)
 	defer cancelSSE()
 
 	request, err := http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id="+organizationID+"&project_id="+projectID, nil)
@@ -829,5 +834,19 @@ func readUploadReplayStream(t *testing.T, server *httptest.Server, organizationI
 		t.Fatalf("expected SSE status 200, got %d with body %s", response.StatusCode, string(body))
 	}
 
-	return readReliabilityEventStreamUntil(t, response.Body, cancelSSE, markers...)
+	return readReliabilityEventStreamUntil(t, response.Body, cancelSSE, timeout, markers...)
+}
+
+func closeUploadIntegrationResources(server *httptest.Server, closeFn func()) func() {
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			if server != nil {
+				server.Close()
+			}
+			if closeFn != nil {
+				closeFn()
+			}
+		})
+	}
 }

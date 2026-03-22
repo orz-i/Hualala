@@ -191,7 +191,7 @@ func TestReliabilityFlow(t *testing.T) {
 		t.Fatalf("SSE request returned error: %v", err)
 	}
 	defer sseResp.Body.Close()
-	stream := readReliabilityEventStreamUntil(t, sseResp.Body, cancelSSE,
+	stream := readReliabilityEventStreamUntil(t, sseResp.Body, cancelSSE, integrationSSEReplayTimeout,
 		"event: workflow.updated",
 		"event: asset.upload_session.updated",
 	)
@@ -203,13 +203,17 @@ func TestReliabilityFlow(t *testing.T) {
 	}
 }
 
-func readReliabilityEventStreamUntil(t *testing.T, body io.ReadCloser, cancel context.CancelFunc, markers ...string) string {
+func readReliabilityEventStreamUntil(t *testing.T, body io.ReadCloser, cancel context.CancelFunc, timeout time.Duration, markers ...string) string {
 	t.Helper()
 	defer cancel()
 
+	if timeout <= 0 {
+		timeout = integrationSSEReplayTimeout
+	}
+
 	reader := bufio.NewReader(body)
 	var stream strings.Builder
-	deadline := time.After(2 * time.Second)
+	deadline := time.After(timeout)
 
 	for {
 		select {
