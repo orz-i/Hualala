@@ -3,9 +3,8 @@ package config
 import "os"
 
 const (
-	defaultHTTPAddr    = ":8080"
-	defaultDBDriver    = "postgres"
-	defaultDatabaseURL = "postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable"
+	defaultHTTPAddr = ":8080"
+	defaultDBDriver = "postgres"
 )
 
 type Config struct {
@@ -27,9 +26,6 @@ func Load() Config {
 	}
 
 	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		databaseURL = defaultDatabaseURL
-	}
 
 	return Config{
 		HTTPAddr:    httpAddr,

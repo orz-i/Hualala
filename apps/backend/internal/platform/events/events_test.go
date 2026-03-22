@@ -73,6 +73,41 @@ func TestPublisherListWithContextFallsBackWhenDurableListFails(t *testing.T) {
 	}
 }
 
+func TestPublisherListWithContextIncludesFallbackEventsWhenDurableReplaySucceeds(t *testing.T) {
+	recorder := &stubRecorder{
+		appendErr: errors.New("durable append unavailable"),
+		listFn: func(_ context.Context, organizationID string, projectID string, lastEventID string) ([]Event, error) {
+			return []Event{
+				{
+					ID:             "evt-durable-1",
+					EventType:      "workflow.updated",
+					OrganizationID: organizationID,
+					ProjectID:      projectID,
+					Payload:        `{"status":"running"}`,
+					CreatedAt:      time.Unix(100, 0).UTC(),
+				},
+			}, nil
+		},
+	}
+	publisher := NewDurablePublisher(recorder)
+	publisher.PublishWithContext(context.Background(), Event{
+		ID:             "evt-fallback-1",
+		EventType:      "asset.import_batch.updated",
+		OrganizationID: "org-1",
+		ProjectID:      "project-1",
+		Payload:        `{"status":"confirmed"}`,
+		CreatedAt:      time.Unix(101, 0).UTC(),
+	})
+
+	items := publisher.ListWithContext(context.Background(), "org-1", "project-1", "")
+	if len(items) != 2 {
+		t.Fatalf("expected durable replay plus fallback event, got %d items", len(items))
+	}
+	if got := items[1].ID; got != "evt-fallback-1" {
+		t.Fatalf("expected fallback replay id %q, got %q", "evt-fallback-1", got)
+	}
+}
+
 func TestPublisherResetWithContextReturnsRecorderError(t *testing.T) {
 	recorder := &stubRecorder{resetErr: errors.New("reset failed")}
 	publisher := NewDurablePublisher(recorder)

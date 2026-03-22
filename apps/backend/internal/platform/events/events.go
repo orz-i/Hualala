@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -30,9 +31,14 @@ type Publisher struct {
 	mu               sync.RWMutex
 	nextID           int
 	nextSubscriberID int
-	records          []Event
+	records          []recordedEvent
 	subscribers      map[int]subscriber
 	recorder         Recorder
+}
+
+type recordedEvent struct {
+	event        Event
+	fallbackOnly bool
 }
 
 const durableFallbackRecordLimit = 256
@@ -78,16 +84,18 @@ func (p *Publisher) PublishWithContext(ctx context.Context, event Event) Event {
 	recorder := p.recorder
 	p.mu.Unlock()
 
+	persistedDurably := false
 	if recorder != nil {
 		if persisted, err := recorder.Append(ctx, event); err == nil {
 			event = persisted
+			persistedDurably = true
 		} else {
 			log.Printf("events: durable append failed for %s/%s: %v", event.EventType, event.ID, err)
 		}
 	}
 
 	p.mu.Lock()
-	p.appendRecordLocked(event)
+	p.appendRecordLocked(event, !persistedDurably)
 	p.mu.Unlock()
 
 	for _, stream := range targets {
@@ -118,32 +126,17 @@ func (p *Publisher) ListWithContext(ctx context.Context, organizationID string, 
 	if recorder != nil {
 		items, err := recorder.List(ctx, organizationID, projectID, lastEventID)
 		if err == nil {
-			return items
+			p.mu.RLock()
+			fallbackTail := p.listRecordedEventsLocked(organizationID, projectID, lastEventID, true)
+			p.mu.RUnlock()
+			return mergeReplayEvents(items, fallbackTail)
 		}
 		log.Printf("events: durable list failed for org=%s project=%s last=%s: %v", organizationID, projectID, lastEventID, err)
 	}
 
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-
-	filtered := make([]Event, 0, len(p.records))
-	reachedLastEvent := strings.TrimSpace(lastEventID) == ""
-	for _, event := range p.records {
-		if !reachedLastEvent {
-			if event.ID == lastEventID {
-				reachedLastEvent = true
-			}
-			continue
-		}
-		if organizationID != "" && event.OrganizationID != organizationID {
-			continue
-		}
-		if projectID != "" && event.ProjectID != projectID {
-			continue
-		}
-		filtered = append(filtered, event)
-	}
-	return filtered
+	return p.listRecordedEventsLocked(organizationID, projectID, lastEventID, false)
 }
 
 func (p *Publisher) Reset() {
@@ -239,11 +232,69 @@ func (s subscriber) matches(event Event) bool {
 	return true
 }
 
-func (p *Publisher) appendRecordLocked(event Event) {
+func (p *Publisher) appendRecordLocked(event Event, fallbackOnly bool) {
 	if len(p.records) < durableFallbackRecordLimit {
-		p.records = append(p.records, event)
+		p.records = append(p.records, recordedEvent{
+			event:        event,
+			fallbackOnly: fallbackOnly,
+		})
 		return
 	}
 	copy(p.records, p.records[1:])
-	p.records[len(p.records)-1] = event
+	p.records[len(p.records)-1] = recordedEvent{
+		event:        event,
+		fallbackOnly: fallbackOnly,
+	}
+}
+
+func (p *Publisher) listRecordedEventsLocked(organizationID string, projectID string, lastEventID string, fallbackOnly bool) []Event {
+	filtered := make([]Event, 0, len(p.records))
+	reachedLastEvent := strings.TrimSpace(lastEventID) == ""
+	for _, recorded := range p.records {
+		event := recorded.event
+		if !reachedLastEvent {
+			if event.ID == lastEventID {
+				reachedLastEvent = true
+			}
+			continue
+		}
+		if fallbackOnly && !recorded.fallbackOnly {
+			continue
+		}
+		if organizationID != "" && event.OrganizationID != organizationID {
+			continue
+		}
+		if projectID != "" && event.ProjectID != projectID {
+			continue
+		}
+		filtered = append(filtered, event)
+	}
+	return filtered
+}
+
+func mergeReplayEvents(durable []Event, fallback []Event) []Event {
+	if len(fallback) == 0 {
+		return durable
+	}
+
+	merged := make([]Event, 0, len(durable)+len(fallback))
+	seen := make(map[string]struct{}, len(durable)+len(fallback))
+	for _, event := range durable {
+		merged = append(merged, event)
+		seen[event.ID] = struct{}{}
+	}
+	for _, event := range fallback {
+		if _, ok := seen[event.ID]; ok {
+			continue
+		}
+		merged = append(merged, event)
+		seen[event.ID] = struct{}{}
+	}
+	sort.SliceStable(merged, func(i int, j int) bool {
+		if merged[i].CreatedAt.Equal(merged[j].CreatedAt) {
+			return merged[i].ID < merged[j].ID
+		}
+		return merged[i].CreatedAt.Before(merged[j].CreatedAt)
+	})
+	return merged
 }
