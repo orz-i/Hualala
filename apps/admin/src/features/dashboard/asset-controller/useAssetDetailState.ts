@@ -78,6 +78,11 @@ export function useAssetDetailState({
         setSelectedAssetProvenanceId(null);
         setSelectedImportItemIds([]);
       });
+    }
+  }, [sessionState]);
+
+  useEffect(() => {
+    if (sessionState !== "ready") {
       return;
     }
 
