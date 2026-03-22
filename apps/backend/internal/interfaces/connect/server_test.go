@@ -386,6 +386,72 @@ func TestExecutionAssetReviewBillingRoutes(t *testing.T) {
 
 func TestMarkShotReworkRequiredPublishesShotExecutionUpdated(t *testing.T) {
 	ctx := context.Background()
+	scenario := seedConnectShotExecutionReworkScenario(t, "Rework Event Project")
+
+	sseCtx, cancelSSE := context.WithTimeout(ctx, 2*time.Second)
+	defer cancelSSE()
+	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, scenario.Server.URL+"/sse/events?organization_id="+scenario.OrganizationID+"&project_id="+scenario.ProjectID, nil)
+	if err != nil {
+		t.Fatalf("http.NewRequestWithContext returned error: %v", err)
+	}
+	sseReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(connectTestOrgID, connectTestUserID))
+	sseResp, err := scenario.Server.Client().Do(sseReq)
+	if err != nil {
+		t.Fatalf("SSE request returned error: %v", err)
+	}
+	defer sseResp.Body.Close()
+
+	if sseResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected SSE status 200, got %d", sseResp.StatusCode)
+	}
+
+	if _, err := scenario.ReviewClient.CreateShotReview(ctx, connectrpc.NewRequest(&reviewv1.CreateShotReviewRequest{
+		ShotExecutionId: scenario.ShotExecutionID,
+		Conclusion:      "rejected",
+		CommentLocale:   "zh-CN",
+		Comment:         "镜头节奏需要调整",
+	})); err != nil {
+		t.Fatalf("CreateShotReview returned error: %v", err)
+	}
+	reworked, err := scenario.ExecutionClient.MarkShotReworkRequired(ctx, connectrpc.NewRequest(&executionv1.MarkShotReworkRequiredRequest{
+		ShotExecutionId: scenario.ShotExecutionID,
+		Reason:          "镜头节奏需要调整",
+	}))
+	if err != nil {
+		t.Fatalf("MarkShotReworkRequired returned error: %v", err)
+	}
+	if got := reworked.Msg.GetShotExecution().GetStatus(); got != "rework_required" {
+		t.Fatalf("expected rework_required, got %q", got)
+	}
+
+	body := readEventStreamUntil(t, sseResp.Body, cancelSSE,
+		"event: shot.review.created",
+		`"conclusion":"rejected"`,
+		"event: shot.execution.updated",
+		`"status":"rework_required"`,
+		`"reason":"镜头节奏需要调整"`,
+	)
+	if !strings.Contains(body, `"status":"rework_required"`) {
+		t.Fatalf("expected rework_required SSE payload, got body %q", body)
+	}
+	if !strings.Contains(body, `"reason":"镜头节奏需要调整"`) {
+		t.Fatalf("expected rework reason SSE payload, got body %q", body)
+	}
+}
+
+type connectShotExecutionReworkScenario struct {
+	Server          *httptest.Server
+	ProjectID       string
+	OrganizationID  string
+	ShotExecutionID string
+	ExecutionClient executionv1connect.ExecutionServiceClient
+	ReviewClient    reviewv1connect.ReviewServiceClient
+}
+
+func seedConnectShotExecutionReworkScenario(t *testing.T, title string) connectShotExecutionReworkScenario {
+	t.Helper()
+
+	ctx := context.Background()
 	store := db.NewMemoryStore()
 	seedConnectAuthStore(store)
 	services := runtime.NewFactory(store).Services()
@@ -393,7 +459,7 @@ func TestMarkShotReworkRequiredPublishesShotExecutionUpdated(t *testing.T) {
 	project, err := services.ProjectService.CreateProject(ctx, projectapp.CreateProjectInput{
 		OrganizationID:          connectTestOrgID,
 		OwnerUserID:             connectTestUserID,
-		Title:                   "Rework Event Project",
+		Title:                   title,
 		PrimaryContentLocale:    "zh-CN",
 		SupportedContentLocales: []string{"zh-CN"},
 	})
@@ -437,7 +503,7 @@ func TestMarkShotReworkRequiredPublishesShotExecutionUpdated(t *testing.T) {
 	mux := http.NewServeMux()
 	RegisterRoutes(mux, NewRouteDependencies(services))
 	server := httptest.NewServer(mux)
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	executionClient := executionv1connect.NewExecutionServiceClient(server.Client(), server.URL)
 	assetClient := assetv1connect.NewAssetServiceClient(server.Client(), server.URL)
@@ -513,54 +579,13 @@ func TestMarkShotReworkRequiredPublishesShotExecutionUpdated(t *testing.T) {
 		t.Fatalf("SubmitShotForReview returned error: %v", err)
 	}
 
-	sseCtx, cancelSSE := context.WithTimeout(ctx, 2*time.Second)
-	defer cancelSSE()
-	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id="+project.OrganizationID+"&project_id="+project.ID, nil)
-	if err != nil {
-		t.Fatalf("http.NewRequestWithContext returned error: %v", err)
-	}
-	sseReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(connectTestOrgID, connectTestUserID))
-	sseResp, err := server.Client().Do(sseReq)
-	if err != nil {
-		t.Fatalf("SSE request returned error: %v", err)
-	}
-	defer sseResp.Body.Close()
-
-	if sseResp.StatusCode != http.StatusOK {
-		t.Fatalf("expected SSE status 200, got %d", sseResp.StatusCode)
-	}
-
-	if _, err := reviewClient.CreateShotReview(ctx, connectrpc.NewRequest(&reviewv1.CreateShotReviewRequest{
-		ShotExecutionId: shotExecutionID,
-		Conclusion:      "rejected",
-		CommentLocale:   "zh-CN",
-		Comment:         "镜头节奏需要调整",
-	})); err != nil {
-		t.Fatalf("CreateShotReview returned error: %v", err)
-	}
-	reworked, err := executionClient.MarkShotReworkRequired(ctx, connectrpc.NewRequest(&executionv1.MarkShotReworkRequiredRequest{
-		ShotExecutionId: shotExecutionID,
-		Reason:          "镜头节奏需要调整",
-	}))
-	if err != nil {
-		t.Fatalf("MarkShotReworkRequired returned error: %v", err)
-	}
-	if got := reworked.Msg.GetShotExecution().GetStatus(); got != "rework_required" {
-		t.Fatalf("expected rework_required, got %q", got)
-	}
-
-	body := readEventStreamUntil(t, sseResp.Body, cancelSSE,
-		"event: shot.review.created",
-		`"conclusion":"rejected"`,
-		"event: shot.execution.updated",
-		`"status":"rework_required"`,
-		`"reason":"镜头节奏需要调整"`,
-	)
-	if !strings.Contains(body, `"status":"rework_required"`) {
-		t.Fatalf("expected rework_required SSE payload, got body %q", body)
-	}
-	if !strings.Contains(body, `"reason":"镜头节奏需要调整"`) {
-		t.Fatalf("expected rework reason SSE payload, got body %q", body)
+	return connectShotExecutionReworkScenario{
+		Server:          server,
+		ProjectID:       project.ID,
+		OrganizationID:  project.OrganizationID,
+		ShotExecutionID: shotExecutionID,
+		ExecutionClient: executionClient,
+		ReviewClient:    reviewClient,
 	}
 }
 
