@@ -403,8 +403,8 @@ export function useAdminAssetController({
         });
       });
     },
-    onConfirmImportBatchItem: (input: { importBatchId: string; itemId: string }) =>
-      runAssetAction({
+    onConfirmImportBatchItem: (input: { importBatchId: string; itemId: string }) => {
+      void runAssetAction({
         pendingMessage: t("asset.action.confirm.pending"),
         successMessage: t("asset.action.confirm.success"),
         clearSelectionsOnSuccess: true,
@@ -414,12 +414,13 @@ export function useAdminAssetController({
             itemId: input.itemId,
             ...options,
           }),
-      }),
+      });
+    },
     onConfirmSelectedImportBatchItems: (input: {
       importBatchId: string;
       itemIds: string[];
-    }) =>
-      runAssetAction({
+    }) => {
+      void runAssetAction({
         pendingMessage: t("asset.action.confirmSelected.pending"),
         successMessage: t("asset.action.confirmSelected.success"),
         clearSelectionsOnSuccess: true,
@@ -429,16 +430,17 @@ export function useAdminAssetController({
             itemIds: input.itemIds,
             ...options,
           }),
-      }),
+      });
+    },
     onConfirmAllImportBatchItems: (input: {
       importBatchId: string;
       itemIds: string[];
     }) => {
       if (input.itemIds.length === 0) {
-        return Promise.resolve();
+        return;
       }
 
-      return runAssetAction({
+      void runAssetAction({
         pendingMessage: t("asset.action.confirmAll.pending"),
         successMessage: t("asset.action.confirmAll.success"),
         clearSelectionsOnSuccess: true,
@@ -450,8 +452,8 @@ export function useAdminAssetController({
           }),
       });
     },
-    onSelectPrimaryAsset: (input: { shotExecutionId: string; assetId: string }) =>
-      runAssetAction({
+    onSelectPrimaryAsset: (input: { shotExecutionId: string; assetId: string }) => {
+      void runAssetAction({
         pendingMessage: t("asset.action.selectPrimary.pending"),
         successMessage: t("asset.action.selectPrimary.success"),
         execute: (options) =>
@@ -460,7 +462,8 @@ export function useAdminAssetController({
             assetId: input.assetId,
             ...options,
           }),
-      }),
+      });
+    },
     onSelectAssetProvenance: (assetId: string) => {
       startTransition(() => {
         setSelectedAssetProvenanceId(assetId);

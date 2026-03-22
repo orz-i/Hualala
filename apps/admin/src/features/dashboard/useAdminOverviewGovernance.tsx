@@ -280,8 +280,8 @@ export function useAdminOverviewGovernance({
       userId: string;
       displayLocale: string;
       timezone: string;
-    }) =>
-      runGovernanceAction({
+    }) => {
+      void runGovernanceAction({
         pendingMessage: t("governance.action.preferences.pending"),
         successMessage: t("governance.action.preferences.success"),
         execute: (options) =>
@@ -290,9 +290,10 @@ export function useAdminOverviewGovernance({
             displayLocale: input.displayLocale,
             timezone: input.timezone,
           }),
-      }),
-    onUpdateMemberRole: (input: { memberId: string; roleId: string }) =>
-      runGovernanceAction({
+      });
+    },
+    onUpdateMemberRole: (input: { memberId: string; roleId: string }) => {
+      void runGovernanceAction({
         pendingMessage: t("governance.action.members.pending"),
         successMessage: t("governance.action.members.success"),
         execute: (options) =>
@@ -301,9 +302,10 @@ export function useAdminOverviewGovernance({
             memberId: input.memberId,
             roleId: input.roleId,
           }),
-      }),
-    onUpdateOrgLocaleSettings: (input: { defaultLocale: string }) =>
-      runGovernanceAction({
+      });
+    },
+    onUpdateOrgLocaleSettings: (input: { defaultLocale: string }) => {
+      void runGovernanceAction({
         pendingMessage: t("governance.action.locale.pending"),
         successMessage: t("governance.action.locale.success"),
         execute: (options) =>
@@ -311,13 +313,14 @@ export function useAdminOverviewGovernance({
             ...options,
             defaultLocale: input.defaultLocale,
           }),
-      }),
+      });
+    },
     onCreateRole: (input: {
       code: string;
       displayName: string;
       permissionCodes: string[];
-    }) =>
-      runGovernanceAction({
+    }) => {
+      void runGovernanceAction({
         pendingMessage: t("governance.action.roles.create.pending"),
         successMessage: t("governance.action.roles.create.success"),
         execute: (options) =>
@@ -327,13 +330,14 @@ export function useAdminOverviewGovernance({
             displayName: input.displayName,
             permissionCodes: input.permissionCodes,
           }),
-      }),
+      });
+    },
     onUpdateRole: (input: {
       roleId: string;
       displayName: string;
       permissionCodes: string[];
-    }) =>
-      runGovernanceAction({
+    }) => {
+      void runGovernanceAction({
         pendingMessage: t("governance.action.roles.update.pending"),
         successMessage: t("governance.action.roles.update.success"),
         execute: (options) =>
@@ -343,9 +347,10 @@ export function useAdminOverviewGovernance({
             displayName: input.displayName,
             permissionCodes: input.permissionCodes,
           }),
-      }),
-    onDeleteRole: (input: { roleId: string }) =>
-      runGovernanceAction({
+      });
+    },
+    onDeleteRole: (input: { roleId: string }) => {
+      void runGovernanceAction({
         pendingMessage: t("governance.action.roles.delete.pending"),
         successMessage: t("governance.action.roles.delete.success"),
         execute: (options) =>
@@ -353,6 +358,7 @@ export function useAdminOverviewGovernance({
             ...options,
             roleId: input.roleId,
           }),
-      }),
+      });
+    },
   };
 }

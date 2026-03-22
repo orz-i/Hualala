@@ -255,8 +255,8 @@ describe("useAdminOverviewGovernance", () => {
       expect(result.current.governance?.currentSession.orgId).toBe("org-demo-001");
     });
 
-    await act(async () => {
-      await result.current.onUpdateUserPreferences({
+    act(() => {
+      result.current.onUpdateUserPreferences({
         userId: "user-demo-001",
         displayLocale: "en-US",
         timezone: "UTC",

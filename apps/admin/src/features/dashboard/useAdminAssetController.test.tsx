@@ -143,8 +143,8 @@ describe("useAdminAssetController", () => {
       result.current.onToggleImportBatchItemSelection({ itemId: "import-item-2", checked: true });
     });
 
-    await act(async () => {
-      await result.current.onConfirmSelectedImportBatchItems({
+    act(() => {
+      result.current.onConfirmSelectedImportBatchItems({
         importBatchId: "import-batch-1",
         itemIds: ["import-item-1", "import-item-2"],
       });
@@ -196,8 +196,8 @@ describe("useAdminAssetController", () => {
       expect(result.current.importBatchDetail?.batch.id).toBe("import-batch-1");
     });
 
-    await act(async () => {
-      await result.current.onSelectPrimaryAsset({
+    act(() => {
+      result.current.onSelectPrimaryAsset({
         shotExecutionId: "shot-exec-live-1",
         assetId: "asset-media-2",
       });
@@ -248,8 +248,8 @@ describe("useAdminAssetController", () => {
       result.current.onToggleImportBatchItemSelection({ itemId: "import-item-1", checked: true });
     });
 
-    await act(async () => {
-      await result.current.onConfirmSelectedImportBatchItems({
+    act(() => {
+      result.current.onConfirmSelectedImportBatchItems({
         importBatchId: "import-batch-1",
         itemIds: ["import-item-1"],
       });

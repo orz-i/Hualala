@@ -243,8 +243,8 @@ describe("useAdminWorkflowController", () => {
       expect(result.current.workflowRunDetail?.run.id).toBe("workflow-run-2");
     });
 
-    await act(async () => {
-      await result.current.onRetryWorkflowRun("workflow-run-2");
+    act(() => {
+      result.current.onRetryWorkflowRun("workflow-run-2");
     });
 
     await waitFor(() => {
@@ -286,8 +286,8 @@ describe("useAdminWorkflowController", () => {
       expect(result.current.workflowRunDetail?.run.id).toBe("workflow-run-1");
     });
 
-    await act(async () => {
-      await result.current.onCancelWorkflowRun("workflow-run-1");
+    act(() => {
+      result.current.onCancelWorkflowRun("workflow-run-1");
     });
 
     await waitFor(() => {

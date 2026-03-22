@@ -312,19 +312,21 @@ export function useAdminWorkflowController({
         setWorkflowActionPending(false);
       });
     },
-    onRetryWorkflowRun: (workflowRunId: string) =>
-      runWorkflowAction({
+    onRetryWorkflowRun: (workflowRunId: string) => {
+      void runWorkflowAction({
         workflowRunId,
         pendingMessage: t("workflow.action.retry.pending"),
         successMessage: t("workflow.action.retry.success"),
         execute: retryWorkflowRun,
-      }),
-    onCancelWorkflowRun: (workflowRunId: string) =>
-      runWorkflowAction({
+      });
+    },
+    onCancelWorkflowRun: (workflowRunId: string) => {
+      void runWorkflowAction({
         workflowRunId,
         pendingMessage: t("workflow.action.cancel.pending"),
         successMessage: t("workflow.action.cancel.success"),
         execute: cancelWorkflowRun,
-      }),
+      });
+    },
   };
 }
