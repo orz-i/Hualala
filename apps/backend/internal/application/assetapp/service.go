@@ -129,22 +129,31 @@ func (s *Service) CreateImportBatch(ctx context.Context, input CreateImportBatch
 
 func (s *Service) AddCandidateAsset(ctx context.Context, input AddCandidateAssetInput) (asset.CandidateAsset, error) {
 	importBatchID := strings.TrimSpace(input.ImportBatchID)
+	requestOrgID := strings.TrimSpace(input.OrgID)
+	requestProjectID := strings.TrimSpace(input.ProjectID)
+	shotExecutionID := strings.TrimSpace(input.ShotExecutionID)
 	importBatch, ok := s.assets.GetImportBatch(importBatchID)
 	if !ok {
 		return asset.CandidateAsset{}, errors.New("assetapp: import batch not found")
 	}
+	if strings.TrimSpace(importBatch.OrgID) != requestOrgID || strings.TrimSpace(importBatch.ProjectID) != requestProjectID {
+		return asset.CandidateAsset{}, errors.New("permission denied: import batch does not belong to request scope")
+	}
 
-	shotExecution, ok := s.executions.GetShotExecution(input.ShotExecutionID)
+	shotExecution, ok := s.executions.GetShotExecution(shotExecutionID)
 	if !ok {
 		return asset.CandidateAsset{}, errors.New("assetapp: shot execution not found")
+	}
+	if strings.TrimSpace(shotExecution.OrgID) != requestOrgID || strings.TrimSpace(shotExecution.ProjectID) != requestProjectID {
+		return asset.CandidateAsset{}, errors.New("permission denied: shot execution does not belong to request scope")
 	}
 
 	now := time.Now().UTC()
 	mediaAsset := asset.MediaAsset{
 		ID:            s.assets.GenerateMediaAssetID(),
-		OrgID:         strings.TrimSpace(input.OrgID),
-		ProjectID:     strings.TrimSpace(input.ProjectID),
-		ImportBatchID: strings.TrimSpace(input.ImportBatchID),
+		OrgID:         requestOrgID,
+		ProjectID:     requestProjectID,
+		ImportBatchID: importBatchID,
 		SourceType:    strings.TrimSpace(input.SourceType),
 		Locale:        strings.TrimSpace(input.AssetLocale),
 		RightsStatus:  strings.TrimSpace(input.RightsStatus),
@@ -161,7 +170,7 @@ func (s *Service) AddCandidateAsset(ctx context.Context, input AddCandidateAsset
 
 	candidate := asset.CandidateAsset{
 		ID:              s.assets.GenerateCandidateAssetID(),
-		ShotExecutionID: strings.TrimSpace(input.ShotExecutionID),
+		ShotExecutionID: shotExecutionID,
 		AssetID:         mediaAsset.ID,
 		SourceRunID:     strings.TrimSpace(input.SourceRunID),
 		CreatedAt:       now,
@@ -196,6 +205,7 @@ func (s *Service) AddCandidateAsset(ctx context.Context, input AddCandidateAsset
 		return asset.CandidateAsset{}, err
 	}
 
+	events.PublishShotExecutionUpdated(ctx, s.publisher, shotExecution, candidate.ID, mediaAsset.ID)
 	s.publishImportBatchUpdated(ctx, importBatch.ID, importBatch.OrgID, importBatch.ProjectID, importBatch.Status, "candidate_asset.added", candidate.ID, "")
 	return candidate, nil
 }

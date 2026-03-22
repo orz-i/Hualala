@@ -658,6 +658,9 @@ func TestUploadSessionCompleteWithShotExecutionPersistsAcrossReopen(t *testing.T
 			"event: asset.upload_session.updated",
 			`"session_id":"`+sessionID+`"`,
 			`"status":"uploaded"`,
+			"event: shot.execution.updated",
+			`"shot_execution_id":"`+shotExecution.ID+`"`,
+			`"status":"candidate_ready"`,
 			"event: asset.import_batch.updated",
 			`"status":"matched_pending_confirm"`,
 			`"reason":"upload_session.completed"`,
@@ -665,6 +668,110 @@ func TestUploadSessionCompleteWithShotExecutionPersistsAcrossReopen(t *testing.T
 		)
 		if !strings.Contains(replayedStream, "event: asset.import_batch.updated") {
 			t.Fatalf("expected asset.import_batch.updated in replay stream, got %q", replayedStream)
+		}
+		if !strings.Contains(replayedStream, "event: shot.execution.updated") {
+			t.Fatalf("expected shot.execution.updated in replay stream, got %q", replayedStream)
+		}
+	})
+}
+
+func TestImportBatchWorkbenchCandidateReadyPersistsAcrossReopen(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	storeKey := "import-workbench-candidate-ready"
+	resetNativeIntegrationRuntimeStore(t)
+
+	var scenario importWorkbenchExecutionScenario
+
+	t.Run("create candidate_ready import workbench state", func(t *testing.T) {
+		runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, storeKey)
+		server, services := newUploadIntegrationHTTPServer(t, runtimeStore)
+		defer closeUploadIntegrationResources(server, closeFn)()
+
+		scenario = seedImportWorkbenchExecutionScenario(t, runtimeStore, server, services, "Import Workbench Candidate Ready", false)
+	})
+
+	if scenario.Project.ID == "" || scenario.ImportBatchID == "" || scenario.ShotExecutionID == "" {
+		t.Fatal("expected seeded import workbench candidate_ready scenario")
+	}
+
+	verifyImportWorkbenchExecutionReopenState(t, storeKey, scenario, importWorkbenchExecutionExpectation{
+		ExpectedStatus:         "candidate_ready",
+		ExpectedPrimaryAssetID: "",
+	})
+}
+
+func TestImportBatchWorkbenchPrimarySelectionPersistsAcrossReopen(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	storeKey := "import-workbench-primary-selected"
+	resetNativeIntegrationRuntimeStore(t)
+
+	var scenario importWorkbenchExecutionScenario
+
+	t.Run("create primary_selected import workbench state", func(t *testing.T) {
+		runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, storeKey)
+		server, services := newUploadIntegrationHTTPServer(t, runtimeStore)
+		defer closeUploadIntegrationResources(server, closeFn)()
+
+		scenario = seedImportWorkbenchExecutionScenario(t, runtimeStore, server, services, "Import Workbench Primary Selected", true)
+	})
+
+	if scenario.Project.ID == "" || scenario.ImportBatchID == "" || scenario.ShotExecutionID == "" || scenario.AssetID == "" {
+		t.Fatal("expected seeded import workbench primary_selected scenario")
+	}
+
+	verifyImportWorkbenchExecutionReopenState(t, storeKey, scenario, importWorkbenchExecutionExpectation{
+		ExpectedStatus:         "primary_selected",
+		ExpectedPrimaryAssetID: scenario.AssetID,
+	})
+}
+
+func TestImportWorkbenchExecutionReplayAcrossReopen(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	storeKey := "import-workbench-execution-replay"
+	resetNativeIntegrationRuntimeStore(t)
+
+	var scenario importWorkbenchExecutionScenario
+
+	t.Run("create import workbench execution transitions", func(t *testing.T) {
+		runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, storeKey)
+		server, services := newUploadIntegrationHTTPServer(t, runtimeStore)
+		defer closeUploadIntegrationResources(server, closeFn)()
+
+		scenario = seedImportWorkbenchExecutionScenario(t, runtimeStore, server, services, "Import Workbench Replay", true)
+	})
+
+	if scenario.Project.ID == "" || scenario.LastEventID == "" || scenario.AssetID == "" {
+		t.Fatal("expected seeded import workbench replay scenario")
+	}
+
+	t.Run("verify replay after reopen", func(t *testing.T) {
+		reloadedStore, reloadCloseFn := openNativeIntegrationRuntimeStore(t, storeKey)
+		reloadedServer, _ := newUploadIntegrationHTTPServer(t, reloadedStore)
+		defer closeUploadIntegrationResources(reloadedServer, reloadCloseFn)()
+
+		replayedStream := readUploadReplayStream(t, reloadedServer, scenario.Project.OrganizationID, scenario.Project.ID, scenario.LastEventID, integrationSSEReplayTimeout,
+			"event: shot.execution.updated",
+			`"shot_execution_id":"`+scenario.ShotExecutionID+`"`,
+			`"status":"candidate_ready"`,
+			`"candidate_asset_id":"`+scenario.CandidateAssetID+`"`,
+			`"asset_id":"`+scenario.AssetID+`"`,
+			`"status":"primary_selected"`,
+			`"primary_asset_id":"`+scenario.AssetID+`"`,
+		)
+		if strings.Count(replayedStream, "event: shot.execution.updated") < 2 {
+			t.Fatalf("expected at least 2 shot.execution.updated events in replay stream, got %q", replayedStream)
 		}
 	})
 }
@@ -1060,6 +1167,22 @@ type shotExecutionReworkScenario struct {
 	LastEventID     string
 }
 
+type importWorkbenchExecutionScenario struct {
+	Project          project.Project
+	Shot             contentdomain.Shot
+	ImportBatchID    string
+	ShotExecutionID  string
+	RunID            string
+	CandidateAssetID string
+	AssetID          string
+	LastEventID      string
+}
+
+type importWorkbenchExecutionExpectation struct {
+	ExpectedStatus         string
+	ExpectedPrimaryAssetID string
+}
+
 type shotExecutionReworkExpectation struct {
 	ExpectedStatus          string
 	ExpectedCurrentRunID    string
@@ -1307,6 +1430,133 @@ func verifyShotExecutionReworkReopenState(t *testing.T, storeKey string, scenari
 	}
 }
 
+func verifyImportWorkbenchExecutionReopenState(t *testing.T, storeKey string, scenario importWorkbenchExecutionScenario, expected importWorkbenchExecutionExpectation) {
+	t.Helper()
+
+	reloadedStore, reloadCloseFn := openNativeIntegrationRuntimeStore(t, storeKey)
+	reloadedServer, _ := newUploadIntegrationHTTPServer(t, reloadedStore)
+	defer closeUploadIntegrationResources(reloadedServer, reloadCloseFn)()
+
+	assetClient := assetv1connect.NewAssetServiceClient(reloadedServer.Client(), reloadedServer.URL)
+	executionClient := executionv1connect.NewExecutionServiceClient(reloadedServer.Client(), reloadedServer.URL)
+
+	workbench, err := assetClient.GetImportBatchWorkbench(context.Background(), connectrpc.NewRequest(&assetv1.GetImportBatchWorkbenchRequest{
+		ImportBatchId: scenario.ImportBatchID,
+	}))
+	if err != nil {
+		t.Fatalf("GetImportBatchWorkbench returned error after reopen: %v", err)
+	}
+	if got := workbench.Msg.GetImportBatch().GetId(); got != scenario.ImportBatchID {
+		t.Fatalf("expected reopened import_batch_id %q, got %q", scenario.ImportBatchID, got)
+	}
+	if got := workbench.Msg.GetImportBatch().GetStatus(); got != "matched_pending_confirm" {
+		t.Fatalf("expected reopened import batch status matched_pending_confirm, got %q", got)
+	}
+	if len(workbench.Msg.GetShotExecutions()) != 1 {
+		t.Fatalf("expected 1 shot execution after reopen, got %d", len(workbench.Msg.GetShotExecutions()))
+	}
+	if got := workbench.Msg.GetShotExecutions()[0].GetId(); got != scenario.ShotExecutionID {
+		t.Fatalf("expected reopened shot_execution_id %q, got %q", scenario.ShotExecutionID, got)
+	}
+	if got := workbench.Msg.GetShotExecutions()[0].GetStatus(); got != expected.ExpectedStatus {
+		t.Fatalf("expected reopened shot execution status %q, got %q", expected.ExpectedStatus, got)
+	}
+	if got := workbench.Msg.GetShotExecutions()[0].GetCurrentRunId(); got != scenario.RunID {
+		t.Fatalf("expected reopened current_run_id %q, got %q", scenario.RunID, got)
+	}
+	if got := workbench.Msg.GetShotExecutions()[0].GetPrimaryAssetId(); got != expected.ExpectedPrimaryAssetID {
+		t.Fatalf("expected reopened primary_asset_id %q, got %q", expected.ExpectedPrimaryAssetID, got)
+	}
+	if len(workbench.Msg.GetCandidateAssets()) != 1 {
+		t.Fatalf("expected 1 candidate asset after reopen, got %d", len(workbench.Msg.GetCandidateAssets()))
+	}
+	if got := workbench.Msg.GetCandidateAssets()[0].GetId(); got != scenario.CandidateAssetID {
+		t.Fatalf("expected reopened candidate_asset_id %q, got %q", scenario.CandidateAssetID, got)
+	}
+	if got := workbench.Msg.GetCandidateAssets()[0].GetAssetId(); got != scenario.AssetID {
+		t.Fatalf("expected reopened candidate asset asset_id %q, got %q", scenario.AssetID, got)
+	}
+	if len(workbench.Msg.GetItems()) != 1 {
+		t.Fatalf("expected 1 import batch item after reopen, got %d", len(workbench.Msg.GetItems()))
+	}
+	if got := workbench.Msg.GetItems()[0].GetStatus(); got != "matched_pending_confirm" {
+		t.Fatalf("expected reopened import batch item status matched_pending_confirm, got %q", got)
+	}
+
+	executionRecord, err := executionClient.GetShotExecution(context.Background(), connectrpc.NewRequest(&executionv1.GetShotExecutionRequest{
+		ShotExecutionId: scenario.ShotExecutionID,
+	}))
+	if err != nil {
+		t.Fatalf("GetShotExecution returned error after reopen: %v", err)
+	}
+	if got := executionRecord.Msg.GetShotExecution().GetStatus(); got != expected.ExpectedStatus {
+		t.Fatalf("expected reopened GetShotExecution status %q, got %q", expected.ExpectedStatus, got)
+	}
+	if got := executionRecord.Msg.GetShotExecution().GetCurrentRunId(); got != scenario.RunID {
+		t.Fatalf("expected reopened GetShotExecution current_run_id %q, got %q", scenario.RunID, got)
+	}
+	if got := executionRecord.Msg.GetShotExecution().GetPrimaryAssetId(); got != expected.ExpectedPrimaryAssetID {
+		t.Fatalf("expected reopened GetShotExecution primary_asset_id %q, got %q", expected.ExpectedPrimaryAssetID, got)
+	}
+
+	candidates, err := assetClient.ListCandidateAssets(context.Background(), connectrpc.NewRequest(&assetv1.ListCandidateAssetsRequest{
+		ShotExecutionId: scenario.ShotExecutionID,
+	}))
+	if err != nil {
+		t.Fatalf("ListCandidateAssets returned error after reopen: %v", err)
+	}
+	if len(candidates.Msg.GetAssets()) != 1 {
+		t.Fatalf("expected 1 candidate asset after reopen via API, got %d", len(candidates.Msg.GetAssets()))
+	}
+	if got := candidates.Msg.GetAssets()[0].GetId(); got != scenario.CandidateAssetID {
+		t.Fatalf("expected API candidate_asset_id %q, got %q", scenario.CandidateAssetID, got)
+	}
+
+	record, ok := reloadedStore.GetShotExecution(scenario.ShotExecutionID)
+	if !ok {
+		t.Fatalf("expected shot execution %q after reopen", scenario.ShotExecutionID)
+	}
+	if got := record.Status; got != expected.ExpectedStatus {
+		t.Fatalf("expected stored shot execution status %q, got %q", expected.ExpectedStatus, got)
+	}
+	if got := record.CurrentRunID; got != scenario.RunID {
+		t.Fatalf("expected stored current_run_id %q, got %q", scenario.RunID, got)
+	}
+	if got := record.PrimaryAssetID; got != expected.ExpectedPrimaryAssetID {
+		t.Fatalf("expected stored primary_asset_id %q, got %q", expected.ExpectedPrimaryAssetID, got)
+	}
+
+	storedCandidates := reloadedStore.ListCandidateAssetsByExecution(scenario.ShotExecutionID)
+	if len(storedCandidates) != 1 {
+		t.Fatalf("expected 1 stored candidate asset after reopen, got %d", len(storedCandidates))
+	}
+	if got := storedCandidates[0].ID; got != scenario.CandidateAssetID {
+		t.Fatalf("expected stored candidate_asset_id %q, got %q", scenario.CandidateAssetID, got)
+	}
+	if got := storedCandidates[0].AssetID; got != scenario.AssetID {
+		t.Fatalf("expected stored candidate asset asset_id %q, got %q", scenario.AssetID, got)
+	}
+
+	items := reloadedStore.ListImportBatchItems(scenario.ImportBatchID)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 stored import batch item after reopen, got %d", len(items))
+	}
+	if got := items[0].Status; got != "matched_pending_confirm" {
+		t.Fatalf("expected stored import batch item status matched_pending_confirm, got %q", got)
+	}
+	if got := items[0].AssetID; got != scenario.AssetID {
+		t.Fatalf("expected stored import batch item asset_id %q, got %q", scenario.AssetID, got)
+	}
+
+	batch, ok := reloadedStore.GetImportBatch(scenario.ImportBatchID)
+	if !ok {
+		t.Fatalf("expected import batch %q after reopen", scenario.ImportBatchID)
+	}
+	if got := batch.Status; got != "matched_pending_confirm" {
+		t.Fatalf("expected stored import batch status matched_pending_confirm, got %q", got)
+	}
+}
+
 func createUploadIntegrationProject(t *testing.T, services runtime.ServiceSet, title string) project.Project {
 	t.Helper()
 
@@ -1376,6 +1626,84 @@ func createShotWorkbenchIntegrationProject(t *testing.T, services runtime.Servic
 	}
 
 	return projectRecord, shotRecord
+}
+
+func seedImportWorkbenchExecutionScenario(t *testing.T, runtimeStore db.RuntimeStore, server *httptest.Server, services runtime.ServiceSet, title string, selectPrimary bool) importWorkbenchExecutionScenario {
+	t.Helper()
+
+	projectRecord, shotRecord := createShotWorkbenchIntegrationProject(t, services, title)
+
+	executionClient := executionv1connect.NewExecutionServiceClient(server.Client(), server.URL)
+	assetClient := assetv1connect.NewAssetServiceClient(server.Client(), server.URL)
+
+	run, err := executionClient.StartShotExecutionRun(context.Background(), connectrpc.NewRequest(&executionv1.StartShotExecutionRunRequest{
+		ShotId:      shotRecord.ID,
+		OperatorId:  db.DefaultDevUserID,
+		ProjectId:   projectRecord.ID,
+		OrgId:       projectRecord.OrganizationID,
+		TriggerType: "manual",
+	}))
+	if err != nil {
+		t.Fatalf("StartShotExecutionRun returned error: %v", err)
+	}
+	shotExecutionID := run.Msg.GetRun().GetShotExecutionId()
+	runID := run.Msg.GetRun().GetId()
+
+	importBatch, err := assetClient.CreateImportBatch(context.Background(), connectrpc.NewRequest(&assetv1.CreateImportBatchRequest{
+		ProjectId:  projectRecord.ID,
+		OrgId:      projectRecord.OrganizationID,
+		OperatorId: db.DefaultDevUserID,
+		SourceType: "manual_upload",
+	}))
+	if err != nil {
+		t.Fatalf("CreateImportBatch returned error: %v", err)
+	}
+
+	preCandidateEvents := runtimeStore.Publisher().List(projectRecord.OrganizationID, projectRecord.ID, "")
+	lastEventID := ""
+	if len(preCandidateEvents) > 0 {
+		lastEventID = preCandidateEvents[len(preCandidateEvents)-1].ID
+	}
+
+	candidate, err := assetClient.AddCandidateAsset(context.Background(), connectrpc.NewRequest(&assetv1.AddCandidateAssetRequest{
+		ShotExecutionId: shotExecutionID,
+		ProjectId:       projectRecord.ID,
+		OrgId:           projectRecord.OrganizationID,
+		ImportBatchId:   importBatch.Msg.GetImportBatch().GetId(),
+		SourceRunId:     runID,
+		SourceType:      "manual_upload",
+		AssetLocale:     "zh-CN",
+		RightsStatus:    "clear",
+		AiAnnotated:     true,
+	}))
+	if err != nil {
+		t.Fatalf("AddCandidateAsset returned error: %v", err)
+	}
+
+	assetID := candidate.Msg.GetAsset().GetAssetId()
+	if selectPrimary {
+		selected, err := executionClient.SelectPrimaryAsset(context.Background(), connectrpc.NewRequest(&executionv1.SelectPrimaryAssetRequest{
+			ShotExecutionId: shotExecutionID,
+			AssetId:         assetID,
+		}))
+		if err != nil {
+			t.Fatalf("SelectPrimaryAsset returned error: %v", err)
+		}
+		if got := selected.Msg.GetShotExecution().GetStatus(); got != "primary_selected" {
+			t.Fatalf("expected primary_selected after select primary, got %q", got)
+		}
+	}
+
+	return importWorkbenchExecutionScenario{
+		Project:          projectRecord,
+		Shot:             shotRecord,
+		ImportBatchID:    importBatch.Msg.GetImportBatch().GetId(),
+		ShotExecutionID:  shotExecutionID,
+		RunID:            runID,
+		CandidateAssetID: candidate.Msg.GetAsset().GetId(),
+		AssetID:          assetID,
+		LastEventID:      lastEventID,
+	}
 }
 
 func seedShotWorkbenchPersistenceScenario(t *testing.T, runtimeStore db.RuntimeStore, server *httptest.Server, services runtime.ServiceSet, title string) shotWorkbenchPersistenceScenario {

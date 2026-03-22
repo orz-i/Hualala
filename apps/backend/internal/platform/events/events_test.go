@@ -2,9 +2,12 @@ package events
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/hualala/apps/backend/internal/domain/execution"
 )
 
 func TestPublisherSubscribeReceivesFutureMatchingEvents(t *testing.T) {
@@ -114,6 +117,42 @@ func TestPublisherResetWithContextReturnsRecorderError(t *testing.T) {
 
 	if err := publisher.ResetWithContext(context.Background()); err == nil {
 		t.Fatal("expected ResetWithContext to surface recorder reset error")
+	}
+}
+
+func TestPublishShotExecutionUpdatedTrimsScopeAndPayloadFields(t *testing.T) {
+	publisher := NewPublisher()
+
+	PublishShotExecutionUpdated(context.Background(), publisher, execution.ShotExecution{
+		ID:           "shot-execution-1",
+		OrgID:        " org-1 ",
+		ProjectID:    " project-1 ",
+		ShotID:       "shot-1",
+		Status:       "candidate_ready",
+		CurrentRunID: "run-1",
+	}, " candidate-1 ", " asset-1 ")
+
+	items := publisher.List("org-1", "project-1", "")
+	if len(items) != 1 {
+		t.Fatalf("expected trimmed replay query to return 1 event, got %d", len(items))
+	}
+	event := items[0]
+	if got := event.OrganizationID; got != "org-1" {
+		t.Fatalf("expected trimmed org id %q, got %q", "org-1", got)
+	}
+	if got := event.ProjectID; got != "project-1" {
+		t.Fatalf("expected trimmed project id %q, got %q", "project-1", got)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(event.Payload), &payload); err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v", err)
+	}
+	if got := payload["candidate_asset_id"].(string); got != "candidate-1" {
+		t.Fatalf("expected trimmed candidate_asset_id %q, got %q", "candidate-1", got)
+	}
+	if got := payload["asset_id"].(string); got != "asset-1" {
+		t.Fatalf("expected trimmed asset_id %q, got %q", "asset-1", got)
 	}
 }
 

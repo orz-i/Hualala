@@ -369,3 +369,78 @@ func TestAddCandidateAssetPersistsImportBatchStatusAndPublishesMatchingEvent(t *
 		t.Fatalf("expected reason candidate_asset.added, got %q", payload.Reason)
 	}
 }
+
+func TestAddCandidateAssetRejectsScopeMismatchBeforePersisting(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	store.Publisher().Reset()
+	service := NewService(store, store, store.Publisher())
+
+	importBatch := asset.ImportBatch{
+		ID:         store.GenerateImportBatchID(),
+		OrgID:      "org-1",
+		ProjectID:  "project-1",
+		OperatorID: "user-1",
+		SourceType: "manual_upload",
+		Status:     "pending_review",
+		CreatedAt:  time.Date(2026, 3, 21, 8, 0, 0, 0, time.UTC),
+		UpdatedAt:  time.Date(2026, 3, 21, 8, 1, 0, 0, time.UTC),
+	}
+	if err := store.SaveImportBatch(ctx, importBatch); err != nil {
+		t.Fatalf("SaveImportBatch returned error: %v", err)
+	}
+
+	shotExecution := execution.ShotExecution{
+		ID:        store.GenerateShotExecutionID(),
+		OrgID:     "org-1",
+		ProjectID: "project-2",
+		ShotID:    "shot-1",
+		Status:    "queued",
+		CreatedAt: time.Date(2026, 3, 21, 8, 2, 0, 0, time.UTC),
+		UpdatedAt: time.Date(2026, 3, 21, 8, 2, 0, 0, time.UTC),
+	}
+	if err := store.SaveShotExecution(ctx, shotExecution); err != nil {
+		t.Fatalf("SaveShotExecution returned error: %v", err)
+	}
+
+	_, err := service.AddCandidateAsset(ctx, AddCandidateAssetInput{
+		ShotExecutionID: shotExecution.ID,
+		ProjectID:       importBatch.ProjectID,
+		OrgID:           importBatch.OrgID,
+		ImportBatchID:   importBatch.ID,
+		SourceRunID:     "workflow-run-1",
+		SourceType:      "manual_upload",
+		AssetLocale:     "zh-CN",
+		RightsStatus:    "clear",
+		AIAnnotated:     true,
+	})
+	if err == nil {
+		t.Fatal("expected scope mismatch to be rejected")
+	}
+	if !strings.Contains(err.Error(), "permission denied") {
+		t.Fatalf("expected permission denied error, got %v", err)
+	}
+
+	if len(store.MediaAssets) != 0 {
+		t.Fatalf("expected no media assets after scope mismatch, got %d", len(store.MediaAssets))
+	}
+	if len(store.CandidateAssets) != 0 {
+		t.Fatalf("expected no candidate assets after scope mismatch, got %d", len(store.CandidateAssets))
+	}
+	if len(store.ImportBatchItems) != 0 {
+		t.Fatalf("expected no import batch items after scope mismatch, got %d", len(store.ImportBatchItems))
+	}
+
+	updatedBatch, ok := store.GetImportBatch(importBatch.ID)
+	if !ok {
+		t.Fatalf("expected import batch %q to exist", importBatch.ID)
+	}
+	if got := updatedBatch.Status; got != "pending_review" {
+		t.Fatalf("expected import batch status to remain pending_review, got %q", got)
+	}
+
+	publishedEvents := store.Publisher().List(importBatch.OrgID, importBatch.ProjectID, "")
+	if len(publishedEvents) != 0 {
+		t.Fatalf("expected no project-scoped events after scope mismatch, got %d", len(publishedEvents))
+	}
+}

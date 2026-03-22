@@ -289,6 +289,9 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 		if !ok {
 			return asset.UploadSession{}, fmt.Errorf("upload: shot execution not found")
 		}
+		if strings.TrimSpace(record.OrgID) != strings.TrimSpace(session.OrgID) || strings.TrimSpace(record.ProjectID) != strings.TrimSpace(session.ProjectID) {
+			return asset.UploadSession{}, fmt.Errorf("permission denied: shot execution does not belong to upload session scope")
+		}
 		shotExecution = record
 	}
 
@@ -348,6 +351,7 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 	if strings.TrimSpace(session.ImportBatchID) != "" {
 		itemStatus := "uploaded_pending_match"
 		matchedShotID := ""
+		candidateAssetID := ""
 		if shotExecutionID != "" {
 			candidate := asset.CandidateAsset{
 				ID:              s.assets.GenerateCandidateAssetID(),
@@ -360,6 +364,7 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 			if err := s.assets.SaveCandidateAsset(r.Context(), candidate); err != nil {
 				return asset.UploadSession{}, err
 			}
+			candidateAssetID = candidate.ID
 			itemStatus = "matched_pending_confirm"
 			matchedShotID = shotExecution.ShotID
 			shotExecution.Status = "candidate_ready"
@@ -387,6 +392,9 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 			if err := s.assets.SaveImportBatch(r.Context(), batch); err != nil {
 				return asset.UploadSession{}, err
 			}
+		}
+		if shotExecutionID != "" {
+			events.PublishShotExecutionUpdated(r.Context(), s.eventPublisher, shotExecution, candidateAssetID, mediaAsset.ID)
 		}
 	}
 

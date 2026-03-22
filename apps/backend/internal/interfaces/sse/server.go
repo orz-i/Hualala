@@ -72,13 +72,16 @@ func registerRoutesWithHeartbeatInterval(mux *http.ServeMux, publisher *events.P
 		w.WriteHeader(http.StatusOK)
 		flusher.Flush()
 
-		for _, event := range listReplayEvents(r.Context(), publisher, organizationID, projectID, lastEventID) {
+		stream, unsubscribe := publisher.Subscribe(organizationID, projectID)
+		defer unsubscribe()
+
+		replayEvents := listReplayEvents(r.Context(), publisher, organizationID, projectID, lastEventID)
+		replayedEventIDs := make(map[string]struct{}, len(replayEvents))
+		for _, event := range replayEvents {
+			replayedEventIDs[event.ID] = struct{}{}
 			writeEvent(w, event)
 			flusher.Flush()
 		}
-
-		stream, unsubscribe := publisher.Subscribe(organizationID, projectID)
-		defer unsubscribe()
 
 		ticker := time.NewTicker(heartbeatInterval)
 		defer ticker.Stop()
@@ -88,6 +91,9 @@ func registerRoutesWithHeartbeatInterval(mux *http.ServeMux, publisher *events.P
 			case <-r.Context().Done():
 				return
 			case event := <-stream:
+				if _, replayed := replayedEventIDs[event.ID]; replayed {
+					continue
+				}
 				writeEvent(w, event)
 				flusher.Flush()
 			case <-ticker.C:

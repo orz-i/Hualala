@@ -2,12 +2,15 @@ package events
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/hualala/apps/backend/internal/domain/execution"
 )
 
 type Event struct {
@@ -214,6 +217,33 @@ func (p *Publisher) SubscriptionCount() int {
 	defer p.mu.RUnlock()
 
 	return len(p.subscribers)
+}
+
+func PublishShotExecutionUpdated(ctx context.Context, publisher *Publisher, record execution.ShotExecution, candidateAssetID string, assetID string) {
+	if publisher == nil {
+		return
+	}
+
+	body, err := json.Marshal(map[string]any{
+		"shot_execution_id":  record.ID,
+		"shot_id":            record.ShotID,
+		"status":             record.Status,
+		"current_run_id":     record.CurrentRunID,
+		"candidate_asset_id": strings.TrimSpace(candidateAssetID),
+		"asset_id":           strings.TrimSpace(assetID),
+	})
+	if err != nil {
+		return
+	}
+
+	publisher.PublishWithContext(ctx, Event{
+		EventType:      "shot.execution.updated",
+		OrganizationID: strings.TrimSpace(record.OrgID),
+		ProjectID:      strings.TrimSpace(record.ProjectID),
+		ResourceType:   "shot_execution",
+		ResourceID:     record.ID,
+		Payload:        string(body),
+	})
 }
 
 type subscriber struct {

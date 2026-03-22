@@ -3,9 +3,11 @@ package sse
 import (
 	"bufio"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -190,6 +192,58 @@ func TestSSEStreamsFutureEventsAfterReplay(t *testing.T) {
 	}
 }
 
+func TestSSEDoesNotDropLiveEventsPublishedDuringReplay(t *testing.T) {
+	recorder := newBlockingReplayRecorder([]events.Event{
+		{
+			ID:             "evt-replay-1",
+			EventType:      "shot.execution.updated",
+			OrganizationID: db.DefaultDevOrganizationID,
+			ProjectID:      sseTestProjectID,
+			ResourceType:   "shot_execution",
+			ResourceID:     "shot-execution-1",
+			Payload:        `{"status":"submitted_for_review"}`,
+		},
+	})
+	publisher := events.NewDurablePublisher(recorder)
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, publisher, authz.NewAuthorizer(newSSEAuthStore()))
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/sse/events?organization_id="+db.DefaultDevOrganizationID+"&project_id="+sseTestProjectID, nil)
+	if err != nil {
+		t.Fatalf("NewRequestWithContext returned error: %v", err)
+	}
+	req.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
+
+	resp, err := server.Client().Do(req)
+	if err != nil {
+		t.Fatalf("Do returned error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	recorder.waitForListStart(t)
+	publishEvent(publisher, events.Event{
+		ID:             "evt-live-1",
+		EventType:      "shot.execution.updated",
+		OrganizationID: db.DefaultDevOrganizationID,
+		ProjectID:      sseTestProjectID,
+		ResourceType:   "shot_execution",
+		ResourceID:     "shot-execution-1",
+		Payload:        `{"status":"rework_required"}`,
+	})
+	recorder.releaseReplay()
+
+	stream := readSSEBodyUntil(t, resp.Body, cancel, "id: evt-replay-1", "id: evt-live-1")
+	if !strings.Contains(stream, "id: evt-live-1") {
+		t.Fatalf("expected live event evt-live-1 after replay, got %q", stream)
+	}
+}
+
 func TestSSEEmitsHeartbeatWhileConnectionIsIdle(t *testing.T) {
 	publisher := events.NewPublisher()
 	resetEventStore(publisher)
@@ -259,6 +313,127 @@ func waitForRecorderBody(t *testing.T, recorder *httptest.ResponseRecorder, mark
 			}
 		}
 	}
+}
+
+func readSSEBodyUntil(t *testing.T, body io.ReadCloser, cancel context.CancelFunc, markers ...string) string {
+	t.Helper()
+	defer cancel()
+
+	reader := bufio.NewReader(body)
+	var stream strings.Builder
+	deadline := time.After(2 * time.Second)
+
+	for {
+		select {
+		case <-deadline:
+			t.Fatalf("timed out waiting for SSE markers %v in stream %q", markers, stream.String())
+		default:
+		}
+
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			t.Fatalf("ReadString returned error before all markers arrived: %v (stream=%q)", err, stream.String())
+		}
+		stream.WriteString(line)
+
+		current := stream.String()
+		allFound := true
+		for _, marker := range markers {
+			if !strings.Contains(current, marker) {
+				allFound = false
+				break
+			}
+		}
+		if allFound {
+			return current
+		}
+	}
+}
+
+type blockingReplayRecorder struct {
+	mu                sync.Mutex
+	events            []events.Event
+	listStartedCh     chan struct{}
+	releaseReplayCh   chan struct{}
+	listStartedOnce   sync.Once
+	releaseReplayOnce sync.Once
+}
+
+func newBlockingReplayRecorder(seed []events.Event) *blockingReplayRecorder {
+	eventsCopy := make([]events.Event, len(seed))
+	copy(eventsCopy, seed)
+	return &blockingReplayRecorder{
+		events:          eventsCopy,
+		listStartedCh:   make(chan struct{}),
+		releaseReplayCh: make(chan struct{}),
+	}
+}
+
+func (r *blockingReplayRecorder) Append(_ context.Context, event events.Event) (events.Event, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.events = append(r.events, event)
+	return event, nil
+}
+
+func (r *blockingReplayRecorder) List(ctx context.Context, organizationID string, projectID string, lastEventID string) ([]events.Event, error) {
+	snapshot := r.snapshot(organizationID, projectID, lastEventID)
+	r.listStartedOnce.Do(func() {
+		close(r.listStartedCh)
+	})
+
+	select {
+	case <-r.releaseReplayCh:
+		return snapshot, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func (r *blockingReplayRecorder) Reset(_ context.Context) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.events = nil
+	return nil
+}
+
+func (r *blockingReplayRecorder) waitForListStart(t *testing.T) {
+	t.Helper()
+	select {
+	case <-r.listStartedCh:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for recorder List call")
+	}
+}
+
+func (r *blockingReplayRecorder) releaseReplay() {
+	r.releaseReplayOnce.Do(func() {
+		close(r.releaseReplayCh)
+	})
+}
+
+func (r *blockingReplayRecorder) snapshot(organizationID string, projectID string, lastEventID string) []events.Event {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	filtered := make([]events.Event, 0, len(r.events))
+	reachedLastEvent := strings.TrimSpace(lastEventID) == ""
+	for _, event := range r.events {
+		if !reachedLastEvent {
+			if event.ID == lastEventID {
+				reachedLastEvent = true
+			}
+			continue
+		}
+		if organizationID != "" && event.OrganizationID != organizationID {
+			continue
+		}
+		if projectID != "" && event.ProjectID != projectID {
+			continue
+		}
+		filtered = append(filtered, event)
+	}
+	return filtered
 }
 
 func newSSEAuthStore() *db.MemoryStore {

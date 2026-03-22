@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -847,6 +848,189 @@ func TestImportBatchWorkbenchIncludesShotExecutionState(t *testing.T) {
 	}
 	if got := workbench.Msg.GetShotExecutions()[0].GetPrimaryAssetId(); got != assetID {
 		t.Fatalf("expected primary_asset_id %q, got %q", assetID, got)
+	}
+}
+
+func TestAddCandidateAssetPublishesShotExecutionUpdated(t *testing.T) {
+	ctx := context.Background()
+	scenario := seedConnectImportWorkbenchScenario(t, "Import Workbench Events")
+
+	sseCtx, cancelSSE := context.WithTimeout(ctx, 2*time.Second)
+	defer cancelSSE()
+	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, scenario.Server.URL+"/sse/events?organization_id="+scenario.OrganizationID+"&project_id="+scenario.ProjectID, nil)
+	if err != nil {
+		t.Fatalf("http.NewRequestWithContext returned error: %v", err)
+	}
+	sseReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(connectTestOrgID, connectTestUserID))
+	sseResp, err := scenario.Server.Client().Do(sseReq)
+	if err != nil {
+		t.Fatalf("SSE request returned error: %v", err)
+	}
+	defer sseResp.Body.Close()
+
+	candidate, err := scenario.AssetClient.AddCandidateAsset(ctx, connectrpc.NewRequest(&assetv1.AddCandidateAssetRequest{
+		ShotExecutionId: scenario.ShotExecutionID,
+		ProjectId:       scenario.ProjectID,
+		OrgId:           scenario.OrganizationID,
+		ImportBatchId:   scenario.ImportBatchID,
+		SourceRunId:     scenario.RunID,
+		SourceType:      "manual_upload",
+		AssetLocale:     "zh-CN",
+		RightsStatus:    "clear",
+		AiAnnotated:     true,
+	}))
+	if err != nil {
+		t.Fatalf("AddCandidateAsset returned error: %v", err)
+	}
+
+	body := readEventStreamUntil(t, sseResp.Body, cancelSSE,
+		"event: shot.execution.updated",
+		`"shot_execution_id":"`+scenario.ShotExecutionID+`"`,
+		`"status":"candidate_ready"`,
+		`"current_run_id":"`+scenario.RunID+`"`,
+		`"candidate_asset_id":"`+candidate.Msg.GetAsset().GetId()+`"`,
+		`"asset_id":"`+candidate.Msg.GetAsset().GetAssetId()+`"`,
+	)
+	if !strings.Contains(body, `"status":"candidate_ready"`) {
+		t.Fatalf("expected candidate_ready SSE payload, got body %q", body)
+	}
+}
+
+func TestAddCandidateAssetRejectsScopeMismatch(t *testing.T) {
+	ctx := context.Background()
+	scenario := seedConnectImportWorkbenchScenario(t, "Import Workbench Scope Mismatch")
+
+	_, err := scenario.AssetClient.AddCandidateAsset(ctx, connectrpc.NewRequest(&assetv1.AddCandidateAssetRequest{
+		ShotExecutionId: scenario.ShotExecutionID,
+		ProjectId:       "project-other",
+		OrgId:           scenario.OrganizationID,
+		ImportBatchId:   scenario.ImportBatchID,
+		SourceRunId:     scenario.RunID,
+		SourceType:      "manual_upload",
+		AssetLocale:     "zh-CN",
+		RightsStatus:    "clear",
+		AiAnnotated:     true,
+	}))
+	if err == nil {
+		t.Fatal("expected scope mismatch error")
+	}
+
+	var connectErr *connectrpc.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("expected connect error, got %T: %v", err, err)
+	}
+	if got := connectErr.Code(); got != connectrpc.CodePermissionDenied {
+		t.Fatalf("expected permission denied code, got %v", got)
+	}
+
+	workbench, workbenchErr := scenario.AssetClient.GetImportBatchWorkbench(ctx, connectrpc.NewRequest(&assetv1.GetImportBatchWorkbenchRequest{
+		ImportBatchId: scenario.ImportBatchID,
+	}))
+	if workbenchErr != nil {
+		t.Fatalf("GetImportBatchWorkbench returned error: %v", workbenchErr)
+	}
+	if len(workbench.Msg.GetCandidateAssets()) != 0 {
+		t.Fatalf("expected no candidate assets after scope mismatch, got %d", len(workbench.Msg.GetCandidateAssets()))
+	}
+	if len(workbench.Msg.GetItems()) != 0 {
+		t.Fatalf("expected no import batch items after scope mismatch, got %d", len(workbench.Msg.GetItems()))
+	}
+	if got := workbench.Msg.GetImportBatch().GetStatus(); got != "pending_review" {
+		t.Fatalf("expected import batch status pending_review after scope mismatch, got %q", got)
+	}
+}
+
+type connectImportWorkbenchScenario struct {
+	Server          *httptest.Server
+	ProjectID       string
+	OrganizationID  string
+	ShotExecutionID string
+	RunID           string
+	ImportBatchID   string
+	AssetClient     assetv1connect.AssetServiceClient
+}
+
+func seedConnectImportWorkbenchScenario(t *testing.T, title string) connectImportWorkbenchScenario {
+	t.Helper()
+
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	seedConnectAuthStore(store)
+	services := runtime.NewFactory(store).Services()
+
+	project, err := services.ProjectService.CreateProject(ctx, projectapp.CreateProjectInput{
+		OrganizationID:          connectTestOrgID,
+		OwnerUserID:             connectTestUserID,
+		Title:                   title,
+		PrimaryContentLocale:    "zh-CN",
+		SupportedContentLocales: []string{"zh-CN"},
+	})
+	if err != nil {
+		t.Fatalf("CreateProject returned error: %v", err)
+	}
+	episode, err := services.ProjectService.CreateEpisode(ctx, projectapp.CreateEpisodeInput{
+		ProjectID: project.ID,
+		EpisodeNo: 1,
+		Title:     "第一集",
+	})
+	if err != nil {
+		t.Fatalf("CreateEpisode returned error: %v", err)
+	}
+	scene, err := services.ContentService.CreateScene(ctx, contentapp.CreateSceneInput{
+		ProjectID: project.ID,
+		EpisodeID: episode.ID,
+		SceneNo:   1,
+		Title:     "导入场景",
+	})
+	if err != nil {
+		t.Fatalf("CreateScene returned error: %v", err)
+	}
+	shot, err := services.ContentService.CreateShot(ctx, contentapp.CreateShotInput{
+		SceneID: scene.ID,
+		ShotNo:  1,
+		Title:   "导入镜头",
+	})
+	if err != nil {
+		t.Fatalf("CreateShot returned error: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, NewRouteDependencies(services))
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	executionClient := executionv1connect.NewExecutionServiceClient(server.Client(), server.URL)
+	assetClient := assetv1connect.NewAssetServiceClient(server.Client(), server.URL)
+
+	run, err := executionClient.StartShotExecutionRun(ctx, connectrpc.NewRequest(&executionv1.StartShotExecutionRunRequest{
+		ShotId:      shot.ID,
+		OperatorId:  connectTestUserID,
+		ProjectId:   project.ID,
+		OrgId:       project.OrganizationID,
+		TriggerType: "manual",
+	}))
+	if err != nil {
+		t.Fatalf("StartShotExecutionRun returned error: %v", err)
+	}
+
+	importBatch, err := assetClient.CreateImportBatch(ctx, connectrpc.NewRequest(&assetv1.CreateImportBatchRequest{
+		ProjectId:  project.ID,
+		OrgId:      project.OrganizationID,
+		OperatorId: connectTestUserID,
+		SourceType: "manual_upload",
+	}))
+	if err != nil {
+		t.Fatalf("CreateImportBatch returned error: %v", err)
+	}
+
+	return connectImportWorkbenchScenario{
+		Server:          server,
+		ProjectID:       project.ID,
+		OrganizationID:  project.OrganizationID,
+		ShotExecutionID: run.Msg.GetRun().GetShotExecutionId(),
+		RunID:           run.Msg.GetRun().GetId(),
+		ImportBatchID:   importBatch.Msg.GetImportBatch().GetId(),
+		AssetClient:     assetClient,
 	}
 }
 
