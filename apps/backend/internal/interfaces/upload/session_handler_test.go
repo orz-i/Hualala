@@ -142,6 +142,53 @@ func TestRetryExpiredUploadSessionReopensSession(t *testing.T) {
 	}
 }
 
+func TestRetryExpiredUploadSessionKeepsStableTTL(t *testing.T) {
+	store := db.NewMemoryStore()
+	resetSessionStore(store)
+	seedUploadAuthStore(store)
+
+	service := newUploadServiceFromStore(store)
+	createdAt := time.Now().UTC().Add(-time.Hour)
+	session := assetdomain.UploadSession{
+		ID:         "upload-session-stable-ttl",
+		OrgID:      db.DefaultDevOrganizationID,
+		ProjectID:  uploadTestProjectID,
+		FileName:   "shot.png",
+		Checksum:   "sha256:abc123",
+		SizeBytes:  1024,
+		Status:     "pending",
+		CreatedAt:  createdAt,
+		ExpiresAt:  createdAt.Add(time.Nanosecond),
+		ResumeHint: "upload shot.png from byte 0",
+	}
+	if err := store.SaveUploadSession(context.Background(), session); err != nil {
+		t.Fatalf("SaveUploadSession returned error: %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodPost, "/upload/sessions/"+session.ID+"/retry", nil)
+
+	firstRetry, err := service.RetrySession(request, session.ID)
+	if err != nil {
+		t.Fatalf("first RetrySession returned error: %v", err)
+	}
+	firstTTL := firstRetry.ExpiresAt.Sub(firstRetry.LastRetryAt)
+	if firstTTL > time.Millisecond {
+		t.Fatalf("expected first reopened retry window to stay near original ttl, got %s", firstTTL)
+	}
+
+	secondRetry, err := service.RetrySession(request, session.ID)
+	if err != nil {
+		t.Fatalf("second RetrySession returned error: %v", err)
+	}
+	secondTTL := secondRetry.ExpiresAt.Sub(secondRetry.LastRetryAt)
+	if secondTTL > time.Millisecond {
+		t.Fatalf("expected second reopened retry window to stay bounded, got %s", secondTTL)
+	}
+	if secondTTL > firstTTL+time.Millisecond {
+		t.Fatalf("expected second reopened retry window %s not to inflate beyond first window %s", secondTTL, firstTTL)
+	}
+}
+
 func TestUploadSessionsAreScopedToStore(t *testing.T) {
 	storeA := db.NewMemoryStore()
 	storeB := db.NewMemoryStore()

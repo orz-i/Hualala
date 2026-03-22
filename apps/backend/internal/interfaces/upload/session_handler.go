@@ -248,15 +248,19 @@ func (s *Service) RetrySession(r *http.Request, sessionID string) (asset.UploadS
 		return asset.UploadSession{}, fmt.Errorf("upload: session cannot be retried")
 	}
 	now := time.Now().UTC()
+	retryAnchor := session.LastRetryAt
+	if retryAnchor.IsZero() {
+		retryAnchor = session.CreatedAt
+	}
 	session.RetryCount++
-	session.LastRetryAt = now
 	if !session.ExpiresAt.After(now) {
-		retryWindow := session.ExpiresAt.Sub(session.CreatedAt)
+		retryWindow := session.ExpiresAt.Sub(retryAnchor)
 		if retryWindow <= 0 {
 			retryWindow = defaultRetrySessionTTL
 		}
 		session.ExpiresAt = now.Add(retryWindow)
 	}
+	session.LastRetryAt = now
 	session.Status = sessionStatus(session)
 	session.ResumeHint = s.evaluateUploadResumeAllowed(session).ResumeHint
 	if err := s.assets.SaveUploadSession(r.Context(), session); err != nil {
