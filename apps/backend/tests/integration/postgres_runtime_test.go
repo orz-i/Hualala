@@ -14,6 +14,16 @@ import (
 	"testing"
 	"time"
 
+	connectrpc "connectrpc.com/connect"
+	assetv1 "github.com/hualala/apps/backend/gen/hualala/asset/v1"
+	assetv1connect "github.com/hualala/apps/backend/gen/hualala/asset/v1/assetv1connect"
+	billingv1 "github.com/hualala/apps/backend/gen/hualala/billing/v1"
+	billingv1connect "github.com/hualala/apps/backend/gen/hualala/billing/v1/billingv1connect"
+	executionv1 "github.com/hualala/apps/backend/gen/hualala/execution/v1"
+	executionv1connect "github.com/hualala/apps/backend/gen/hualala/execution/v1/executionv1connect"
+	reviewv1 "github.com/hualala/apps/backend/gen/hualala/review/v1"
+	reviewv1connect "github.com/hualala/apps/backend/gen/hualala/review/v1/reviewv1connect"
+	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
 	assetdomain "github.com/hualala/apps/backend/internal/domain/asset"
 	contentdomain "github.com/hualala/apps/backend/internal/domain/content"
@@ -29,7 +39,12 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const integrationSSEReplayTimeout = 5 * time.Second
+const (
+	integrationSSEReplayTimeout       = 5 * time.Second
+	shotWorkbenchBudgetLimitCents     = 500
+	shotWorkbenchEstimatedCostCents   = 120
+	shotWorkbenchRemainingBudgetCents = shotWorkbenchBudgetLimitCents - shotWorkbenchEstimatedCostCents
+)
 
 func TestOpenStoreReturnsNativePostgresRuntime(t *testing.T) {
 	cfg := config.Load()
@@ -654,6 +669,276 @@ func TestUploadSessionCompleteWithShotExecutionPersistsAcrossReopen(t *testing.T
 	})
 }
 
+func TestShotWorkbenchReviewBudgetPersistsAcrossReopen(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	storeKey := "shot-workbench-review-budget"
+	resetNativeIntegrationRuntimeStore(t)
+
+	var scenario shotWorkbenchPersistenceScenario
+
+	t.Run("create single-run shot workbench state", func(t *testing.T) {
+		runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, storeKey)
+		server, services := newUploadIntegrationHTTPServer(t, runtimeStore)
+		defer closeUploadIntegrationResources(server, closeFn)()
+
+		scenario = seedShotWorkbenchPersistenceScenario(t, runtimeStore, server, services, "Shot Workbench Persistence Project")
+	})
+
+	if scenario.Project.ID == "" || scenario.Shot.ID == "" || scenario.ShotExecutionID == "" {
+		t.Fatal("expected seeded shot workbench scenario")
+	}
+
+	openReopenedRuntime := func(t *testing.T) (db.RuntimeStore, *httptest.Server) {
+		t.Helper()
+
+		reloadedStore, reloadCloseFn := openNativeIntegrationRuntimeStore(t, storeKey)
+		reloadedServer, _ := newUploadIntegrationHTTPServer(t, reloadedStore)
+		t.Cleanup(closeUploadIntegrationResources(reloadedServer, reloadCloseFn))
+		return reloadedStore, reloadedServer
+	}
+
+	t.Run("verify workbench query after reopen", func(t *testing.T) {
+		_, reloadedServer := openReopenedRuntime(t)
+		executionClient := executionv1connect.NewExecutionServiceClient(reloadedServer.Client(), reloadedServer.URL)
+
+		workbench, err := executionClient.GetShotWorkbench(context.Background(), connectrpc.NewRequest(&executionv1.GetShotWorkbenchRequest{
+			ShotId: scenario.Shot.ID,
+		}))
+		if err != nil {
+			t.Fatalf("GetShotWorkbench returned error after reopen: %v", err)
+		}
+		if got := workbench.Msg.GetWorkbench().GetShotExecution().GetId(); got != scenario.ShotExecutionID {
+			t.Fatalf("expected reopened shot_execution_id %q, got %q", scenario.ShotExecutionID, got)
+		}
+		if got := workbench.Msg.GetWorkbench().GetShotExecution().GetStatus(); got != "submitted_for_review" {
+			t.Fatalf("expected reopened shot execution status submitted_for_review, got %q", got)
+		}
+		if got := workbench.Msg.GetWorkbench().GetShotExecution().GetPrimaryAssetId(); got != scenario.PrimaryAssetID {
+			t.Fatalf("expected reopened primary_asset_id %q, got %q", scenario.PrimaryAssetID, got)
+		}
+		if len(workbench.Msg.GetWorkbench().GetCandidateAssets()) != 1 {
+			t.Fatalf("expected 1 candidate asset after reopen, got %d", len(workbench.Msg.GetWorkbench().GetCandidateAssets()))
+		}
+		if got := workbench.Msg.GetWorkbench().GetCandidateAssets()[0].GetId(); got != scenario.CandidateAssetID {
+			t.Fatalf("expected reopened candidate asset %q, got %q", scenario.CandidateAssetID, got)
+		}
+		if got := workbench.Msg.GetWorkbench().GetLatestEvaluationRun().GetStatus(); got != "passed" {
+			t.Fatalf("expected reopened latest evaluation status passed, got %q", got)
+		}
+		if got := workbench.Msg.GetWorkbench().GetLatestEvaluationRun().GetId(); got != scenario.EvaluationRunID {
+			t.Fatalf("expected reopened evaluation run %q, got %q", scenario.EvaluationRunID, got)
+		}
+		if got := workbench.Msg.GetWorkbench().GetReviewSummary().GetLatestConclusion(); got != "approved" {
+			t.Fatalf("expected reopened latest review conclusion approved, got %q", got)
+		}
+		if got := workbench.Msg.GetWorkbench().GetReviewSummary().GetLatestReviewId(); got != scenario.ReviewID {
+			t.Fatalf("expected reopened latest review id %q, got %q", scenario.ReviewID, got)
+		}
+	})
+
+	t.Run("verify review queries after reopen", func(t *testing.T) {
+		_, reloadedServer := openReopenedRuntime(t)
+		reviewClient := reviewv1connect.NewReviewServiceClient(reloadedServer.Client(), reloadedServer.URL)
+
+		evaluationRuns, err := reviewClient.ListEvaluationRuns(context.Background(), connectrpc.NewRequest(&reviewv1.ListEvaluationRunsRequest{
+			ShotExecutionId: scenario.ShotExecutionID,
+		}))
+		if err != nil {
+			t.Fatalf("ListEvaluationRuns returned error after reopen: %v", err)
+		}
+		if len(evaluationRuns.Msg.GetEvaluationRuns()) != 1 {
+			t.Fatalf("expected 1 evaluation run after reopen, got %d", len(evaluationRuns.Msg.GetEvaluationRuns()))
+		}
+		if got := evaluationRuns.Msg.GetEvaluationRuns()[0].GetStatus(); got != "passed" {
+			t.Fatalf("expected reopened evaluation run status passed, got %q", got)
+		}
+
+		shotReviews, err := reviewClient.ListShotReviews(context.Background(), connectrpc.NewRequest(&reviewv1.ListShotReviewsRequest{
+			ShotExecutionId: scenario.ShotExecutionID,
+		}))
+		if err != nil {
+			t.Fatalf("ListShotReviews returned error after reopen: %v", err)
+		}
+		if len(shotReviews.Msg.GetShotReviews()) != 1 {
+			t.Fatalf("expected 1 shot review after reopen, got %d", len(shotReviews.Msg.GetShotReviews()))
+		}
+		if got := shotReviews.Msg.GetShotReviews()[0].GetConclusion(); got != "approved" {
+			t.Fatalf("expected reopened review conclusion approved, got %q", got)
+		}
+	})
+
+	t.Run("verify billing queries after reopen", func(t *testing.T) {
+		_, reloadedServer := openReopenedRuntime(t)
+		billingClient := billingv1connect.NewBillingServiceClient(reloadedServer.Client(), reloadedServer.URL)
+
+		budgetSnapshot, err := billingClient.GetBudgetSnapshot(context.Background(), connectrpc.NewRequest(&billingv1.GetBudgetSnapshotRequest{
+			ProjectId: scenario.Project.ID,
+		}))
+		if err != nil {
+			t.Fatalf("GetBudgetSnapshot returned error after reopen: %v", err)
+		}
+		if got := budgetSnapshot.Msg.GetBudgetSnapshot().GetRemainingBudgetCents(); got != shotWorkbenchRemainingBudgetCents {
+			t.Fatalf("expected reopened remaining budget %d, got %d", shotWorkbenchRemainingBudgetCents, got)
+		}
+
+		billingEvents, err := billingClient.ListBillingEvents(context.Background(), connectrpc.NewRequest(&billingv1.ListBillingEventsRequest{
+			ProjectId: scenario.Project.ID,
+		}))
+		if err != nil {
+			t.Fatalf("ListBillingEvents returned error after reopen: %v", err)
+		}
+		if len(billingEvents.Msg.GetBillingEvents()) != 1 {
+			t.Fatalf("expected 1 billing event after reopen, got %d", len(billingEvents.Msg.GetBillingEvents()))
+		}
+		if got := billingEvents.Msg.GetBillingEvents()[0].GetEventType(); got != "execution_reserved" {
+			t.Fatalf("expected reopened billing event execution_reserved, got %q", got)
+		}
+		if got := billingEvents.Msg.GetBillingEvents()[0].GetShotExecutionId(); got != scenario.ShotExecutionID {
+			t.Fatalf("expected reopened billing shot_execution_id %q, got %q", scenario.ShotExecutionID, got)
+		}
+	})
+
+	t.Run("verify direct store state after reopen", func(t *testing.T) {
+		reloadedStore, _ := openReopenedRuntime(t)
+
+		record, ok := reloadedStore.GetShotExecution(scenario.ShotExecutionID)
+		if !ok {
+			t.Fatalf("expected shot execution %q after reopen", scenario.ShotExecutionID)
+		}
+		if got := record.Status; got != "submitted_for_review" {
+			t.Fatalf("expected stored shot execution status submitted_for_review, got %q", got)
+		}
+		if got := record.PrimaryAssetID; got != scenario.PrimaryAssetID {
+			t.Fatalf("expected stored primary_asset_id %q, got %q", scenario.PrimaryAssetID, got)
+		}
+		if got := record.CurrentRunID; got != scenario.RunID {
+			t.Fatalf("expected stored current_run_id %q, got %q", scenario.RunID, got)
+		}
+
+		runs := reloadedStore.ListShotExecutionRuns(scenario.ShotExecutionID)
+		if len(runs) != 1 {
+			t.Fatalf("expected 1 shot execution run after reopen, got %d", len(runs))
+		}
+		if got := runs[0].ID; got != scenario.RunID {
+			t.Fatalf("expected stored run id %q, got %q", scenario.RunID, got)
+		}
+
+		candidates := reloadedStore.ListCandidateAssetsByExecution(scenario.ShotExecutionID)
+		if len(candidates) != 1 {
+			t.Fatalf("expected 1 stored candidate asset after reopen, got %d", len(candidates))
+		}
+		if got := candidates[0].ID; got != scenario.CandidateAssetID {
+			t.Fatalf("expected stored candidate asset id %q, got %q", scenario.CandidateAssetID, got)
+		}
+		if got := candidates[0].AssetID; got != scenario.PrimaryAssetID {
+			t.Fatalf("expected stored candidate asset media asset id %q, got %q", scenario.PrimaryAssetID, got)
+		}
+
+		storedEvaluations := reloadedStore.ListEvaluationRunsByExecution(scenario.ShotExecutionID)
+		if len(storedEvaluations) != 1 {
+			t.Fatalf("expected 1 stored evaluation run after reopen, got %d", len(storedEvaluations))
+		}
+		if got := storedEvaluations[0].ID; got != scenario.EvaluationRunID {
+			t.Fatalf("expected stored evaluation run id %q, got %q", scenario.EvaluationRunID, got)
+		}
+		if got := storedEvaluations[0].Status; got != "passed" {
+			t.Fatalf("expected stored evaluation status passed, got %q", got)
+		}
+
+		storedReviews := reloadedStore.ListReviewsByExecution(scenario.ShotExecutionID)
+		if len(storedReviews) != 1 {
+			t.Fatalf("expected 1 stored shot review after reopen, got %d", len(storedReviews))
+		}
+		if got := storedReviews[0].ID; got != scenario.ReviewID {
+			t.Fatalf("expected stored review id %q, got %q", scenario.ReviewID, got)
+		}
+		if got := storedReviews[0].Conclusion; got != "approved" {
+			t.Fatalf("expected stored review conclusion approved, got %q", got)
+		}
+
+		budgetRecord, ok := reloadedStore.GetBudgetByProject(scenario.Project.ID)
+		if !ok {
+			t.Fatalf("expected budget for project %q after reopen", scenario.Project.ID)
+		}
+		if got := budgetRecord.ReservedCents; got != shotWorkbenchEstimatedCostCents {
+			t.Fatalf("expected stored reserved budget %d, got %d", shotWorkbenchEstimatedCostCents, got)
+		}
+		if got := budgetRecord.LimitCents - budgetRecord.ReservedCents; got != shotWorkbenchRemainingBudgetCents {
+			t.Fatalf("expected stored remaining budget %d, got %d", shotWorkbenchRemainingBudgetCents, got)
+		}
+
+		storedBillingEvents := reloadedStore.ListBillingEventsByProject(scenario.Project.ID)
+		if len(storedBillingEvents) != 1 {
+			t.Fatalf("expected 1 stored billing event after reopen, got %d", len(storedBillingEvents))
+		}
+		if got := storedBillingEvents[0].EventType; got != "execution_reserved" {
+			t.Fatalf("expected stored billing event execution_reserved, got %q", got)
+		}
+	})
+}
+
+func TestShotWorkbenchReviewBudgetReplayAcrossReopen(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	storeKey := "shot-workbench-review-budget-replay"
+	resetNativeIntegrationRuntimeStore(t)
+
+	var scenario shotWorkbenchPersistenceScenario
+
+	t.Run("create replayable shot workbench events", func(t *testing.T) {
+		runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, storeKey)
+		server, services := newUploadIntegrationHTTPServer(t, runtimeStore)
+		defer closeUploadIntegrationResources(server, closeFn)()
+
+		scenario = seedShotWorkbenchPersistenceScenario(t, runtimeStore, server, services, "Shot Workbench Replay Project")
+	})
+
+	t.Run("verify replay after reopen", func(t *testing.T) {
+		reloadedStore, reloadCloseFn := openNativeIntegrationRuntimeStore(t, storeKey)
+		reloadedServer, _ := newUploadIntegrationHTTPServer(t, reloadedStore)
+		defer closeUploadIntegrationResources(reloadedServer, reloadCloseFn)()
+
+		replayedStream := readUploadReplayStream(t, reloadedServer, scenario.Project.OrganizationID, scenario.Project.ID, scenario.LastEventID, integrationSSEReplayTimeout,
+			"event: budget.updated",
+			`"project_id":"`+scenario.Project.ID+`"`,
+			"event: shot.execution.updated",
+			`"shot_execution_id":"`+scenario.ShotExecutionID+`"`,
+			`"status":"submitted_for_review"`,
+			"event: shot.review.created",
+			`"review_id":"`+scenario.ReviewID+`"`,
+			`"conclusion":"approved"`,
+		)
+		if !strings.Contains(replayedStream, "event: budget.updated") {
+			t.Fatalf("expected budget.updated in replay stream, got %q", replayedStream)
+		}
+		if !strings.Contains(replayedStream, "event: shot.execution.updated") {
+			t.Fatalf("expected shot.execution.updated in replay stream, got %q", replayedStream)
+		}
+		if !strings.Contains(replayedStream, "event: shot.review.created") {
+			t.Fatalf("expected shot.review.created in replay stream, got %q", replayedStream)
+		}
+	})
+}
+
+type shotWorkbenchPersistenceScenario struct {
+	Project          project.Project
+	Shot             contentdomain.Shot
+	ShotExecutionID  string
+	RunID            string
+	CandidateAssetID string
+	PrimaryAssetID   string
+	EvaluationRunID  string
+	ReviewID         string
+	LastEventID      string
+}
+
 func publishedAt() time.Time {
 	return time.Now().UTC()
 }
@@ -727,6 +1012,198 @@ func createUploadIntegrationProject(t *testing.T, services runtime.ServiceSet, t
 		t.Fatalf("CreateProject returned error: %v", err)
 	}
 	return projectRecord
+}
+
+func createShotWorkbenchIntegrationProject(t *testing.T, services runtime.ServiceSet, title string) (project.Project, contentdomain.Shot) {
+	t.Helper()
+
+	ctx := context.Background()
+	projectRecord, err := services.ProjectService.CreateProject(context.Background(), projectapp.CreateProjectInput{
+		OrganizationID:          db.DefaultDevOrganizationID,
+		OwnerUserID:             db.DefaultDevUserID,
+		Title:                   title,
+		PrimaryContentLocale:    "zh-CN",
+		SupportedContentLocales: []string{"zh-CN"},
+	})
+	if err != nil {
+		t.Fatalf("CreateProject returned error: %v", err)
+	}
+
+	episodeRecord, err := services.ProjectService.CreateEpisode(context.Background(), projectapp.CreateEpisodeInput{
+		ProjectID: projectRecord.ID,
+		EpisodeNo: 1,
+		Title:     "Episode 1",
+	})
+	if err != nil {
+		t.Fatalf("CreateEpisode returned error: %v", err)
+	}
+
+	sceneRecord, err := services.ContentService.CreateScene(ctx, contentapp.CreateSceneInput{
+		ProjectID: projectRecord.ID,
+		EpisodeID: episodeRecord.ID,
+		SceneNo:   1,
+		Title:     "Scene 1",
+	})
+	if err != nil {
+		t.Fatalf("CreateScene returned error: %v", err)
+	}
+
+	shotRecord, err := services.ContentService.CreateShot(ctx, contentapp.CreateShotInput{
+		SceneID: sceneRecord.ID,
+		ShotNo:  1,
+		Title:   "Shot 1",
+	})
+	if err != nil {
+		t.Fatalf("CreateShot returned error: %v", err)
+	}
+
+	if _, err := services.ContentService.CreateContentSnapshot(ctx, contentapp.CreateContentSnapshotInput{
+		OwnerType:     "shot",
+		OwnerID:       shotRecord.ID,
+		ContentLocale: "zh-CN",
+		Body:          "主角推门进入房间。",
+	}); err != nil {
+		t.Fatalf("CreateContentSnapshot returned error: %v", err)
+	}
+
+	return projectRecord, shotRecord
+}
+
+func seedShotWorkbenchPersistenceScenario(t *testing.T, runtimeStore db.RuntimeStore, server *httptest.Server, services runtime.ServiceSet, title string) shotWorkbenchPersistenceScenario {
+	t.Helper()
+
+	projectRecord, shotRecord := createShotWorkbenchIntegrationProject(t, services, title)
+
+	lastEventID := ""
+	preBudgetEvents := runtimeStore.Publisher().List(projectRecord.OrganizationID, projectRecord.ID, "")
+	if len(preBudgetEvents) > 0 {
+		lastEventID = preBudgetEvents[len(preBudgetEvents)-1].ID
+	}
+
+	executionClient := executionv1connect.NewExecutionServiceClient(server.Client(), server.URL)
+	assetClient := assetv1connect.NewAssetServiceClient(server.Client(), server.URL)
+	reviewClient := reviewv1connect.NewReviewServiceClient(server.Client(), server.URL)
+	billingClient := billingv1connect.NewBillingServiceClient(server.Client(), server.URL)
+
+	budgetPolicy, err := billingClient.UpdateBudgetPolicy(context.Background(), connectrpc.NewRequest(&billingv1.UpdateBudgetPolicyRequest{
+		ProjectId:  projectRecord.ID,
+		OrgId:      projectRecord.OrganizationID,
+		LimitCents: shotWorkbenchBudgetLimitCents,
+	}))
+	if err != nil {
+		t.Fatalf("UpdateBudgetPolicy returned error: %v", err)
+	}
+	if got := budgetPolicy.Msg.GetBudgetPolicy().GetLimitCents(); got != shotWorkbenchBudgetLimitCents {
+		t.Fatalf("expected budget limit %d, got %d", shotWorkbenchBudgetLimitCents, got)
+	}
+
+	run, err := executionClient.StartShotExecutionRun(context.Background(), connectrpc.NewRequest(&executionv1.StartShotExecutionRunRequest{
+		ShotId:             shotRecord.ID,
+		OperatorId:         db.DefaultDevUserID,
+		ProjectId:          projectRecord.ID,
+		OrgId:              projectRecord.OrganizationID,
+		TriggerType:        "manual",
+		EstimatedCostCents: shotWorkbenchEstimatedCostCents,
+	}))
+	if err != nil {
+		t.Fatalf("StartShotExecutionRun returned error: %v", err)
+	}
+	shotExecutionID := run.Msg.GetRun().GetShotExecutionId()
+	runID := run.Msg.GetRun().GetId()
+
+	importBatch, err := assetClient.CreateImportBatch(context.Background(), connectrpc.NewRequest(&assetv1.CreateImportBatchRequest{
+		ProjectId:  projectRecord.ID,
+		OrgId:      projectRecord.OrganizationID,
+		OperatorId: db.DefaultDevUserID,
+		SourceType: "manual_upload",
+	}))
+	if err != nil {
+		t.Fatalf("CreateImportBatch returned error: %v", err)
+	}
+
+	candidate, err := assetClient.AddCandidateAsset(context.Background(), connectrpc.NewRequest(&assetv1.AddCandidateAssetRequest{
+		ShotExecutionId: shotExecutionID,
+		ProjectId:       projectRecord.ID,
+		OrgId:           projectRecord.OrganizationID,
+		ImportBatchId:   importBatch.Msg.GetImportBatch().GetId(),
+		SourceRunId:     runID,
+		SourceType:      "manual_upload",
+		AssetLocale:     "zh-CN",
+		RightsStatus:    "clear",
+		AiAnnotated:     true,
+	}))
+	if err != nil {
+		t.Fatalf("AddCandidateAsset returned error: %v", err)
+	}
+	candidateAssetID := candidate.Msg.GetAsset().GetId()
+	primaryAssetID := candidate.Msg.GetAsset().GetAssetId()
+
+	selected, err := executionClient.SelectPrimaryAsset(context.Background(), connectrpc.NewRequest(&executionv1.SelectPrimaryAssetRequest{
+		ShotExecutionId: shotExecutionID,
+		AssetId:         primaryAssetID,
+	}))
+	if err != nil {
+		t.Fatalf("SelectPrimaryAsset returned error: %v", err)
+	}
+	if got := selected.Msg.GetShotExecution().GetStatus(); got != "primary_selected" {
+		t.Fatalf("expected primary_selected after select primary, got %q", got)
+	}
+
+	gate, err := executionClient.RunSubmissionGateChecks(context.Background(), connectrpc.NewRequest(&executionv1.RunSubmissionGateChecksRequest{
+		ShotExecutionId: shotExecutionID,
+	}))
+	if err != nil {
+		t.Fatalf("RunSubmissionGateChecks returned error: %v", err)
+	}
+	if len(gate.Msg.GetFailedChecks()) != 0 {
+		t.Fatalf("expected no failed checks, got %v", gate.Msg.GetFailedChecks())
+	}
+
+	evaluationRun, err := reviewClient.CreateEvaluationRun(context.Background(), connectrpc.NewRequest(&reviewv1.CreateEvaluationRunRequest{
+		ShotExecutionId: shotExecutionID,
+		PassedChecks:    gate.Msg.GetPassedChecks(),
+		FailedChecks:    gate.Msg.GetFailedChecks(),
+	}))
+	if err != nil {
+		t.Fatalf("CreateEvaluationRun returned error: %v", err)
+	}
+
+	submitted, err := executionClient.SubmitShotForReview(context.Background(), connectrpc.NewRequest(&executionv1.SubmitShotForReviewRequest{
+		ShotExecutionId: shotExecutionID,
+	}))
+	if err != nil {
+		t.Fatalf("SubmitShotForReview returned error: %v", err)
+	}
+	if got := submitted.Msg.GetShotExecution().GetStatus(); got != "submitted_for_review" {
+		t.Fatalf("expected submitted_for_review, got %q", got)
+	}
+
+	shotReview, err := reviewClient.CreateShotReview(context.Background(), connectrpc.NewRequest(&reviewv1.CreateShotReviewRequest{
+		ShotExecutionId: shotExecutionID,
+		Conclusion:      "approved",
+		CommentLocale:   "zh-CN",
+		Comment:         "可以通过",
+	}))
+	if err != nil {
+		t.Fatalf("CreateShotReview returned error: %v", err)
+	}
+
+	allEvents := runtimeStore.Publisher().List(projectRecord.OrganizationID, projectRecord.ID, "")
+	if len(allEvents) == 0 {
+		t.Fatal("expected shot workbench flow to publish project events")
+	}
+
+	return shotWorkbenchPersistenceScenario{
+		Project:          projectRecord,
+		Shot:             shotRecord,
+		ShotExecutionID:  shotExecutionID,
+		RunID:            runID,
+		CandidateAssetID: candidateAssetID,
+		PrimaryAssetID:   primaryAssetID,
+		EvaluationRunID:  evaluationRun.Msg.GetEvaluationRun().GetId(),
+		ReviewID:         shotReview.Msg.GetShotReview().GetId(),
+		LastEventID:      lastEventID,
+	}
 }
 
 func seedUploadIntegrationImportBatch(t *testing.T, runtimeStore db.RuntimeStore, projectRecord project.Project) assetdomain.ImportBatch {
