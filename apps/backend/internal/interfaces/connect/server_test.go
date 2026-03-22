@@ -384,6 +384,211 @@ func TestExecutionAssetReviewBillingRoutes(t *testing.T) {
 	}
 }
 
+func TestMarkShotReworkRequiredPublishesShotExecutionUpdated(t *testing.T) {
+	ctx := context.Background()
+	scenario := seedConnectShotExecutionReworkScenario(t, "Rework Event Project")
+
+	sseCtx, cancelSSE := context.WithTimeout(ctx, 2*time.Second)
+	defer cancelSSE()
+	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, scenario.Server.URL+"/sse/events?organization_id="+scenario.OrganizationID+"&project_id="+scenario.ProjectID, nil)
+	if err != nil {
+		t.Fatalf("http.NewRequestWithContext returned error: %v", err)
+	}
+	sseReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(connectTestOrgID, connectTestUserID))
+	sseResp, err := scenario.Server.Client().Do(sseReq)
+	if err != nil {
+		t.Fatalf("SSE request returned error: %v", err)
+	}
+	defer sseResp.Body.Close()
+
+	if sseResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected SSE status 200, got %d", sseResp.StatusCode)
+	}
+
+	if _, err := scenario.ReviewClient.CreateShotReview(ctx, connectrpc.NewRequest(&reviewv1.CreateShotReviewRequest{
+		ShotExecutionId: scenario.ShotExecutionID,
+		Conclusion:      "rejected",
+		CommentLocale:   "zh-CN",
+		Comment:         "镜头节奏需要调整",
+	})); err != nil {
+		t.Fatalf("CreateShotReview returned error: %v", err)
+	}
+	reworked, err := scenario.ExecutionClient.MarkShotReworkRequired(ctx, connectrpc.NewRequest(&executionv1.MarkShotReworkRequiredRequest{
+		ShotExecutionId: scenario.ShotExecutionID,
+		Reason:          "镜头节奏需要调整",
+	}))
+	if err != nil {
+		t.Fatalf("MarkShotReworkRequired returned error: %v", err)
+	}
+	if got := reworked.Msg.GetShotExecution().GetStatus(); got != "rework_required" {
+		t.Fatalf("expected rework_required, got %q", got)
+	}
+
+	body := readEventStreamUntil(t, sseResp.Body, cancelSSE,
+		"event: shot.review.created",
+		`"conclusion":"rejected"`,
+		"event: shot.execution.updated",
+		`"status":"rework_required"`,
+		`"reason":"镜头节奏需要调整"`,
+	)
+	if !strings.Contains(body, `"status":"rework_required"`) {
+		t.Fatalf("expected rework_required SSE payload, got body %q", body)
+	}
+	if !strings.Contains(body, `"reason":"镜头节奏需要调整"`) {
+		t.Fatalf("expected rework reason SSE payload, got body %q", body)
+	}
+}
+
+type connectShotExecutionReworkScenario struct {
+	Server          *httptest.Server
+	ProjectID       string
+	OrganizationID  string
+	ShotExecutionID string
+	ExecutionClient executionv1connect.ExecutionServiceClient
+	ReviewClient    reviewv1connect.ReviewServiceClient
+}
+
+func seedConnectShotExecutionReworkScenario(t *testing.T, title string) connectShotExecutionReworkScenario {
+	t.Helper()
+
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	seedConnectAuthStore(store)
+	services := runtime.NewFactory(store).Services()
+
+	project, err := services.ProjectService.CreateProject(ctx, projectapp.CreateProjectInput{
+		OrganizationID:          connectTestOrgID,
+		OwnerUserID:             connectTestUserID,
+		Title:                   title,
+		PrimaryContentLocale:    "zh-CN",
+		SupportedContentLocales: []string{"zh-CN"},
+	})
+	if err != nil {
+		t.Fatalf("CreateProject returned error: %v", err)
+	}
+	episode, err := services.ProjectService.CreateEpisode(ctx, projectapp.CreateEpisodeInput{
+		ProjectID: project.ID,
+		EpisodeNo: 1,
+		Title:     "第一集",
+	})
+	if err != nil {
+		t.Fatalf("CreateEpisode returned error: %v", err)
+	}
+	scene, err := services.ContentService.CreateScene(ctx, contentapp.CreateSceneInput{
+		ProjectID: project.ID,
+		EpisodeID: episode.ID,
+		SceneNo:   1,
+		Title:     "返工场景",
+	})
+	if err != nil {
+		t.Fatalf("CreateScene returned error: %v", err)
+	}
+	shot, err := services.ContentService.CreateShot(ctx, contentapp.CreateShotInput{
+		SceneID: scene.ID,
+		ShotNo:  1,
+		Title:   "返工镜头",
+	})
+	if err != nil {
+		t.Fatalf("CreateShot returned error: %v", err)
+	}
+	if _, err := services.ContentService.CreateContentSnapshot(ctx, contentapp.CreateContentSnapshotInput{
+		OwnerType:     "shot",
+		OwnerID:       shot.ID,
+		ContentLocale: "zh-CN",
+		Body:          "主角重新调整镜头节奏。",
+	}); err != nil {
+		t.Fatalf("CreateContentSnapshot returned error: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, NewRouteDependencies(services))
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	executionClient := executionv1connect.NewExecutionServiceClient(server.Client(), server.URL)
+	assetClient := assetv1connect.NewAssetServiceClient(server.Client(), server.URL)
+	reviewClient := reviewv1connect.NewReviewServiceClient(server.Client(), server.URL)
+	billingClient := billingv1connect.NewBillingServiceClient(server.Client(), server.URL)
+
+	if _, err := billingClient.UpdateBudgetPolicy(ctx, connectrpc.NewRequest(&billingv1.UpdateBudgetPolicyRequest{
+		ProjectId:  project.ID,
+		OrgId:      project.OrganizationID,
+		LimitCents: 500,
+	})); err != nil {
+		t.Fatalf("UpdateBudgetPolicy returned error: %v", err)
+	}
+
+	run, err := executionClient.StartShotExecutionRun(ctx, connectrpc.NewRequest(&executionv1.StartShotExecutionRunRequest{
+		ShotId:             shot.ID,
+		OperatorId:         connectTestUserID,
+		ProjectId:          project.ID,
+		OrgId:              project.OrganizationID,
+		TriggerType:        "manual",
+		EstimatedCostCents: 120,
+	}))
+	if err != nil {
+		t.Fatalf("StartShotExecutionRun returned error: %v", err)
+	}
+	shotExecutionID := run.Msg.GetRun().GetShotExecutionId()
+
+	importBatch, err := assetClient.CreateImportBatch(ctx, connectrpc.NewRequest(&assetv1.CreateImportBatchRequest{
+		ProjectId:  project.ID,
+		OrgId:      project.OrganizationID,
+		OperatorId: connectTestUserID,
+		SourceType: "manual_upload",
+	}))
+	if err != nil {
+		t.Fatalf("CreateImportBatch returned error: %v", err)
+	}
+	candidate, err := assetClient.AddCandidateAsset(ctx, connectrpc.NewRequest(&assetv1.AddCandidateAssetRequest{
+		ShotExecutionId: shotExecutionID,
+		ProjectId:       project.ID,
+		OrgId:           project.OrganizationID,
+		ImportBatchId:   importBatch.Msg.GetImportBatch().GetId(),
+		SourceRunId:     run.Msg.GetRun().GetId(),
+		SourceType:      "manual_upload",
+		AssetLocale:     "zh-CN",
+		RightsStatus:    "clear",
+		AiAnnotated:     true,
+	}))
+	if err != nil {
+		t.Fatalf("AddCandidateAsset returned error: %v", err)
+	}
+	if _, err := executionClient.SelectPrimaryAsset(ctx, connectrpc.NewRequest(&executionv1.SelectPrimaryAssetRequest{
+		ShotExecutionId: shotExecutionID,
+		AssetId:         candidate.Msg.GetAsset().GetAssetId(),
+	})); err != nil {
+		t.Fatalf("SelectPrimaryAsset returned error: %v", err)
+	}
+	gate, err := executionClient.RunSubmissionGateChecks(ctx, connectrpc.NewRequest(&executionv1.RunSubmissionGateChecksRequest{
+		ShotExecutionId: shotExecutionID,
+	}))
+	if err != nil {
+		t.Fatalf("RunSubmissionGateChecks returned error: %v", err)
+	}
+	if _, err := reviewClient.CreateEvaluationRun(ctx, connectrpc.NewRequest(&reviewv1.CreateEvaluationRunRequest{
+		ShotExecutionId: shotExecutionID,
+		PassedChecks:    gate.Msg.GetPassedChecks(),
+		FailedChecks:    gate.Msg.GetFailedChecks(),
+	})); err != nil {
+		t.Fatalf("CreateEvaluationRun returned error: %v", err)
+	}
+	if _, err := executionClient.SubmitShotForReview(ctx, connectrpc.NewRequest(&executionv1.SubmitShotForReviewRequest{
+		ShotExecutionId: shotExecutionID,
+	})); err != nil {
+		t.Fatalf("SubmitShotForReview returned error: %v", err)
+	}
+
+	return connectShotExecutionReworkScenario{
+		Server:          server,
+		ProjectID:       project.ID,
+		OrganizationID:  project.OrganizationID,
+		ShotExecutionID: shotExecutionID,
+		ExecutionClient: executionClient,
+		ReviewClient:    reviewClient,
+	}
+}
+
 func readEventStreamUntil(t *testing.T, body io.ReadCloser, cancel context.CancelFunc, markers ...string) string {
 	t.Helper()
 	defer cancel()
