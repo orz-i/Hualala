@@ -168,3 +168,49 @@ test("admin smoke: mock workflow and asset routes handle edge cases consistently
   expect(unknownAsset.json.asset.id).toBe("asset-missing");
   expect(unknownAsset.json.candidateAssetId).toBe("");
 });
+
+test("admin smoke: retries a failed workflow run from the workflow monitor", async ({
+  page,
+}) => {
+  await mockConnectRoutes(page, {
+    admin: "success",
+  });
+
+  await page.goto(MOCK_ADMIN_URL);
+  await page.getByRole("button", { name: "进入开发会话" }).click();
+
+  await expect(page.getByText("工作流监控")).toBeVisible();
+  await page.getByRole("button", { name: "查看工作流详情 workflow-run-1" }).click();
+  await expect(page.getByRole("dialog", { name: "工作流详情" })).toBeVisible();
+
+  await page.getByRole("button", { name: "重试工作流" }).click();
+  await expect(page.getByText("工作流已重试")).toBeVisible();
+});
+
+test("admin smoke: confirms asset matches and selects a primary asset from asset monitor", async ({
+  page,
+}) => {
+  await mockConnectRoutes(page, {
+    admin: "success",
+  });
+
+  await page.goto(MOCK_ADMIN_URL);
+  await page.getByRole("button", { name: "进入开发会话" }).click();
+
+  await expect(page.getByText("资产监控")).toBeVisible();
+  await page.getByRole("button", { name: /查看导入批次详情/ }).click();
+  await expect(page.getByRole("dialog", { name: "导入批次详情" })).toBeVisible();
+
+  await page.getByRole("button", { name: /查看资源来源/ }).first().click();
+  await expect(page.getByRole("dialog", { name: "资源来源详情" })).toBeVisible();
+  await page.getByRole("button", { name: "关闭资源来源详情" }).click();
+
+  await page.getByRole("checkbox", { name: /选择导入条目/ }).click();
+  await page.getByRole("button", { name: "确认已选项" }).click();
+  await expect(page.getByText("正在确认已选匹配")).toBeVisible();
+  await expect(page.getByText("已确认所选匹配")).toBeVisible();
+
+  await page.getByRole("button", { name: /设置候选资源 .* 为主素材/ }).click();
+  await expect(page.getByText("正在设置主素材")).toBeVisible();
+  await expect(page.getByText("主素材已更新")).toBeVisible();
+});
