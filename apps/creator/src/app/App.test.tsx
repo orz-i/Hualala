@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CREATOR_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { loadImportBatchWorkbench } from "../features/import-batches/loadImportBatchWorkbench";
@@ -1008,6 +1009,45 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "素材来源详情" })).not.toBeInTheDocument();
     });
+  });
+
+  it("commits shot provenance results under React StrictMode", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-provenance-strict");
+    loadShotWorkbenchMock.mockResolvedValue(
+      createShotWorkbenchWithPool("shot-provenance-strict", "candidate_ready", "approved"),
+    );
+    loadShotReviewTimelineMock.mockResolvedValue(
+      createShotReviewTimeline("shot-provenance-strict"),
+    );
+    loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
+    loadAssetProvenanceDetailsMock.mockResolvedValue(
+      createAssetProvenanceDetail("asset-shot-provenance-strict-2", "source-run-shot-strict-2"),
+    );
+
+    render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+
+    expect(await screen.findByText("shot-exec-shot-provenance-strict")).toBeInTheDocument();
+
+    fireEvent.click(
+      within(
+        screen
+          .getByText("候选：candidate-shot-provenance-strict-2")
+          .closest("article") as HTMLElement,
+      ).getByRole("button", { name: "查看来源" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "source_type=upload_session import_batch_id=batch-1 rights_status=clear",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("来源运行 ID：source-run-shot-strict-2"),
+    ).toBeInTheDocument();
   });
 
   it("subscribes to shot workbench SSE after the first successful load", async () => {

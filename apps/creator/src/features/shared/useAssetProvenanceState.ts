@@ -29,6 +29,7 @@ export function useAssetProvenanceState({
   const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
       requestIdRef.current += 1;
