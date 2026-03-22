@@ -48,7 +48,7 @@ func TestEvaluateUploadResumeAllowedReturnsExpiredResumeHint(t *testing.T) {
 	if decision.CanComplete {
 		t.Fatalf("expected expired upload session to reject completion")
 	}
-	if !strings.Contains(decision.ResumeHint, "create a retry session") {
+	if !strings.Contains(decision.ResumeHint, "retry this session") {
 		t.Fatalf("expected expired resume hint, got %q", decision.ResumeHint)
 	}
 }

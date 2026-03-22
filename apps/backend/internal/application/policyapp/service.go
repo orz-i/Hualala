@@ -53,7 +53,7 @@ func (s *Service) EvaluateUploadResumeAllowed(session asset.UploadSession) Uploa
 		return UploadResumeDecision{
 			CanRetry:    true,
 			CanComplete: false,
-			ResumeHint:  "upload session expired; create a retry session to resume upload",
+			ResumeHint:  "upload session expired; retry this session to resume upload",
 		}
 	}
 	if session.RetryCount > 0 {

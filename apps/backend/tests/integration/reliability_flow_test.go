@@ -168,7 +168,7 @@ func TestReliabilityFlow(t *testing.T) {
 	if err := json.Unmarshal(expiredPayload, &expiredBody); err != nil {
 		t.Fatalf("json.Unmarshal returned error: %v", err)
 	}
-	if got := expiredBody["resume_hint"].(string); !strings.Contains(got, "create a retry session") {
+	if got := expiredBody["resume_hint"].(string); !strings.Contains(got, "retry this session") {
 		t.Fatalf("expected expired resume hint, got %q", got)
 	}
 
