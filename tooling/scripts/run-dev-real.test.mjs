@@ -2,11 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import {
+  assertRequiredPortsAvailable,
   buildManagedEnv,
   buildPostgresReadyCommand,
   buildSpawnDescriptor,
+  collectPortConflicts,
   defaultDatabaseUrl,
   fetchWithTimeout,
+  formatPortConflictError,
+  parseLsofMachineReadableOutput,
   stopTrackedChild,
 } from "./run-dev-real.mjs";
 
@@ -91,4 +95,63 @@ test("stopTrackedChild waits for process exit instead of fixed delay", { timeout
 
   const result = await exitPromise;
   assert.ok(result.code !== null || result.signal !== null);
+});
+
+
+test("collectPortConflicts returns an empty list when all required ports are free", async () => {
+  const conflicts = await collectPortConflicts(
+    [
+      { name: "backend", host: "127.0.0.1", port: 8080 },
+      { name: "creator", host: "127.0.0.1", port: 4174 },
+    ],
+    {
+      probePort: async () => false,
+      describePortOccupant: async () => null,
+    },
+  );
+
+  assert.deepEqual(conflicts, []);
+});
+
+test("assertRequiredPortsAvailable throws a stable error when a required port is already occupied", async () => {
+  await assert.rejects(
+    () =>
+      assertRequiredPortsAvailable(
+        [{ name: "backend", host: "127.0.0.1", port: 8080 }],
+        {
+          probePort: async () => true,
+          describePortOccupant: async () => ({
+            pid: 4242,
+            command: "node old-backend.js",
+          }),
+        },
+      ),
+    /backend 127\.0\.0\.1:8080[\s\S]*PID 4242[\s\S]*node old-backend\.js/,
+  );
+});
+
+test("formatPortConflictError falls back to host and port when process details are unavailable", () => {
+  const message = formatPortConflictError([
+    {
+      name: "creator",
+      host: "127.0.0.1",
+      port: 4174,
+      occupant: null,
+    },
+  ]);
+
+  assert.match(message, /creator 127\.0\.0\.1:4174/);
+  assert.match(message, /已被占用/);
+});
+
+test("parseLsofMachineReadableOutput parses lsof -Fpc output", () => {
+  assert.deepEqual(
+    parseLsofMachineReadableOutput("p4242\ncnode\n"),
+    {
+      pid: 4242,
+      command: "node",
+    },
+  );
+
+  assert.equal(parseLsofMachineReadableOutput("cnode\n"), null);
 });

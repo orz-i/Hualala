@@ -38,7 +38,13 @@
 corepack pnpm run dev:real
 ```
 
-该命令会顺序执行：
+该命令在真正启动前会先做固定端口预检：
+
+- 检查 `127.0.0.1:8080`、`127.0.0.1:4173`、`127.0.0.1:4174` 是否空闲
+- 任一端口已被占用时，`dev:real` 会直接失败退出，并打印端口占用信息
+- 这样可以避免表面上启动成功，实际却连到旧 backend 或旧 Vite 进程
+
+端口预检通过后，命令会顺序执行：
 
 1. `corepack pnpm run db:up`
 2. 等待 Postgres 就绪
@@ -51,6 +57,7 @@ corepack pnpm run dev:real
 注意：
 
 - `dev:real` 不会自动注入 demo 数据
+- 若 `8080`、`4173`、`4174` 任一端口已被占用，脚本会直接失败退出，而不是继续沿用旧进程
 - 结束 `dev:real` 只会停止进程，不会自动删库
 
 ## Demo 数据入口
@@ -66,6 +73,8 @@ corepack pnpm run dev:real:seed
 - 调真实 backend 的公共 API 注入项目、镜头执行、import batch、素材和评审数据
 - 在 `_tmp_demo_seed/phase1-backend-seed.json` 输出联调 IDs
 - 在 stdout 输出可直接打开的 admin / creator URL
+- 在输出 creator URL 前，额外执行一次 `GetShotWorkbench` 校验，确认 `shotId -> shotExecution` 可读回
+- 如果校验失败，命令会直接非 0 退出，并明确提示可能连到了旧 backend 或错误数据库
 
 ## 成功判定
 
@@ -209,7 +218,35 @@ docker run --rm -p 8080:8080 ^
 - 查看 `go run ./apps/backend/cmd/api` 的启动错误
 - 确认 `8080` 端口未被其他进程占用
 
-### 4. admin / creator 起不来
+### 4. `dev:real` 一启动就报端口占用并退出
+
+症状：
+
+- `corepack pnpm run dev:real` 在 `db:up` 之前直接失败退出
+- stderr 明确指出 `8080`、`4173`、`4174` 中某个端口已被占用
+
+处理：
+
+- 这属于预期保护，不是脚本误报
+- 先结束旧 backend / 旧 Vite 进程，再重跑 `corepack pnpm run dev:real`
+- 如果不确定命中的是哪套进程，以脚本输出的 PID / 命令行为准
+- 只有端口全部空闲后，才应该继续 real 联调
+
+### 5. `dev:real:seed` 报 `GetShotWorkbench` 校验失败
+
+症状：
+
+- `corepack pnpm run dev:real:seed` 非 0 退出
+- stderr 包含 `GetShotWorkbench`、`shotId`、期望的 `shotExecutionId`
+- 提示可能连接到了旧 backend 或错误数据库
+
+处理：
+
+- 先确认 `dev:real` 是当前终端刚拉起的进程，而不是命中了历史残留服务
+- 再检查 `DATABASE_URL` 是否指向预期本地库
+- 必要时清掉旧进程后重跑 `corepack pnpm run dev:real`，再执行 `corepack pnpm run dev:real:seed`
+
+### 6. admin / creator 起不来
 
 症状：
 
@@ -223,7 +260,7 @@ docker run --rm -p 8080:8080 ^
   - `corepack pnpm --filter @hualala/creator exec vite --host 127.0.0.1 --port 4174 --strictPort`
 - 释放冲突端口后重试
 
-### 5. Vite proxy 报 `ECONNREFUSED`
+### 7. Vite proxy 报 `ECONNREFUSED`
 
 症状：
 

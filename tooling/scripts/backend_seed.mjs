@@ -125,6 +125,42 @@ async function postJson(fetchFn, baseUrl, path, body) {
   return response.json();
 }
 
+async function verifyShotWorkbenchReachable(fetchFn, baseUrl, { shotId, shotExecutionId }) {
+  const path = "/hualala.execution.v1.ExecutionService/GetShotWorkbench";
+  const errorPrefix = `backend-seed: GetShotWorkbench verification failed for shotId=${shotId} expectedShotExecutionId=${shotExecutionId} via ${path}`;
+  const errorSuffix = "，可能连接到旧 backend 或错误数据库。";
+  let payload;
+
+  try {
+    payload = await postConnect(fetchFn, baseUrl, path, {
+      shotId,
+      displayLocale: "zh-CN",
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `${errorPrefix}${errorSuffix} 原始错误: ${detail}`,
+    );
+  }
+
+  const verifiedExecution = payload?.workbench?.shotExecution;
+  if (!verifiedExecution?.id) {
+    throw new Error(
+      `${errorPrefix}; workbench.shotExecution.id is missing${errorSuffix}`,
+    );
+  }
+  if (verifiedExecution.shotId !== shotId) {
+    throw new Error(
+      `${errorPrefix}; returned shotId=${verifiedExecution.shotId ?? ""}${errorSuffix}`,
+    );
+  }
+  if (shotExecutionId && verifiedExecution.id !== shotExecutionId) {
+    throw new Error(
+      `${errorPrefix}; returned shotExecutionId=${verifiedExecution.id}${errorSuffix}`,
+    );
+  }
+}
+
 async function runDevBootstrap({
   spawnFn = spawn,
   cwd = repoRoot,
@@ -254,6 +290,11 @@ async function createShotDataset({ fetchFn, baseUrl, orgId, operatorId, projectT
     },
   );
   const shotExecutionId = runPayload.run?.shotExecutionId;
+
+  await verifyShotWorkbenchReachable(fetchFn, baseUrl, {
+    shotId,
+    shotExecutionId,
+  });
 
   const importBatchPayload = await postConnect(
     fetchFn,

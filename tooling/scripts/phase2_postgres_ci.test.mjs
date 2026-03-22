@@ -42,11 +42,14 @@ test("repo exposes one-command real dev scripts and dedicated runbook", () => {
   assert.match(devRealScript, /127\.0\.0\.1:4173/);
   assert.match(devRealScript, /127\.0\.0\.1:4174/);
   assert.match(devRealScript, /tooling\/scripts\/run-backend-dev\.mjs/);
+  assert.match(devRealScript, /assertRequiredPortsAvailable|collectPortConflicts/);
   assert.match(readme, /docs\/runbooks\/local-real-dev\.md/);
   assert.match(readme, /apps\/backend\/Dockerfile/);
   assert.match(runbook, /corepack pnpm run dev:real/);
   assert.match(runbook, /corepack pnpm run dev:real:seed/);
   assert.match(runbook, /http:\/\/127\.0\.0\.1:8080\/healthz/);
+  assert.match(runbook, /启动前[\s\S]*8080[\s\S]*4173[\s\S]*4174/);
+  assert.match(runbook, /已被占用[\s\S]*直接失败退出/);
   assert.match(runbook, /DB_DRIVER/);
   assert.match(runbook, /DATABASE_URL/);
   assert.match(runbook, /AUTO_MIGRATE/);
