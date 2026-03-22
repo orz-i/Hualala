@@ -11,9 +11,11 @@ let subscribeOptions:
     }
   | undefined;
 
+type SubscribeEventsOptions = NonNullable<typeof subscribeOptions>;
+
 const { closeMock, subscribeEventsMock, createSSEClientMock } = vi.hoisted(() => {
   const closeMock = vi.fn();
-  const subscribeEventsMock = vi.fn((options) => {
+  const subscribeEventsMock = vi.fn((options: SubscribeEventsOptions) => {
     subscribeOptions = options;
     return {
       close: closeMock,
@@ -112,7 +114,7 @@ describe("subscribeRecentChanges", () => {
     expect(closeMock).toHaveBeenCalledTimes(1);
   });
 
-  it("treats workflow and asset update events as refresh triggers only", () => {
+  it("treats workflow update events as refresh triggers only", () => {
     const onChange = vi.fn();
     const onWorkflowUpdated = vi.fn();
     const onAssetImportBatchUpdated = vi.fn();
@@ -130,13 +132,32 @@ describe("subscribeRecentChanges", () => {
       eventType: "workflow.updated",
       data: {},
     });
+
+    expect(onWorkflowUpdated).toHaveBeenCalledTimes(1);
+    expect(onAssetImportBatchUpdated).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("treats asset import batch update events as refresh triggers only", () => {
+    const onChange = vi.fn();
+    const onWorkflowUpdated = vi.fn();
+    const onAssetImportBatchUpdated = vi.fn();
+
+    subscribeAdminRecentChanges({
+      organizationId: "org-3",
+      projectId: "project-3",
+      onChange,
+      onWorkflowUpdated,
+      onAssetImportBatchUpdated,
+    });
+
     subscribeOptions?.onEvent({
       id: "evt-asset",
       eventType: "asset.import_batch.updated",
       data: {},
     });
 
-    expect(onWorkflowUpdated).toHaveBeenCalledTimes(1);
+    expect(onWorkflowUpdated).not.toHaveBeenCalled();
     expect(onAssetImportBatchUpdated).toHaveBeenCalledTimes(1);
     expect(onChange).not.toHaveBeenCalled();
   });
