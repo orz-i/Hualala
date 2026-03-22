@@ -112,7 +112,8 @@ export function ImportBatchWorkbenchPage({
     setSelectedItemIds([]);
   }, [workbench]);
 
-  const selectedItemCount = selectedItemIds.length;
+  const validSelectedItemIds = [...new Set(selectedItemIds.filter(Boolean))];
+  const selectedItemCount = validSelectedItemIds.length;
 
   return (
     <main
@@ -313,6 +314,7 @@ export function ImportBatchWorkbenchPage({
               ) : (
                 workbench.items.map((item, index) => {
                   const isSelected = selectedItemIds.includes(item.id);
+                  const isSelectable = Boolean(item.id);
                   return (
                     <label
                       key={item.id || index}
@@ -323,7 +325,8 @@ export function ImportBatchWorkbenchPage({
                         borderRadius: "14px",
                         background: "rgba(255, 255, 255, 0.82)",
                         border: "1px solid rgba(148, 163, 184, 0.18)",
-                        cursor: "pointer",
+                        cursor: isSelectable ? "pointer" : "not-allowed",
+                        opacity: isSelectable ? 1 : 0.7,
                       }}
                     >
                       <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -332,8 +335,12 @@ export function ImportBatchWorkbenchPage({
                           aria-label={t("import.matching.selectItem", {
                             id: item.id || `item-${index + 1}`,
                           })}
+                          disabled={!isSelectable}
                           checked={isSelected}
                           onChange={() => {
+                            if (!isSelectable) {
+                              return;
+                            }
                             setSelectedItemIds((current) =>
                               isSelected
                                 ? current.filter((itemId) => itemId !== item.id)
@@ -380,7 +387,7 @@ export function ImportBatchWorkbenchPage({
                 }
                 onConfirmMatches({
                   importBatchId: workbench.importBatch.id,
-                  itemIds: selectedItemIds,
+                  itemIds: validSelectedItemIds,
                 });
               }}
             >

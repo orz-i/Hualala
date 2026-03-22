@@ -269,4 +269,35 @@ describe("ImportBatchWorkbenchPage", () => {
     expect(screen.getByText("已选 0 条")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "确认匹配" })).toBeDisabled();
   });
+
+  it("does not allow selecting items with empty ids and never submits blank item ids", () => {
+    const onConfirmMatches = vi.fn();
+
+    render(
+      <ImportBatchWorkbenchPage
+        workbench={{
+          ...workbench,
+          items: [
+            { id: "", status: "matched_pending_confirm", assetId: "asset-empty" },
+            { id: "item-2", status: "matched_pending_confirm", assetId: "asset-2" },
+          ],
+        }}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onConfirmMatches={onConfirmMatches}
+      />,
+    );
+
+    const emptyIdCheckbox = screen.getByLabelText("选择条目 item-1");
+    expect(emptyIdCheckbox).toBeDisabled();
+
+    fireEvent.click(screen.getByLabelText("选择条目 item-2"));
+    fireEvent.click(screen.getByRole("button", { name: "确认匹配" }));
+
+    expect(onConfirmMatches).toHaveBeenCalledWith({
+      importBatchId: "batch-1",
+      itemIds: ["item-2"],
+    });
+  });
 });

@@ -122,6 +122,7 @@ export function ShotWorkbenchPage({
   const reviewTimeline = workbench.reviewTimeline;
   const hasReviewTimeline =
     reviewTimeline.evaluationRuns.length > 0 || reviewTimeline.shotReviews.length > 0;
+  const primaryAssetId = workbench.shotExecution.primaryAssetId;
 
   return (
     <main
@@ -417,7 +418,10 @@ export function ShotWorkbenchPage({
           ) : (
             <div style={{ display: "grid", gap: "12px" }}>
               {workbench.candidateAssets.map((candidate, index) => {
-                const isPrimary = candidate.assetId === workbench.shotExecution.primaryAssetId;
+                const isPrimary =
+                  Boolean(primaryAssetId) &&
+                  Boolean(candidate.assetId) &&
+                  candidate.assetId === primaryAssetId;
                 const canSelectPrimary =
                   Boolean(onSelectPrimaryAsset) &&
                   Boolean(candidate.assetId) &&

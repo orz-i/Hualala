@@ -281,4 +281,34 @@ describe("ShotWorkbenchPage", () => {
 
     expect(screen.getByText("尚无候选素材")).toBeInTheDocument();
   });
+
+  it("does not mark a candidate as primary when both asset ids are empty", () => {
+    render(
+      <ShotWorkbenchPage
+        workbench={{
+          ...workbench,
+          shotExecution: {
+            ...workbench.shotExecution,
+            primaryAssetId: "",
+          },
+          candidateAssets: [
+            {
+              id: "candidate-empty",
+              assetId: "",
+              shotExecutionId: "shot-exec-1",
+              sourceRunId: "source-run-empty",
+            },
+          ],
+        }}
+        workflowPanel={workflowPanel}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onSelectPrimaryAsset={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("当前主素材")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "设为主素材" })).toBeDisabled();
+  });
 });
