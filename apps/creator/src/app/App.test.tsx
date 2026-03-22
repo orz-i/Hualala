@@ -261,15 +261,68 @@ function createShotReviewTimeline(
   };
 }
 
-function createShotWorkflowPanel(status = "running", id = "workflow-run-1") {
+function createWorkflowSteps(
+  workflowRunId: string,
+  status = "running",
+  attemptCount = status === "failed" ? 2 : 1,
+  lastError = status === "failed" ? "provider rejected request" : "",
+) {
+  return [
+    {
+      id: `${workflowRunId}-step-dispatch`,
+      workflowRunId,
+      stepKey: `attempt_${attemptCount}.dispatch`,
+      stepOrder: 1,
+      status: "completed",
+      errorCode: "",
+      errorMessage: "",
+    },
+    {
+      id: `${workflowRunId}-step-gateway`,
+      workflowRunId,
+      stepKey: `attempt_${attemptCount}.gateway`,
+      stepOrder: 2,
+      status,
+      errorCode: status === "failed" ? "provider_error" : "",
+      errorMessage: lastError,
+    },
+  ];
+}
+
+function createShotWorkflowPanel(
+  status = "running",
+  id = "workflow-run-1",
+  overrides: Partial<{
+    resourceId: string;
+    projectId: string;
+    provider: string;
+    currentStep: string;
+    attemptCount: number;
+    lastError: string;
+    externalRequestId: string;
+    workflowSteps: ReturnType<typeof createWorkflowSteps>;
+    detailUnavailableMessage: string;
+  }> = {},
+) {
+  const attemptCount = overrides.attemptCount ?? (status === "failed" ? 2 : 1);
+  const lastError =
+    overrides.lastError ?? (status === "failed" ? "provider rejected request" : "");
   return {
     latestWorkflowRun: {
       id,
       workflowType: "shot_pipeline",
       status,
-      resourceId: "shot-exec-shot-live-1",
-      projectId: "project-1",
+      resourceId: overrides.resourceId ?? "shot-exec-shot-live-1",
+      projectId: overrides.projectId ?? "project-1",
+      provider: overrides.provider ?? "seedance",
+      currentStep: overrides.currentStep ?? `attempt_${attemptCount}.gateway`,
+      attemptCount,
+      lastError,
+      externalRequestId: overrides.externalRequestId ?? `request-${id}`,
     },
+    workflowSteps:
+      overrides.workflowSteps ?? createWorkflowSteps(id, status, attemptCount, lastError),
+    detailUnavailableMessage: overrides.detailUnavailableMessage,
   };
 }
 
@@ -729,7 +782,11 @@ describe("App", () => {
     );
 
     expect(await screen.findByText("shot-exec-shot-live-1")).toBeInTheDocument();
-    expect(screen.getByText(/workflow-run-1/)).toBeInTheDocument();
+    expect(screen.getByText("最近一次运行：workflow-run-1")).toBeInTheDocument();
+    expect(screen.getByText("工作流提供方：seedance")).toBeInTheDocument();
+    expect(screen.getByText("当前步骤：attempt_1.gateway")).toBeInTheDocument();
+    expect(screen.getByText("尝试次数：1")).toBeInTheDocument();
+    expect(screen.getByText("步骤：attempt_1.dispatch")).toBeInTheDocument();
     expect(screen.getByText("评审时间线")).toBeInTheDocument();
     expect(screen.getByText("review-shot-live-1-pending")).toBeInTheDocument();
     expect(screen.getAllByText("pending").length).toBeGreaterThanOrEqual(1);
@@ -818,7 +875,9 @@ describe("App", () => {
     expect(await screen.findByText("镜头主素材已更新")).toBeInTheDocument();
     expect(screen.getByText("主素材：asset-shot-primary-select-2")).toBeInTheDocument();
     expect(screen.getByText("review-shot-primary-select-approved")).toBeInTheDocument();
-    expect(screen.getByText(/workflow-run-2/)).toBeInTheDocument();
+    expect(screen.getByText("最近一次运行：workflow-run-2")).toBeInTheDocument();
+    expect(screen.getByText("尝试次数：2")).toBeInTheDocument();
+    expect(screen.getByText("最近错误：provider rejected request")).toBeInTheDocument();
     expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(2);
     expect(loadShotReviewTimelineMock).toHaveBeenCalledTimes(2);
     expect(loadShotWorkflowPanelMock).toHaveBeenCalledTimes(2);
@@ -905,7 +964,9 @@ describe("App", () => {
     });
 
     expect(await screen.findByText(/submitted_for_review/)).toBeInTheDocument();
-    expect(screen.getByText(/workflow-run-2/)).toBeInTheDocument();
+    expect(screen.getByText("最近一次运行：workflow-run-2")).toBeInTheDocument();
+    expect(screen.getByText("当前步骤：attempt_2.gateway")).toBeInTheDocument();
+    expect(screen.getByText("步骤：attempt_2.dispatch")).toBeInTheDocument();
     expect(screen.getByText("review-shot-sse-1-approved")).toBeInTheDocument();
     expect(screen.queryByText("正在执行 Gate 检查")).not.toBeInTheDocument();
     expect(screen.queryByText("Gate 检查失败")).not.toBeInTheDocument();
@@ -930,6 +991,27 @@ describe("App", () => {
 
     expect(await screen.findByText("shot-exec-shot-timeline-unavailable")).toBeInTheDocument();
     expect(screen.getByText("评审时间线暂不可用")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gate 检查" })).toBeInTheDocument();
+  });
+
+  it("keeps the shot workbench visible when workflow details are unavailable", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-workflow-unavailable");
+    loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-workflow-unavailable"));
+    loadShotReviewTimelineMock.mockResolvedValue(
+      createShotReviewTimeline("shot-workflow-unavailable"),
+    );
+    loadShotWorkflowPanelMock.mockResolvedValue(
+      createShotWorkflowPanel("failed", "workflow-run-unavailable", {
+        workflowSteps: [],
+        detailUnavailableMessage: "工作流详情暂不可用",
+      }),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-shot-workflow-unavailable")).toBeInTheDocument();
+    expect(screen.getByText("工作流详情暂不可用")).toBeInTheDocument();
+    expect(screen.getByText("最近一次运行：workflow-run-unavailable")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Gate 检查" })).toBeInTheDocument();
   });
 
@@ -1088,7 +1170,7 @@ describe("App", () => {
       .mockResolvedValueOnce(createShotWorkbench("shot-live-1"))
       .mockResolvedValueOnce(createShotWorkbench("shot-live-1"));
     loadShotWorkflowPanelMock
-      .mockResolvedValueOnce({ latestWorkflowRun: undefined })
+      .mockResolvedValueOnce({ latestWorkflowRun: undefined, workflowSteps: [] })
       .mockResolvedValueOnce(createShotWorkflowPanel("running", "workflow-run-2"));
 
     render(<App />);
@@ -1108,7 +1190,10 @@ describe("App", () => {
     });
 
     expect(await screen.findByText("工作流已发起")).toBeInTheDocument();
-    expect(screen.getByText(/workflow-run-2/)).toBeInTheDocument();
+    expect(screen.getByText("最近一次运行：workflow-run-2")).toBeInTheDocument();
+    expect(screen.getByText("当前步骤：attempt_1.gateway")).toBeInTheDocument();
+    expect(screen.getByText("尝试次数：1")).toBeInTheDocument();
+    expect(screen.getByText("步骤：attempt_1.dispatch")).toBeInTheDocument();
   });
 
   it("retries a failed workflow run and refreshes the panel", async () => {
@@ -1118,11 +1203,16 @@ describe("App", () => {
       .mockResolvedValueOnce(createShotWorkbench("shot-live-1"));
     loadShotWorkflowPanelMock
       .mockResolvedValueOnce(createShotWorkflowPanel("failed", "workflow-run-failed"))
-      .mockResolvedValueOnce(createShotWorkflowPanel("running", "workflow-run-failed"));
+      .mockResolvedValueOnce(
+        createShotWorkflowPanel("running", "workflow-run-failed", {
+          attemptCount: 3,
+          lastError: "",
+        }),
+      );
 
     render(<App />);
 
-    expect(await screen.findByText(/workflow-run-failed/)).toBeInTheDocument();
+    expect(await screen.findByText("最近一次运行：workflow-run-failed")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "重试工作流" }));
 
@@ -1136,6 +1226,9 @@ describe("App", () => {
 
     expect(await screen.findByText("工作流已重试")).toBeInTheDocument();
     expect(screen.getByText(/当前状态：running/)).toBeInTheDocument();
+    expect(screen.getByText("尝试次数：3")).toBeInTheDocument();
+    expect(screen.getByText("最近错误：无")).toBeInTheDocument();
+    expect(screen.getByText("步骤：attempt_3.gateway")).toBeInTheDocument();
   });
 
   it("falls back to the action-specific workflow error when retry rejects with an opaque value", async () => {
@@ -1148,7 +1241,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText(/workflow-run-opaque/)).toBeInTheDocument();
+    expect(await screen.findByText("最近一次运行：workflow-run-opaque")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "重试工作流" }));
 

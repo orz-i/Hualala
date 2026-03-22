@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mockConnectRoutes } from "./fixtures/mockConnectRoutes";
+import { mockCreatorWorkflowObservabilityRoutes } from "./fixtures/mockCreatorWorkflowObservability";
 
 async function postJson<TResponse>(
   page,
@@ -304,15 +305,26 @@ test("creator smoke: shot workbench actions complete with refreshed feedback", a
     creatorShot: "success",
   });
   await mockCreatorCandidatePoolShotRoutes(page);
+  await mockCreatorWorkflowObservabilityRoutes(page);
 
   await page.goto("http://127.0.0.1:4174/?shotId=shot-live-1");
   await enterDevSession(page);
 
   await expect(page.getByText("shot-exec-live-1")).toBeVisible();
   await expect(page.getByText("2 个候选素材")).toBeVisible();
+  await expect(page.getByText("最近一次运行：workflow-run-1")).toBeVisible();
+  await expect(page.getByText("当前步骤：attempt_1.gateway")).toBeVisible();
+  await expect(page.getByText("尝试次数：1")).toBeVisible();
+  await expect(page.getByText("最近错误：provider rejected request")).toBeVisible();
+  await expect(page.getByText("步骤：attempt_1.dispatch", { exact: true })).toBeVisible();
+  await expect(page.getByText("步骤：attempt_1.gateway", { exact: true })).toBeVisible();
   await page.getByTestId("ui-locale-select").selectOption("en-US");
   await expect(page.getByRole("heading", { name: "Review Outcome" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Review Timeline" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Workflow Steps" })).toBeVisible();
+  await expect(page.getByText("Current step: attempt_1.gateway")).toBeVisible();
+  await expect(page.getByText("Attempt count: 1")).toBeVisible();
+  await expect(page.getByText("Last error: provider rejected request")).toBeVisible();
   await expect(page.getByText("Source run: source-run-live-2")).toBeVisible();
   const secondShotCandidate = page
     .locator("article")
@@ -322,6 +334,23 @@ test("creator smoke: shot workbench actions complete with refreshed feedback", a
   await expect(page.getByText("Shot primary asset updated")).toBeVisible();
   await expect(page.getByText("Primary asset: asset-live-2")).toBeVisible();
   await expect(page.getByText("review-live-pending")).toBeVisible();
+  await page.getByRole("button", { name: "Retry Workflow" }).click();
+  await expect(page.getByText("Retrying workflow")).toBeVisible();
+  await expect(page.getByText("Workflow retried")).toBeVisible();
+  await expect(page.getByText("Current status: running")).toBeVisible();
+  await expect(page.getByText("Current step: attempt_2.gateway")).toBeVisible();
+  await expect(page.getByText("Attempt count: 2")).toBeVisible();
+  await expect(page.getByText("Last error: none")).toBeVisible();
+  await expect(page.getByText("Step: attempt_2.dispatch", { exact: true })).toBeVisible();
+  await expect(page.getByText("Step: attempt_2.gateway", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Start Workflow" }).click();
+  await expect(page.getByText("Starting workflow")).toBeVisible();
+  await expect(page.getByText("Workflow started")).toBeVisible();
+  await expect(page.getByText("Latest run: workflow-run-2")).toBeVisible();
+  await expect(page.getByText("Current step: attempt_1.gateway")).toBeVisible();
+  await expect(page.getByText("Attempt count: 1")).toBeVisible();
+  await expect(page.getByText("External request ID: request-2")).toBeVisible();
+  await expect(page.getByText("Step: attempt_1.dispatch", { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByTestId("ui-locale-select")).toHaveValue("en-US");
   await expect(page.getByRole("button", { name: "Run Gate Checks" })).toBeVisible();

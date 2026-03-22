@@ -58,10 +58,36 @@ describe("ShotWorkbenchPage", () => {
       status: "failed",
       resourceId: "shot-exec-1",
       projectId: "project-1",
+      provider: "seedance",
+      currentStep: "attempt_2.gateway",
+      attemptCount: 2,
+      lastError: "provider rejected request",
+      externalRequestId: "request-1",
     },
+    workflowSteps: [
+      {
+        id: "workflow-step-1",
+        workflowRunId: "workflow-run-1",
+        stepKey: "attempt_2.dispatch",
+        stepOrder: 1,
+        status: "completed",
+        errorCode: "",
+        errorMessage: "",
+      },
+      {
+        id: "workflow-step-2",
+        workflowRunId: "workflow-run-1",
+        stepKey: "attempt_2.gateway",
+        stepOrder: 2,
+        status: "failed",
+        errorCode: "provider_error",
+        errorMessage: "provider rejected request",
+      },
+    ],
+    detailUnavailableMessage: undefined,
   };
 
-  it("renders shot execution summary, review timeline, and workflow status", () => {
+  it("renders shot execution summary, review timeline, and workflow observability details", () => {
     render(
       <ShotWorkbenchPage
         workbench={workbench}
@@ -85,9 +111,18 @@ describe("ShotWorkbenchPage", () => {
     expect(screen.getByText("评论语言：zh-CN")).toBeInTheDocument();
     expect(screen.getByText("来源运行：source-run-1")).toBeInTheDocument();
     expect(screen.getByText("当前主素材")).toBeInTheDocument();
-    expect(screen.getByText(/workflow-run-1/)).toBeInTheDocument();
-    expect(screen.getByText(/shot_pipeline/)).toBeInTheDocument();
-    expect(screen.getByText(/failed/)).toBeInTheDocument();
+    expect(screen.getByText("最近一次运行：workflow-run-1")).toBeInTheDocument();
+    expect(screen.getByText("工作流类型：shot_pipeline")).toBeInTheDocument();
+    expect(screen.getByText("当前状态：failed")).toBeInTheDocument();
+    expect(screen.getByText("工作流提供方：seedance")).toBeInTheDocument();
+    expect(screen.getByText("当前步骤：attempt_2.gateway")).toBeInTheDocument();
+    expect(screen.getByText("尝试次数：2")).toBeInTheDocument();
+    expect(screen.getByText("最近错误：provider rejected request")).toBeInTheDocument();
+    expect(screen.getByText("外部请求 ID：request-1")).toBeInTheDocument();
+    expect(screen.getByText("工作流步骤")).toBeInTheDocument();
+    expect(screen.getByText("步骤：attempt_2.dispatch")).toBeInTheDocument();
+    expect(screen.getByText("错误码：provider_error")).toBeInTheDocument();
+    expect(screen.getByText("错误信息：provider rejected request")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "重试工作流" })).toBeInTheDocument();
   });
 
@@ -203,6 +238,7 @@ describe("ShotWorkbenchPage", () => {
             ...workflowPanel.latestWorkflowRun,
             status: "running",
           },
+          workflowSteps: workflowPanel.workflowSteps,
         }}
         locale="en-US"
         t={createTranslator("en-US")}
@@ -218,6 +254,10 @@ describe("ShotWorkbenchPage", () => {
     expect(screen.getByRole("button", { name: "Start Workflow" })).toBeInTheDocument();
     expect(screen.getByText("Source run: source-run-2")).toBeInTheDocument();
     expect(screen.getByText("Workflow running")).toBeInTheDocument();
+    expect(screen.getByText("Provider: seedance")).toBeInTheDocument();
+    expect(screen.getByText("Current step: attempt_2.gateway")).toBeInTheDocument();
+    expect(screen.getByText("Attempt count: 2")).toBeInTheDocument();
+    expect(screen.getByText("Workflow Steps")).toBeInTheDocument();
 
     fireEvent.change(screen.getByTestId("ui-locale-select"), {
       target: { value: "zh-CN" },
@@ -263,6 +303,40 @@ describe("ShotWorkbenchPage", () => {
     );
 
     expect(screen.getByText("评审时间线暂不可用")).toBeInTheDocument();
+  });
+
+  it("renders workflow step empty and unavailable fallbacks independently", () => {
+    const { rerender } = render(
+      <ShotWorkbenchPage
+        workbench={workbench}
+        workflowPanel={{
+          latestWorkflowRun: workflowPanel.latestWorkflowRun,
+          workflowSteps: [],
+          detailUnavailableMessage: undefined,
+        }}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("尚无工作流步骤")).toBeInTheDocument();
+
+    rerender(
+      <ShotWorkbenchPage
+        workbench={workbench}
+        workflowPanel={{
+          latestWorkflowRun: workflowPanel.latestWorkflowRun,
+          workflowSteps: [],
+          detailUnavailableMessage: "工作流详情暂不可用",
+        }}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("工作流详情暂不可用")).toBeInTheDocument();
   });
 
   it("renders an empty candidate list message when the shot has no candidate assets", () => {
