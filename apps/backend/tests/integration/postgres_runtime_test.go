@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -775,7 +776,7 @@ func performUploadSessionRequest(t *testing.T, client *http.Client, method strin
 		if err != nil {
 			t.Fatalf("json.Marshal %s %s returned error: %v", method, url, err)
 		}
-		requestBody = strings.NewReader(string(payload))
+		requestBody = bytes.NewReader(payload)
 	}
 
 	request, err := http.NewRequest(method, url, requestBody)
