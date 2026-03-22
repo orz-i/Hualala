@@ -102,7 +102,7 @@ func (s *PostgresStore) GetGatewayResult(idempotencyKey string) (gateway.Gateway
 	var payload sql.NullString
 	err := s.db.QueryRowContext(
 		context.Background(),
-		`SELECT (payload -> $2)::text FROM app_state_snapshots WHERE store_key = $1`,
+		`SELECT (payload -> ($2::text))::text FROM app_state_snapshots WHERE store_key = $1`,
 		s.gatewaySnapshotKey,
 		key,
 	).Scan(&payload)
@@ -135,11 +135,11 @@ func (s *PostgresStore) SaveGatewayResult(ctx context.Context, idempotencyKey st
 	if _, err := s.db.ExecContext(
 		ctx,
 		`INSERT INTO app_state_snapshots (store_key, payload, updated_at)
-		 VALUES ($1, jsonb_build_object($2, $3::jsonb), NOW())
+		 VALUES ($1, jsonb_build_object($2::text, $3::jsonb), NOW())
 		 ON CONFLICT (store_key)
 		 DO UPDATE SET payload = jsonb_set(
 		 	COALESCE(app_state_snapshots.payload, '{}'::jsonb),
-		 	ARRAY[$2],
+		 	ARRAY[$2::text]::text[],
 		 	$3::jsonb,
 		 	true
 		 ),
