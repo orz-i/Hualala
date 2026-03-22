@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -892,6 +893,50 @@ func TestAddCandidateAssetPublishesShotExecutionUpdated(t *testing.T) {
 	)
 	if !strings.Contains(body, `"status":"candidate_ready"`) {
 		t.Fatalf("expected candidate_ready SSE payload, got body %q", body)
+	}
+}
+
+func TestAddCandidateAssetRejectsScopeMismatch(t *testing.T) {
+	ctx := context.Background()
+	scenario := seedConnectImportWorkbenchScenario(t, "Import Workbench Scope Mismatch")
+
+	_, err := scenario.AssetClient.AddCandidateAsset(ctx, connectrpc.NewRequest(&assetv1.AddCandidateAssetRequest{
+		ShotExecutionId: scenario.ShotExecutionID,
+		ProjectId:       "project-other",
+		OrgId:           scenario.OrganizationID,
+		ImportBatchId:   scenario.ImportBatchID,
+		SourceRunId:     scenario.RunID,
+		SourceType:      "manual_upload",
+		AssetLocale:     "zh-CN",
+		RightsStatus:    "clear",
+		AiAnnotated:     true,
+	}))
+	if err == nil {
+		t.Fatal("expected scope mismatch error")
+	}
+
+	var connectErr *connectrpc.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("expected connect error, got %T: %v", err, err)
+	}
+	if got := connectErr.Code(); got != connectrpc.CodePermissionDenied {
+		t.Fatalf("expected permission denied code, got %v", got)
+	}
+
+	workbench, workbenchErr := scenario.AssetClient.GetImportBatchWorkbench(ctx, connectrpc.NewRequest(&assetv1.GetImportBatchWorkbenchRequest{
+		ImportBatchId: scenario.ImportBatchID,
+	}))
+	if workbenchErr != nil {
+		t.Fatalf("GetImportBatchWorkbench returned error: %v", workbenchErr)
+	}
+	if len(workbench.Msg.GetCandidateAssets()) != 0 {
+		t.Fatalf("expected no candidate assets after scope mismatch, got %d", len(workbench.Msg.GetCandidateAssets()))
+	}
+	if len(workbench.Msg.GetItems()) != 0 {
+		t.Fatalf("expected no import batch items after scope mismatch, got %d", len(workbench.Msg.GetItems()))
+	}
+	if got := workbench.Msg.GetImportBatch().GetStatus(); got != "pending_review" {
+		t.Fatalf("expected import batch status pending_review after scope mismatch, got %q", got)
 	}
 }
 
