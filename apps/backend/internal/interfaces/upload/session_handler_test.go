@@ -94,8 +94,51 @@ func TestExpiredUploadSessionStatus(t *testing.T) {
 	if got := statusResponse["status"].(string); got != "expired" {
 		t.Fatalf("expected expired upload session, got %q", got)
 	}
-	if hint := statusResponse["resume_hint"].(string); !strings.Contains(hint, "create a retry session") {
+	if hint := statusResponse["resume_hint"].(string); !strings.Contains(hint, "retry this session") {
 		t.Fatalf("expected expired resume hint, got %q", hint)
+	}
+}
+
+func TestRetryExpiredUploadSessionReopensSession(t *testing.T) {
+	store := db.NewMemoryStore()
+	resetSessionStore(store)
+	seedUploadAuthStore(store)
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, newUploadServiceFromStore(store))
+
+	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
+		"organization_id":    db.DefaultDevOrganizationID,
+		"project_id":         uploadTestProjectID,
+		"file_name":          "shot.png",
+		"checksum":           "sha256:abc123",
+		"size_bytes":         1024,
+		"expires_in_seconds": 0,
+	})
+	createResponse := decodeUploadJSONResponse(t, createRec)
+	sessionID := createResponse["session_id"].(string)
+
+	retryRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions/"+sessionID+"/retry", nil)
+	retryResponse := decodeUploadJSONResponse(t, retryRec)
+	if got := retryResponse["session_id"].(string); got != sessionID {
+		t.Fatalf("expected retried expired session_id %q, got %q", sessionID, got)
+	}
+	if got := retryResponse["status"].(string); got != "pending" {
+		t.Fatalf("expected retried expired session to become pending, got %q", got)
+	}
+	if got := retryResponse["retry_count"].(float64); got != 1 {
+		t.Fatalf("expected retry_count 1 after retrying expired session, got %.0f", got)
+	}
+	if hint := retryResponse["resume_hint"].(string); !strings.Contains(hint, "retry from byte 0") {
+		t.Fatalf("expected retry resume hint after reopening expired session, got %q", hint)
+	}
+
+	expiresAt, err := time.Parse(time.RFC3339, retryResponse["expires_at"].(string))
+	if err != nil {
+		t.Fatalf("time.Parse returned error: %v", err)
+	}
+	if !expiresAt.After(time.Now().UTC()) {
+		t.Fatalf("expected retried expired session to receive a new future expiry, got %s", expiresAt.Format(time.RFC3339))
 	}
 }
 

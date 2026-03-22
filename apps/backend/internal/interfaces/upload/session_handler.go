@@ -16,6 +16,8 @@ import (
 	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
+const defaultRetrySessionTTL = time.Minute
+
 type Service struct {
 	assets         db.AssetRepository
 	executions     db.ExecutionRepository
@@ -245,8 +247,16 @@ func (s *Service) RetrySession(r *http.Request, sessionID string) (asset.UploadS
 	if !decision.CanRetry {
 		return asset.UploadSession{}, fmt.Errorf("upload: session cannot be retried")
 	}
+	now := time.Now().UTC()
 	session.RetryCount++
-	session.LastRetryAt = time.Now().UTC()
+	session.LastRetryAt = now
+	if !session.ExpiresAt.After(now) {
+		retryWindow := session.ExpiresAt.Sub(session.CreatedAt)
+		if retryWindow <= 0 {
+			retryWindow = defaultRetrySessionTTL
+		}
+		session.ExpiresAt = now.Add(retryWindow)
+	}
 	session.Status = sessionStatus(session)
 	session.ResumeHint = s.evaluateUploadResumeAllowed(session).ResumeHint
 	if err := s.assets.SaveUploadSession(r.Context(), session); err != nil {
