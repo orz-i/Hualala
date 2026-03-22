@@ -34,6 +34,10 @@ test("admin smoke: renders overview and updates budget", async ({ page }) => {
   await mockConnectRoutes(page, {
     admin: "success",
   });
+  await page.route("**/hualala.billing.v1.BillingService/UpdateBudgetPolicy", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await route.fallback();
+  });
 
   await page.goto(MOCK_ADMIN_URL);
   await page.getByRole("button", { name: "进入开发会话" }).click();
@@ -52,9 +56,7 @@ test("admin smoke: renders overview and updates budget", async ({ page }) => {
   await page.getByLabel("Budget limit (yuan)").fill("1500");
   await page.getByRole("button", { name: "Update budget" }).click();
 
-  await expect(
-    page.getByText(/Updating budget policy|Budget policy updated/),
-  ).toBeVisible();
+  await expect(page.getByText("Updating budget policy")).toBeVisible();
   await expect(page.getByText("Budget policy updated")).toBeVisible();
   await expect(page.getByText("Budget limit: 1500.00 元")).toBeVisible();
 });

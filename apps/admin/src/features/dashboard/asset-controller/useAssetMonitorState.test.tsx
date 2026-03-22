@@ -95,4 +95,32 @@ describe("useAssetMonitorState", () => {
       sourceType: "",
     });
   });
+
+  it("preserves the last successful monitor when a manual refresh fails", async () => {
+    loadAssetMonitorPanelMock
+      .mockResolvedValueOnce(createAssetMonitor("project-live-001"))
+      .mockRejectedValueOnce(new Error("asset monitor exploded"));
+
+    const { result } = renderHook(() =>
+      useAssetMonitorState({
+        sessionState: "ready",
+        projectId: "project-live-001",
+        identityOverride: undefined,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.assetMonitor.importBatches).toHaveLength(1);
+    });
+
+    await act(async () => {
+      await result.current.refreshAssetMonitor();
+    });
+
+    expect(result.current.assetMonitor.importBatches).toHaveLength(1);
+    expect(result.current.assetMonitor.filters).toEqual({
+      status: "",
+      sourceType: "",
+    });
+  });
 });

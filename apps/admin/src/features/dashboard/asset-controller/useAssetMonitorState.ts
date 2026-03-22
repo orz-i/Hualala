@@ -45,14 +45,6 @@ export function useAssetMonitorState({
       const message =
         error instanceof Error ? error.message : "admin: unknown asset monitor error";
       console.warn(message);
-      startTransition(() => {
-        setAssetMonitorState(
-          createEmptyAssetMonitor({
-            status: assetStatusFilter,
-            sourceType: assetSourceTypeFilter,
-          }),
-        );
-      });
     }
   }, [
     assetSourceTypeFilter,
