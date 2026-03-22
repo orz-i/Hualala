@@ -1,6 +1,32 @@
 import { expect, test } from "@playwright/test";
 import { mockConnectRoutes } from "./fixtures/mockConnectRoutes";
 
+async function postJson<TResponse>(
+  page,
+  path: string,
+  body: Record<string, unknown>,
+): Promise<{ status: number; json: TResponse }> {
+  return page.evaluate(
+    async ({ requestPath, requestBody }) => {
+      const response = await fetch(requestPath, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+      return {
+        status: response.status,
+        json: await response.json(),
+      };
+    },
+    {
+      requestPath: path,
+      requestBody: body,
+    },
+  );
+}
+
 async function enterDevSession(page) {
   await page.getByRole("button", { name: "进入开发会话" }).click();
 }
@@ -86,4 +112,25 @@ test("creator smoke: import workbench keeps content on action failure", async ({
   await page.getByRole("button", { name: "确认匹配" }).click();
   await expect(page.getByText("匹配确认失败")).toBeVisible();
   await expect(page.getByText("batch-live-1")).toBeVisible();
+});
+
+test("creator smoke: missing workflow retries return not found from mock routes", async ({
+  page,
+}) => {
+  await mockConnectRoutes(page, {
+    creatorShot: "success",
+  });
+
+  await page.goto("http://127.0.0.1:4174/?shotId=shot-live-1");
+
+  const missingRetry = await postJson<{ error: string }>(
+    page,
+    "/hualala.workflow.v1.WorkflowService/RetryWorkflowRun",
+    {
+      workflowRunId: "workflow-run-missing",
+    },
+  );
+
+  expect(missingRetry.status).toBe(404);
+  expect(missingRetry.json.error).toBe("workflow run not found");
 });
