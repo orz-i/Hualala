@@ -91,12 +91,33 @@ func nullTimeValue(value sql.NullTime) time.Time {
 }
 
 func (s *PostgresStore) GetGatewayResult(idempotencyKey string) (gateway.GatewayResult, bool) {
-	results, err := s.loadGatewayResults(context.Background())
+	if s == nil || s.db == nil {
+		return gateway.GatewayResult{}, false
+	}
+	key := strings.TrimSpace(idempotencyKey)
+	if key == "" {
+		return gateway.GatewayResult{}, false
+	}
+
+	var payload sql.NullString
+	err := s.db.QueryRowContext(
+		context.Background(),
+		`SELECT (payload -> $2)::text FROM app_state_snapshots WHERE store_key = $1`,
+		s.gatewaySnapshotKey,
+		key,
+	).Scan(&payload)
 	if err != nil {
 		return gateway.GatewayResult{}, false
 	}
-	record, ok := results[strings.TrimSpace(idempotencyKey)]
-	return record, ok
+	if !payload.Valid || strings.TrimSpace(payload.String) == "" {
+		return gateway.GatewayResult{}, false
+	}
+
+	record := gateway.GatewayResult{}
+	if err := json.Unmarshal([]byte(payload.String), &record); err != nil {
+		return gateway.GatewayResult{}, false
+	}
+	return record, true
 }
 
 func (s *PostgresStore) SaveGatewayResult(ctx context.Context, idempotencyKey string, result gateway.GatewayResult) error {
@@ -107,58 +128,27 @@ func (s *PostgresStore) SaveGatewayResult(ctx context.Context, idempotencyKey st
 	if key == "" {
 		return fmt.Errorf("db: gateway idempotency key is required")
 	}
-
-	results, err := s.loadGatewayResults(ctx)
+	payload, err := json.Marshal(result)
 	if err != nil {
-		return err
-	}
-	results[key] = result
-	return s.saveGatewayResults(ctx, results)
-}
-
-func (s *PostgresStore) loadGatewayResults(ctx context.Context) (map[string]gateway.GatewayResult, error) {
-	if s == nil || s.db == nil {
-		return nil, fmt.Errorf("db: postgres store requires database handle")
-	}
-
-	var payload []byte
-	err := s.db.QueryRowContext(
-		ctx,
-		`SELECT payload::text FROM app_state_snapshots WHERE store_key = $1`,
-		s.gatewaySnapshotKey,
-	).Scan(&payload)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return make(map[string]gateway.GatewayResult), nil
-		}
-		return nil, fmt.Errorf("db: load gateway snapshot: %w", err)
-	}
-
-	results := make(map[string]gateway.GatewayResult)
-	if len(payload) == 0 {
-		return results, nil
-	}
-	if err := json.Unmarshal(payload, &results); err != nil {
-		return nil, fmt.Errorf("db: decode gateway snapshot: %w", err)
-	}
-	return results, nil
-}
-
-func (s *PostgresStore) saveGatewayResults(ctx context.Context, results map[string]gateway.GatewayResult) error {
-	payload, err := json.Marshal(results)
-	if err != nil {
-		return fmt.Errorf("db: encode gateway snapshot: %w", err)
+		return fmt.Errorf("db: encode gateway snapshot result %s: %w", key, err)
 	}
 	if _, err := s.db.ExecContext(
 		ctx,
 		`INSERT INTO app_state_snapshots (store_key, payload, updated_at)
-		 VALUES ($1, $2::jsonb, NOW())
+		 VALUES ($1, jsonb_build_object($2, $3::jsonb), NOW())
 		 ON CONFLICT (store_key)
-		 DO UPDATE SET payload = EXCLUDED.payload, updated_at = EXCLUDED.updated_at`,
+		 DO UPDATE SET payload = jsonb_set(
+		 	COALESCE(app_state_snapshots.payload, '{}'::jsonb),
+		 	ARRAY[$2],
+		 	$3::jsonb,
+		 	true
+		 ),
+		 updated_at = NOW()`,
 		s.gatewaySnapshotKey,
+		key,
 		string(payload),
 	); err != nil {
-		return fmt.Errorf("db: save gateway snapshot: %w", err)
+		return fmt.Errorf("db: save gateway snapshot %s: %w", key, err)
 	}
 	return nil
 }

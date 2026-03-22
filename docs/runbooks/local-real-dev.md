@@ -130,7 +130,8 @@ docker run --rm -p 8080:8080 ^
   - 默认值：`postgres`
   - 本地 / CI / 预发的真实运行时都应保持这个值
 - `DATABASE_URL`
-  - 必填时应指向真实 Postgres
+  - 镜像内不内置默认值，必须在运行时显式注入
+  - 需要指向真实 Postgres
   - 本地默认：`postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable`
 - `AUTO_MIGRATE`
   - 默认：`true`

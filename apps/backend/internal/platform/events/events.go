@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +35,8 @@ type Publisher struct {
 	recorder         Recorder
 }
 
+const durableFallbackRecordLimit = 256
+
 func NewPublisher() *Publisher {
 	return &Publisher{
 		subscribers: make(map[int]subscriber),
@@ -47,23 +50,24 @@ func NewDurablePublisher(recorder Recorder) *Publisher {
 }
 
 func (p *Publisher) Publish(event Event) Event {
+	return p.PublishWithContext(context.Background(), event)
+}
+
+func (p *Publisher) PublishWithContext(ctx context.Context, event Event) Event {
 	if p == nil {
 		return Event{}
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
 	p.mu.Lock()
-
-	if p.recorder == nil {
-		p.nextID++
-		if strings.TrimSpace(event.ID) == "" {
-			event.ID = fmt.Sprintf("evt-%d", p.nextID)
-		}
+	p.nextID++
+	if strings.TrimSpace(event.ID) == "" {
+		event.ID = fmt.Sprintf("evt-%d", p.nextID)
 	}
 	if event.CreatedAt.IsZero() {
 		event.CreatedAt = time.Now().UTC()
-	}
-	if p.recorder == nil {
-		p.records = append(p.records, event)
 	}
 	targets := make([]chan Event, 0, len(p.subscribers))
 	for _, subscription := range p.subscribers {
@@ -75,10 +79,16 @@ func (p *Publisher) Publish(event Event) Event {
 	p.mu.Unlock()
 
 	if recorder != nil {
-		if persisted, err := recorder.Append(context.Background(), event); err == nil {
+		if persisted, err := recorder.Append(ctx, event); err == nil {
 			event = persisted
+		} else {
+			log.Printf("events: durable append failed for %s/%s: %v", event.EventType, event.ID, err)
 		}
 	}
+
+	p.mu.Lock()
+	p.appendRecordLocked(event)
+	p.mu.Unlock()
 
 	for _, stream := range targets {
 		select {
@@ -91,18 +101,26 @@ func (p *Publisher) Publish(event Event) Event {
 }
 
 func (p *Publisher) List(organizationID string, projectID string, lastEventID string) []Event {
+	return p.ListWithContext(context.Background(), organizationID, projectID, lastEventID)
+}
+
+func (p *Publisher) ListWithContext(ctx context.Context, organizationID string, projectID string, lastEventID string) []Event {
 	if p == nil {
 		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
 	}
 
 	p.mu.RLock()
 	recorder := p.recorder
 	p.mu.RUnlock()
 	if recorder != nil {
-		items, err := recorder.List(context.Background(), organizationID, projectID, lastEventID)
+		items, err := recorder.List(ctx, organizationID, projectID, lastEventID)
 		if err == nil {
 			return items
 		}
+		log.Printf("events: durable list failed for org=%s project=%s last=%s: %v", organizationID, projectID, lastEventID, err)
 	}
 
 	p.mu.RLock()
@@ -129,21 +147,37 @@ func (p *Publisher) List(organizationID string, projectID string, lastEventID st
 }
 
 func (p *Publisher) Reset() {
+	if err := p.ResetWithContext(context.Background()); err != nil {
+		log.Printf("events: reset publisher failed: %v", err)
+	}
+}
+
+func (p *Publisher) ResetWithContext(ctx context.Context) error {
 	if p == nil {
-		return
+		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	p.mu.RLock()
+	recorder := p.recorder
+	p.mu.RUnlock()
+
+	if recorder != nil {
+		if err := recorder.Reset(ctx); err != nil {
+			log.Printf("events: durable reset failed: %v", err)
+			return err
+		}
 	}
 
 	p.mu.Lock()
-	recorder := p.recorder
-	defer p.mu.Unlock()
-
 	p.nextID = 0
 	p.records = nil
 	p.nextSubscriberID = 0
 	p.subscribers = make(map[int]subscriber)
-	if recorder != nil {
-		_ = recorder.Reset(context.Background())
-	}
+	p.mu.Unlock()
+	return nil
 }
 
 func (p *Publisher) Subscribe(organizationID string, projectID string) (<-chan Event, func()) {
@@ -203,4 +237,13 @@ func (s subscriber) matches(event Event) bool {
 		return false
 	}
 	return true
+}
+
+func (p *Publisher) appendRecordLocked(event Event) {
+	if len(p.records) < durableFallbackRecordLimit {
+		p.records = append(p.records, event)
+		return
+	}
+	copy(p.records, p.records[1:])
+	p.records[len(p.records)-1] = event
 }

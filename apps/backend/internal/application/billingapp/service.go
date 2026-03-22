@@ -70,7 +70,7 @@ func (s *Service) SetProjectBudget(ctx context.Context, input SetProjectBudgetIn
 		if err := s.repo.SaveBudget(ctx, record); err != nil {
 			return billing.ProjectBudget{}, err
 		}
-		s.publishBudgetUpdated(record)
+		s.publishBudgetUpdated(ctx, record)
 		return record, nil
 	}
 
@@ -85,7 +85,7 @@ func (s *Service) SetProjectBudget(ctx context.Context, input SetProjectBudgetIn
 	if err := s.repo.SaveBudget(ctx, record); err != nil {
 		return billing.ProjectBudget{}, err
 	}
-	s.publishBudgetUpdated(record)
+	s.publishBudgetUpdated(ctx, record)
 	return record, nil
 }
 
@@ -121,7 +121,7 @@ func (s *Service) ListBillingEvents(_ context.Context, input ListBillingEventsIn
 	return s.repo.ListBillingEventsByProject(strings.TrimSpace(input.ProjectID)), nil
 }
 
-func (s *Service) publishBudgetUpdated(record billing.ProjectBudget) {
+func (s *Service) publishBudgetUpdated(ctx context.Context, record billing.ProjectBudget) {
 	if s == nil || s.eventPublisher == nil {
 		return
 	}
@@ -135,7 +135,7 @@ func (s *Service) publishBudgetUpdated(record billing.ProjectBudget) {
 	if err != nil {
 		return
 	}
-	s.eventPublisher.Publish(events.Event{
+	s.eventPublisher.PublishWithContext(ctx, events.Event{
 		EventType:      "budget.updated",
 		OrganizationID: record.OrgID,
 		ProjectID:      record.ProjectID,

@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/hualala/apps/backend/internal/domain/gateway"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/platform/config"
 	"github.com/hualala/apps/backend/internal/platform/db"
@@ -66,15 +68,82 @@ func TestPostgresPublisherReplaysDurableEventsAcrossReopen(t *testing.T) {
 	reloadedStore, reloadCloseFn := openNativeIntegrationRuntimeStore(t, storeKey)
 	defer reloadCloseFn()
 
-	replayed := reloadedStore.Publisher().List(db.DefaultDevOrganizationID, projectID, "")
-	if len(replayed) != 1 {
-		t.Fatalf("expected 1 durable event after reopen, got %d", len(replayed))
+	reloadedPublisher := reloadedStore.Publisher()
+	reloadedPublisher.Publish(events.Event{
+		EventType:      "asset.import_batch.updated",
+		OrganizationID: db.DefaultDevOrganizationID,
+		ProjectID:      projectID,
+		ResourceType:   "import_batch",
+		ResourceID:     "import-batch-durable-2",
+		Payload:        `{"status":"confirmed"}`,
+	})
+
+	replayed := reloadedPublisher.List(db.DefaultDevOrganizationID, projectID, "")
+	if len(replayed) != 2 {
+		t.Fatalf("expected 2 durable events after reopen and republish, got %d", len(replayed))
 	}
 	if got := replayed[0].ID; got != published.ID {
 		t.Fatalf("expected replayed event id %q, got %q", published.ID, got)
 	}
 	if got := replayed[0].EventType; got != "workflow.updated" {
 		t.Fatalf("expected workflow.updated replay, got %q", got)
+	}
+
+	tail := reloadedPublisher.List(db.DefaultDevOrganizationID, projectID, published.ID)
+	if len(tail) != 1 {
+		t.Fatalf("expected 1 replayed event after cursor, got %d", len(tail))
+	}
+	if got := tail[0].EventType; got != "asset.import_batch.updated" {
+		t.Fatalf("expected asset.import_batch.updated after cursor, got %q", got)
+	}
+}
+
+func TestPostgresGatewayResultsPersistConcurrentKeys(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	resetNativeIntegrationRuntimeStore(t)
+	runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, "gateway-results")
+	defer closeFn()
+
+	const workerCount = 12
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	errCh := make(chan error, workerCount)
+
+	for i := range workerCount {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			<-start
+			key := fmt.Sprintf("idem-%02d", index)
+			errCh <- runtimeStore.SaveGatewayResult(context.Background(), key, gateway.GatewayResult{
+				Provider:          "seedance",
+				ExternalRequestID: fmt.Sprintf("external-%02d", index),
+			})
+		}(i)
+	}
+
+	close(start)
+	wg.Wait()
+	close(errCh)
+
+	for err := range errCh {
+		if err != nil {
+			t.Fatalf("SaveGatewayResult returned error: %v", err)
+		}
+	}
+	for i := range workerCount {
+		key := fmt.Sprintf("idem-%02d", i)
+		record, ok := runtimeStore.GetGatewayResult(key)
+		if !ok {
+			t.Fatalf("expected gateway result for %s", key)
+		}
+		if record.ExternalRequestID != fmt.Sprintf("external-%02d", i) {
+			t.Fatalf("expected external id for %s to persist, got %q", key, record.ExternalRequestID)
+		}
 	}
 }
 

@@ -16,6 +16,11 @@ type postgresEventRecorder struct {
 	db *sql.DB
 }
 
+type postgresEventFilter struct {
+	organizationID string
+	projectID      string
+}
+
 type postgresEventPayload struct {
 	ResourceType string `json:"resource_type"`
 	ResourceID   string `json:"resource_id"`
@@ -75,21 +80,34 @@ func (r *postgresEventRecorder) List(ctx context.Context, organizationID string,
 	if r == nil || r.db == nil {
 		return nil, fmt.Errorf("db: postgres event recorder requires database handle")
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
+	filter := postgresEventFilter{
+		organizationID: strings.TrimSpace(organizationID),
+		projectID:      strings.TrimSpace(projectID),
+	}
 	query := `
 		SELECT id::text, event_type, organization_id::text, COALESCE(project_id::text, ''),
 		       aggregate_type, aggregate_id::text, payload::text, created_at
 		FROM event_outbox
 		WHERE 1 = 1
 	`
-	args := make([]any, 0, 2)
-	if strings.TrimSpace(organizationID) != "" {
-		args = append(args, strings.TrimSpace(organizationID))
-		query += fmt.Sprintf(" AND organization_id = $%d", len(args))
-	}
-	if strings.TrimSpace(projectID) != "" {
-		args = append(args, strings.TrimSpace(projectID))
-		query += fmt.Sprintf(" AND project_id = $%d", len(args))
+	args := make([]any, 0, 4)
+	query, args = appendPostgresEventFilter(query, args, filter)
+
+	cursorID := strings.TrimSpace(lastEventID)
+	if cursorID != "" {
+		cursorCreatedAt, cursorUUID, found, err := r.lookupReplayCursor(ctx, filter, cursorID)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			return nil, nil
+		}
+		args = append(args, cursorCreatedAt, cursorUUID)
+		query += fmt.Sprintf(" AND (created_at, id) > ($%d, $%d)", len(args)-1, len(args))
 	}
 	query += " ORDER BY created_at ASC, id ASC"
 
@@ -136,22 +154,7 @@ func (r *postgresEventRecorder) List(ctx context.Context, organizationID string,
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("db: iterate durable events: %w", err)
 	}
-	if strings.TrimSpace(lastEventID) == "" {
-		return all, nil
-	}
-
-	filtered := make([]events.Event, 0, len(all))
-	reachedLast := false
-	for _, event := range all {
-		if !reachedLast {
-			if event.ID == lastEventID {
-				reachedLast = true
-			}
-			continue
-		}
-		filtered = append(filtered, event)
-	}
-	return filtered, nil
+	return all, nil
 }
 
 func (r *postgresEventRecorder) Reset(ctx context.Context) error {
@@ -173,4 +176,40 @@ func normalizeEventAggregateID(event events.Event) string {
 		return parsed.String()
 	}
 	return uuid.NewString()
+}
+
+func appendPostgresEventFilter(query string, args []any, filter postgresEventFilter) (string, []any) {
+	if filter.organizationID != "" {
+		args = append(args, filter.organizationID)
+		query += fmt.Sprintf(" AND organization_id = $%d", len(args))
+	}
+	if filter.projectID != "" {
+		args = append(args, filter.projectID)
+		query += fmt.Sprintf(" AND project_id = $%d", len(args))
+	}
+	return query, args
+}
+
+func (r *postgresEventRecorder) lookupReplayCursor(ctx context.Context, filter postgresEventFilter, lastEventID string) (time.Time, uuid.UUID, bool, error) {
+	cursorUUID, err := uuid.Parse(lastEventID)
+	if err != nil {
+		return time.Time{}, uuid.UUID{}, false, nil
+	}
+
+	query := `
+		SELECT created_at
+		FROM event_outbox
+		WHERE id = $1
+	`
+	args := []any{cursorUUID}
+	query, args = appendPostgresEventFilter(query, args, filter)
+
+	var createdAt time.Time
+	if err := r.db.QueryRowContext(ctx, query, args...).Scan(&createdAt); err != nil {
+		if err == sql.ErrNoRows {
+			return time.Time{}, uuid.UUID{}, false, nil
+		}
+		return time.Time{}, uuid.UUID{}, false, fmt.Errorf("db: lookup durable event cursor %s: %w", lastEventID, err)
+	}
+	return createdAt.UTC(), cursorUUID, true, nil
 }

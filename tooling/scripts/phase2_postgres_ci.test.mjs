@@ -54,4 +54,6 @@ test("repo exposes one-command real dev scripts and dedicated runbook", () => {
   assert.match(backendDockerfile, /go build -o \/out\/hualala-backend \.\/apps\/backend\/cmd\/api/);
   assert.match(backendDockerfile, /ENV DB_DRIVER=postgres/);
   assert.match(backendDockerfile, /ENV AUTO_MIGRATE=true/);
+  assert.doesNotMatch(backendDockerfile, /ENV DATABASE_URL=/);
+  assert.match(runbook, /必须在运行时显式注入/);
 });

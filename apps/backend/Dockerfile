@@ -24,7 +24,6 @@ COPY --from=builder /src/infra /app/infra
 
 ENV HTTP_ADDR=:8080
 ENV DB_DRIVER=postgres
-ENV DATABASE_URL=postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable
 ENV AUTO_MIGRATE=true
 
 EXPOSE 8080

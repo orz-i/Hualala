@@ -1,6 +1,7 @@
 package sse
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -71,7 +72,7 @@ func registerRoutesWithHeartbeatInterval(mux *http.ServeMux, publisher *events.P
 		w.WriteHeader(http.StatusOK)
 		flusher.Flush()
 
-		for _, event := range listReplayEvents(publisher, organizationID, projectID, lastEventID) {
+		for _, event := range listReplayEvents(r.Context(), publisher, organizationID, projectID, lastEventID) {
 			writeEvent(w, event)
 			flusher.Flush()
 		}
@@ -97,11 +98,11 @@ func registerRoutesWithHeartbeatInterval(mux *http.ServeMux, publisher *events.P
 	})
 }
 
-func listReplayEvents(publisher *events.Publisher, organizationID string, projectID string, lastEventID string) []events.Event {
+func listReplayEvents(ctx context.Context, publisher *events.Publisher, organizationID string, projectID string, lastEventID string) []events.Event {
 	if publisher == nil {
 		return nil
 	}
-	return publisher.List(organizationID, projectID, lastEventID)
+	return publisher.ListWithContext(ctx, organizationID, projectID, lastEventID)
 }
 
 func writeEvent(w http.ResponseWriter, event events.Event) {

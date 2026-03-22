@@ -1,6 +1,7 @@
 package upload
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -76,8 +77,8 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 			writeUploadError(w, err)
 			return
 		}
-		service.publishUploadSessionUpdated(session)
-		service.publishImportBatchUpdated(session.ImportBatchID, "upload_session.created", session.ID)
+		service.publishUploadSessionUpdated(r.Context(), session)
+		service.publishImportBatchUpdated(r.Context(), session.ImportBatchID, "upload_session.created", session.ID)
 		service.writeSessionResponse(w, http.StatusOK, session)
 	})
 
@@ -119,8 +120,8 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 				writeUploadError(w, err)
 				return
 			}
-			service.publishUploadSessionUpdated(session)
-			service.publishImportBatchUpdated(session.ImportBatchID, "upload_session.retried", session.ID)
+			service.publishUploadSessionUpdated(r.Context(), session)
+			service.publishImportBatchUpdated(r.Context(), session.ImportBatchID, "upload_session.retried", session.ID)
 			service.writeSessionResponse(w, http.StatusOK, session)
 		case r.Method == http.MethodPost && action == "complete":
 			var request struct {
@@ -155,8 +156,8 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 				writeUploadError(w, err)
 				return
 			}
-			service.publishUploadSessionUpdated(session)
-			service.publishImportBatchUpdated(session.ImportBatchID, "upload_session.completed", session.ID)
+			service.publishUploadSessionUpdated(r.Context(), session)
+			service.publishImportBatchUpdated(r.Context(), session.ImportBatchID, "upload_session.completed", session.ID)
 			service.writeSessionResponse(w, http.StatusOK, session)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -438,7 +439,7 @@ func sessionStatus(session asset.UploadSession) string {
 	return "pending"
 }
 
-func (s *Service) publishUploadSessionUpdated(session asset.UploadSession) {
+func (s *Service) publishUploadSessionUpdated(ctx context.Context, session asset.UploadSession) {
 	if s == nil || s.eventPublisher == nil {
 		return
 	}
@@ -457,7 +458,7 @@ func (s *Service) publishUploadSessionUpdated(session asset.UploadSession) {
 		return
 	}
 
-	s.eventPublisher.Publish(events.Event{
+	s.eventPublisher.PublishWithContext(ctx, events.Event{
 		EventType:      "asset.upload_session.updated",
 		OrganizationID: session.OrgID,
 		ProjectID:      session.ProjectID,
@@ -467,7 +468,7 @@ func (s *Service) publishUploadSessionUpdated(session asset.UploadSession) {
 	})
 }
 
-func (s *Service) publishImportBatchUpdated(importBatchID string, reason string, uploadSessionID string) {
+func (s *Service) publishImportBatchUpdated(ctx context.Context, importBatchID string, reason string, uploadSessionID string) {
 	if s == nil || s.eventPublisher == nil {
 		return
 	}
@@ -498,7 +499,7 @@ func (s *Service) publishImportBatchUpdated(importBatchID string, reason string,
 		return
 	}
 
-	s.eventPublisher.Publish(events.Event{
+	s.eventPublisher.PublishWithContext(ctx, events.Event{
 		EventType:      "asset.import_batch.updated",
 		OrganizationID: strings.TrimSpace(importBatch.OrgID),
 		ProjectID:      projectID,
