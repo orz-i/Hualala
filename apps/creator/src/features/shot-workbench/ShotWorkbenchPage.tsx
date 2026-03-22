@@ -16,6 +16,25 @@ type EvaluationRunSummary = {
   status: string;
 };
 
+type ShotReviewTimelineEvaluationRunSummary = {
+  id: string;
+  status: string;
+  passedChecks: string[];
+  failedChecks: string[];
+};
+
+type ShotReviewTimelineShotReviewSummary = {
+  id: string;
+  conclusion: string;
+  commentLocale: string;
+};
+
+export type ShotReviewTimelineViewModel = {
+  evaluationRuns: ShotReviewTimelineEvaluationRunSummary[];
+  shotReviews: ShotReviewTimelineShotReviewSummary[];
+  unavailableMessage?: string;
+};
+
 type WorkflowRunSummary = {
   id: string;
   workflowType: string;
@@ -38,6 +57,7 @@ export type ShotWorkbenchViewModel = {
   candidateAssets: CandidateAssetSummary[];
   reviewSummary: ReviewSummary;
   latestEvaluationRun?: EvaluationRunSummary;
+  reviewTimeline: ShotReviewTimelineViewModel;
 };
 
 export type ShotWorkflowPanelViewModel = {
@@ -92,6 +112,9 @@ export function ShotWorkbenchPage({
   const latestWorkflowRun = workflowPanel?.latestWorkflowRun;
   const isWorkflowRunning = latestWorkflowRun?.status === "running";
   const isWorkflowRetryable = latestWorkflowRun?.status === "failed";
+  const reviewTimeline = workbench.reviewTimeline;
+  const hasReviewTimeline =
+    reviewTimeline.evaluationRuns.length > 0 || reviewTimeline.shotReviews.length > 0;
 
   return (
     <main
@@ -160,26 +183,34 @@ export function ShotWorkbenchPage({
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "16px",
-        }}
-      >
-        <article style={panelStyle}>
-          <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("shot.candidates.title")}</h2>
-          <p style={metricStyle}>{t("shot.candidates.count", { count: workbench.candidateAssets.length })}</p>
-          <p style={metricStyle}>
-            {t("shot.candidates.primaryAsset", {
-              assetId: workbench.shotExecution.primaryAssetId,
-            })}
-          </p>
-        </article>
+            gap: "16px",
+          }}
+        >
+          <article style={panelStyle}>
+            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
+              {t("shot.candidates.title")}
+            </h2>
+            <p style={metricStyle}>
+              {t("shot.candidates.count", { count: workbench.candidateAssets.length })}
+            </p>
+            <p style={metricStyle}>
+              {t("shot.candidates.primaryAsset", {
+                assetId: workbench.shotExecution.primaryAssetId,
+              })}
+            </p>
+          </article>
 
-        <article style={panelStyle}>
-          <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>{t("shot.review.title")}</h2>
-          <p style={metricStyle}>
+          <article style={panelStyle}>
+            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
+              {t("shot.review.title")}
+            </h2>
+            <p style={metricStyle}>
               <strong>{workbench.reviewSummary.latestConclusion || "pending"}</strong>
-          </p>
-          <p style={metricStyle}>{t("shot.review.latestEvaluation", { status: latestEvaluationStatus })}</p>
-          <div style={{ display: "flex", gap: "12px", marginTop: "16px", flexWrap: "wrap" }}>
+            </p>
+            <p style={metricStyle}>
+              {t("shot.review.latestEvaluation", { status: latestEvaluationStatus })}
+            </p>
+            <div style={{ display: "flex", gap: "12px", marginTop: "16px", flexWrap: "wrap" }}>
               <button
                 type="button"
                 style={{
@@ -284,6 +315,92 @@ export function ShotWorkbenchPage({
               <p style={{ ...metricStyle, marginTop: "12px" }}>{t("shot.workflow.running")}</p>
             ) : null}
           </article>
+        </section>
+
+        <section style={panelStyle}>
+          <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
+            {t("shot.timeline.title")}
+          </h2>
+          {reviewTimeline.unavailableMessage ? (
+            <p style={metricStyle}>{reviewTimeline.unavailableMessage}</p>
+          ) : !hasReviewTimeline ? (
+            <p style={metricStyle}>{t("shot.timeline.empty")}</p>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: "16px",
+              }}
+            >
+              <section style={{ display: "grid", gap: "12px" }}>
+                <h3 style={{ margin: 0, fontSize: "1rem" }}>{t("shot.timeline.evaluations")}</h3>
+                {reviewTimeline.evaluationRuns.length === 0 ? (
+                  <p style={metricStyle}>{t("shot.timeline.empty")}</p>
+                ) : (
+                  reviewTimeline.evaluationRuns.map((run, index) => (
+                    <article
+                      key={`evaluation-${run.id || index}`}
+                      style={{
+                        display: "grid",
+                        gap: "6px",
+                        padding: "14px 16px",
+                        borderRadius: "14px",
+                        background: "rgba(255, 255, 255, 0.82)",
+                        border: "1px solid rgba(148, 163, 184, 0.18)",
+                      }}
+                    >
+                      <strong>{run.id || `evaluation-${index + 1}`}</strong>
+                      <p style={metricStyle}>
+                        {t("shot.timeline.status", { status: run.status })}
+                      </p>
+                      <p style={metricStyle}>
+                        {t("shot.timeline.passedChecks", {
+                          checks: run.passedChecks.join(", ") || t("shot.timeline.none"),
+                        })}
+                      </p>
+                      <p style={metricStyle}>
+                        {t("shot.timeline.failedChecks", {
+                          checks: run.failedChecks.join(", ") || t("shot.timeline.none"),
+                        })}
+                      </p>
+                    </article>
+                  ))
+                )}
+              </section>
+
+              <section style={{ display: "grid", gap: "12px" }}>
+                <h3 style={{ margin: 0, fontSize: "1rem" }}>{t("shot.timeline.reviews")}</h3>
+                {reviewTimeline.shotReviews.length === 0 ? (
+                  <p style={metricStyle}>{t("shot.timeline.empty")}</p>
+                ) : (
+                  reviewTimeline.shotReviews.map((review, index) => (
+                    <article
+                      key={`review-${review.id || index}`}
+                      style={{
+                        display: "grid",
+                        gap: "6px",
+                        padding: "14px 16px",
+                        borderRadius: "14px",
+                        background: "rgba(255, 255, 255, 0.82)",
+                        border: "1px solid rgba(148, 163, 184, 0.18)",
+                      }}
+                    >
+                      <strong>{review.id || `review-${index + 1}`}</strong>
+                      <p style={metricStyle}>
+                        {t("shot.timeline.conclusion", { conclusion: review.conclusion })}
+                      </p>
+                      <p style={metricStyle}>
+                        {t("shot.timeline.commentLocale", {
+                          locale: review.commentLocale || t("shot.timeline.none"),
+                        })}
+                      </p>
+                    </article>
+                  ))
+                )}
+              </section>
+            </div>
+          )}
         </section>
 
         <section style={panelStyle}>

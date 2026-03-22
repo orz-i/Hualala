@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { mockConnectRoutes } from "./fixtures/mockConnectRoutes";
 
 async function postJson<TResponse>(
@@ -31,12 +31,95 @@ async function enterDevSession(page) {
   await page.getByRole("button", { name: "进入开发会话" }).click();
 }
 
+async function mockCreatorReviewTimelineRoutes(page: Page) {
+  let phase: "initial" | "afterGate" | "afterSubmit" = "initial";
+
+  await page.route("**/hualala.execution.v1.ExecutionService/RunSubmissionGateChecks", async (route) => {
+    phase = "afterGate";
+    await route.fallback();
+  });
+  await page.route("**/hualala.execution.v1.ExecutionService/SubmitShotForReview", async (route) => {
+    phase = "afterSubmit";
+    await route.fallback();
+  });
+  await page.route("**/hualala.review.v1.ReviewService/ListEvaluationRuns", async (route) => {
+    const evaluationRuns =
+      phase === "initial"
+        ? [
+            {
+              id: "eval-live-pending",
+              status: "pending",
+              passedChecks: [],
+              failedChecks: [],
+            },
+          ]
+        : [
+            {
+              id: "eval-live-pending",
+              status: "pending",
+              passedChecks: [],
+              failedChecks: [],
+            },
+            {
+              id: "eval-live-passed",
+              status: "passed",
+              passedChecks: ["asset_selected", "review_ready"],
+              failedChecks: ["copyright_missing"],
+            },
+          ];
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ evaluationRuns }),
+    });
+  });
+  await page.route("**/hualala.review.v1.ReviewService/ListShotReviews", async (route) => {
+    const shotReviews =
+      phase === "afterSubmit"
+        ? [
+            {
+              id: "review-live-passed",
+              conclusion: "passed",
+              commentLocale: "en-US",
+            },
+            {
+              id: "review-live-approved",
+              conclusion: "approved",
+              commentLocale: "en-US",
+            },
+          ]
+        : phase === "afterGate"
+          ? [
+              {
+                id: "review-live-passed",
+                conclusion: "passed",
+                commentLocale: "en-US",
+              },
+            ]
+          : [
+              {
+                id: "review-live-pending",
+                conclusion: "pending",
+                commentLocale: "en-US",
+              },
+            ];
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ shotReviews }),
+    });
+  });
+}
+
 test("creator smoke: shot workbench actions complete with refreshed feedback", async ({
   page,
 }) => {
   await mockConnectRoutes(page, {
     creatorShot: "success",
   });
+  await mockCreatorReviewTimelineRoutes(page);
 
   await page.goto("http://127.0.0.1:4174/?shotId=shot-live-1");
   await enterDevSession(page);
@@ -45,6 +128,8 @@ test("creator smoke: shot workbench actions complete with refreshed feedback", a
   await expect(page.getByText("1 个候选素材")).toBeVisible();
   await page.getByTestId("ui-locale-select").selectOption("en-US");
   await expect(page.getByRole("heading", { name: "Review Outcome" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Review Timeline" })).toBeVisible();
+  await expect(page.getByText("review-live-pending")).toBeVisible();
   await page.reload();
   await expect(page.getByTestId("ui-locale-select")).toHaveValue("en-US");
   await expect(page.getByRole("button", { name: "Run Gate Checks" })).toBeVisible();
@@ -56,10 +141,15 @@ test("creator smoke: shot workbench actions complete with refreshed feedback", a
   await expect(page.getByText("Failed checks", { exact: true })).toBeVisible();
   await expect(page.getByText("Latest review outcome：passed").first()).toBeVisible();
   await expect(page.getByText("Latest evaluation：passed").first()).toBeVisible();
+  await expect(page.getByText("eval-live-passed")).toBeVisible();
+  await expect(page.getByText("Passed checks: asset_selected, review_ready")).toBeVisible();
+  await expect(page.getByText("review-live-passed")).toBeVisible();
 
   await page.getByRole("button", { name: "Submit for review" }).click();
   await expect(page.getByText("Submitted for review")).toBeVisible();
   await expect(page.getByText("submitted_for_review")).toBeVisible();
+  await expect(page.getByText("review-live-approved")).toBeVisible();
+  await expect(page.getByText("Conclusion: approved")).toBeVisible();
 });
 
 test("creator smoke: shot workbench keeps content on action failure", async ({ page }) => {

@@ -10,6 +10,7 @@ import {
   selectPrimaryAssetForImportBatch,
 } from "../features/import-batches/mutateImportBatchWorkbench";
 import { loadShotWorkbench } from "../features/shot-workbench/loadShotWorkbench";
+import { loadShotReviewTimeline } from "../features/shot-workbench/loadShotReviewTimeline";
 import { loadShotWorkflowPanel } from "../features/shot-workbench/loadShotWorkflowPanel";
 import {
   runSubmissionGateChecks,
@@ -29,6 +30,9 @@ import { App } from "./App";
 
 vi.mock("../features/shot-workbench/loadShotWorkbench", () => ({
   loadShotWorkbench: vi.fn(),
+}));
+vi.mock("../features/shot-workbench/loadShotReviewTimeline", () => ({
+  loadShotReviewTimeline: vi.fn(),
 }));
 vi.mock("../features/shot-workbench/loadShotWorkflowPanel", () => ({
   loadShotWorkflowPanel: vi.fn(),
@@ -64,6 +68,7 @@ vi.mock("../features/subscribeWorkbenchEvents", () => ({
 }));
 
 const loadShotWorkbenchMock = vi.mocked(loadShotWorkbench);
+const loadShotReviewTimelineMock = vi.mocked(loadShotReviewTimeline);
 const loadShotWorkflowPanelMock = vi.mocked(loadShotWorkflowPanel);
 const loadImportBatchWorkbenchMock = vi.mocked(loadImportBatchWorkbench);
 const confirmImportBatchItemsMock = vi.mocked(confirmImportBatchItems);
@@ -142,6 +147,43 @@ function createShotWorkbench(shotId: string, status = "candidate_ready", conclus
       id: `eval-${shotId}`,
       status: conclusion === "pending" ? "pending" : "passed",
     },
+    reviewTimeline: {
+      evaluationRuns: [],
+      shotReviews: [],
+    },
+  };
+}
+
+function createShotReviewTimeline(
+  shotId: string,
+  evaluationStatus = "pending",
+  conclusion = "pending",
+  unavailableMessage?: string,
+) {
+  if (unavailableMessage) {
+    return {
+      evaluationRuns: [],
+      shotReviews: [],
+      unavailableMessage,
+    };
+  }
+
+  return {
+    evaluationRuns: [
+      {
+        id: `eval-${shotId}-${evaluationStatus}`,
+        status: evaluationStatus,
+        passedChecks: evaluationStatus === "pending" ? [] : ["asset_selected"],
+        failedChecks: evaluationStatus === "failed" ? ["copyright_missing"] : [],
+      },
+    ],
+    shotReviews: [
+      {
+        id: `review-${shotId}-${conclusion}`,
+        conclusion,
+        commentLocale: "zh-CN",
+      },
+    ],
   };
 }
 
@@ -213,6 +255,7 @@ describe("App", () => {
       latestWorkbenchSubscriptionCleanup = vi.fn();
       return latestWorkbenchSubscriptionCleanup;
     });
+    loadShotReviewTimelineMock.mockResolvedValue(createShotReviewTimeline("default"));
     loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
     startShotWorkflowMock.mockResolvedValue(undefined);
     retryShotWorkflowRunMock.mockResolvedValue(undefined);
@@ -529,13 +572,22 @@ describe("App", () => {
   it("reads shotId from search params, loads the workbench, and renders the live data", async () => {
     window.history.pushState({}, "", "/?shotId=shot-live-1");
     loadShotWorkbenchMock.mockResolvedValueOnce(createShotWorkbench("shot-live-1"));
+    loadShotReviewTimelineMock.mockResolvedValueOnce(
+      createShotReviewTimeline("shot-live-1", "pending", "pending"),
+    );
     loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("running"));
     loadShotWorkbenchMock.mockResolvedValueOnce(
       createShotWorkbench("shot-live-1", "candidate_ready", "passed"),
     );
+    loadShotReviewTimelineMock.mockResolvedValueOnce(
+      createShotReviewTimeline("shot-live-1", "passed", "passed"),
+    );
     loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("running"));
     loadShotWorkbenchMock.mockResolvedValueOnce(
       createShotWorkbench("shot-live-1", "submitted_for_review", "approved"),
+    );
+    loadShotReviewTimelineMock.mockResolvedValueOnce(
+      createShotReviewTimeline("shot-live-1", "passed", "approved"),
     );
     loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("running"));
     runSubmissionGateChecksMock.mockResolvedValue({
@@ -555,6 +607,11 @@ describe("App", () => {
         }),
       );
     });
+    expect(loadShotReviewTimelineMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotExecutionId: "shot-exec-shot-live-1",
+      }),
+    );
     expect(loadShotWorkflowPanelMock).toHaveBeenCalledWith(
       expect.objectContaining({
         shotExecutionId: "shot-exec-shot-live-1",
@@ -564,6 +621,8 @@ describe("App", () => {
 
     expect(await screen.findByText("shot-exec-shot-live-1")).toBeInTheDocument();
     expect(screen.getByText(/workflow-run-1/)).toBeInTheDocument();
+    expect(screen.getByText("评审时间线")).toBeInTheDocument();
+    expect(screen.getByText("review-shot-live-1-pending")).toBeInTheDocument();
     expect(screen.getAllByText("pending").length).toBeGreaterThanOrEqual(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Gate 检查" }));
@@ -579,6 +638,7 @@ describe("App", () => {
     expect(screen.getByText("review_ready")).toBeInTheDocument();
     expect(screen.getByText("copyright_missing")).toBeInTheDocument();
     expect(screen.getAllByText("最近评估：passed").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("review-shot-live-1-passed")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "提交评审" }));
 
@@ -590,6 +650,7 @@ describe("App", () => {
 
     expect(await screen.findByText("提交评审已完成")).toBeInTheDocument();
     expect(screen.getByText("最新评审结论：approved")).toBeInTheDocument();
+    expect(screen.getByText("review-shot-live-1-approved")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(3);
@@ -601,6 +662,9 @@ describe("App", () => {
   it("subscribes to shot workbench SSE after the first successful load", async () => {
     window.history.pushState({}, "", "/?shotId=shot-live-subscribe");
     loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-live-subscribe"));
+    loadShotReviewTimelineMock.mockResolvedValue(
+      createShotReviewTimeline("shot-live-subscribe"),
+    );
     loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
 
     render(<App />);
@@ -620,6 +684,7 @@ describe("App", () => {
   it("keeps the current shot workbench visible and surfaces an action error when gate checks fail", async () => {
     window.history.pushState({}, "", "/?shotId=shot-live-2");
     loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-live-2"));
+    loadShotReviewTimelineMock.mockResolvedValue(createShotReviewTimeline("shot-live-2"));
     loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
     runSubmissionGateChecksMock.mockRejectedValue(new Error("network down"));
 
@@ -637,6 +702,7 @@ describe("App", () => {
   it("surfaces string rejections from gate checks without collapsing them into a generic shot error", async () => {
     window.history.pushState({}, "", "/?shotId=shot-live-2-string");
     loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-live-2-string"));
+    loadShotReviewTimelineMock.mockResolvedValue(createShotReviewTimeline("shot-live-2-string"));
     loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
     runSubmissionGateChecksMock.mockRejectedValue("network down");
 
@@ -654,6 +720,9 @@ describe("App", () => {
     loadShotWorkbenchMock
       .mockResolvedValueOnce(createShotWorkbench("shot-sse-1", "candidate_ready", "pending"))
       .mockResolvedValueOnce(createShotWorkbench("shot-sse-1", "submitted_for_review", "approved"));
+    loadShotReviewTimelineMock
+      .mockResolvedValueOnce(createShotReviewTimeline("shot-sse-1", "pending", "pending"))
+      .mockResolvedValueOnce(createShotReviewTimeline("shot-sse-1", "passed", "approved"));
     loadShotWorkflowPanelMock
       .mockResolvedValueOnce(createShotWorkflowPanel("running", "workflow-run-1"))
       .mockResolvedValueOnce(createShotWorkflowPanel("failed", "workflow-run-2"));
@@ -672,10 +741,31 @@ describe("App", () => {
 
     expect(await screen.findByText(/submitted_for_review/)).toBeInTheDocument();
     expect(screen.getByText(/workflow-run-2/)).toBeInTheDocument();
+    expect(screen.getByText("review-shot-sse-1-approved")).toBeInTheDocument();
     expect(screen.queryByText("正在执行 Gate 检查")).not.toBeInTheDocument();
     expect(screen.queryByText("Gate 检查失败")).not.toBeInTheDocument();
     expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(2);
     expect(loadShotWorkflowPanelMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the shot workbench visible when the review timeline is unavailable", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-timeline-unavailable");
+    loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-timeline-unavailable"));
+    loadShotReviewTimelineMock.mockResolvedValue(
+      createShotReviewTimeline(
+        "shot-timeline-unavailable",
+        "pending",
+        "pending",
+        "评审时间线暂不可用",
+      ),
+    );
+    loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-shot-timeline-unavailable")).toBeInTheDocument();
+    expect(screen.getByText("评审时间线暂不可用")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gate 检查" })).toBeInTheDocument();
   });
 
   it("silently refreshes the import workbench without clearing the selected file", async () => {
@@ -789,9 +879,20 @@ describe("App", () => {
   it("switches locale, persists it, and renders english shot feedback", async () => {
     window.history.pushState({}, "", "/?shotId=shot-live-4");
     loadShotWorkbenchMock.mockResolvedValueOnce(createShotWorkbench("shot-live-4"));
+    loadShotReviewTimelineMock.mockResolvedValueOnce(
+      createShotReviewTimeline("shot-live-4", "pending", "pending"),
+    );
+    loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("running"));
+    loadShotWorkbenchMock.mockResolvedValueOnce(createShotWorkbench("shot-live-4"));
+    loadShotReviewTimelineMock.mockResolvedValueOnce(
+      createShotReviewTimeline("shot-live-4", "pending", "pending"),
+    );
     loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("running"));
     loadShotWorkbenchMock.mockResolvedValueOnce(
       createShotWorkbench("shot-live-4", "candidate_ready", "passed"),
+    );
+    loadShotReviewTimelineMock.mockResolvedValueOnce(
+      createShotReviewTimeline("shot-live-4", "passed", "passed"),
     );
     loadShotWorkflowPanelMock.mockResolvedValueOnce(createShotWorkflowPanel("running"));
     runSubmissionGateChecksMock.mockResolvedValue({

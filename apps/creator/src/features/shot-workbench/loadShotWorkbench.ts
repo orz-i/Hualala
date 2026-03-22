@@ -81,5 +81,9 @@ export async function loadShotWorkbench({
           status: workbench.latestEvaluationRun.status ?? "pending",
         }
       : undefined,
+    reviewTimeline: {
+      evaluationRuns: [],
+      shotReviews: [],
+    },
   };
 }
