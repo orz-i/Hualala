@@ -44,6 +44,7 @@ type AuthOrgRepository interface {
 	GetRole(roleID string) (org.Role, bool)
 	ListRolesByOrganization(orgID string) []org.Role
 	SaveRole(ctx context.Context, record org.Role) error
+	DeleteRole(ctx context.Context, roleID string) error
 
 	ListRolePermissions(roleID string) []string
 	ReplaceRolePermissions(ctx context.Context, roleID string, permissions []string) error
@@ -275,6 +276,13 @@ func (s *MemoryStore) ListRolesByOrganization(orgID string) []org.Role {
 
 func (s *MemoryStore) SaveRole(ctx context.Context, record org.Role) error {
 	return s.save(ctx, func() { s.Roles[record.ID] = record })
+}
+
+func (s *MemoryStore) DeleteRole(ctx context.Context, roleID string) error {
+	return s.save(ctx, func() {
+		delete(s.Roles, roleID)
+		delete(s.RolePermissions, roleID)
+	})
 }
 
 func (s *MemoryStore) ListRolePermissions(roleID string) []string {

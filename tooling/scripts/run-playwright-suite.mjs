@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { defaultDatabaseUrl } from "./run-dev-real.mjs";
 
 export function resolveSetupCommands(target) {
   if (target === "admin-real" || target === "creator-real" || target === "all-real") {
@@ -14,15 +15,29 @@ export function buildPlaywrightCommand(args) {
     : `corepack pnpm exec playwright ${args.map((value) => `'${value.replaceAll("'", "'\\''")}'`).join(" ")}`;
 }
 
-function runShellCommand(command, extraEnv = {}) {
+export function buildRunEnv(target, baseEnv = process.env, extraEnv = {}) {
+  const env = {
+    ...baseEnv,
+    ...extraEnv,
+  };
+
+  if (target === "admin-real" || target === "creator-real" || target === "all-real") {
+    return {
+      ...env,
+      DB_DRIVER: "postgres",
+      DATABASE_URL: defaultDatabaseUrl,
+    };
+  }
+
+  return env;
+}
+
+function runShellCommand(command, env) {
   return new Promise((resolve) => {
     const child = spawn(command, {
       stdio: "inherit",
       shell: true,
-      env: {
-        ...process.env,
-        ...extraEnv,
-      },
+      env,
     });
 
     child.on("exit", (code, signal) => {
@@ -43,16 +58,18 @@ export async function main(argv = process.argv.slice(2)) {
     return 1;
   }
 
+  const runEnv = buildRunEnv(target, process.env, {
+    PW_SERVER_TARGET: target,
+  });
+
   for (const setupCommand of resolveSetupCommands(target)) {
-    const setupExitCode = await runShellCommand(setupCommand);
+    const setupExitCode = await runShellCommand(setupCommand, runEnv);
     if (setupExitCode !== 0) {
       return setupExitCode;
     }
   }
 
-  return runShellCommand(buildPlaywrightCommand(args), {
-    PW_SERVER_TARGET: target,
-  });
+  return runShellCommand(buildPlaywrightCommand(args), runEnv);
 }
 
 const isEntrypoint =

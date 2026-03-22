@@ -4,6 +4,9 @@ import { loadAdminOverview } from "../features/dashboard/loadAdminOverview";
 import { loadGovernancePanel } from "../features/dashboard/loadGovernancePanel";
 import { updateBudgetPolicy } from "../features/dashboard/mutateBudgetPolicy";
 import {
+  createRole,
+  deleteRole,
+  updateRole,
   updateMemberRole,
   updateOrgLocaleSettings,
   updateUserPreferences,
@@ -48,6 +51,9 @@ vi.mock("../features/dashboard/mutateGovernance", () => ({
   updateUserPreferences: vi.fn(),
   updateMemberRole: vi.fn(),
   updateOrgLocaleSettings: vi.fn(),
+  createRole: vi.fn(),
+  updateRole: vi.fn(),
+  deleteRole: vi.fn(),
 }));
 vi.mock("../features/dashboard/loadWorkflowMonitorPanel", () => ({
   loadWorkflowMonitorPanel: vi.fn(),
@@ -90,6 +96,9 @@ const updateBudgetPolicyMock = vi.mocked(updateBudgetPolicy);
 const updateUserPreferencesMock = vi.mocked(updateUserPreferences);
 const updateMemberRoleMock = vi.mocked(updateMemberRole);
 const updateOrgLocaleSettingsMock = vi.mocked(updateOrgLocaleSettings);
+const createRoleMock = vi.mocked(createRole);
+const updateRoleMock = vi.mocked(updateRole);
+const deleteRoleMock = vi.mocked(deleteRole);
 const loadWorkflowMonitorPanelMock = vi.mocked(loadWorkflowMonitorPanel);
 const loadWorkflowRunDetailsMock = vi.mocked(loadWorkflowRunDetails);
 const loadAssetMonitorPanelMock = vi.mocked(loadAssetMonitorPanel);
@@ -147,12 +156,54 @@ function createOverview(projectId: string, shotExecutionId: string, limitCents =
 }
 
 function createGovernance(orgId: string, userId: string, locale = "zh-CN") {
+  const availablePermissions = [
+    {
+      code: "session.read",
+      displayName: "Read session",
+      group: "session",
+    },
+    {
+      code: "user.preferences.write",
+      displayName: "Update user preferences",
+      group: "session",
+    },
+    {
+      code: "org.members.read",
+      displayName: "Read members",
+      group: "governance",
+    },
+    {
+      code: "org.roles.read",
+      displayName: "Read roles",
+      group: "governance",
+    },
+    {
+      code: "org.members.write",
+      displayName: "Update members",
+      group: "governance",
+    },
+    {
+      code: "org.settings.write",
+      displayName: "Update org settings",
+      group: "governance",
+    },
+    {
+      code: "org.roles.write",
+      displayName: "Manage roles",
+      group: "governance",
+    },
+  ];
+  const adminPermissionCodes = availablePermissions.map((permission) => permission.code);
   return {
     currentSession: {
       sessionId: `dev:${orgId}:${userId}`,
       orgId,
       userId,
       locale,
+      roleId: "role-admin",
+      roleCode: "admin",
+      permissionCodes: adminPermissionCodes,
+      timezone: "Asia/Shanghai",
     },
     userPreferences: {
       userId,
@@ -160,11 +211,35 @@ function createGovernance(orgId: string, userId: string, locale = "zh-CN") {
       timezone: "Asia/Shanghai",
     },
     members: [{ memberId: "member-1", orgId, userId, roleId: "role-admin" }],
-    roles: [{ roleId: "role-admin", orgId, code: "admin", displayName: "Administrator" }],
+    roles: [
+      {
+        roleId: "role-admin",
+        orgId,
+        code: "admin",
+        displayName: "Administrator",
+        permissionCodes: adminPermissionCodes,
+        memberCount: 1,
+      },
+      {
+        roleId: "role-viewer",
+        orgId,
+        code: "viewer",
+        displayName: "Viewer",
+        permissionCodes: ["session.read", "user.preferences.write"],
+        memberCount: 0,
+      },
+    ],
+    availablePermissions,
     orgLocaleSettings: {
       orgId,
       defaultLocale: locale,
-      supportedLocales: [locale],
+      supportedLocales: [locale, "en-US"],
+    },
+    capabilities: {
+      canManageRoles: true,
+      canManageMembers: true,
+      canManageOrgSettings: true,
+      canManageUserPreferences: true,
     },
   };
 }
@@ -252,6 +327,20 @@ function createRunningWorkflowDetail(projectId: string) {
   };
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+  return {
+    promise,
+    resolve,
+    reject,
+  };
+}
+
 describe("Admin App", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -262,12 +351,36 @@ describe("Admin App", () => {
       orgId: "org-demo-001",
       userId: "user-demo-001",
       locale: "zh-CN",
+      roleId: "role-admin",
+      roleCode: "admin",
+      permissionCodes: [
+        "session.read",
+        "user.preferences.write",
+        "org.members.read",
+        "org.roles.read",
+        "org.members.write",
+        "org.settings.write",
+        "org.roles.write",
+      ],
+      timezone: "Asia/Shanghai",
     });
     ensureDevSessionMock.mockResolvedValue({
       sessionId: "dev:org-demo-001:user-demo-001",
       orgId: "org-demo-001",
       userId: "user-demo-001",
       locale: "zh-CN",
+      roleId: "role-admin",
+      roleCode: "admin",
+      permissionCodes: [
+        "session.read",
+        "user.preferences.write",
+        "org.members.read",
+        "org.roles.read",
+        "org.members.write",
+        "org.settings.write",
+        "org.roles.write",
+      ],
+      timezone: "Asia/Shanghai",
     });
     clearCurrentSessionMock.mockResolvedValue();
     subscribeAdminRecentChangesMock.mockReturnValue(() => {});
@@ -281,6 +394,23 @@ describe("Admin App", () => {
     confirmImportBatchItemMock.mockResolvedValue(undefined);
     confirmImportBatchItemsMock.mockResolvedValue(undefined);
     selectPrimaryAssetForImportBatchMock.mockResolvedValue(undefined);
+    createRoleMock.mockResolvedValue({
+      roleId: "role-editor",
+      orgId: "org-demo-001",
+      code: "editor",
+      displayName: "Editor",
+      permissionCodes: ["session.read", "org.roles.read"],
+      memberCount: 0,
+    });
+    updateRoleMock.mockResolvedValue({
+      roleId: "role-viewer",
+      orgId: "org-demo-001",
+      code: "viewer",
+      displayName: "Content Viewer",
+      permissionCodes: ["session.read"],
+      memberCount: 0,
+    });
+    deleteRoleMock.mockResolvedValue(undefined);
     retryWorkflowRunMock.mockResolvedValue(undefined);
     cancelWorkflowRunMock.mockResolvedValue(undefined);
   });
@@ -294,6 +424,18 @@ describe("Admin App", () => {
         orgId: "org-demo-001",
         userId: "user-demo-001",
         locale: "zh-CN",
+        roleId: "role-admin",
+        roleCode: "admin",
+        permissionCodes: [
+          "session.read",
+          "user.preferences.write",
+          "org.members.read",
+          "org.roles.read",
+          "org.members.write",
+          "org.settings.write",
+          "org.roles.write",
+        ],
+        timezone: "Asia/Shanghai",
       });
     loadAdminOverviewMock.mockResolvedValue(createOverview("project-session-1", "shot-exec-session-1"));
     loadGovernancePanelMock.mockResolvedValue(createGovernance("org-demo-001", "user-demo-001"));
@@ -639,6 +781,148 @@ describe("Admin App", () => {
         roleId: "role-admin",
       });
     });
+  });
+
+  it("runs role create, update, and delete through governance orchestration", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-roles-1&shotExecutionId=shot-exec-live-roles-1&orgId=org-live-roles-1&userId=user-live-roles-1",
+    );
+    loadAdminOverviewMock.mockResolvedValue(
+      createOverview("project-live-roles-1", "shot-exec-live-roles-1"),
+    );
+    loadGovernancePanelMock.mockResolvedValue(
+      createGovernance("org-live-roles-1", "user-live-roles-1"),
+    );
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-roles-1"));
+
+    render(<App />);
+
+    expect(await screen.findByText("project-live-roles-1")).toBeInTheDocument();
+
+    const createRoleSection = screen.getByText("新建角色").closest("div");
+    expect(createRoleSection).not.toBeNull();
+    if (!createRoleSection) {
+      throw new Error("create role section should exist");
+    }
+
+    fireEvent.change(within(createRoleSection).getByLabelText("角色代码"), {
+      target: { value: "producer" },
+    });
+    fireEvent.change(within(createRoleSection).getByLabelText("角色名称"), {
+      target: { value: "Producer" },
+    });
+    fireEvent.click(
+      within(createRoleSection).getByLabelText("Manage roles (org.roles.write)"),
+    );
+    fireEvent.click(within(createRoleSection).getByRole("button", { name: "创建角色" }));
+
+    await waitFor(() => {
+      expect(createRoleMock).toHaveBeenCalledWith({
+        orgId: "org-live-roles-1",
+        userId: "user-live-roles-1",
+        code: "producer",
+        displayName: "Producer",
+        permissionCodes: ["org.roles.write"],
+      });
+    });
+    expect(await screen.findByText("角色已创建")).toBeInTheDocument();
+
+    const viewerCard = screen.getByText("viewer").closest("article");
+    expect(viewerCard).not.toBeNull();
+    if (!viewerCard) {
+      throw new Error("viewer role card should exist");
+    }
+
+    fireEvent.change(
+      within(viewerCard).getByLabelText("编辑角色 viewer 的名称"),
+      {
+        target: { value: "Content Viewer" },
+      },
+    );
+    fireEvent.click(
+      within(viewerCard).getByLabelText("Read roles (org.roles.read)"),
+    );
+    fireEvent.click(within(viewerCard).getByRole("button", { name: "保存角色" }));
+
+    await waitFor(() => {
+      expect(updateRoleMock).toHaveBeenCalledWith({
+        orgId: "org-live-roles-1",
+        userId: "user-live-roles-1",
+        roleId: "role-viewer",
+        displayName: "Content Viewer",
+        permissionCodes: ["session.read", "user.preferences.write", "org.roles.read"],
+      });
+    });
+    expect(await screen.findByText("角色已更新")).toBeInTheDocument();
+
+    fireEvent.click(within(viewerCard).getByRole("button", { name: "删除角色" }));
+
+    await waitFor(() => {
+      expect(deleteRoleMock).toHaveBeenCalledWith({
+        orgId: "org-live-roles-1",
+        userId: "user-live-roles-1",
+        roleId: "role-viewer",
+      });
+    });
+    expect(await screen.findByText("角色已删除")).toBeInTheDocument();
+    expect(loadAdminOverviewMock).toHaveBeenCalledTimes(1);
+    expect(loadGovernancePanelMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("keeps governance data visible when role creation fails and shows pending state while running", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/?projectId=project-live-roles-2&shotExecutionId=shot-exec-live-roles-2&orgId=org-live-roles-2&userId=user-live-roles-2",
+    );
+    const createRoleDeferred = createDeferred<{
+      roleId: string;
+      orgId: string;
+      code: string;
+      displayName: string;
+      permissionCodes: string[];
+      memberCount: number;
+    }>();
+    loadAdminOverviewMock.mockResolvedValue(
+      createOverview("project-live-roles-2", "shot-exec-live-roles-2"),
+    );
+    loadGovernancePanelMock.mockResolvedValue(
+      createGovernance("org-live-roles-2", "user-live-roles-2"),
+    );
+    loadWorkflowMonitorPanelMock.mockResolvedValue(createWorkflowMonitor("project-live-roles-2"));
+    createRoleMock.mockImplementation(() => createRoleDeferred.promise);
+
+    render(<App />);
+
+    expect(await screen.findByText("project-live-roles-2")).toBeInTheDocument();
+
+    const createRoleSection = screen.getByText("新建角色").closest("div");
+    expect(createRoleSection).not.toBeNull();
+    if (!createRoleSection) {
+      throw new Error("create role section should exist");
+    }
+
+    fireEvent.change(within(createRoleSection).getByLabelText("角色代码"), {
+      target: { value: "producer" },
+    });
+    fireEvent.change(within(createRoleSection).getByLabelText("角色名称"), {
+      target: { value: "Producer" },
+    });
+    fireEvent.click(
+      within(createRoleSection).getByLabelText("Manage roles (org.roles.write)"),
+    );
+    fireEvent.click(within(createRoleSection).getByRole("button", { name: "创建角色" }));
+
+    expect(await screen.findByText("正在创建角色")).toBeInTheDocument();
+    expect(screen.getByText("project-live-roles-2")).toBeInTheDocument();
+
+    createRoleDeferred.reject(new Error("role backend down"));
+
+    expect(await screen.findByText("治理操作失败：role backend down")).toBeInTheDocument();
+    expect(screen.getByText("project-live-roles-2")).toBeInTheDocument();
+    expect(loadGovernancePanelMock).toHaveBeenCalledTimes(1);
   });
 
   it("opens workflow details and updates filters without breaking the page", async () => {

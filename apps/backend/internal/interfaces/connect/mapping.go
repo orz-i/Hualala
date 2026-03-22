@@ -27,10 +27,14 @@ import (
 
 func mapSession(record auth.Session) *authv1.Session {
 	return &authv1.Session{
-		SessionId: record.SessionID,
-		UserId:    record.UserID,
-		OrgId:     record.OrgID,
-		Locale:    record.Locale,
+		SessionId:       record.SessionID,
+		UserId:          record.UserID,
+		OrgId:           record.OrgID,
+		Locale:          record.Locale,
+		RoleId:          record.RoleID,
+		RoleCode:        record.RoleCode,
+		PermissionCodes: append([]string(nil), record.PermissionCodes...),
+		Timezone:        record.Timezone,
 	}
 }
 
@@ -53,10 +57,19 @@ func mapOrgMember(record org.Member) *orgv1.Member {
 
 func mapOrgRole(record org.Role) *orgv1.Role {
 	return &orgv1.Role{
-		RoleId:      record.ID,
-		OrgId:       record.OrgID,
+		RoleId:          record.ID,
+		OrgId:           record.OrgID,
+		Code:            record.Code,
+		DisplayName:     record.DisplayName,
+		PermissionCodes: append([]string(nil), record.PermissionCodes...),
+	}
+}
+
+func mapAvailablePermission(record org.AvailablePermission) *orgv1.AvailablePermission {
+	return &orgv1.AvailablePermission{
 		Code:        record.Code,
 		DisplayName: record.DisplayName,
+		Group:       record.Group,
 	}
 }
 

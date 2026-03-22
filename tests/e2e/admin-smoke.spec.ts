@@ -47,3 +47,39 @@ test("admin smoke: keeps overview visible on budget update failure", async ({ pa
   await expect(page.getByText("预算策略更新失败")).toBeVisible();
   await expect(page.getByText("project-live-1")).toBeVisible();
 });
+
+test("admin smoke: manages custom roles and permission edits", async ({ page }) => {
+  await mockConnectRoutes(page, {
+    admin: "success",
+  });
+
+  await page.goto(
+    "http://127.0.0.1:4173/?projectId=project-live-1&shotExecutionId=shot-exec-live-1&orgId=org-live-1",
+  );
+  await page.getByRole("button", { name: "进入开发会话" }).click();
+
+  await expect(page.getByText("角色与权限编辑")).toBeVisible();
+  await expect(page.getByRole("button", { name: "角色使用中，禁止删除" })).toBeDisabled();
+
+  const createRoleSection = page.getByRole("heading", { name: "新建角色" }).locator("..");
+  await createRoleSection.getByLabel("角色代码").fill("producer");
+  await createRoleSection.getByLabel("角色名称").fill("Producer");
+  await createRoleSection.getByLabel("Manage roles and permissions (org.roles.write)").check();
+  await createRoleSection.getByRole("button", { name: "创建角色" }).click();
+
+  await expect(page.getByText("角色已创建")).toBeVisible();
+  const producerNameInput = page.getByLabel("编辑角色 producer 的名称");
+  await expect(producerNameInput).toBeVisible();
+  const producerCard = producerNameInput.locator("xpath=ancestor::article[1]");
+
+  await producerNameInput.fill("Line Producer");
+  await producerCard.getByLabel("Read organization roles (org.roles.read)").check();
+  await producerCard.getByRole("button", { name: "保存角色" }).click();
+
+  await expect(page.getByText("角色已更新")).toBeVisible();
+  await expect(producerNameInput).toHaveValue("Line Producer");
+
+  await producerCard.getByRole("button", { name: "删除角色" }).click();
+  await expect(page.getByText("角色已删除")).toBeVisible();
+  await expect(page.getByLabel("编辑角色 producer 的名称")).toHaveCount(0);
+});

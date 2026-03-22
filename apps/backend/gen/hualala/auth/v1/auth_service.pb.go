@@ -22,13 +22,17 @@ const (
 )
 
 type Session struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	OrgId         string                 `protobuf:"bytes,3,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
-	Locale        string                 `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	SessionId       string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	UserId          string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	OrgId           string                 `protobuf:"bytes,3,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	Locale          string                 `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	RoleId          string                 `protobuf:"bytes,5,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	RoleCode        string                 `protobuf:"bytes,6,opt,name=role_code,json=roleCode,proto3" json:"role_code,omitempty"`
+	PermissionCodes []string               `protobuf:"bytes,7,rep,name=permission_codes,json=permissionCodes,proto3" json:"permission_codes,omitempty"`
+	Timezone        string                 `protobuf:"bytes,8,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Session) Reset() {
@@ -85,6 +89,34 @@ func (x *Session) GetOrgId() string {
 func (x *Session) GetLocale() string {
 	if x != nil {
 		return x.Locale
+	}
+	return ""
+}
+
+func (x *Session) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+func (x *Session) GetRoleCode() string {
+	if x != nil {
+		return x.RoleCode
+	}
+	return ""
+}
+
+func (x *Session) GetPermissionCodes() []string {
+	if x != nil {
+		return x.PermissionCodes
+	}
+	return nil
+}
+
+func (x *Session) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
 	}
 	return ""
 }
@@ -577,13 +609,17 @@ var File_hualala_auth_v1_auth_service_proto protoreflect.FileDescriptor
 
 const file_hualala_auth_v1_auth_service_proto_rawDesc = "" +
 	"\n" +
-	"\"hualala/auth/v1/auth_service.proto\x12\x0fhualala.auth.v1\"p\n" +
+	"\"hualala/auth/v1/auth_service.proto\x12\x0fhualala.auth.v1\"\xed\x01\n" +
 	"\aSession\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x15\n" +
 	"\x06org_id\x18\x03 \x01(\tR\x05orgId\x12\x16\n" +
-	"\x06locale\x18\x04 \x01(\tR\x06locale\"m\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\x12\x17\n" +
+	"\arole_id\x18\x05 \x01(\tR\x06roleId\x12\x1b\n" +
+	"\trole_code\x18\x06 \x01(\tR\broleCode\x12)\n" +
+	"\x10permission_codes\x18\a \x03(\tR\x0fpermissionCodes\x12\x1a\n" +
+	"\btimezone\x18\b \x01(\tR\btimezone\"m\n" +
 	"\x0fUserPreferences\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12%\n" +
 	"\x0edisplay_locale\x18\x02 \x01(\tR\rdisplayLocale\x12\x1a\n" +

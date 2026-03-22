@@ -90,13 +90,14 @@ func (x *Member) GetRoleId() string {
 }
 
 type Role struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RoleId        string                 `protobuf:"bytes,1,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
-	OrgId         string                 `protobuf:"bytes,2,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
-	Code          string                 `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
-	DisplayName   string                 `protobuf:"bytes,4,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	RoleId          string                 `protobuf:"bytes,1,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	OrgId           string                 `protobuf:"bytes,2,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	Code            string                 `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
+	DisplayName     string                 `protobuf:"bytes,4,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	PermissionCodes []string               `protobuf:"bytes,5,rep,name=permission_codes,json=permissionCodes,proto3" json:"permission_codes,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Role) Reset() {
@@ -157,6 +158,73 @@ func (x *Role) GetDisplayName() string {
 	return ""
 }
 
+func (x *Role) GetPermissionCodes() []string {
+	if x != nil {
+		return x.PermissionCodes
+	}
+	return nil
+}
+
+type AvailablePermission struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	DisplayName   string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	Group         string                 `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AvailablePermission) Reset() {
+	*x = AvailablePermission{}
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AvailablePermission) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AvailablePermission) ProtoMessage() {}
+
+func (x *AvailablePermission) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AvailablePermission.ProtoReflect.Descriptor instead.
+func (*AvailablePermission) Descriptor() ([]byte, []int) {
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AvailablePermission) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *AvailablePermission) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *AvailablePermission) GetGroup() string {
+	if x != nil {
+		return x.Group
+	}
+	return ""
+}
+
 type OrgLocaleSettings struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	OrgId            string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
@@ -168,7 +236,7 @@ type OrgLocaleSettings struct {
 
 func (x *OrgLocaleSettings) Reset() {
 	*x = OrgLocaleSettings{}
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[2]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -180,7 +248,7 @@ func (x *OrgLocaleSettings) String() string {
 func (*OrgLocaleSettings) ProtoMessage() {}
 
 func (x *OrgLocaleSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[2]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -193,7 +261,7 @@ func (x *OrgLocaleSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrgLocaleSettings.ProtoReflect.Descriptor instead.
 func (*OrgLocaleSettings) Descriptor() ([]byte, []int) {
-	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{2}
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *OrgLocaleSettings) GetOrgId() string {
@@ -226,7 +294,7 @@ type ListMembersRequest struct {
 
 func (x *ListMembersRequest) Reset() {
 	*x = ListMembersRequest{}
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[3]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -238,7 +306,7 @@ func (x *ListMembersRequest) String() string {
 func (*ListMembersRequest) ProtoMessage() {}
 
 func (x *ListMembersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[3]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -251,7 +319,7 @@ func (x *ListMembersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMembersRequest.ProtoReflect.Descriptor instead.
 func (*ListMembersRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{3}
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ListMembersRequest) GetOrgId() string {
@@ -270,7 +338,7 @@ type ListMembersResponse struct {
 
 func (x *ListMembersResponse) Reset() {
 	*x = ListMembersResponse{}
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[4]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -282,7 +350,7 @@ func (x *ListMembersResponse) String() string {
 func (*ListMembersResponse) ProtoMessage() {}
 
 func (x *ListMembersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[4]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -295,7 +363,7 @@ func (x *ListMembersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMembersResponse.ProtoReflect.Descriptor instead.
 func (*ListMembersResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{4}
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListMembersResponse) GetMembers() []*Member {
@@ -314,7 +382,7 @@ type ListRolesRequest struct {
 
 func (x *ListRolesRequest) Reset() {
 	*x = ListRolesRequest{}
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[5]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -326,7 +394,7 @@ func (x *ListRolesRequest) String() string {
 func (*ListRolesRequest) ProtoMessage() {}
 
 func (x *ListRolesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[5]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -339,7 +407,7 @@ func (x *ListRolesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRolesRequest.ProtoReflect.Descriptor instead.
 func (*ListRolesRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{5}
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListRolesRequest) GetOrgId() string {
@@ -358,7 +426,7 @@ type ListRolesResponse struct {
 
 func (x *ListRolesResponse) Reset() {
 	*x = ListRolesResponse{}
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[6]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -370,7 +438,7 @@ func (x *ListRolesResponse) String() string {
 func (*ListRolesResponse) ProtoMessage() {}
 
 func (x *ListRolesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[6]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -383,7 +451,7 @@ func (x *ListRolesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRolesResponse.ProtoReflect.Descriptor instead.
 func (*ListRolesResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{6}
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListRolesResponse) GetRoles() []*Role {
@@ -391,6 +459,494 @@ func (x *ListRolesResponse) GetRoles() []*Role {
 		return x.Roles
 	}
 	return nil
+}
+
+type GetOrgLocaleSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OrgId         string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOrgLocaleSettingsRequest) Reset() {
+	*x = GetOrgLocaleSettingsRequest{}
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOrgLocaleSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOrgLocaleSettingsRequest) ProtoMessage() {}
+
+func (x *GetOrgLocaleSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOrgLocaleSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetOrgLocaleSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetOrgLocaleSettingsRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+type GetOrgLocaleSettingsResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	LocaleSettings *OrgLocaleSettings     `protobuf:"bytes,1,opt,name=locale_settings,json=localeSettings,proto3" json:"locale_settings,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetOrgLocaleSettingsResponse) Reset() {
+	*x = GetOrgLocaleSettingsResponse{}
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOrgLocaleSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOrgLocaleSettingsResponse) ProtoMessage() {}
+
+func (x *GetOrgLocaleSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOrgLocaleSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetOrgLocaleSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetOrgLocaleSettingsResponse) GetLocaleSettings() *OrgLocaleSettings {
+	if x != nil {
+		return x.LocaleSettings
+	}
+	return nil
+}
+
+type ListAvailablePermissionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OrgId         string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAvailablePermissionsRequest) Reset() {
+	*x = ListAvailablePermissionsRequest{}
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAvailablePermissionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAvailablePermissionsRequest) ProtoMessage() {}
+
+func (x *ListAvailablePermissionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAvailablePermissionsRequest.ProtoReflect.Descriptor instead.
+func (*ListAvailablePermissionsRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ListAvailablePermissionsRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+type ListAvailablePermissionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Permissions   []*AvailablePermission `protobuf:"bytes,1,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAvailablePermissionsResponse) Reset() {
+	*x = ListAvailablePermissionsResponse{}
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAvailablePermissionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAvailablePermissionsResponse) ProtoMessage() {}
+
+func (x *ListAvailablePermissionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAvailablePermissionsResponse.ProtoReflect.Descriptor instead.
+func (*ListAvailablePermissionsResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ListAvailablePermissionsResponse) GetPermissions() []*AvailablePermission {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
+}
+
+type CreateRoleRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	OrgId           string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	Code            string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	DisplayName     string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	PermissionCodes []string               `protobuf:"bytes,4,rep,name=permission_codes,json=permissionCodes,proto3" json:"permission_codes,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *CreateRoleRequest) Reset() {
+	*x = CreateRoleRequest{}
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateRoleRequest) ProtoMessage() {}
+
+func (x *CreateRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateRoleRequest.ProtoReflect.Descriptor instead.
+func (*CreateRoleRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *CreateRoleRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *CreateRoleRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *CreateRoleRequest) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *CreateRoleRequest) GetPermissionCodes() []string {
+	if x != nil {
+		return x.PermissionCodes
+	}
+	return nil
+}
+
+type CreateRoleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Role          *Role                  `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateRoleResponse) Reset() {
+	*x = CreateRoleResponse{}
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateRoleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateRoleResponse) ProtoMessage() {}
+
+func (x *CreateRoleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateRoleResponse.ProtoReflect.Descriptor instead.
+func (*CreateRoleResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *CreateRoleResponse) GetRole() *Role {
+	if x != nil {
+		return x.Role
+	}
+	return nil
+}
+
+type UpdateRoleRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	OrgId           string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	RoleId          string                 `protobuf:"bytes,2,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	DisplayName     string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	PermissionCodes []string               `protobuf:"bytes,4,rep,name=permission_codes,json=permissionCodes,proto3" json:"permission_codes,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *UpdateRoleRequest) Reset() {
+	*x = UpdateRoleRequest{}
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRoleRequest) ProtoMessage() {}
+
+func (x *UpdateRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRoleRequest.ProtoReflect.Descriptor instead.
+func (*UpdateRoleRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *UpdateRoleRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *UpdateRoleRequest) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+func (x *UpdateRoleRequest) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *UpdateRoleRequest) GetPermissionCodes() []string {
+	if x != nil {
+		return x.PermissionCodes
+	}
+	return nil
+}
+
+type UpdateRoleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Role          *Role                  `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateRoleResponse) Reset() {
+	*x = UpdateRoleResponse{}
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateRoleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRoleResponse) ProtoMessage() {}
+
+func (x *UpdateRoleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRoleResponse.ProtoReflect.Descriptor instead.
+func (*UpdateRoleResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *UpdateRoleResponse) GetRole() *Role {
+	if x != nil {
+		return x.Role
+	}
+	return nil
+}
+
+type DeleteRoleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OrgId         string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	RoleId        string                 `protobuf:"bytes,2,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteRoleRequest) Reset() {
+	*x = DeleteRoleRequest{}
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteRoleRequest) ProtoMessage() {}
+
+func (x *DeleteRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteRoleRequest.ProtoReflect.Descriptor instead.
+func (*DeleteRoleRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *DeleteRoleRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *DeleteRoleRequest) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+type DeleteRoleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteRoleResponse) Reset() {
+	*x = DeleteRoleResponse{}
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteRoleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteRoleResponse) ProtoMessage() {}
+
+func (x *DeleteRoleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteRoleResponse.ProtoReflect.Descriptor instead.
+func (*DeleteRoleResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{17}
 }
 
 type UpdateMemberRoleRequest struct {
@@ -404,7 +960,7 @@ type UpdateMemberRoleRequest struct {
 
 func (x *UpdateMemberRoleRequest) Reset() {
 	*x = UpdateMemberRoleRequest{}
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[7]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -416,7 +972,7 @@ func (x *UpdateMemberRoleRequest) String() string {
 func (*UpdateMemberRoleRequest) ProtoMessage() {}
 
 func (x *UpdateMemberRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[7]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -429,7 +985,7 @@ func (x *UpdateMemberRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMemberRoleRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMemberRoleRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{7}
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *UpdateMemberRoleRequest) GetOrgId() string {
@@ -462,7 +1018,7 @@ type UpdateMemberRoleResponse struct {
 
 func (x *UpdateMemberRoleResponse) Reset() {
 	*x = UpdateMemberRoleResponse{}
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[8]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -474,7 +1030,7 @@ func (x *UpdateMemberRoleResponse) String() string {
 func (*UpdateMemberRoleResponse) ProtoMessage() {}
 
 func (x *UpdateMemberRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[8]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -487,7 +1043,7 @@ func (x *UpdateMemberRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMemberRoleResponse.ProtoReflect.Descriptor instead.
 func (*UpdateMemberRoleResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{8}
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *UpdateMemberRoleResponse) GetMember() *Member {
@@ -508,7 +1064,7 @@ type UpdateOrgLocaleSettingsRequest struct {
 
 func (x *UpdateOrgLocaleSettingsRequest) Reset() {
 	*x = UpdateOrgLocaleSettingsRequest{}
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[9]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -520,7 +1076,7 @@ func (x *UpdateOrgLocaleSettingsRequest) String() string {
 func (*UpdateOrgLocaleSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateOrgLocaleSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[9]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -533,7 +1089,7 @@ func (x *UpdateOrgLocaleSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateOrgLocaleSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateOrgLocaleSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{9}
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *UpdateOrgLocaleSettingsRequest) GetOrgId() string {
@@ -566,7 +1122,7 @@ type UpdateOrgLocaleSettingsResponse struct {
 
 func (x *UpdateOrgLocaleSettingsResponse) Reset() {
 	*x = UpdateOrgLocaleSettingsResponse{}
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[10]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -578,7 +1134,7 @@ func (x *UpdateOrgLocaleSettingsResponse) String() string {
 func (*UpdateOrgLocaleSettingsResponse) ProtoMessage() {}
 
 func (x *UpdateOrgLocaleSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_org_v1_org_service_proto_msgTypes[10]
+	mi := &file_hualala_org_v1_org_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -591,7 +1147,7 @@ func (x *UpdateOrgLocaleSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateOrgLocaleSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateOrgLocaleSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{10}
+	return file_hualala_org_v1_org_service_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *UpdateOrgLocaleSettingsResponse) GetLocaleSettings() *OrgLocaleSettings {
@@ -610,12 +1166,17 @@ const file_hualala_org_v1_org_service_proto_rawDesc = "" +
 	"\tmember_id\x18\x01 \x01(\tR\bmemberId\x12\x15\n" +
 	"\x06org_id\x18\x02 \x01(\tR\x05orgId\x12\x17\n" +
 	"\auser_id\x18\x03 \x01(\tR\x06userId\x12\x17\n" +
-	"\arole_id\x18\x04 \x01(\tR\x06roleId\"m\n" +
+	"\arole_id\x18\x04 \x01(\tR\x06roleId\"\x98\x01\n" +
 	"\x04Role\x12\x17\n" +
 	"\arole_id\x18\x01 \x01(\tR\x06roleId\x12\x15\n" +
 	"\x06org_id\x18\x02 \x01(\tR\x05orgId\x12\x12\n" +
 	"\x04code\x18\x03 \x01(\tR\x04code\x12!\n" +
-	"\fdisplay_name\x18\x04 \x01(\tR\vdisplayName\"~\n" +
+	"\fdisplay_name\x18\x04 \x01(\tR\vdisplayName\x12)\n" +
+	"\x10permission_codes\x18\x05 \x03(\tR\x0fpermissionCodes\"b\n" +
+	"\x13AvailablePermission\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\x12!\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x14\n" +
+	"\x05group\x18\x03 \x01(\tR\x05group\"~\n" +
 	"\x11OrgLocaleSettings\x12\x15\n" +
 	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12%\n" +
 	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\x12+\n" +
@@ -627,7 +1188,33 @@ const file_hualala_org_v1_org_service_proto_rawDesc = "" +
 	"\x10ListRolesRequest\x12\x15\n" +
 	"\x06org_id\x18\x01 \x01(\tR\x05orgId\"?\n" +
 	"\x11ListRolesResponse\x12*\n" +
-	"\x05roles\x18\x01 \x03(\v2\x14.hualala.org.v1.RoleR\x05roles\"f\n" +
+	"\x05roles\x18\x01 \x03(\v2\x14.hualala.org.v1.RoleR\x05roles\"4\n" +
+	"\x1bGetOrgLocaleSettingsRequest\x12\x15\n" +
+	"\x06org_id\x18\x01 \x01(\tR\x05orgId\"j\n" +
+	"\x1cGetOrgLocaleSettingsResponse\x12J\n" +
+	"\x0flocale_settings\x18\x01 \x01(\v2!.hualala.org.v1.OrgLocaleSettingsR\x0elocaleSettings\"8\n" +
+	"\x1fListAvailablePermissionsRequest\x12\x15\n" +
+	"\x06org_id\x18\x01 \x01(\tR\x05orgId\"i\n" +
+	" ListAvailablePermissionsResponse\x12E\n" +
+	"\vpermissions\x18\x01 \x03(\v2#.hualala.org.v1.AvailablePermissionR\vpermissions\"\x8c\x01\n" +
+	"\x11CreateRoleRequest\x12\x15\n" +
+	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12!\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12)\n" +
+	"\x10permission_codes\x18\x04 \x03(\tR\x0fpermissionCodes\">\n" +
+	"\x12CreateRoleResponse\x12(\n" +
+	"\x04role\x18\x01 \x01(\v2\x14.hualala.org.v1.RoleR\x04role\"\x91\x01\n" +
+	"\x11UpdateRoleRequest\x12\x15\n" +
+	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x17\n" +
+	"\arole_id\x18\x02 \x01(\tR\x06roleId\x12!\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12)\n" +
+	"\x10permission_codes\x18\x04 \x03(\tR\x0fpermissionCodes\">\n" +
+	"\x12UpdateRoleResponse\x12(\n" +
+	"\x04role\x18\x01 \x01(\v2\x14.hualala.org.v1.RoleR\x04role\"C\n" +
+	"\x11DeleteRoleRequest\x12\x15\n" +
+	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x17\n" +
+	"\arole_id\x18\x02 \x01(\tR\x06roleId\"\x14\n" +
+	"\x12DeleteRoleResponse\"f\n" +
 	"\x17UpdateMemberRoleRequest\x12\x15\n" +
 	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1b\n" +
 	"\tmember_id\x18\x02 \x01(\tR\bmemberId\x12\x17\n" +
@@ -639,11 +1226,19 @@ const file_hualala_org_v1_org_service_proto_rawDesc = "" +
 	"\x0edefault_locale\x18\x02 \x01(\tR\rdefaultLocale\x12+\n" +
 	"\x11supported_locales\x18\x03 \x03(\tR\x10supportedLocales\"m\n" +
 	"\x1fUpdateOrgLocaleSettingsResponse\x12J\n" +
-	"\x0flocale_settings\x18\x01 \x01(\v2!.hualala.org.v1.OrgLocaleSettingsR\x0elocaleSettings2\x99\x03\n" +
+	"\x0flocale_settings\x18\x01 \x01(\v2!.hualala.org.v1.OrgLocaleSettingsR\x0elocaleSettings2\x8a\a\n" +
 	"\n" +
 	"OrgService\x12V\n" +
 	"\vListMembers\x12\".hualala.org.v1.ListMembersRequest\x1a#.hualala.org.v1.ListMembersResponse\x12P\n" +
-	"\tListRoles\x12 .hualala.org.v1.ListRolesRequest\x1a!.hualala.org.v1.ListRolesResponse\x12e\n" +
+	"\tListRoles\x12 .hualala.org.v1.ListRolesRequest\x1a!.hualala.org.v1.ListRolesResponse\x12q\n" +
+	"\x14GetOrgLocaleSettings\x12+.hualala.org.v1.GetOrgLocaleSettingsRequest\x1a,.hualala.org.v1.GetOrgLocaleSettingsResponse\x12}\n" +
+	"\x18ListAvailablePermissions\x12/.hualala.org.v1.ListAvailablePermissionsRequest\x1a0.hualala.org.v1.ListAvailablePermissionsResponse\x12S\n" +
+	"\n" +
+	"CreateRole\x12!.hualala.org.v1.CreateRoleRequest\x1a\".hualala.org.v1.CreateRoleResponse\x12S\n" +
+	"\n" +
+	"UpdateRole\x12!.hualala.org.v1.UpdateRoleRequest\x1a\".hualala.org.v1.UpdateRoleResponse\x12S\n" +
+	"\n" +
+	"DeleteRole\x12!.hualala.org.v1.DeleteRoleRequest\x1a\".hualala.org.v1.DeleteRoleResponse\x12e\n" +
 	"\x10UpdateMemberRole\x12'.hualala.org.v1.UpdateMemberRoleRequest\x1a(.hualala.org.v1.UpdateMemberRoleResponse\x12z\n" +
 	"\x17UpdateOrgLocaleSettings\x12..hualala.org.v1.UpdateOrgLocaleSettingsRequest\x1a/.hualala.org.v1.UpdateOrgLocaleSettingsResponseB\xb9\x01\n" +
 	"\x12com.hualala.org.v1B\x0fOrgServiceProtoP\x01Z8github.com/hualala/apps/backend/gen/hualala/org/v1;orgv1\xa2\x02\x03HOX\xaa\x02\x0eHualala.Org.V1\xca\x02\x0eHualala\\Org\\V1\xe2\x02\x1aHualala\\Org\\V1\\GPBMetadata\xea\x02\x10Hualala::Org::V1b\x06proto3"
@@ -660,38 +1255,63 @@ func file_hualala_org_v1_org_service_proto_rawDescGZIP() []byte {
 	return file_hualala_org_v1_org_service_proto_rawDescData
 }
 
-var file_hualala_org_v1_org_service_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_hualala_org_v1_org_service_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_hualala_org_v1_org_service_proto_goTypes = []any{
-	(*Member)(nil),                          // 0: hualala.org.v1.Member
-	(*Role)(nil),                            // 1: hualala.org.v1.Role
-	(*OrgLocaleSettings)(nil),               // 2: hualala.org.v1.OrgLocaleSettings
-	(*ListMembersRequest)(nil),              // 3: hualala.org.v1.ListMembersRequest
-	(*ListMembersResponse)(nil),             // 4: hualala.org.v1.ListMembersResponse
-	(*ListRolesRequest)(nil),                // 5: hualala.org.v1.ListRolesRequest
-	(*ListRolesResponse)(nil),               // 6: hualala.org.v1.ListRolesResponse
-	(*UpdateMemberRoleRequest)(nil),         // 7: hualala.org.v1.UpdateMemberRoleRequest
-	(*UpdateMemberRoleResponse)(nil),        // 8: hualala.org.v1.UpdateMemberRoleResponse
-	(*UpdateOrgLocaleSettingsRequest)(nil),  // 9: hualala.org.v1.UpdateOrgLocaleSettingsRequest
-	(*UpdateOrgLocaleSettingsResponse)(nil), // 10: hualala.org.v1.UpdateOrgLocaleSettingsResponse
+	(*Member)(nil),                           // 0: hualala.org.v1.Member
+	(*Role)(nil),                             // 1: hualala.org.v1.Role
+	(*AvailablePermission)(nil),              // 2: hualala.org.v1.AvailablePermission
+	(*OrgLocaleSettings)(nil),                // 3: hualala.org.v1.OrgLocaleSettings
+	(*ListMembersRequest)(nil),               // 4: hualala.org.v1.ListMembersRequest
+	(*ListMembersResponse)(nil),              // 5: hualala.org.v1.ListMembersResponse
+	(*ListRolesRequest)(nil),                 // 6: hualala.org.v1.ListRolesRequest
+	(*ListRolesResponse)(nil),                // 7: hualala.org.v1.ListRolesResponse
+	(*GetOrgLocaleSettingsRequest)(nil),      // 8: hualala.org.v1.GetOrgLocaleSettingsRequest
+	(*GetOrgLocaleSettingsResponse)(nil),     // 9: hualala.org.v1.GetOrgLocaleSettingsResponse
+	(*ListAvailablePermissionsRequest)(nil),  // 10: hualala.org.v1.ListAvailablePermissionsRequest
+	(*ListAvailablePermissionsResponse)(nil), // 11: hualala.org.v1.ListAvailablePermissionsResponse
+	(*CreateRoleRequest)(nil),                // 12: hualala.org.v1.CreateRoleRequest
+	(*CreateRoleResponse)(nil),               // 13: hualala.org.v1.CreateRoleResponse
+	(*UpdateRoleRequest)(nil),                // 14: hualala.org.v1.UpdateRoleRequest
+	(*UpdateRoleResponse)(nil),               // 15: hualala.org.v1.UpdateRoleResponse
+	(*DeleteRoleRequest)(nil),                // 16: hualala.org.v1.DeleteRoleRequest
+	(*DeleteRoleResponse)(nil),               // 17: hualala.org.v1.DeleteRoleResponse
+	(*UpdateMemberRoleRequest)(nil),          // 18: hualala.org.v1.UpdateMemberRoleRequest
+	(*UpdateMemberRoleResponse)(nil),         // 19: hualala.org.v1.UpdateMemberRoleResponse
+	(*UpdateOrgLocaleSettingsRequest)(nil),   // 20: hualala.org.v1.UpdateOrgLocaleSettingsRequest
+	(*UpdateOrgLocaleSettingsResponse)(nil),  // 21: hualala.org.v1.UpdateOrgLocaleSettingsResponse
 }
 var file_hualala_org_v1_org_service_proto_depIdxs = []int32{
 	0,  // 0: hualala.org.v1.ListMembersResponse.members:type_name -> hualala.org.v1.Member
 	1,  // 1: hualala.org.v1.ListRolesResponse.roles:type_name -> hualala.org.v1.Role
-	0,  // 2: hualala.org.v1.UpdateMemberRoleResponse.member:type_name -> hualala.org.v1.Member
-	2,  // 3: hualala.org.v1.UpdateOrgLocaleSettingsResponse.locale_settings:type_name -> hualala.org.v1.OrgLocaleSettings
-	3,  // 4: hualala.org.v1.OrgService.ListMembers:input_type -> hualala.org.v1.ListMembersRequest
-	5,  // 5: hualala.org.v1.OrgService.ListRoles:input_type -> hualala.org.v1.ListRolesRequest
-	7,  // 6: hualala.org.v1.OrgService.UpdateMemberRole:input_type -> hualala.org.v1.UpdateMemberRoleRequest
-	9,  // 7: hualala.org.v1.OrgService.UpdateOrgLocaleSettings:input_type -> hualala.org.v1.UpdateOrgLocaleSettingsRequest
-	4,  // 8: hualala.org.v1.OrgService.ListMembers:output_type -> hualala.org.v1.ListMembersResponse
-	6,  // 9: hualala.org.v1.OrgService.ListRoles:output_type -> hualala.org.v1.ListRolesResponse
-	8,  // 10: hualala.org.v1.OrgService.UpdateMemberRole:output_type -> hualala.org.v1.UpdateMemberRoleResponse
-	10, // 11: hualala.org.v1.OrgService.UpdateOrgLocaleSettings:output_type -> hualala.org.v1.UpdateOrgLocaleSettingsResponse
-	8,  // [8:12] is the sub-list for method output_type
-	4,  // [4:8] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	3,  // 2: hualala.org.v1.GetOrgLocaleSettingsResponse.locale_settings:type_name -> hualala.org.v1.OrgLocaleSettings
+	2,  // 3: hualala.org.v1.ListAvailablePermissionsResponse.permissions:type_name -> hualala.org.v1.AvailablePermission
+	1,  // 4: hualala.org.v1.CreateRoleResponse.role:type_name -> hualala.org.v1.Role
+	1,  // 5: hualala.org.v1.UpdateRoleResponse.role:type_name -> hualala.org.v1.Role
+	0,  // 6: hualala.org.v1.UpdateMemberRoleResponse.member:type_name -> hualala.org.v1.Member
+	3,  // 7: hualala.org.v1.UpdateOrgLocaleSettingsResponse.locale_settings:type_name -> hualala.org.v1.OrgLocaleSettings
+	4,  // 8: hualala.org.v1.OrgService.ListMembers:input_type -> hualala.org.v1.ListMembersRequest
+	6,  // 9: hualala.org.v1.OrgService.ListRoles:input_type -> hualala.org.v1.ListRolesRequest
+	8,  // 10: hualala.org.v1.OrgService.GetOrgLocaleSettings:input_type -> hualala.org.v1.GetOrgLocaleSettingsRequest
+	10, // 11: hualala.org.v1.OrgService.ListAvailablePermissions:input_type -> hualala.org.v1.ListAvailablePermissionsRequest
+	12, // 12: hualala.org.v1.OrgService.CreateRole:input_type -> hualala.org.v1.CreateRoleRequest
+	14, // 13: hualala.org.v1.OrgService.UpdateRole:input_type -> hualala.org.v1.UpdateRoleRequest
+	16, // 14: hualala.org.v1.OrgService.DeleteRole:input_type -> hualala.org.v1.DeleteRoleRequest
+	18, // 15: hualala.org.v1.OrgService.UpdateMemberRole:input_type -> hualala.org.v1.UpdateMemberRoleRequest
+	20, // 16: hualala.org.v1.OrgService.UpdateOrgLocaleSettings:input_type -> hualala.org.v1.UpdateOrgLocaleSettingsRequest
+	5,  // 17: hualala.org.v1.OrgService.ListMembers:output_type -> hualala.org.v1.ListMembersResponse
+	7,  // 18: hualala.org.v1.OrgService.ListRoles:output_type -> hualala.org.v1.ListRolesResponse
+	9,  // 19: hualala.org.v1.OrgService.GetOrgLocaleSettings:output_type -> hualala.org.v1.GetOrgLocaleSettingsResponse
+	11, // 20: hualala.org.v1.OrgService.ListAvailablePermissions:output_type -> hualala.org.v1.ListAvailablePermissionsResponse
+	13, // 21: hualala.org.v1.OrgService.CreateRole:output_type -> hualala.org.v1.CreateRoleResponse
+	15, // 22: hualala.org.v1.OrgService.UpdateRole:output_type -> hualala.org.v1.UpdateRoleResponse
+	17, // 23: hualala.org.v1.OrgService.DeleteRole:output_type -> hualala.org.v1.DeleteRoleResponse
+	19, // 24: hualala.org.v1.OrgService.UpdateMemberRole:output_type -> hualala.org.v1.UpdateMemberRoleResponse
+	21, // 25: hualala.org.v1.OrgService.UpdateOrgLocaleSettings:output_type -> hualala.org.v1.UpdateOrgLocaleSettingsResponse
+	17, // [17:26] is the sub-list for method output_type
+	8,  // [8:17] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_hualala_org_v1_org_service_proto_init() }
@@ -705,7 +1325,7 @@ func file_hualala_org_v1_org_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hualala_org_v1_org_service_proto_rawDesc), len(file_hualala_org_v1_org_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

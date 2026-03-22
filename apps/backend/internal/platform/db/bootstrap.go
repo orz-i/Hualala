@@ -13,6 +13,8 @@ const (
 	DefaultDevOrganizationID = "11111111-1111-1111-1111-111111111111"
 	DefaultDevUserID         = "22222222-2222-2222-2222-222222222222"
 	DefaultDevRoleID         = "33333333-3333-3333-3333-333333333333"
+	DefaultDevEditorRoleID   = "55555555-5555-5555-5555-555555555555"
+	DefaultDevViewerRoleID   = "66666666-6666-6666-6666-666666666666"
 	DefaultDevMembershipID   = "44444444-4444-4444-4444-444444444444"
 )
 
@@ -23,7 +25,7 @@ type DevBootstrapResult struct {
 	MembershipID   string `json:"membership_id"`
 }
 
-func devRolePermissionCodes() []string {
+func devAdminRolePermissionCodes() []string {
 	return []string{
 		"session.read",
 		"user.preferences.write",
@@ -31,6 +33,23 @@ func devRolePermissionCodes() []string {
 		"org.roles.read",
 		"org.members.write",
 		"org.settings.write",
+		"org.roles.write",
+	}
+}
+
+func devEditorRolePermissionCodes() []string {
+	return []string{
+		"session.read",
+		"user.preferences.write",
+		"org.members.read",
+		"org.roles.read",
+	}
+}
+
+func devViewerRolePermissionCodes() []string {
+	return []string{
+		"session.read",
+		"user.preferences.write",
 	}
 }
 
@@ -78,16 +97,43 @@ func EnsureDevBootstrap(ctx context.Context, handle *sql.DB) (DevBootstrapResult
 		return DevBootstrapResult{}, fmt.Errorf("db: upsert user: %w", err)
 	}
 
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO roles (id, organization_id, role_code, display_name)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (id) DO UPDATE
-		SET organization_id = EXCLUDED.organization_id,
-		    role_code = EXCLUDED.role_code,
-		    display_name = EXCLUDED.display_name,
-		    updated_at = now()
-	`, DefaultDevRoleID, DefaultDevOrganizationID, "admin", "Administrator"); err != nil {
-		return DevBootstrapResult{}, fmt.Errorf("db: upsert role: %w", err)
+	devRoles := []struct {
+		id              string
+		code            string
+		displayName     string
+		permissionCodes []string
+	}{
+		{
+			id:              DefaultDevRoleID,
+			code:            "admin",
+			displayName:     "Administrator",
+			permissionCodes: devAdminRolePermissionCodes(),
+		},
+		{
+			id:              DefaultDevEditorRoleID,
+			code:            "editor",
+			displayName:     "Editor",
+			permissionCodes: devEditorRolePermissionCodes(),
+		},
+		{
+			id:              DefaultDevViewerRoleID,
+			code:            "viewer",
+			displayName:     "Viewer",
+			permissionCodes: devViewerRolePermissionCodes(),
+		},
+	}
+	for _, role := range devRoles {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO roles (id, organization_id, role_code, display_name)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (id) DO UPDATE
+			SET organization_id = EXCLUDED.organization_id,
+			    role_code = EXCLUDED.role_code,
+			    display_name = EXCLUDED.display_name,
+			    updated_at = now()
+		`, role.id, DefaultDevOrganizationID, role.code, role.displayName); err != nil {
+			return DevBootstrapResult{}, fmt.Errorf("db: upsert role %s: %w", role.code, err)
+		}
 	}
 
 	if _, err := tx.ExecContext(ctx, `
@@ -103,16 +149,18 @@ func EnsureDevBootstrap(ctx context.Context, handle *sql.DB) (DevBootstrapResult
 		return DevBootstrapResult{}, fmt.Errorf("db: upsert membership: %w", err)
 	}
 
-	if _, err := tx.ExecContext(ctx, `DELETE FROM role_permissions WHERE role_id = $1`, DefaultDevRoleID); err != nil {
-		return DevBootstrapResult{}, fmt.Errorf("db: clear role permissions: %w", err)
-	}
-	for _, permissionCode := range devRolePermissionCodes() {
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO role_permissions (role_id, permission_code)
-			VALUES ($1, $2)
-			ON CONFLICT (role_id, permission_code) DO NOTHING
-		`, DefaultDevRoleID, permissionCode); err != nil {
-			return DevBootstrapResult{}, fmt.Errorf("db: insert role permission %s: %w", permissionCode, err)
+	for _, role := range devRoles {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM role_permissions WHERE role_id = $1`, role.id); err != nil {
+			return DevBootstrapResult{}, fmt.Errorf("db: clear role permissions for %s: %w", role.code, err)
+		}
+		for _, permissionCode := range role.permissionCodes {
+			if _, err := tx.ExecContext(ctx, `
+				INSERT INTO role_permissions (role_id, permission_code)
+				VALUES ($1, $2)
+				ON CONFLICT (role_id, permission_code) DO NOTHING
+			`, role.id, permissionCode); err != nil {
+				return DevBootstrapResult{}, fmt.Errorf("db: insert role permission %s for %s: %w", permissionCode, role.code, err)
+			}
 		}
 	}
 

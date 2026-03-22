@@ -134,14 +134,22 @@ func (s *Service) buildSession(principal authz.Principal) (auth.Session, error) 
 	if !ok {
 		return auth.Session{}, errors.New("authapp: organization not found")
 	}
+	role, ok := s.repo.GetRole(principal.RoleID)
+	if !ok {
+		return auth.Session{}, errors.New("authapp: role not found")
+	}
 	locale := strings.TrimSpace(user.PreferredUILocale)
 	if locale == "" {
 		locale = strings.TrimSpace(orgRecord.DefaultUILocale)
 	}
 	return auth.Session{
-		SessionID: fmt.Sprintf("dev:%s:%s", principal.OrgID, principal.UserID),
-		UserID:    principal.UserID,
-		OrgID:     principal.OrgID,
-		Locale:    locale,
+		SessionID:       fmt.Sprintf("dev:%s:%s", principal.OrgID, principal.UserID),
+		UserID:          principal.UserID,
+		OrgID:           principal.OrgID,
+		Locale:          locale,
+		RoleID:          role.ID,
+		RoleCode:        role.Code,
+		PermissionCodes: s.repo.ListRolePermissions(role.ID),
+		Timezone:        strings.TrimSpace(user.Timezone),
 	}, nil
 }

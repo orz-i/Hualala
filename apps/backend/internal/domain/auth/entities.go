@@ -1,10 +1,14 @@
 package auth
 
 type Session struct {
-	SessionID string
-	UserID    string
-	OrgID     string
-	Locale    string
+	SessionID       string
+	UserID          string
+	OrgID           string
+	Locale          string
+	RoleID          string
+	RoleCode        string
+	PermissionCodes []string
+	Timezone        string
 }
 
 type User struct {

@@ -31,6 +31,9 @@ import {
   selectPrimaryAssetForImportBatch,
 } from "../features/dashboard/mutateAssetMonitor";
 import {
+  createRole,
+  deleteRole,
+  updateRole,
   updateMemberRole,
   updateOrgLocaleSettings,
   updateUserPreferences,
@@ -107,6 +110,11 @@ export function App() {
     tone: "pending" | "success" | "error";
     message: string;
   } | null>(null);
+  const [governanceActionFeedback, setGovernanceActionFeedback] = useState<{
+    tone: "pending" | "success" | "error";
+    message: string;
+  } | null>(null);
+  const [governanceActionPending, setGovernanceActionPending] = useState(false);
   const [workflowActionFeedback, setWorkflowActionFeedback] = useState<{
     tone: "pending" | "success" | "error";
     message: string;
@@ -370,6 +378,60 @@ export function App() {
     [assetActionPending, effectiveOrgId, effectiveUserId, refreshAssetSilently, t],
   );
 
+  const runGovernanceAction = useCallback(
+    async ({
+      pendingMessage,
+      successMessage,
+      execute,
+    }: {
+      pendingMessage: string;
+      successMessage: string;
+      execute: (input: {
+        orgId: string;
+        userId: string;
+      }) => Promise<void>;
+    }) => {
+      if (governanceActionPending) {
+        return;
+      }
+
+      startTransition(() => {
+        setGovernanceActionPending(true);
+        setGovernanceActionFeedback({
+          tone: "pending",
+          message: pendingMessage,
+        });
+      });
+
+      try {
+        await waitForFeedbackPaint();
+        await execute({
+          orgId: effectiveOrgId,
+          userId: effectiveUserId,
+        });
+        await refreshGovernance();
+        startTransition(() => {
+          setGovernanceActionPending(false);
+          setGovernanceActionFeedback({
+            tone: "success",
+            message: successMessage,
+          });
+        });
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "admin: unknown governance action error";
+        startTransition(() => {
+          setGovernanceActionPending(false);
+          setGovernanceActionFeedback({
+            tone: "error",
+            message: t("governance.action.error", { message }),
+          });
+        });
+      }
+    },
+    [effectiveOrgId, effectiveUserId, governanceActionPending, refreshGovernance, t],
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -433,6 +495,8 @@ export function App() {
       setSelectedImportBatchId(null);
       setSelectedAssetProvenanceId(null);
       setSelectedImportItemIds([]);
+      setGovernanceActionFeedback(null);
+      setGovernanceActionPending(false);
       setWorkflowActionFeedback(null);
       setWorkflowActionPending(false);
       setAssetActionFeedback(null);
@@ -974,6 +1038,8 @@ export function App() {
         t={t}
         onLocaleChange={setLocale}
         budgetFeedback={budgetFeedback ?? undefined}
+        governanceActionFeedback={governanceActionFeedback ?? undefined}
+        governanceActionPending={governanceActionPending}
         workflowActionFeedback={workflowActionFeedback ?? undefined}
         workflowActionPending={workflowActionPending}
         assetActionFeedback={assetActionFeedback ?? undefined}
@@ -1010,31 +1076,77 @@ export function App() {
             });
           }
         }}
-        onUpdateUserPreferences={async (input) => {
-          await updateUserPreferences({
-            orgId: effectiveOrgId,
-            userId: effectiveUserId,
-            displayLocale: input.displayLocale,
-            timezone: input.timezone,
+        onUpdateUserPreferences={(input) => {
+          void runGovernanceAction({
+            pendingMessage: t("governance.action.preferences.pending"),
+            successMessage: t("governance.action.preferences.success"),
+            execute: (options) =>
+              updateUserPreferences({
+                ...options,
+                displayLocale: input.displayLocale,
+                timezone: input.timezone,
+              }).then(() => undefined),
           });
-          await refreshGovernance();
         }}
-        onUpdateMemberRole={async (input) => {
-          await updateMemberRole({
-            orgId: effectiveOrgId,
-            userId: effectiveUserId,
-            memberId: input.memberId,
-            roleId: input.roleId,
+        onUpdateMemberRole={(input) => {
+          void runGovernanceAction({
+            pendingMessage: t("governance.action.members.pending"),
+            successMessage: t("governance.action.members.success"),
+            execute: (options) =>
+              updateMemberRole({
+                ...options,
+                memberId: input.memberId,
+                roleId: input.roleId,
+              }).then(() => undefined),
           });
-          await refreshGovernance();
         }}
-        onUpdateOrgLocaleSettings={async (input) => {
-          await updateOrgLocaleSettings({
-            orgId: effectiveOrgId,
-            userId: effectiveUserId,
-            defaultLocale: input.defaultLocale,
+        onUpdateOrgLocaleSettings={(input) => {
+          void runGovernanceAction({
+            pendingMessage: t("governance.action.locale.pending"),
+            successMessage: t("governance.action.locale.success"),
+            execute: (options) =>
+              updateOrgLocaleSettings({
+                ...options,
+                defaultLocale: input.defaultLocale,
+              }).then(() => undefined),
           });
-          await refreshGovernance();
+        }}
+        onCreateRole={(input) => {
+          void runGovernanceAction({
+            pendingMessage: t("governance.action.roles.create.pending"),
+            successMessage: t("governance.action.roles.create.success"),
+            execute: (options) =>
+              createRole({
+                ...options,
+                code: input.code,
+                displayName: input.displayName,
+                permissionCodes: input.permissionCodes,
+              }).then(() => undefined),
+          });
+        }}
+        onUpdateRole={(input) => {
+          void runGovernanceAction({
+            pendingMessage: t("governance.action.roles.update.pending"),
+            successMessage: t("governance.action.roles.update.success"),
+            execute: (options) =>
+              updateRole({
+                ...options,
+                roleId: input.roleId,
+                displayName: input.displayName,
+                permissionCodes: input.permissionCodes,
+              }).then(() => undefined),
+          });
+        }}
+        onDeleteRole={(input) => {
+          void runGovernanceAction({
+            pendingMessage: t("governance.action.roles.delete.pending"),
+            successMessage: t("governance.action.roles.delete.success"),
+            execute: (options) =>
+              deleteRole({
+                ...options,
+                roleId: input.roleId,
+              }),
+          });
         }}
         onWorkflowStatusFilterChange={(status) => {
           startTransition(() => {

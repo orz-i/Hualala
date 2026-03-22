@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ListMembersRequest, ListMembersResponse, ListRolesRequest, ListRolesResponse, UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrgLocaleSettingsRequest, UpdateOrgLocaleSettingsResponse } from "./org_service_pb.js";
+import { CreateRoleRequest, CreateRoleResponse, DeleteRoleRequest, DeleteRoleResponse, GetOrgLocaleSettingsRequest, GetOrgLocaleSettingsResponse, ListAvailablePermissionsRequest, ListAvailablePermissionsResponse, ListMembersRequest, ListMembersResponse, ListRolesRequest, ListRolesResponse, UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrgLocaleSettingsRequest, UpdateOrgLocaleSettingsResponse, UpdateRoleRequest, UpdateRoleResponse } from "./org_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -28,6 +28,51 @@ export const OrgService = {
       name: "ListRoles",
       I: ListRolesRequest,
       O: ListRolesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.org.v1.OrgService.GetOrgLocaleSettings
+     */
+    getOrgLocaleSettings: {
+      name: "GetOrgLocaleSettings",
+      I: GetOrgLocaleSettingsRequest,
+      O: GetOrgLocaleSettingsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.org.v1.OrgService.ListAvailablePermissions
+     */
+    listAvailablePermissions: {
+      name: "ListAvailablePermissions",
+      I: ListAvailablePermissionsRequest,
+      O: ListAvailablePermissionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.org.v1.OrgService.CreateRole
+     */
+    createRole: {
+      name: "CreateRole",
+      I: CreateRoleRequest,
+      O: CreateRoleResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.org.v1.OrgService.UpdateRole
+     */
+    updateRole: {
+      name: "UpdateRole",
+      I: UpdateRoleRequest,
+      O: UpdateRoleResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.org.v1.OrgService.DeleteRole
+     */
+    deleteRole: {
+      name: "DeleteRole",
+      I: DeleteRoleRequest,
+      O: DeleteRoleResponse,
       kind: MethodKind.Unary,
     },
     /**

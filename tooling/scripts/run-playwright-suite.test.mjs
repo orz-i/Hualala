@@ -59,3 +59,19 @@ test("run-playwright-suite exports playwright command builder", async () => {
   assert.match(command, /playwright/);
   assert.match(command, /phase1-real-acceptance\.spec\.ts/);
 });
+
+test("run-playwright-suite injects postgres env for real targets", async () => {
+  const realEnv = await inspectModuleExpression(
+    "mod.buildRunEnv('admin-real', { DATABASE_URL: 'postgres://wrong/wrong', DB_DRIVER: 'memory' }, { PW_SERVER_TARGET: 'admin-real' })",
+  );
+  const mockEnv = await inspectModuleExpression(
+    "mod.buildRunEnv('admin', { DATABASE_URL: 'postgres://keep/me', DB_DRIVER: 'memory' }, { PW_SERVER_TARGET: 'admin' })",
+  );
+
+  assert.equal(realEnv.DB_DRIVER, "postgres");
+  assert.match(realEnv.DATABASE_URL, /postgres:\/\/hualala:hualala@127\.0\.0\.1:5432\/hualala\?sslmode=disable/);
+  assert.equal(realEnv.PW_SERVER_TARGET, "admin-real");
+  assert.equal(mockEnv.DB_DRIVER, "memory");
+  assert.equal(mockEnv.DATABASE_URL, "postgres://keep/me");
+  assert.equal(mockEnv.PW_SERVER_TARGET, "admin");
+});

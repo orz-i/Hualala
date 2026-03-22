@@ -13,6 +13,10 @@ describe("session bootstrap helpers", () => {
             orgId: "org-1",
             userId: "user-1",
             locale: "zh-CN",
+            roleId: "role-admin",
+            roleCode: "admin",
+            permissionCodes: ["session.read", "org.roles.write"],
+            timezone: "Asia/Shanghai",
           },
         }),
         { status: 200 },
@@ -28,6 +32,9 @@ describe("session bootstrap helpers", () => {
     });
 
     expect(session.sessionId).toBe("dev:org-1:user-1");
+    expect(session.roleCode).toBe("admin");
+    expect(session.permissionCodes).toEqual(["session.read", "org.roles.write"]);
+    expect(session.timezone).toBe("Asia/Shanghai");
     expect(fetchFn.mock.calls[0]?.[1]).toMatchObject({
       headers: expect.objectContaining({
         "X-Hualala-Org-Id": "org-1",

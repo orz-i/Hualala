@@ -102,10 +102,23 @@ type AdminOverviewPageProps = {
   onCloseImportBatchDetail?: () => void;
   onCloseAssetProvenance?: () => void;
   budgetFeedback?: BudgetFeedback;
+  governanceActionFeedback?: BudgetFeedback;
+  governanceActionPending?: boolean;
   workflowActionFeedback?: BudgetFeedback;
   workflowActionPending?: boolean;
   assetActionFeedback?: BudgetFeedback;
   assetActionPending?: boolean;
+  onCreateRole?: (input: {
+    code: string;
+    displayName: string;
+    permissionCodes: string[];
+  }) => void;
+  onUpdateRole?: (input: {
+    roleId: string;
+    displayName: string;
+    permissionCodes: string[];
+  }) => void;
+  onDeleteRole?: (input: { roleId: string }) => void;
   onRetryWorkflowRun?: (workflowRunId: string) => void;
   onCancelWorkflowRun?: (workflowRunId: string) => void;
   selectedImportItemIds?: string[];
@@ -315,10 +328,15 @@ export function AdminOverviewPage({
   onCloseImportBatchDetail,
   onCloseAssetProvenance,
   budgetFeedback,
+  governanceActionFeedback,
+  governanceActionPending,
   workflowActionFeedback,
   workflowActionPending,
   assetActionFeedback,
   assetActionPending,
+  onCreateRole,
+  onUpdateRole,
+  onDeleteRole,
   onRetryWorkflowRun,
   onCancelWorkflowRun,
   selectedImportItemIds = [],
@@ -357,10 +375,27 @@ export function AdminOverviewPage({
   const [memberRoleDrafts, setMemberRoleDrafts] = useState<Record<string, string>>(() =>
     Object.fromEntries(governance.members.map((member) => [member.memberId, member.roleId])),
   );
+  const [newRoleCode, setNewRoleCode] = useState("");
+  const [newRoleDisplayName, setNewRoleDisplayName] = useState("");
+  const [newRolePermissionCodes, setNewRolePermissionCodes] = useState<string[]>([]);
+  const [roleDisplayNameDrafts, setRoleDisplayNameDrafts] = useState<Record<string, string>>(() =>
+    Object.fromEntries(governance.roles.map((role) => [role.roleId, role.displayName])),
+  );
+  const [rolePermissionDrafts, setRolePermissionDrafts] = useState<Record<string, string[]>>(() =>
+    Object.fromEntries(
+      governance.roles.map((role) => [role.roleId, [...role.permissionCodes]]),
+    ),
+  );
   const budgetFeedbackPalette =
     budgetFeedback?.tone === "error"
       ? { color: "#991b1b" }
       : budgetFeedback?.tone === "pending"
+        ? { color: "#92400e" }
+        : { color: "#115e59" };
+  const governanceFeedbackPalette =
+    governanceActionFeedback?.tone === "error"
+      ? { color: "#991b1b" }
+      : governanceActionFeedback?.tone === "pending"
         ? { color: "#92400e" }
         : { color: "#115e59" };
   const workflowFeedbackPalette =
@@ -382,6 +417,10 @@ export function AdminOverviewPage({
   const selectedActionableImportItemIds = selectedImportItemIds.filter((itemId) =>
     actionableImportItemIds.includes(itemId),
   );
+  const canManageRoles = governance.capabilities.canManageRoles;
+  const canManageMembers = governance.capabilities.canManageMembers;
+  const canManageOrgSettings = governance.capabilities.canManageOrgSettings;
+  const canManageUserPreferences = governance.capabilities.canManageUserPreferences;
 
   useEffect(() => {
     setBudgetLimitYuan((overview.budgetSnapshot.limitCents / 100).toFixed(2));
@@ -401,6 +440,17 @@ export function AdminOverviewPage({
       Object.fromEntries(governance.members.map((member) => [member.memberId, member.roleId])),
     );
   }, [governance.members]);
+
+  useEffect(() => {
+    setRoleDisplayNameDrafts(
+      Object.fromEntries(governance.roles.map((role) => [role.roleId, role.displayName])),
+    );
+    setRolePermissionDrafts(
+      Object.fromEntries(
+        governance.roles.map((role) => [role.roleId, [...role.permissionCodes]]),
+      ),
+    );
+  }, [governance.roles]);
 
   useDialogAccessibility({
     open: Boolean(workflowRunDetail),
@@ -1000,17 +1050,41 @@ export function AdminOverviewPage({
             <div style={{ display: "grid", gap: "8px", marginBottom: "18px" }}>
               <p style={metricStyle}>{t("governance.session.idLabel")}</p>
               <p style={metricStyle}>{governance.currentSession.sessionId}</p>
-              <p style={metricStyle}>{t("governance.session.orgId", { orgId: governance.currentSession.orgId })}</p>
-              <p style={metricStyle}>{t("governance.session.userId", { userId: governance.currentSession.userId })}</p>
-              <p style={metricStyle}>{t("governance.session.locale", { locale: governance.currentSession.locale })}</p>
+              <p style={metricStyle}>
+                {t("governance.session.orgId", { orgId: governance.currentSession.orgId })}
+              </p>
+              <p style={metricStyle}>
+                {t("governance.session.userId", { userId: governance.currentSession.userId })}
+              </p>
+              <p style={metricStyle}>
+                {t("governance.session.locale", { locale: governance.currentSession.locale })}
+              </p>
+              <p style={metricStyle}>
+                {t("governance.session.role", { roleCode: governance.currentSession.roleCode })}
+              </p>
+              <p style={metricStyle}>
+                {t("governance.session.timezone", {
+                  timezone: governance.currentSession.timezone || "none",
+                })}
+              </p>
+              <p style={metricStyle}>
+                {t("governance.session.permissions", {
+                  permissions:
+                    governance.currentSession.permissionCodes.join(", ") || "none",
+                })}
+              </p>
             </div>
             <div style={{ display: "grid", gap: "10px" }}>
-              <label htmlFor={displayLocaleInputId} style={{ fontSize: "0.9rem", color: "#334155" }}>
+              <label
+                htmlFor={displayLocaleInputId}
+                style={{ fontSize: "0.9rem", color: "#334155" }}
+              >
                 {t("governance.preferences.displayLocale")}
               </label>
               <input
                 id={displayLocaleInputId}
                 value={displayLocale}
+                disabled={!canManageUserPreferences || Boolean(governanceActionPending)}
                 onChange={(event) => {
                   setDisplayLocale(event.target.value);
                 }}
@@ -1027,6 +1101,7 @@ export function AdminOverviewPage({
               <input
                 id={timezoneInputId}
                 value={timezone}
+                disabled={!canManageUserPreferences || Boolean(governanceActionPending)}
                 onChange={(event) => {
                   setTimezone(event.target.value);
                 }}
@@ -1039,13 +1114,18 @@ export function AdminOverviewPage({
               />
               <button
                 type="button"
+                disabled={!canManageUserPreferences || Boolean(governanceActionPending)}
                 style={{
                   border: 0,
                   borderRadius: "999px",
                   padding: "10px 16px",
-                  background: "#1d4ed8",
+                  background:
+                    !canManageUserPreferences || governanceActionPending ? "#94a3b8" : "#1d4ed8",
                   color: "#eff6ff",
-                  cursor: "pointer",
+                  cursor:
+                    !canManageUserPreferences || governanceActionPending
+                      ? "not-allowed"
+                      : "pointer",
                   justifySelf: "start",
                 }}
                 onClick={() => {
@@ -1065,8 +1145,21 @@ export function AdminOverviewPage({
             <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
               {t("governance.org.title")}
             </h2>
+            {governanceActionFeedback ? (
+              <p
+                style={{
+                  marginTop: 0,
+                  marginBottom: "12px",
+                  fontSize: "0.9rem",
+                  ...governanceFeedbackPalette,
+                }}
+              >
+                {governanceActionFeedback.message}
+              </p>
+            ) : null}
             <div style={{ display: "grid", gap: "16px" }}>
               <div style={{ display: "grid", gap: "10px" }}>
+                <h3 style={{ margin: 0 }}>{t("governance.members.title")}</h3>
                 {governance.members.map((member) => {
                   const draftRoleId = memberRoleDrafts[member.memberId] ?? member.roleId;
                   return (
@@ -1083,7 +1176,9 @@ export function AdminOverviewPage({
                     >
                       <p style={{ ...metricStyle, fontWeight: 600 }}>{member.userId}</p>
                       <select
+                        aria-label={t("governance.members.roleSelect", { userId: member.userId })}
                         value={draftRoleId}
+                        disabled={!canManageMembers || Boolean(governanceActionPending)}
                         onChange={(event) => {
                           setMemberRoleDrafts((current) => ({
                             ...current,
@@ -1106,13 +1201,18 @@ export function AdminOverviewPage({
                       </select>
                       <button
                         type="button"
+                        disabled={!canManageMembers || Boolean(governanceActionPending)}
                         style={{
                           border: 0,
                           borderRadius: "999px",
                           padding: "10px 16px",
-                          background: "#0f766e",
+                          background:
+                            !canManageMembers || governanceActionPending ? "#94a3b8" : "#0f766e",
                           color: "#ecfeff",
-                          cursor: "pointer",
+                          cursor:
+                            !canManageMembers || governanceActionPending
+                              ? "not-allowed"
+                              : "pointer",
                           justifySelf: "start",
                         }}
                         onClick={() => {
@@ -1130,12 +1230,14 @@ export function AdminOverviewPage({
               </div>
 
               <div style={{ display: "grid", gap: "10px" }}>
+                <h3 style={{ margin: 0 }}>{t("governance.locale.title")}</h3>
                 <label htmlFor={orgLocaleInputId} style={{ fontSize: "0.9rem", color: "#334155" }}>
                   {t("governance.locale.defaultLocale")}
                 </label>
                 <input
                   id={orgLocaleInputId}
                   value={orgDefaultLocale}
+                  disabled={!canManageOrgSettings || Boolean(governanceActionPending)}
                   onChange={(event) => {
                     setOrgDefaultLocale(event.target.value);
                   }}
@@ -1153,13 +1255,18 @@ export function AdminOverviewPage({
                 </p>
                 <button
                   type="button"
+                  disabled={!canManageOrgSettings || Boolean(governanceActionPending)}
                   style={{
                     border: 0,
                     borderRadius: "999px",
                     padding: "10px 16px",
-                    background: "#7c3aed",
+                    background:
+                      !canManageOrgSettings || governanceActionPending ? "#94a3b8" : "#7c3aed",
                     color: "#f5f3ff",
-                    cursor: "pointer",
+                    cursor:
+                      !canManageOrgSettings || governanceActionPending
+                        ? "not-allowed"
+                        : "pointer",
                     justifySelf: "start",
                   }}
                   onClick={() => {
@@ -1170,6 +1277,267 @@ export function AdminOverviewPage({
                 >
                   {t("governance.locale.update")}
                 </button>
+              </div>
+            </div>
+          </article>
+
+          <article style={panelStyle}>
+            <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
+              {t("governance.roles.title")}
+            </h2>
+            <div style={{ display: "grid", gap: "16px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gap: "10px",
+                  padding: "14px 16px",
+                  borderRadius: "14px",
+                  background: "rgba(255, 255, 255, 0.82)",
+                  border: "1px solid rgba(148, 163, 184, 0.18)",
+                }}
+              >
+                <h3 style={{ margin: 0 }}>{t("governance.roles.create.title")}</h3>
+                <label style={{ display: "grid", gap: "6px", color: "#334155", fontSize: "0.9rem" }}>
+                  <span>{t("governance.roles.create.code")}</span>
+                  <input
+                    aria-label={t("governance.roles.create.code")}
+                    value={newRoleCode}
+                    disabled={!canManageRoles || Boolean(governanceActionPending)}
+                    onChange={(event) => {
+                      setNewRoleCode(event.target.value);
+                    }}
+                    style={{
+                      borderRadius: "12px",
+                      border: "1px solid rgba(148, 163, 184, 0.45)",
+                      padding: "10px 12px",
+                      font: "inherit",
+                    }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: "6px", color: "#334155", fontSize: "0.9rem" }}>
+                  <span>{t("governance.roles.create.displayName")}</span>
+                  <input
+                    aria-label={t("governance.roles.create.displayName")}
+                    value={newRoleDisplayName}
+                    disabled={!canManageRoles || Boolean(governanceActionPending)}
+                    onChange={(event) => {
+                      setNewRoleDisplayName(event.target.value);
+                    }}
+                    style={{
+                      borderRadius: "12px",
+                      border: "1px solid rgba(148, 163, 184, 0.45)",
+                      padding: "10px 12px",
+                      font: "inherit",
+                    }}
+                  />
+                </label>
+                <div style={{ display: "grid", gap: "8px" }}>
+                  <strong style={{ fontSize: "0.95rem" }}>
+                    {t("governance.roles.permissions.title")}
+                  </strong>
+                  {governance.availablePermissions.map((permission) => (
+                    <label
+                      key={`create-${permission.code}`}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        color: "#334155",
+                        fontSize: "0.9rem",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={newRolePermissionCodes.includes(permission.code)}
+                        disabled={!canManageRoles || Boolean(governanceActionPending)}
+                        onChange={(event) => {
+                          const checked = event.currentTarget.checked;
+                          setNewRolePermissionCodes((current) =>
+                            checked
+                              ? [...new Set([...current, permission.code])]
+                              : current.filter((code) => code !== permission.code),
+                          );
+                        }}
+                      />
+                      {permission.displayName} ({permission.code})
+                    </label>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  disabled={
+                    !canManageRoles ||
+                    Boolean(governanceActionPending) ||
+                    newRoleCode.trim() === "" ||
+                    newRoleDisplayName.trim() === ""
+                  }
+                  style={{
+                    border: 0,
+                    borderRadius: "999px",
+                    padding: "10px 16px",
+                    background:
+                      !canManageRoles ||
+                      governanceActionPending ||
+                      newRoleCode.trim() === "" ||
+                      newRoleDisplayName.trim() === ""
+                        ? "#94a3b8"
+                        : "#0f766e",
+                    color: "#ecfeff",
+                    cursor:
+                      !canManageRoles ||
+                      governanceActionPending ||
+                      newRoleCode.trim() === "" ||
+                      newRoleDisplayName.trim() === ""
+                        ? "not-allowed"
+                        : "pointer",
+                    justifySelf: "start",
+                  }}
+                  onClick={() => {
+                    onCreateRole?.({
+                      code: newRoleCode,
+                      displayName: newRoleDisplayName,
+                      permissionCodes: newRolePermissionCodes,
+                    });
+                  }}
+                >
+                  {t("governance.roles.create.submit")}
+                </button>
+              </div>
+
+              <div style={{ display: "grid", gap: "12px" }}>
+                {governance.roles.map((role) => {
+                  const displayNameDraft =
+                    roleDisplayNameDrafts[role.roleId] ?? role.displayName;
+                  const permissionCodesDraft =
+                    rolePermissionDrafts[role.roleId] ?? role.permissionCodes;
+                  const deleteDisabled =
+                    !canManageRoles || Boolean(governanceActionPending) || role.memberCount > 0;
+
+                  return (
+                    <article
+                      key={role.roleId}
+                      style={{
+                        display: "grid",
+                        gap: "12px",
+                        padding: "14px 16px",
+                        borderRadius: "14px",
+                        background: "#ffffff",
+                        border: "1px solid rgba(148, 163, 184, 0.2)",
+                      }}
+                    >
+                      <div style={{ display: "grid", gap: "6px" }}>
+                        <strong>{role.code}</strong>
+                        <p style={metricStyle}>
+                          {t("governance.roles.memberCount", { count: role.memberCount })}
+                        </p>
+                      </div>
+                      <label style={{ display: "grid", gap: "6px", color: "#334155", fontSize: "0.9rem" }}>
+                        <span>{t("governance.roles.edit.displayName")}</span>
+                        <input
+                          aria-label={t("governance.roles.edit.displayNameFor", { code: role.code })}
+                          value={displayNameDraft}
+                          disabled={!canManageRoles || Boolean(governanceActionPending)}
+                          onChange={(event) => {
+                            setRoleDisplayNameDrafts((current) => ({
+                              ...current,
+                              [role.roleId]: event.target.value,
+                            }));
+                          }}
+                          style={{
+                            borderRadius: "12px",
+                            border: "1px solid rgba(148, 163, 184, 0.45)",
+                            padding: "10px 12px",
+                            font: "inherit",
+                          }}
+                        />
+                      </label>
+                      <div style={{ display: "grid", gap: "8px" }}>
+                        <strong style={{ fontSize: "0.95rem" }}>
+                          {t("governance.roles.permissions.title")}
+                        </strong>
+                        {governance.availablePermissions.map((permission) => (
+                          <label
+                            key={`${role.roleId}-${permission.code}`}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              color: "#334155",
+                              fontSize: "0.9rem",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={permissionCodesDraft.includes(permission.code)}
+                              disabled={!canManageRoles || Boolean(governanceActionPending)}
+                              onChange={(event) => {
+                                const checked = event.currentTarget.checked;
+                                setRolePermissionDrafts((current) => {
+                                  const nextCodes = current[role.roleId] ?? [...role.permissionCodes];
+                                  return {
+                                    ...current,
+                                    [role.roleId]: checked
+                                      ? [...new Set([...nextCodes, permission.code])]
+                                      : nextCodes.filter((code) => code !== permission.code),
+                                  };
+                                });
+                              }}
+                            />
+                            {permission.displayName} ({permission.code})
+                          </label>
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          disabled={!canManageRoles || Boolean(governanceActionPending)}
+                          style={{
+                            border: 0,
+                            borderRadius: "999px",
+                            padding: "10px 16px",
+                            background:
+                              !canManageRoles || governanceActionPending ? "#94a3b8" : "#1d4ed8",
+                            color: "#eff6ff",
+                            cursor:
+                              !canManageRoles || governanceActionPending
+                                ? "not-allowed"
+                                : "pointer",
+                          }}
+                          onClick={() => {
+                            onUpdateRole?.({
+                              roleId: role.roleId,
+                              displayName: displayNameDraft,
+                              permissionCodes: permissionCodesDraft,
+                            });
+                          }}
+                        >
+                          {t("governance.roles.edit.submit")}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deleteDisabled}
+                          style={{
+                            border: 0,
+                            borderRadius: "999px",
+                            padding: "10px 16px",
+                            background: deleteDisabled ? "#94a3b8" : "#991b1b",
+                            color: "#fef2f2",
+                            cursor: deleteDisabled ? "not-allowed" : "pointer",
+                          }}
+                          onClick={() => {
+                            onDeleteRole?.({
+                              roleId: role.roleId,
+                            });
+                          }}
+                        >
+                          {role.memberCount > 0
+                            ? t("governance.roles.delete.inUse")
+                            : t("governance.roles.delete.submit")}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             </div>
           </article>
