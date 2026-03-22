@@ -634,6 +634,21 @@ describe("App", () => {
     expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("surfaces string rejections from gate checks without collapsing them into a generic shot error", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-live-2-string");
+    loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-live-2-string"));
+    loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
+    runSubmissionGateChecksMock.mockRejectedValue("network down");
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-shot-live-2-string")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Gate 检查" }));
+
+    expect(await screen.findByText("Gate 检查失败：network down")).toBeInTheDocument();
+  });
+
   it("silently refreshes the shot workbench when a subscribed event arrives", async () => {
     window.history.pushState({}, "", "/?shotId=shot-sse-1");
     loadShotWorkbenchMock
@@ -855,5 +870,24 @@ describe("App", () => {
 
     expect(await screen.findByText("工作流已重试")).toBeInTheDocument();
     expect(screen.getByText(/当前状态：running/)).toBeInTheDocument();
+  });
+
+  it("falls back to the action-specific workflow error when retry rejects with an opaque value", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-workflow-retry-opaque");
+    loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-live-opaque"));
+    loadShotWorkflowPanelMock.mockResolvedValue(
+      createShotWorkflowPanel("failed", "workflow-run-opaque"),
+    );
+    retryShotWorkflowRunMock.mockRejectedValue(undefined);
+
+    render(<App />);
+
+    expect(await screen.findByText(/workflow-run-opaque/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "重试工作流" }));
+
+    expect(
+      await screen.findByText("工作流重试失败：creator: unknown workflow retry error"),
+    ).toBeInTheDocument();
   });
 });
