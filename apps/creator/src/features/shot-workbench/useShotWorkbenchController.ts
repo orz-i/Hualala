@@ -72,6 +72,7 @@ async function loadShotWorkbenchState({
     loadShotWorkflowPanel({
       shotExecutionId: nextWorkbench.shotExecution.id,
       projectId: nextWorkbench.shotExecution.projectId,
+      detailUnavailableMessage: t("shot.workflow.detailUnavailable"),
       orgId,
       userId,
     }),

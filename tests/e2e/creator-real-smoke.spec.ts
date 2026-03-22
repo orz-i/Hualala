@@ -21,6 +21,12 @@ test("creator real smoke: shot workbench completes gate checks against backend",
   await expect(page.getByText("1 个候选素材")).toBeVisible();
   await expect(page.getByRole("heading", { name: "候选清单" })).toBeVisible();
   await expect(page.getByText(/主素材：/)).toBeVisible();
+  await page.getByRole("button", { name: "发起工作流" }).click();
+  await expect(page.getByText("工作流已发起")).toBeVisible();
+  await expect(page.getByText(/当前步骤：/)).toBeVisible();
+  await expect(page.getByText(/尝试次数：/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "工作流步骤" })).toBeVisible();
+  await expect(page.getByText(/步骤：/).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Gate 检查" }).click();
   await expect(page.getByText("正在执行 Gate 检查")).toBeVisible();

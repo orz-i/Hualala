@@ -43,6 +43,21 @@ type WorkflowRunSummary = {
   status: string;
   resourceId: string;
   projectId: string;
+  provider: string;
+  currentStep: string;
+  attemptCount: number;
+  lastError: string;
+  externalRequestId: string;
+};
+
+type WorkflowStepSummary = {
+  id: string;
+  workflowRunId: string;
+  stepKey: string;
+  stepOrder: number;
+  status: string;
+  errorCode: string;
+  errorMessage: string;
 };
 
 type ShotExecutionSummary = {
@@ -64,6 +79,8 @@ export type ShotWorkbenchViewModel = {
 
 export type ShotWorkflowPanelViewModel = {
   latestWorkflowRun?: WorkflowRunSummary;
+  workflowSteps: WorkflowStepSummary[];
+  detailUnavailableMessage?: string;
 };
 
 export type ShotWorkbenchPageProps = {
@@ -117,6 +134,8 @@ export function ShotWorkbenchPage({
 }: ShotWorkbenchPageProps) {
   const latestEvaluationStatus = workbench.latestEvaluationRun?.status ?? "pending";
   const latestWorkflowRun = workflowPanel?.latestWorkflowRun;
+  const workflowSteps = workflowPanel?.workflowSteps ?? [];
+  const workflowDetailUnavailableMessage = workflowPanel?.detailUnavailableMessage;
   const isWorkflowRunning = latestWorkflowRun?.status === "running";
   const isWorkflowRetryable = latestWorkflowRun?.status === "failed";
   const reviewTimeline = workbench.reviewTimeline;
@@ -273,6 +292,28 @@ export function ShotWorkbenchPage({
                   {t("shot.workflow.type", { workflowType: latestWorkflowRun.workflowType })}
                 </p>
                 <p style={metricStyle}>{t("shot.workflow.status", { status: latestWorkflowRun.status })}</p>
+                <p style={metricStyle}>
+                  {t("shot.workflow.provider", { provider: latestWorkflowRun.provider || t("shot.timeline.none") })}
+                </p>
+                <p style={metricStyle}>
+                  {t("shot.workflow.currentStep", {
+                    currentStep: latestWorkflowRun.currentStep || t("shot.timeline.none"),
+                  })}
+                </p>
+                <p style={metricStyle}>
+                  {t("shot.workflow.attemptCount", { count: latestWorkflowRun.attemptCount })}
+                </p>
+                <p style={metricStyle}>
+                  {t("shot.workflow.lastError", {
+                    message: latestWorkflowRun.lastError || t("shot.timeline.none"),
+                  })}
+                </p>
+                <p style={metricStyle}>
+                  {t("shot.workflow.externalRequestId", {
+                    externalRequestId:
+                      latestWorkflowRun.externalRequestId || t("shot.timeline.none"),
+                  })}
+                </p>
               </>
             ) : (
               <p style={metricStyle}>{t("shot.workflow.empty")}</p>
@@ -321,6 +362,51 @@ export function ShotWorkbenchPage({
             </div>
             {isWorkflowRunning ? (
               <p style={{ ...metricStyle, marginTop: "12px" }}>{t("shot.workflow.running")}</p>
+            ) : null}
+            {latestWorkflowRun ? (
+              <div style={{ display: "grid", gap: "12px", marginTop: "16px" }}>
+                <h3 style={{ margin: 0, fontSize: "1rem" }}>{t("shot.workflow.stepsTitle")}</h3>
+                {workflowDetailUnavailableMessage ? (
+                  <p style={metricStyle}>{workflowDetailUnavailableMessage}</p>
+                ) : workflowSteps.length === 0 ? (
+                  <p style={metricStyle}>{t("shot.workflow.stepsEmpty")}</p>
+                ) : (
+                  workflowSteps.map((step, index) => (
+                    <article
+                      key={step.id || `${step.workflowRunId}-${index}`}
+                      style={{
+                        display: "grid",
+                        gap: "6px",
+                        padding: "14px 16px",
+                        borderRadius: "14px",
+                        background: "rgba(255, 255, 255, 0.82)",
+                        border: "1px solid rgba(148, 163, 184, 0.18)",
+                      }}
+                    >
+                      <strong>
+                        {t("shot.workflow.stepKey", {
+                          stepKey: step.stepKey || `step-${step.stepOrder || index + 1}`,
+                        })}
+                      </strong>
+                      <p style={metricStyle}>
+                        {t("shot.workflow.stepStatus", {
+                          status: step.status || t("shot.timeline.none"),
+                        })}
+                      </p>
+                      <p style={metricStyle}>
+                        {t("shot.workflow.stepErrorCode", {
+                          errorCode: step.errorCode || t("shot.timeline.none"),
+                        })}
+                      </p>
+                      <p style={metricStyle}>
+                        {t("shot.workflow.stepErrorMessage", {
+                          errorMessage: step.errorMessage || t("shot.timeline.none"),
+                        })}
+                      </p>
+                    </article>
+                  ))
+                )}
+              </div>
             ) : null}
           </article>
         </section>
