@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { RecentChangeSummary } from "./AdminOverviewPage";
+import type { RecentChangeSummary } from "./overview";
 import { subscribeAdminRecentChanges } from "./subscribeRecentChanges";
 
 export function useAdminRecentChangesSubscription({

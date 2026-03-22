@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { AdminOverviewViewModel, RecentChangeSummary } from "./AdminOverviewPage";
+import type { AdminOverviewViewModel, RecentChangeSummary } from "./overview";
 import type { AdminGovernanceViewModel } from "./governance";
 import { createTranslator } from "../../i18n";
 import { loadAdminOverview } from "./loadAdminOverview";
