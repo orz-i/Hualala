@@ -575,6 +575,93 @@ func TestCompleteUploadSessionCanAttachCandidateToShotExecution(t *testing.T) {
 	}
 }
 
+func TestCompleteUploadSessionRejectsShotExecutionOutsideSessionScope(t *testing.T) {
+	store := db.NewMemoryStore()
+	resetSessionStore(store)
+	seedUploadAuthStore(store)
+	store.ImportBatches["import-batch-1"] = assetdomain.ImportBatch{
+		ID:         "import-batch-1",
+		OrgID:      db.DefaultDevOrganizationID,
+		ProjectID:  uploadTestProjectID,
+		OperatorID: "user-1",
+		SourceType: "upload_session",
+		Status:     "pending_review",
+	}
+	store.ShotExecutions["shot-execution-1"] = executiondomain.ShotExecution{
+		ID:        "shot-execution-1",
+		OrgID:     db.DefaultDevOrganizationID,
+		ProjectID: "project-other",
+		ShotID:    "shot-1",
+		Status:    "in_progress",
+	}
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, newUploadServiceFromStore(store))
+
+	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
+		"organization_id":    db.DefaultDevOrganizationID,
+		"project_id":         uploadTestProjectID,
+		"import_batch_id":    "import-batch-1",
+		"file_name":          "shot.png",
+		"checksum":           "sha256:abc123",
+		"size_bytes":         1024,
+		"expires_in_seconds": 60,
+	})
+	sessionID := decodeUploadJSONResponse(t, createRec)["session_id"].(string)
+	store.EventPublisher.Reset()
+
+	completeReqBody, err := json.Marshal(map[string]any{
+		"shot_execution_id": "shot-execution-1",
+		"variant_type":      "original",
+		"mime_type":         "image/png",
+		"locale":            "zh-CN",
+		"rights_status":     "clear",
+		"ai_annotated":      true,
+		"width":             1920,
+		"height":            1080,
+	})
+	if err != nil {
+		t.Fatalf("json.Marshal returned error: %v", err)
+	}
+
+	completeReq := httptest.NewRequest(http.MethodPost, "/upload/sessions/"+sessionID+"/complete", bytes.NewReader(completeReqBody))
+	completeReq.Header.Set("Content-Type", "application/json")
+	completeReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
+	completeRec := httptest.NewRecorder()
+	mux.ServeHTTP(completeRec, completeReq)
+
+	if completeRec.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403 for shot execution scope mismatch, got %d with body %s", completeRec.Code, completeRec.Body.String())
+	}
+	if !strings.Contains(completeRec.Body.String(), "permission denied") {
+		t.Fatalf("expected permission denied error for shot execution scope mismatch, got body %q", completeRec.Body.String())
+	}
+	if got := store.UploadSessions[sessionID].Status; got != "pending" {
+		t.Fatalf("expected upload session to remain pending after scope mismatch, got %q", got)
+	}
+	if len(store.MediaAssets) != 0 {
+		t.Fatalf("expected no media assets after scope mismatch, got %d", len(store.MediaAssets))
+	}
+	if len(store.UploadFiles) != 0 {
+		t.Fatalf("expected no upload files after scope mismatch, got %d", len(store.UploadFiles))
+	}
+	if len(store.MediaAssetVariants) != 0 {
+		t.Fatalf("expected no media asset variants after scope mismatch, got %d", len(store.MediaAssetVariants))
+	}
+	if len(store.CandidateAssets) != 0 {
+		t.Fatalf("expected no candidate assets after scope mismatch, got %d", len(store.CandidateAssets))
+	}
+	if len(store.ImportBatchItems) != 0 {
+		t.Fatalf("expected no import batch items after scope mismatch, got %d", len(store.ImportBatchItems))
+	}
+	if got := store.ImportBatches["import-batch-1"].Status; got != "pending_review" {
+		t.Fatalf("expected import batch status to remain pending_review after scope mismatch, got %q", got)
+	}
+	if stream := store.EventPublisher.List(db.DefaultDevOrganizationID, uploadTestProjectID, ""); len(stream) != 0 {
+		t.Fatalf("expected no durable events after scope mismatch, got %d", len(stream))
+	}
+}
+
 func TestCompleteUploadSessionDoesNotPublishShotExecutionEventBeforeImportBatchSave(t *testing.T) {
 	store := db.NewMemoryStore()
 	resetSessionStore(store)

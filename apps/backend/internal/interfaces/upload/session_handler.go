@@ -289,6 +289,9 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 		if !ok {
 			return asset.UploadSession{}, fmt.Errorf("upload: shot execution not found")
 		}
+		if strings.TrimSpace(record.OrgID) != strings.TrimSpace(session.OrgID) || strings.TrimSpace(record.ProjectID) != strings.TrimSpace(session.ProjectID) {
+			return asset.UploadSession{}, fmt.Errorf("permission denied: shot execution does not belong to upload session scope")
+		}
 		shotExecution = record
 	}
 
