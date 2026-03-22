@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
+import { createConnection } from "node:net";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
@@ -10,6 +11,12 @@ const backendHealthUrl = "http://127.0.0.1:8080/healthz";
 const adminUrl = "http://127.0.0.1:4173";
 const creatorUrl = "http://127.0.0.1:4174";
 export const defaultDatabaseUrl = "postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable";
+
+const requiredDevPorts = [
+  { name: "backend", host: "127.0.0.1", port: 8080 },
+  { name: "admin", host: "127.0.0.1", port: 4173 },
+  { name: "creator", host: "127.0.0.1", port: 4174 },
+];
 
 const managedChildren = [];
 let shuttingDown = false;
@@ -216,6 +223,168 @@ export async function fetchWithTimeout(url, options = {}) {
   }
 }
 
+function buildOccupantLabel(occupant) {
+  if (!occupant?.pid && !occupant?.command) {
+    return "未能获取进程详情";
+  }
+
+  if (occupant?.pid && occupant?.command) {
+    return `PID ${occupant.pid}, ${occupant.command}`;
+  }
+  if (occupant?.pid) {
+    return `PID ${occupant.pid}`;
+  }
+  return occupant.command;
+}
+
+async function probePort(host, port, timeoutMs = 500) {
+  return new Promise((resolveProbe) => {
+    let settled = false;
+    const socket = createConnection({ host, port });
+
+    const finish = (result) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      socket.destroy();
+      resolveProbe(result);
+    };
+
+    socket.setTimeout(timeoutMs);
+    socket.once("connect", () => {
+      finish(true);
+    });
+    socket.once("timeout", () => {
+      finish(true);
+    });
+    socket.once("error", (error) => {
+      const code = error?.code;
+      if (code === "ECONNREFUSED" || code === "EHOSTUNREACH" || code === "ENETUNREACH") {
+        finish(false);
+        return;
+      }
+      finish(true);
+    });
+  });
+}
+
+function describeWindowsPortOccupant(host, port) {
+  const script = [
+    `$connection = Get-NetTCPConnection -LocalAddress '${host}' -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1`,
+    'if (-not $connection) { exit 0 }',
+    '$process = Get-CimInstance Win32_Process -Filter "ProcessId = $($connection.OwningProcess)" -ErrorAction SilentlyContinue',
+    '[pscustomobject]@{ pid = $connection.OwningProcess; command = if ($process) { $process.CommandLine } else { $null } } | ConvertTo-Json -Compress',
+  ].join('; ');
+  const result = spawnSync('powershell.exe', ['-NoLogo', '-NoProfile', '-Command', script], {
+    encoding: 'utf8',
+    shell: false,
+  });
+  if (result.error || result.status !== 0) {
+    return null;
+  }
+  const stdout = result.stdout.trim();
+  if (!stdout) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(stdout);
+    return {
+      pid: parsed.pid ? Number(parsed.pid) : null,
+      command: typeof parsed.command === 'string' && parsed.command.trim() ? parsed.command.trim() : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function describeUnixPortOccupant(_host, port) {
+  const lsofResult = spawnSync('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN'], {
+    encoding: 'utf8',
+    shell: false,
+  });
+  if (!lsofResult.error && lsofResult.status === 0) {
+    const lines = lsofResult.stdout.trim().split(/\r?\n/).filter(Boolean);
+    if (lines.length >= 2) {
+      const parts = lines[1].trim().split(/\s+/);
+      return {
+        pid: parts[1] ? Number(parts[1]) : null,
+        command: parts[0] || null,
+      };
+    }
+  }
+
+  const ssResult = spawnSync('/bin/sh', ['-lc', `ss -ltnp '( sport = :${port} )' 2>/dev/null | tail -n +2`], {
+    encoding: 'utf8',
+    shell: false,
+  });
+  if (!ssResult.error && ssResult.status === 0) {
+    const line = ssResult.stdout.trim().split(/\r?\n/).find(Boolean);
+    if (line) {
+      const match = line.match(/users:\(\("([^"]+)",pid=(\d+)/);
+      if (match) {
+        return {
+          pid: Number(match[2]),
+          command: match[1],
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+async function describePortOccupant(host, port) {
+  if (process.platform === 'win32') {
+    return describeWindowsPortOccupant(host, port);
+  }
+  return describeUnixPortOccupant(host, port);
+}
+
+export async function collectPortConflicts(requiredPorts = requiredDevPorts, options = {}) {
+  const probe = options.probePort ?? probePort;
+  const describe = options.describePortOccupant ?? describePortOccupant;
+  const conflicts = [];
+
+  for (const requiredPort of requiredPorts) {
+    const inUse = await probe(requiredPort.host, requiredPort.port);
+    if (!inUse) {
+      continue;
+    }
+    let occupant = null;
+    try {
+      occupant = await describe(requiredPort.host, requiredPort.port);
+    } catch {
+      occupant = null;
+    }
+    conflicts.push({
+      ...requiredPort,
+      occupant,
+    });
+  }
+
+  return conflicts;
+}
+
+export function formatPortConflictError(conflicts) {
+  const lines = ['[dev:real] 启动前端口检查失败：'];
+  for (const conflict of conflicts) {
+    lines.push(
+      `- ${conflict.name} ${conflict.host}:${conflict.port} 已被占用 (${buildOccupantLabel(conflict.occupant)})`,
+    );
+  }
+  lines.push('[dev:real] 请先释放这些端口，再重试 `corepack pnpm run dev:real`。这通常意味着你正连接到旧 backend / 旧 Vite 或错误数据库。');
+  return lines.join('\n');
+}
+
+export async function assertRequiredPortsAvailable(requiredPorts = requiredDevPorts, options = {}) {
+  const conflicts = await collectPortConflicts(requiredPorts, options);
+  if (conflicts.length === 0) {
+    return;
+  }
+  throw new Error(formatPortConflictError(conflicts));
+}
+
 async function waitForHttp(url, label, timeoutMs = 120_000) {
   const deadline = Date.now() + timeoutMs;
 
@@ -320,6 +489,8 @@ export async function main() {
   process.on("SIGTERM", () => {
     void shutdown(0);
   });
+
+  await assertRequiredPortsAvailable();
 
   await runStep("启动 Postgres", "corepack pnpm run db:up");
   await waitForCommandSuccess(

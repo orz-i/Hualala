@@ -23,6 +23,7 @@ test("seedPhase1Backend returns generated ids and urls from public APIs", async 
   const requests = [];
   let counter = 0;
   const bootstrapCalls = [];
+  const shotExecutionsByShotId = new Map();
   const server = createServer(async (req, res) => {
     const body = [];
     for await (const chunk of req) {
@@ -68,9 +69,25 @@ test("seedPhase1Backend returns generated ids and urls from public APIs", async 
       case "/hualala.billing.v1.BillingService/UpdateBudgetPolicy":
         respond({ budgetPolicy: { id: `budget-${counter}`, projectId: "project-1", orgId: "org-1", limitCents: 120000 } });
         break;
-      case "/hualala.execution.v1.ExecutionService/StartShotExecutionRun":
-        respond({ run: { id: `run-${counter}`, shotExecutionId: `shot-exec-${counter}` } });
+      case "/hualala.execution.v1.ExecutionService/StartShotExecutionRun": {
+        const requestBody = JSON.parse(payload || "{}");
+        const shotExecutionId = `shot-exec-${counter}`;
+        shotExecutionsByShotId.set(requestBody.shotId, shotExecutionId);
+        respond({ run: { id: `run-${counter}`, shotExecutionId } });
         break;
+      }
+      case "/hualala.execution.v1.ExecutionService/GetShotWorkbench": {
+        const requestBody = JSON.parse(payload || "{}");
+        respond({
+          workbench: {
+            shotExecution: {
+              id: shotExecutionsByShotId.get(requestBody.shotId) ?? "",
+              shotId: requestBody.shotId ?? "",
+            },
+          },
+        });
+        break;
+      }
       case "/hualala.execution.v1.ExecutionService/RunSubmissionGateChecks":
         respond({ passedChecks: ["candidate_assets_present"], failedChecks: [] });
         break;
@@ -137,6 +154,7 @@ test("seedPhase1Backend returns generated ids and urls from public APIs", async 
     assert.equal(bootstrapCalls.length, 1);
     assert.match(result.urls.admin, /\?projectId=.*&shotExecutionId=.*/);
     assert.ok(requests.some((entry) => entry.url === "/hualala.auth.v1.AuthService/StartDevSession"));
+    assert.ok(requests.some((entry) => entry.url === "/hualala.execution.v1.ExecutionService/GetShotWorkbench"));
     assert.ok(requests.some((entry) => entry.url === "/hualala.project.v1.ProjectService/CreateEpisode"));
     assert.ok(requests.some((entry) => entry.url === "/hualala.content.v1.ContentService/CreateScene"));
     assert.ok(requests.some((entry) => entry.url === "/hualala.content.v1.ContentService/CreateShot"));
@@ -148,6 +166,7 @@ test("seedPhase1Backend returns generated ids and urls from public APIs", async 
 test("backend_seed cli writes the generated backend seed artifact", async () => {
   process.env.DATABASE_URL = "postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable";
   process.env.DB_DRIVER = "postgres";
+  const shotExecutionsByShotId = new Map();
   const server = createServer(async (req, res) => {
     const body = [];
     for await (const chunk of req) {
@@ -194,7 +213,22 @@ test("backend_seed cli writes the generated backend seed artifact", async () => 
     }
     if (url === "/hualala.execution.v1.ExecutionService/StartShotExecutionRun") {
       const count = (globalThis.__seedRunCount__ = (globalThis.__seedRunCount__ ?? 0) + 1);
-      res.end(JSON.stringify({ run: { id: `run-${count}`, shotExecutionId: `shot-exec-${count}` } }));
+      const requestBody = JSON.parse(Buffer.concat(body).toString("utf8") || "{}");
+      const shotExecutionId = `shot-exec-${count}`;
+      shotExecutionsByShotId.set(requestBody.shotId, shotExecutionId);
+      res.end(JSON.stringify({ run: { id: `run-${count}`, shotExecutionId } }));
+      return;
+    }
+    if (url === "/hualala.execution.v1.ExecutionService/GetShotWorkbench") {
+      const requestBody = JSON.parse(Buffer.concat(body).toString("utf8") || "{}");
+      res.end(JSON.stringify({
+        workbench: {
+          shotExecution: {
+            id: shotExecutionsByShotId.get(requestBody.shotId) ?? "",
+            shotId: requestBody.shotId ?? "",
+          },
+        },
+      }));
       return;
     }
     if (url === "/hualala.execution.v1.ExecutionService/RunSubmissionGateChecks") {
@@ -331,6 +365,94 @@ test("seedPhase1Backend surfaces backend request failures", async () => {
         }),
       }),
       /backend-seed: request failed/,
+    );
+  } finally {
+    server.close();
+  }
+});
+
+
+test("seedPhase1Backend fails when creatorShot workbench verification returns 404", async () => {
+  const server = createServer(async (req, res) => {
+    const respond = (value) => {
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(value));
+    };
+
+    switch (req.url) {
+      case "/hualala.auth.v1.AuthService/StartDevSession":
+        res.setHeader("Set-Cookie", testSessionCookies);
+        respond({
+          session: {
+            sessionId: "dev:org-1:user-1",
+            orgId: "11111111-1111-1111-1111-111111111111",
+            userId: "22222222-2222-2222-2222-222222222222",
+            locale: "zh-CN",
+          },
+        });
+        break;
+      case "/hualala.project.v1.ProjectService/CreateProject":
+        respond({ project: { projectId: "project-1", orgId: "org-1", title: "P" } });
+        break;
+      case "/hualala.project.v1.ProjectService/CreateEpisode":
+        respond({ episode: { episodeId: "episode-1", projectId: "project-1", title: "E", episodeNumber: 1 } });
+        break;
+      case "/hualala.content.v1.ContentService/CreateScene":
+        respond({ scene: { id: "scene-1", episodeId: "episode-1", code: "SCENE-001", title: "S" } });
+        break;
+      case "/hualala.content.v1.ContentService/CreateShot":
+        respond({ shot: { id: "shot-1", sceneId: "scene-1", code: "SCENE-001-SHOT-001", title: "SH" } });
+        break;
+      case "/hualala.content.v1.ContentService/CreateContentSnapshot":
+        respond({ snapshot: { id: "snapshot-1" } });
+        break;
+      case "/hualala.billing.v1.BillingService/UpdateBudgetPolicy":
+        respond({ budgetPolicy: { id: "budget-1", projectId: "project-1", orgId: "org-1", limitCents: 120000 } });
+        break;
+      case "/hualala.execution.v1.ExecutionService/StartShotExecutionRun":
+        respond({ run: { id: "run-1", shotExecutionId: "shot-exec-1" } });
+        break;
+      case "/hualala.execution.v1.ExecutionService/GetShotWorkbench":
+        res.statusCode = 404;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ code: "not_found", message: "executionapp: shot execution not found" }));
+        break;
+      case "/hualala.execution.v1.ExecutionService/SelectPrimaryAsset":
+        respond({ shotExecution: { id: "shot-exec-1", status: "primary_selected", primaryAssetId: "asset-1" } });
+        break;
+      case "/hualala.asset.v1.AssetService/CreateImportBatch":
+        respond({ importBatch: { id: "import-batch-1", projectId: "project-1", orgId: "org-1", sourceType: "upload_session", status: "pending" } });
+        break;
+      case "/upload/sessions":
+        respond({ session_id: "upload-session-1" });
+        break;
+      case "/upload/sessions/upload-session-1/complete":
+        respond({ asset_id: "asset-1" });
+        break;
+      default:
+        res.statusCode = 404;
+        res.end(JSON.stringify({ error: req.url }));
+    }
+  });
+
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const module = await import(pathToFileURL(scriptPath).href);
+    const address = server.address();
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+    await assert.rejects(
+      () => module.seedPhase1Backend({
+        baseUrl,
+        fetchFn: fetch,
+        bootstrapFn: async () => ({
+          organization_id: "11111111-1111-1111-1111-111111111111",
+          user_id: "22222222-2222-2222-2222-222222222222",
+        }),
+      }),
+      /GetShotWorkbench[\s\S]*shot-1[\s\S]*shot-exec-1/,
     );
   } finally {
     server.close();

@@ -125,6 +125,40 @@ async function postJson(fetchFn, baseUrl, path, body) {
   return response.json();
 }
 
+async function verifyShotWorkbenchReachable(fetchFn, baseUrl, { shotId, shotExecutionId }) {
+  const path = "/hualala.execution.v1.ExecutionService/GetShotWorkbench";
+  let payload;
+
+  try {
+    payload = await postConnect(fetchFn, baseUrl, path, {
+      shotId,
+      displayLocale: "zh-CN",
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `backend-seed: GetShotWorkbench verification failed for shotId=${shotId} expectedShotExecutionId=${shotExecutionId} via ${path}; 可能连接到旧 backend 或错误数据库。原始错误: ${detail}`,
+    );
+  }
+
+  const verifiedExecution = payload?.workbench?.shotExecution;
+  if (!verifiedExecution?.id) {
+    throw new Error(
+      `backend-seed: GetShotWorkbench verification failed for shotId=${shotId} expectedShotExecutionId=${shotExecutionId} via ${path}; workbench.shotExecution.id is missing，可能连接到旧 backend 或错误数据库。`,
+    );
+  }
+  if (verifiedExecution.shotId !== shotId) {
+    throw new Error(
+      `backend-seed: GetShotWorkbench verification failed for shotId=${shotId} expectedShotExecutionId=${shotExecutionId} via ${path}; returned shotId=${verifiedExecution.shotId ?? ""}，可能连接到旧 backend 或错误数据库。`,
+    );
+  }
+  if (shotExecutionId && verifiedExecution.id !== shotExecutionId) {
+    throw new Error(
+      `backend-seed: GetShotWorkbench verification failed for shotId=${shotId} expectedShotExecutionId=${shotExecutionId} via ${path}; returned shotExecutionId=${verifiedExecution.id}，可能连接到旧 backend 或错误数据库。`,
+    );
+  }
+}
+
 async function runDevBootstrap({
   spawnFn = spawn,
   cwd = repoRoot,
@@ -254,6 +288,11 @@ async function createShotDataset({ fetchFn, baseUrl, orgId, operatorId, projectT
     },
   );
   const shotExecutionId = runPayload.run?.shotExecutionId;
+
+  await verifyShotWorkbenchReachable(fetchFn, baseUrl, {
+    shotId,
+    shotExecutionId,
+  });
 
   const importBatchPayload = await postConnect(
     fetchFn,
