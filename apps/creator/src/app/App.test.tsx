@@ -523,8 +523,12 @@ describe("App", () => {
 
     expect(await screen.findByText("batch-live-2")).toBeInTheDocument();
 
+    const confirmMatchesButton = screen.getByRole("button", { name: "确认匹配" });
     fireEvent.click(screen.getByLabelText("选择条目 item-batch-live-2"));
-    fireEvent.click(screen.getByRole("button", { name: "确认匹配" }));
+    await waitFor(() => {
+      expect(confirmMatchesButton).toBeEnabled();
+    });
+    fireEvent.click(confirmMatchesButton);
 
     expect(await screen.findByText("匹配确认失败：network down")).toBeInTheDocument();
     expect(screen.getByText("batch-live-2")).toBeInTheDocument();
