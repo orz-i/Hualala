@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { AdminTranslator } from "../../../i18n";
 import type { AssetMonitorViewModel } from "../assetMonitor";
 import { formatDateTime, metricStyle, panelStyle } from "./shared";
@@ -15,6 +16,9 @@ export function AssetMonitorPanel({
   onAssetSourceTypeFilterChange?: (sourceType: string) => void;
   onSelectImportBatch?: (importBatchId: string) => void;
 }) {
+  const statusFilterId = useId();
+  const sourceTypeFilterId = useId();
+
   return (
     <article style={panelStyle}>
       <div
@@ -44,10 +48,12 @@ export function AssetMonitorPanel({
           }}
         >
           <label
+            htmlFor={statusFilterId}
             style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}
           >
             <span>{t("asset.filter.status")}</span>
             <select
+              id={statusFilterId}
               aria-label={t("asset.filter.status")}
               value={assetMonitor.filters.status}
               onChange={(event) => {
@@ -70,10 +76,12 @@ export function AssetMonitorPanel({
             </select>
           </label>
           <label
+            htmlFor={sourceTypeFilterId}
             style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}
           >
             <span>{t("asset.filter.sourceType")}</span>
             <select
+              id={sourceTypeFilterId}
               aria-label={t("asset.filter.sourceType")}
               value={assetMonitor.filters.sourceType}
               onChange={(event) => {

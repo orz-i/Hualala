@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { AdminTranslator } from "../../../i18n";
 import type { WorkflowMonitorViewModel } from "../workflow";
 import { formatDateTime, metricStyle, panelStyle } from "./shared";
@@ -15,6 +16,9 @@ export function WorkflowMonitorPanel({
   onWorkflowTypeFilterChange?: (workflowType: string) => void;
   onSelectWorkflowRun?: (workflowRunId: string) => void;
 }) {
+  const statusFilterId = useId();
+  const workflowTypeFilterId = useId();
+
   return (
     <article style={panelStyle}>
       <div
@@ -44,10 +48,12 @@ export function WorkflowMonitorPanel({
           }}
         >
           <label
+            htmlFor={statusFilterId}
             style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}
           >
             <span>{t("workflow.filter.status")}</span>
             <select
+              id={statusFilterId}
               aria-label={t("workflow.filter.status")}
               value={workflowMonitor.filters.status}
               onChange={(event) => {
@@ -69,10 +75,12 @@ export function WorkflowMonitorPanel({
             </select>
           </label>
           <label
+            htmlFor={workflowTypeFilterId}
             style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}
           >
             <span>{t("workflow.filter.type")}</span>
             <select
+              id={workflowTypeFilterId}
               aria-label={t("workflow.filter.type")}
               value={workflowMonitor.filters.workflowType}
               onChange={(event) => {
