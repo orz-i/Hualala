@@ -5,6 +5,7 @@ import type { ActionFeedbackModel } from "../shared/ActionFeedback";
 import { buildShotFeedback } from "../shared/buildActionFeedback";
 import { useQueuedSilentRefresh } from "../shared/useQueuedSilentRefresh";
 import { waitForFeedbackPaint } from "../shared/waitForFeedbackPaint";
+import { loadShotReviewTimeline } from "./loadShotReviewTimeline";
 import { loadShotWorkflowPanel } from "./loadShotWorkflowPanel";
 import { loadShotWorkbench } from "./loadShotWorkbench";
 import {
@@ -52,10 +53,12 @@ function formatActionErrorMessage(error: unknown, fallback: string) {
 
 async function loadShotWorkbenchState({
   shotId,
+  t,
   orgId,
   userId,
 }: {
   shotId: string;
+  t: CreatorTranslator;
   orgId?: string;
   userId?: string;
 }) {
@@ -64,15 +67,26 @@ async function loadShotWorkbenchState({
     orgId,
     userId,
   });
-  const nextWorkflowPanel = await loadShotWorkflowPanel({
-    shotExecutionId: nextWorkbench.shotExecution.id,
-    projectId: nextWorkbench.shotExecution.projectId,
-    orgId,
-    userId,
-  });
+  const [nextWorkflowPanel, nextReviewTimeline] = await Promise.all([
+    loadShotWorkflowPanel({
+      shotExecutionId: nextWorkbench.shotExecution.id,
+      projectId: nextWorkbench.shotExecution.projectId,
+      orgId,
+      userId,
+    }),
+    loadShotReviewTimeline({
+      shotExecutionId: nextWorkbench.shotExecution.id,
+      orgId,
+      userId,
+      unavailableMessage: t("shot.timeline.unavailable"),
+    }),
+  ]);
 
   return {
-    shotWorkbench: nextWorkbench,
+    shotWorkbench: {
+      ...nextWorkbench,
+      reviewTimeline: nextReviewTimeline,
+    },
     shotWorkflowPanel: nextWorkflowPanel,
   };
 }
@@ -93,6 +107,7 @@ export function useShotWorkbenchController({
   const refreshShotWorkbench = useCallback(async () => {
     const nextState = await loadShotWorkbenchState({
       shotId,
+      t,
       orgId,
       userId,
     });
@@ -104,7 +119,7 @@ export function useShotWorkbenchController({
     });
 
     return nextState.shotWorkbench;
-  }, [orgId, shotId, userId]);
+  }, [orgId, shotId, t, userId]);
 
   const scheduleSilentRefresh = useQueuedSilentRefresh("shot", refreshShotWorkbench);
 
@@ -123,6 +138,7 @@ export function useShotWorkbenchController({
 
     loadShotWorkbenchState({
       shotId,
+      t,
       orgId,
       userId,
     })
@@ -152,7 +168,7 @@ export function useShotWorkbenchController({
     return () => {
       cancelled = true;
     };
-  }, [enabled, orgId, shotId, userId]);
+  }, [enabled, orgId, shotId, t, userId]);
 
   useEffect(() => {
     if (

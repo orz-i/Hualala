@@ -56,5 +56,9 @@ describe("loadShotWorkbench", () => {
     expect(result.candidateAssets).toHaveLength(1);
     expect(result.reviewSummary.latestConclusion).toBe("approved");
     expect(result.latestEvaluationRun?.status).toBe("passed");
+    expect(result.reviewTimeline).toEqual({
+      evaluationRuns: [],
+      shotReviews: [],
+    });
   });
 });
