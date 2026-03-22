@@ -37,6 +37,18 @@ const (
 	OrgServiceListMembersProcedure = "/hualala.org.v1.OrgService/ListMembers"
 	// OrgServiceListRolesProcedure is the fully-qualified name of the OrgService's ListRoles RPC.
 	OrgServiceListRolesProcedure = "/hualala.org.v1.OrgService/ListRoles"
+	// OrgServiceGetOrgLocaleSettingsProcedure is the fully-qualified name of the OrgService's
+	// GetOrgLocaleSettings RPC.
+	OrgServiceGetOrgLocaleSettingsProcedure = "/hualala.org.v1.OrgService/GetOrgLocaleSettings"
+	// OrgServiceListAvailablePermissionsProcedure is the fully-qualified name of the OrgService's
+	// ListAvailablePermissions RPC.
+	OrgServiceListAvailablePermissionsProcedure = "/hualala.org.v1.OrgService/ListAvailablePermissions"
+	// OrgServiceCreateRoleProcedure is the fully-qualified name of the OrgService's CreateRole RPC.
+	OrgServiceCreateRoleProcedure = "/hualala.org.v1.OrgService/CreateRole"
+	// OrgServiceUpdateRoleProcedure is the fully-qualified name of the OrgService's UpdateRole RPC.
+	OrgServiceUpdateRoleProcedure = "/hualala.org.v1.OrgService/UpdateRole"
+	// OrgServiceDeleteRoleProcedure is the fully-qualified name of the OrgService's DeleteRole RPC.
+	OrgServiceDeleteRoleProcedure = "/hualala.org.v1.OrgService/DeleteRole"
 	// OrgServiceUpdateMemberRoleProcedure is the fully-qualified name of the OrgService's
 	// UpdateMemberRole RPC.
 	OrgServiceUpdateMemberRoleProcedure = "/hualala.org.v1.OrgService/UpdateMemberRole"
@@ -49,6 +61,11 @@ const (
 type OrgServiceClient interface {
 	ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error)
 	ListRoles(context.Context, *connect.Request[v1.ListRolesRequest]) (*connect.Response[v1.ListRolesResponse], error)
+	GetOrgLocaleSettings(context.Context, *connect.Request[v1.GetOrgLocaleSettingsRequest]) (*connect.Response[v1.GetOrgLocaleSettingsResponse], error)
+	ListAvailablePermissions(context.Context, *connect.Request[v1.ListAvailablePermissionsRequest]) (*connect.Response[v1.ListAvailablePermissionsResponse], error)
+	CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error)
+	UpdateRole(context.Context, *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error)
+	DeleteRole(context.Context, *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error)
 	UpdateMemberRole(context.Context, *connect.Request[v1.UpdateMemberRoleRequest]) (*connect.Response[v1.UpdateMemberRoleResponse], error)
 	UpdateOrgLocaleSettings(context.Context, *connect.Request[v1.UpdateOrgLocaleSettingsRequest]) (*connect.Response[v1.UpdateOrgLocaleSettingsResponse], error)
 }
@@ -76,6 +93,36 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(orgServiceMethods.ByName("ListRoles")),
 			connect.WithClientOptions(opts...),
 		),
+		getOrgLocaleSettings: connect.NewClient[v1.GetOrgLocaleSettingsRequest, v1.GetOrgLocaleSettingsResponse](
+			httpClient,
+			baseURL+OrgServiceGetOrgLocaleSettingsProcedure,
+			connect.WithSchema(orgServiceMethods.ByName("GetOrgLocaleSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		listAvailablePermissions: connect.NewClient[v1.ListAvailablePermissionsRequest, v1.ListAvailablePermissionsResponse](
+			httpClient,
+			baseURL+OrgServiceListAvailablePermissionsProcedure,
+			connect.WithSchema(orgServiceMethods.ByName("ListAvailablePermissions")),
+			connect.WithClientOptions(opts...),
+		),
+		createRole: connect.NewClient[v1.CreateRoleRequest, v1.CreateRoleResponse](
+			httpClient,
+			baseURL+OrgServiceCreateRoleProcedure,
+			connect.WithSchema(orgServiceMethods.ByName("CreateRole")),
+			connect.WithClientOptions(opts...),
+		),
+		updateRole: connect.NewClient[v1.UpdateRoleRequest, v1.UpdateRoleResponse](
+			httpClient,
+			baseURL+OrgServiceUpdateRoleProcedure,
+			connect.WithSchema(orgServiceMethods.ByName("UpdateRole")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteRole: connect.NewClient[v1.DeleteRoleRequest, v1.DeleteRoleResponse](
+			httpClient,
+			baseURL+OrgServiceDeleteRoleProcedure,
+			connect.WithSchema(orgServiceMethods.ByName("DeleteRole")),
+			connect.WithClientOptions(opts...),
+		),
 		updateMemberRole: connect.NewClient[v1.UpdateMemberRoleRequest, v1.UpdateMemberRoleResponse](
 			httpClient,
 			baseURL+OrgServiceUpdateMemberRoleProcedure,
@@ -93,10 +140,15 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 
 // orgServiceClient implements OrgServiceClient.
 type orgServiceClient struct {
-	listMembers             *connect.Client[v1.ListMembersRequest, v1.ListMembersResponse]
-	listRoles               *connect.Client[v1.ListRolesRequest, v1.ListRolesResponse]
-	updateMemberRole        *connect.Client[v1.UpdateMemberRoleRequest, v1.UpdateMemberRoleResponse]
-	updateOrgLocaleSettings *connect.Client[v1.UpdateOrgLocaleSettingsRequest, v1.UpdateOrgLocaleSettingsResponse]
+	listMembers              *connect.Client[v1.ListMembersRequest, v1.ListMembersResponse]
+	listRoles                *connect.Client[v1.ListRolesRequest, v1.ListRolesResponse]
+	getOrgLocaleSettings     *connect.Client[v1.GetOrgLocaleSettingsRequest, v1.GetOrgLocaleSettingsResponse]
+	listAvailablePermissions *connect.Client[v1.ListAvailablePermissionsRequest, v1.ListAvailablePermissionsResponse]
+	createRole               *connect.Client[v1.CreateRoleRequest, v1.CreateRoleResponse]
+	updateRole               *connect.Client[v1.UpdateRoleRequest, v1.UpdateRoleResponse]
+	deleteRole               *connect.Client[v1.DeleteRoleRequest, v1.DeleteRoleResponse]
+	updateMemberRole         *connect.Client[v1.UpdateMemberRoleRequest, v1.UpdateMemberRoleResponse]
+	updateOrgLocaleSettings  *connect.Client[v1.UpdateOrgLocaleSettingsRequest, v1.UpdateOrgLocaleSettingsResponse]
 }
 
 // ListMembers calls hualala.org.v1.OrgService.ListMembers.
@@ -107,6 +159,31 @@ func (c *orgServiceClient) ListMembers(ctx context.Context, req *connect.Request
 // ListRoles calls hualala.org.v1.OrgService.ListRoles.
 func (c *orgServiceClient) ListRoles(ctx context.Context, req *connect.Request[v1.ListRolesRequest]) (*connect.Response[v1.ListRolesResponse], error) {
 	return c.listRoles.CallUnary(ctx, req)
+}
+
+// GetOrgLocaleSettings calls hualala.org.v1.OrgService.GetOrgLocaleSettings.
+func (c *orgServiceClient) GetOrgLocaleSettings(ctx context.Context, req *connect.Request[v1.GetOrgLocaleSettingsRequest]) (*connect.Response[v1.GetOrgLocaleSettingsResponse], error) {
+	return c.getOrgLocaleSettings.CallUnary(ctx, req)
+}
+
+// ListAvailablePermissions calls hualala.org.v1.OrgService.ListAvailablePermissions.
+func (c *orgServiceClient) ListAvailablePermissions(ctx context.Context, req *connect.Request[v1.ListAvailablePermissionsRequest]) (*connect.Response[v1.ListAvailablePermissionsResponse], error) {
+	return c.listAvailablePermissions.CallUnary(ctx, req)
+}
+
+// CreateRole calls hualala.org.v1.OrgService.CreateRole.
+func (c *orgServiceClient) CreateRole(ctx context.Context, req *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error) {
+	return c.createRole.CallUnary(ctx, req)
+}
+
+// UpdateRole calls hualala.org.v1.OrgService.UpdateRole.
+func (c *orgServiceClient) UpdateRole(ctx context.Context, req *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error) {
+	return c.updateRole.CallUnary(ctx, req)
+}
+
+// DeleteRole calls hualala.org.v1.OrgService.DeleteRole.
+func (c *orgServiceClient) DeleteRole(ctx context.Context, req *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error) {
+	return c.deleteRole.CallUnary(ctx, req)
 }
 
 // UpdateMemberRole calls hualala.org.v1.OrgService.UpdateMemberRole.
@@ -123,6 +200,11 @@ func (c *orgServiceClient) UpdateOrgLocaleSettings(ctx context.Context, req *con
 type OrgServiceHandler interface {
 	ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error)
 	ListRoles(context.Context, *connect.Request[v1.ListRolesRequest]) (*connect.Response[v1.ListRolesResponse], error)
+	GetOrgLocaleSettings(context.Context, *connect.Request[v1.GetOrgLocaleSettingsRequest]) (*connect.Response[v1.GetOrgLocaleSettingsResponse], error)
+	ListAvailablePermissions(context.Context, *connect.Request[v1.ListAvailablePermissionsRequest]) (*connect.Response[v1.ListAvailablePermissionsResponse], error)
+	CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error)
+	UpdateRole(context.Context, *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error)
+	DeleteRole(context.Context, *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error)
 	UpdateMemberRole(context.Context, *connect.Request[v1.UpdateMemberRoleRequest]) (*connect.Response[v1.UpdateMemberRoleResponse], error)
 	UpdateOrgLocaleSettings(context.Context, *connect.Request[v1.UpdateOrgLocaleSettingsRequest]) (*connect.Response[v1.UpdateOrgLocaleSettingsResponse], error)
 }
@@ -146,6 +228,36 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(orgServiceMethods.ByName("ListRoles")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orgServiceGetOrgLocaleSettingsHandler := connect.NewUnaryHandler(
+		OrgServiceGetOrgLocaleSettingsProcedure,
+		svc.GetOrgLocaleSettings,
+		connect.WithSchema(orgServiceMethods.ByName("GetOrgLocaleSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orgServiceListAvailablePermissionsHandler := connect.NewUnaryHandler(
+		OrgServiceListAvailablePermissionsProcedure,
+		svc.ListAvailablePermissions,
+		connect.WithSchema(orgServiceMethods.ByName("ListAvailablePermissions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orgServiceCreateRoleHandler := connect.NewUnaryHandler(
+		OrgServiceCreateRoleProcedure,
+		svc.CreateRole,
+		connect.WithSchema(orgServiceMethods.ByName("CreateRole")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orgServiceUpdateRoleHandler := connect.NewUnaryHandler(
+		OrgServiceUpdateRoleProcedure,
+		svc.UpdateRole,
+		connect.WithSchema(orgServiceMethods.ByName("UpdateRole")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orgServiceDeleteRoleHandler := connect.NewUnaryHandler(
+		OrgServiceDeleteRoleProcedure,
+		svc.DeleteRole,
+		connect.WithSchema(orgServiceMethods.ByName("DeleteRole")),
+		connect.WithHandlerOptions(opts...),
+	)
 	orgServiceUpdateMemberRoleHandler := connect.NewUnaryHandler(
 		OrgServiceUpdateMemberRoleProcedure,
 		svc.UpdateMemberRole,
@@ -164,6 +276,16 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 			orgServiceListMembersHandler.ServeHTTP(w, r)
 		case OrgServiceListRolesProcedure:
 			orgServiceListRolesHandler.ServeHTTP(w, r)
+		case OrgServiceGetOrgLocaleSettingsProcedure:
+			orgServiceGetOrgLocaleSettingsHandler.ServeHTTP(w, r)
+		case OrgServiceListAvailablePermissionsProcedure:
+			orgServiceListAvailablePermissionsHandler.ServeHTTP(w, r)
+		case OrgServiceCreateRoleProcedure:
+			orgServiceCreateRoleHandler.ServeHTTP(w, r)
+		case OrgServiceUpdateRoleProcedure:
+			orgServiceUpdateRoleHandler.ServeHTTP(w, r)
+		case OrgServiceDeleteRoleProcedure:
+			orgServiceDeleteRoleHandler.ServeHTTP(w, r)
 		case OrgServiceUpdateMemberRoleProcedure:
 			orgServiceUpdateMemberRoleHandler.ServeHTTP(w, r)
 		case OrgServiceUpdateOrgLocaleSettingsProcedure:
@@ -183,6 +305,26 @@ func (UnimplementedOrgServiceHandler) ListMembers(context.Context, *connect.Requ
 
 func (UnimplementedOrgServiceHandler) ListRoles(context.Context, *connect.Request[v1.ListRolesRequest]) (*connect.Response[v1.ListRolesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.org.v1.OrgService.ListRoles is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) GetOrgLocaleSettings(context.Context, *connect.Request[v1.GetOrgLocaleSettingsRequest]) (*connect.Response[v1.GetOrgLocaleSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.org.v1.OrgService.GetOrgLocaleSettings is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) ListAvailablePermissions(context.Context, *connect.Request[v1.ListAvailablePermissionsRequest]) (*connect.Response[v1.ListAvailablePermissionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.org.v1.OrgService.ListAvailablePermissions is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.org.v1.OrgService.CreateRole is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) UpdateRole(context.Context, *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.org.v1.OrgService.UpdateRole is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) DeleteRole(context.Context, *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.org.v1.OrgService.DeleteRole is not implemented"))
 }
 
 func (UnimplementedOrgServiceHandler) UpdateMemberRole(context.Context, *connect.Request[v1.UpdateMemberRoleRequest]) (*connect.Response[v1.UpdateMemberRoleResponse], error) {

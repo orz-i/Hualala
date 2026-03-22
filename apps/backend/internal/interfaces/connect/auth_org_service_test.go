@@ -83,6 +83,20 @@ func TestAuthAndOrgRoutes(t *testing.T) {
 		t.Fatalf("expected 1 member, got %d", len(membersResp.Msg.GetMembers()))
 	}
 
+	store.Users["77777777-7777-7777-7777-777777777777"] = auth.User{
+		ID:                "77777777-7777-7777-7777-777777777777",
+		Email:             "backup-admin@hualala.local",
+		DisplayName:       "Backup Admin",
+		PreferredUILocale: "zh-CN",
+	}
+	store.Memberships["88888888-8888-8888-8888-888888888888"] = org.Member{
+		ID:     "88888888-8888-8888-8888-888888888888",
+		OrgID:  db.DefaultDevOrganizationID,
+		UserID: "77777777-7777-7777-7777-777777777777",
+		RoleID: db.DefaultDevRoleID,
+		Status: "active",
+	}
+
 	roleUpdateReq := connectrpc.NewRequest(&orgv1.UpdateMemberRoleRequest{
 		OrgId:    db.DefaultDevOrganizationID,
 		MemberId: db.DefaultDevMembershipID,
@@ -207,5 +221,6 @@ func seedAuthOrgRuntimeStore(store *db.MemoryStore) {
 		"org.roles.read",
 		"org.members.write",
 		"org.settings.write",
+		"org.roles.write",
 	}
 }

@@ -169,12 +169,20 @@ describe("App", () => {
       orgId: "org-1",
       userId: "user-1",
       locale: "zh-CN",
+      roleId: "role-admin",
+      roleCode: "admin",
+      permissionCodes: ["session.read", "org.members.read", "org.roles.read"],
+      timezone: "Asia/Shanghai",
     });
     ensureDevSessionMock.mockResolvedValue({
       sessionId: "dev:org-1:user-1",
       orgId: "org-1",
       userId: "user-1",
       locale: "zh-CN",
+      roleId: "role-admin",
+      roleCode: "admin",
+      permissionCodes: ["session.read", "org.members.read", "org.roles.read"],
+      timezone: "Asia/Shanghai",
     });
     clearCurrentSessionMock.mockResolvedValue();
     deriveUploadFileMetadataMock.mockResolvedValue({
@@ -219,6 +227,10 @@ describe("App", () => {
         orgId: "org-1",
         userId: "user-1",
         locale: "zh-CN",
+        roleId: "role-admin",
+        roleCode: "admin",
+        permissionCodes: ["session.read", "org.members.read", "org.roles.read"],
+        timezone: "Asia/Shanghai",
       });
     loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-session-1"));
     loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());

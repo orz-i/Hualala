@@ -17,14 +17,21 @@ type Member struct {
 }
 
 type Role struct {
-	ID          string
-	OrgID       string
-	Code        string
-	DisplayName string
+	ID              string
+	OrgID           string
+	Code            string
+	DisplayName     string
+	PermissionCodes []string
 }
 
 type OrgLocaleSettings struct {
 	OrgID            string
 	DefaultLocale    string
 	SupportedLocales []string
+}
+
+type AvailablePermission struct {
+	Code        string
+	DisplayName string
+	Group       string
 }

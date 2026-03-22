@@ -6,6 +6,7 @@ import type {
   ImportBatchDetailViewModel,
 } from "./assetMonitor";
 import type { AdminGovernanceViewModel } from "./governance";
+import { GovernanceRolesPanel } from "./GovernanceRolesPanel";
 import type {
   WorkflowMonitorViewModel,
   WorkflowRunDetailViewModel,
@@ -102,10 +103,23 @@ type AdminOverviewPageProps = {
   onCloseImportBatchDetail?: () => void;
   onCloseAssetProvenance?: () => void;
   budgetFeedback?: BudgetFeedback;
+  governanceActionFeedback?: BudgetFeedback;
+  governanceActionPending?: boolean;
   workflowActionFeedback?: BudgetFeedback;
   workflowActionPending?: boolean;
   assetActionFeedback?: BudgetFeedback;
   assetActionPending?: boolean;
+  onCreateRole?: (input: {
+    code: string;
+    displayName: string;
+    permissionCodes: string[];
+  }) => void;
+  onUpdateRole?: (input: {
+    roleId: string;
+    displayName: string;
+    permissionCodes: string[];
+  }) => void;
+  onDeleteRole?: (input: { roleId: string }) => void;
   onRetryWorkflowRun?: (workflowRunId: string) => void;
   onCancelWorkflowRun?: (workflowRunId: string) => void;
   selectedImportItemIds?: string[];
@@ -315,10 +329,15 @@ export function AdminOverviewPage({
   onCloseImportBatchDetail,
   onCloseAssetProvenance,
   budgetFeedback,
+  governanceActionFeedback,
+  governanceActionPending,
   workflowActionFeedback,
   workflowActionPending,
   assetActionFeedback,
   assetActionPending,
+  onCreateRole,
+  onUpdateRole,
+  onDeleteRole,
   onRetryWorkflowRun,
   onCancelWorkflowRun,
   selectedImportItemIds = [],
@@ -363,6 +382,12 @@ export function AdminOverviewPage({
       : budgetFeedback?.tone === "pending"
         ? { color: "#92400e" }
         : { color: "#115e59" };
+  const governanceFeedbackPalette =
+    governanceActionFeedback?.tone === "error"
+      ? { color: "#991b1b" }
+      : governanceActionFeedback?.tone === "pending"
+        ? { color: "#92400e" }
+        : { color: "#115e59" };
   const workflowFeedbackPalette =
     workflowActionFeedback?.tone === "error"
       ? { color: "#991b1b" }
@@ -382,6 +407,9 @@ export function AdminOverviewPage({
   const selectedActionableImportItemIds = selectedImportItemIds.filter((itemId) =>
     actionableImportItemIds.includes(itemId),
   );
+  const canManageMembers = governance.capabilities.canManageMembers;
+  const canManageOrgSettings = governance.capabilities.canManageOrgSettings;
+  const canManageUserPreferences = governance.capabilities.canManageUserPreferences;
 
   useEffect(() => {
     setBudgetLimitYuan((overview.budgetSnapshot.limitCents / 100).toFixed(2));
@@ -1000,17 +1028,41 @@ export function AdminOverviewPage({
             <div style={{ display: "grid", gap: "8px", marginBottom: "18px" }}>
               <p style={metricStyle}>{t("governance.session.idLabel")}</p>
               <p style={metricStyle}>{governance.currentSession.sessionId}</p>
-              <p style={metricStyle}>{t("governance.session.orgId", { orgId: governance.currentSession.orgId })}</p>
-              <p style={metricStyle}>{t("governance.session.userId", { userId: governance.currentSession.userId })}</p>
-              <p style={metricStyle}>{t("governance.session.locale", { locale: governance.currentSession.locale })}</p>
+              <p style={metricStyle}>
+                {t("governance.session.orgId", { orgId: governance.currentSession.orgId })}
+              </p>
+              <p style={metricStyle}>
+                {t("governance.session.userId", { userId: governance.currentSession.userId })}
+              </p>
+              <p style={metricStyle}>
+                {t("governance.session.locale", { locale: governance.currentSession.locale })}
+              </p>
+              <p style={metricStyle}>
+                {t("governance.session.role", { roleCode: governance.currentSession.roleCode })}
+              </p>
+              <p style={metricStyle}>
+                {t("governance.session.timezone", {
+                  timezone: governance.currentSession.timezone || "none",
+                })}
+              </p>
+              <p style={metricStyle}>
+                {t("governance.session.permissions", {
+                  permissions:
+                    governance.currentSession.permissionCodes.join(", ") || "none",
+                })}
+              </p>
             </div>
             <div style={{ display: "grid", gap: "10px" }}>
-              <label htmlFor={displayLocaleInputId} style={{ fontSize: "0.9rem", color: "#334155" }}>
+              <label
+                htmlFor={displayLocaleInputId}
+                style={{ fontSize: "0.9rem", color: "#334155" }}
+              >
                 {t("governance.preferences.displayLocale")}
               </label>
               <input
                 id={displayLocaleInputId}
                 value={displayLocale}
+                disabled={!canManageUserPreferences || Boolean(governanceActionPending)}
                 onChange={(event) => {
                   setDisplayLocale(event.target.value);
                 }}
@@ -1027,6 +1079,7 @@ export function AdminOverviewPage({
               <input
                 id={timezoneInputId}
                 value={timezone}
+                disabled={!canManageUserPreferences || Boolean(governanceActionPending)}
                 onChange={(event) => {
                   setTimezone(event.target.value);
                 }}
@@ -1039,13 +1092,18 @@ export function AdminOverviewPage({
               />
               <button
                 type="button"
+                disabled={!canManageUserPreferences || Boolean(governanceActionPending)}
                 style={{
                   border: 0,
                   borderRadius: "999px",
                   padding: "10px 16px",
-                  background: "#1d4ed8",
+                  background:
+                    !canManageUserPreferences || governanceActionPending ? "#94a3b8" : "#1d4ed8",
                   color: "#eff6ff",
-                  cursor: "pointer",
+                  cursor:
+                    !canManageUserPreferences || governanceActionPending
+                      ? "not-allowed"
+                      : "pointer",
                   justifySelf: "start",
                 }}
                 onClick={() => {
@@ -1065,8 +1123,21 @@ export function AdminOverviewPage({
             <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
               {t("governance.org.title")}
             </h2>
+            {governanceActionFeedback ? (
+              <p
+                style={{
+                  marginTop: 0,
+                  marginBottom: "12px",
+                  fontSize: "0.9rem",
+                  ...governanceFeedbackPalette,
+                }}
+              >
+                {governanceActionFeedback.message}
+              </p>
+            ) : null}
             <div style={{ display: "grid", gap: "16px" }}>
               <div style={{ display: "grid", gap: "10px" }}>
+                <h3 style={{ margin: 0 }}>{t("governance.members.title")}</h3>
                 {governance.members.map((member) => {
                   const draftRoleId = memberRoleDrafts[member.memberId] ?? member.roleId;
                   return (
@@ -1083,7 +1154,9 @@ export function AdminOverviewPage({
                     >
                       <p style={{ ...metricStyle, fontWeight: 600 }}>{member.userId}</p>
                       <select
+                        aria-label={t("governance.members.roleSelect", { userId: member.userId })}
                         value={draftRoleId}
+                        disabled={!canManageMembers || Boolean(governanceActionPending)}
                         onChange={(event) => {
                           setMemberRoleDrafts((current) => ({
                             ...current,
@@ -1106,13 +1179,18 @@ export function AdminOverviewPage({
                       </select>
                       <button
                         type="button"
+                        disabled={!canManageMembers || Boolean(governanceActionPending)}
                         style={{
                           border: 0,
                           borderRadius: "999px",
                           padding: "10px 16px",
-                          background: "#0f766e",
+                          background:
+                            !canManageMembers || governanceActionPending ? "#94a3b8" : "#0f766e",
                           color: "#ecfeff",
-                          cursor: "pointer",
+                          cursor:
+                            !canManageMembers || governanceActionPending
+                              ? "not-allowed"
+                              : "pointer",
                           justifySelf: "start",
                         }}
                         onClick={() => {
@@ -1130,12 +1208,14 @@ export function AdminOverviewPage({
               </div>
 
               <div style={{ display: "grid", gap: "10px" }}>
+                <h3 style={{ margin: 0 }}>{t("governance.locale.title")}</h3>
                 <label htmlFor={orgLocaleInputId} style={{ fontSize: "0.9rem", color: "#334155" }}>
                   {t("governance.locale.defaultLocale")}
                 </label>
                 <input
                   id={orgLocaleInputId}
                   value={orgDefaultLocale}
+                  disabled={!canManageOrgSettings || Boolean(governanceActionPending)}
                   onChange={(event) => {
                     setOrgDefaultLocale(event.target.value);
                   }}
@@ -1153,13 +1233,18 @@ export function AdminOverviewPage({
                 </p>
                 <button
                   type="button"
+                  disabled={!canManageOrgSettings || Boolean(governanceActionPending)}
                   style={{
                     border: 0,
                     borderRadius: "999px",
                     padding: "10px 16px",
-                    background: "#7c3aed",
+                    background:
+                      !canManageOrgSettings || governanceActionPending ? "#94a3b8" : "#7c3aed",
                     color: "#f5f3ff",
-                    cursor: "pointer",
+                    cursor:
+                      !canManageOrgSettings || governanceActionPending
+                        ? "not-allowed"
+                        : "pointer",
                     justifySelf: "start",
                   }}
                   onClick={() => {
@@ -1173,6 +1258,15 @@ export function AdminOverviewPage({
               </div>
             </div>
           </article>
+
+          <GovernanceRolesPanel
+            governance={governance}
+            governanceActionPending={governanceActionPending}
+            onCreateRole={onCreateRole}
+            onUpdateRole={onUpdateRole}
+            onDeleteRole={onDeleteRole}
+            t={t}
+          />
         </section>
       </section>
       {importBatchDetail && !assetProvenanceDetail ? (

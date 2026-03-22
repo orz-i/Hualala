@@ -10,6 +10,7 @@ import (
 	authv1connect "github.com/hualala/apps/backend/gen/hualala/auth/v1/authv1connect"
 	orgv1 "github.com/hualala/apps/backend/gen/hualala/org/v1"
 	orgv1connect "github.com/hualala/apps/backend/gen/hualala/org/v1/orgv1connect"
+	"github.com/hualala/apps/backend/internal/domain/auth"
 	"github.com/hualala/apps/backend/internal/domain/org"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
@@ -122,8 +123,15 @@ func TestAuthOrgFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListMembers returned error: %v", err)
 		}
-		if len(membersResp.Msg.GetMembers()) != 1 {
-			t.Fatalf("expected exactly 1 bootstrap member, got %d", len(membersResp.Msg.GetMembers()))
+		foundBootstrapMember := false
+		for _, member := range membersResp.Msg.GetMembers() {
+			if member.GetMemberId() == db.DefaultDevMembershipID {
+				foundBootstrapMember = true
+				break
+			}
+		}
+		if !foundBootstrapMember {
+			t.Fatalf("expected bootstrap member %q to be present", db.DefaultDevMembershipID)
 		}
 
 		rolesReq := connectrpc.NewRequest(&orgv1.ListRolesRequest{OrgId: db.DefaultDevOrganizationID})
@@ -161,6 +169,25 @@ func TestAuthOrgFlow(t *testing.T) {
 		}
 		if got := orgRecord.DefaultContentLocale; got != "ja-JP" {
 			t.Fatalf("expected persisted default content locale ja-JP, got %q", got)
+		}
+
+		if err := repos.AuthOrg.SaveUser(ctx, auth.User{
+			ID:                "77777777-7777-7777-7777-777777777777",
+			Email:             "backup-admin@hualala.local",
+			DisplayName:       "Backup Admin",
+			PreferredUILocale: "zh-CN",
+			Timezone:          "Asia/Shanghai",
+		}); err != nil {
+			t.Fatalf("SaveUser returned error: %v", err)
+		}
+		if err := repos.AuthOrg.SaveMembership(ctx, org.Member{
+			ID:     "88888888-8888-8888-8888-888888888888",
+			OrgID:  db.DefaultDevOrganizationID,
+			UserID: "77777777-7777-7777-7777-777777777777",
+			RoleID: db.DefaultDevRoleID,
+			Status: "active",
+		}); err != nil {
+			t.Fatalf("SaveMembership returned error: %v", err)
 		}
 
 		roleReq := connectrpc.NewRequest(&orgv1.UpdateMemberRoleRequest{

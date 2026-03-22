@@ -63,6 +63,145 @@ func TestUpdateOrgLocaleSettingsPersistsDefaultLocale(t *testing.T) {
 	}
 }
 
+func TestGetOrgLocaleSettingsAndAvailablePermissions(t *testing.T) {
+	store := db.NewMemoryStore()
+	seedAuthOrgStore(store)
+	service := NewService(store, authz.NewAuthorizer(store))
+
+	settings, err := service.GetOrgLocaleSettings(context.Background(), GetOrgLocaleSettingsInput{
+		ActorOrgID:  db.DefaultDevOrganizationID,
+		ActorUserID: db.DefaultDevUserID,
+		OrgID:       db.DefaultDevOrganizationID,
+	})
+	if err != nil {
+		t.Fatalf("GetOrgLocaleSettings returned error: %v", err)
+	}
+	if got := settings.DefaultLocale; got != "zh-CN" {
+		t.Fatalf("expected zh-CN locale, got %q", got)
+	}
+
+	permissions, err := service.ListAvailablePermissions(context.Background(), ListAvailablePermissionsInput{
+		ActorOrgID:  db.DefaultDevOrganizationID,
+		ActorUserID: db.DefaultDevUserID,
+		OrgID:       db.DefaultDevOrganizationID,
+	})
+	if err != nil {
+		t.Fatalf("ListAvailablePermissions returned error: %v", err)
+	}
+	found := false
+	for _, permission := range permissions {
+		if permission.Code == "org.roles.write" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected org.roles.write in permission catalog")
+	}
+}
+
+func TestCreateUpdateAndDeleteRole(t *testing.T) {
+	store := db.NewMemoryStore()
+	seedAuthOrgStore(store)
+	service := NewService(store, authz.NewAuthorizer(store))
+
+	role, err := service.CreateRole(context.Background(), CreateRoleInput{
+		ActorOrgID:      db.DefaultDevOrganizationID,
+		ActorUserID:     db.DefaultDevUserID,
+		OrgID:           db.DefaultDevOrganizationID,
+		Code:            "viewer",
+		DisplayName:     "Viewer",
+		PermissionCodes: []string{"session.read", "user.preferences.write"},
+	})
+	if err != nil {
+		t.Fatalf("CreateRole returned error: %v", err)
+	}
+	if role.Code != "viewer" {
+		t.Fatalf("expected role code viewer, got %q", role.Code)
+	}
+
+	updatedRole, err := service.UpdateRole(context.Background(), UpdateRoleInput{
+		ActorOrgID:      db.DefaultDevOrganizationID,
+		ActorUserID:     db.DefaultDevUserID,
+		OrgID:           db.DefaultDevOrganizationID,
+		RoleID:          role.ID,
+		DisplayName:     "Read Only",
+		PermissionCodes: []string{"session.read"},
+	})
+	if err != nil {
+		t.Fatalf("UpdateRole returned error: %v", err)
+	}
+	if updatedRole.DisplayName != "Read Only" {
+		t.Fatalf("expected updated display name, got %q", updatedRole.DisplayName)
+	}
+
+	if err := service.DeleteRole(context.Background(), DeleteRoleInput{
+		ActorOrgID:  db.DefaultDevOrganizationID,
+		ActorUserID: db.DefaultDevUserID,
+		OrgID:       db.DefaultDevOrganizationID,
+		RoleID:      role.ID,
+	}); err != nil {
+		t.Fatalf("DeleteRole returned error: %v", err)
+	}
+	if _, ok := store.GetRole(role.ID); ok {
+		t.Fatalf("expected deleted role %q to be removed", role.ID)
+	}
+}
+
+func TestDeleteRoleRejectsInUseRoleAndLockoutChanges(t *testing.T) {
+	store := db.NewMemoryStore()
+	seedAuthOrgStore(store)
+	service := NewService(store, authz.NewAuthorizer(store))
+
+	if err := service.DeleteRole(context.Background(), DeleteRoleInput{
+		ActorOrgID:  db.DefaultDevOrganizationID,
+		ActorUserID: db.DefaultDevUserID,
+		OrgID:       db.DefaultDevOrganizationID,
+		RoleID:      db.DefaultDevRoleID,
+	}); err == nil {
+		t.Fatalf("expected in-use role deletion to fail")
+	}
+
+	if _, err := service.UpdateRole(context.Background(), UpdateRoleInput{
+		ActorOrgID:      db.DefaultDevOrganizationID,
+		ActorUserID:     db.DefaultDevUserID,
+		OrgID:           db.DefaultDevOrganizationID,
+		RoleID:          db.DefaultDevRoleID,
+		DisplayName:     "Administrator",
+		PermissionCodes: []string{"session.read"},
+	}); err == nil {
+		t.Fatalf("expected governance lockout protection to reject permission downgrade")
+	}
+}
+
+func TestUpdateMemberRoleRejectsGovernanceLockout(t *testing.T) {
+	store := db.NewMemoryStore()
+	seedAuthOrgStore(store)
+	service := NewService(store, authz.NewAuthorizer(store))
+
+	viewerRoleID := "77777777-7777-7777-7777-777777777777"
+	store.Roles[viewerRoleID] = org.Role{
+		ID:          viewerRoleID,
+		OrgID:       db.DefaultDevOrganizationID,
+		Code:        "viewer",
+		DisplayName: "Viewer",
+	}
+	store.RolePermissions[viewerRoleID] = []string{
+		"session.read",
+		"user.preferences.write",
+	}
+
+	if _, err := service.UpdateMemberRole(context.Background(), UpdateMemberRoleInput{
+		ActorOrgID:  db.DefaultDevOrganizationID,
+		ActorUserID: db.DefaultDevUserID,
+		OrgID:       db.DefaultDevOrganizationID,
+		MemberID:    db.DefaultDevMembershipID,
+		RoleID:      viewerRoleID,
+	}); err == nil {
+		t.Fatalf("expected governance lockout protection to reject role reassignment")
+	}
+}
+
 func seedAuthOrgStore(store *db.MemoryStore) {
 	store.Organizations[db.DefaultDevOrganizationID] = org.Organization{
 		ID:                   db.DefaultDevOrganizationID,
@@ -76,6 +215,7 @@ func seedAuthOrgStore(store *db.MemoryStore) {
 		Email:             "dev-user@hualala.local",
 		DisplayName:       "Development Operator",
 		PreferredUILocale: "zh-CN",
+		Timezone:          "Asia/Shanghai",
 	}
 	store.Roles[db.DefaultDevRoleID] = org.Role{
 		ID:          db.DefaultDevRoleID,
@@ -101,5 +241,8 @@ func seedAuthOrgStore(store *db.MemoryStore) {
 		"org.roles.read",
 		"org.members.write",
 		"org.settings.write",
+		"session.read",
+		"user.preferences.write",
+		"org.roles.write",
 	}
 }

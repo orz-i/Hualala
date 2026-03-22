@@ -34,6 +34,10 @@ type AdminState = {
       orgId: string;
       userId: string;
       locale: string;
+      roleId: string;
+      roleCode: string;
+      permissionCodes: string[];
+      timezone: string;
     };
     userPreferences: {
       userId: string;
@@ -41,11 +45,29 @@ type AdminState = {
       timezone: string;
     };
     members: Array<{ memberId: string; orgId: string; userId: string; roleId: string }>;
-    roles: Array<{ roleId: string; orgId: string; code: string; displayName: string }>;
+    roles: Array<{
+      roleId: string;
+      orgId: string;
+      code: string;
+      displayName: string;
+      permissionCodes: string[];
+      memberCount: number;
+    }>;
+    availablePermissions: Array<{
+      code: string;
+      displayName: string;
+      group: string;
+    }>;
     orgLocaleSettings: {
       orgId: string;
       defaultLocale: string;
       supportedLocales: string[];
+    };
+    capabilities: {
+      canManageRoles: boolean;
+      canManageMembers: boolean;
+      canManageOrgSettings: boolean;
+      canManageUserPreferences: boolean;
     };
   };
 };
@@ -110,6 +132,20 @@ function withGovernance(state: Omit<AdminState, "governance"> & Partial<Pick<Adm
   const orgId = "org-live-1";
   const userId = "user-live-1";
   const locale = "zh-CN";
+  const availablePermissions = [
+    { code: "session.read", displayName: "Read current session", group: "session" },
+    {
+      code: "user.preferences.write",
+      displayName: "Update user preferences",
+      group: "preferences",
+    },
+    { code: "org.members.read", displayName: "Read organization members", group: "governance" },
+    { code: "org.roles.read", displayName: "Read organization roles", group: "governance" },
+    { code: "org.members.write", displayName: "Update member roles", group: "governance" },
+    { code: "org.settings.write", displayName: "Update organization locale", group: "governance" },
+    { code: "org.roles.write", displayName: "Manage roles and permissions", group: "governance" },
+  ];
+  const adminPermissionCodes = availablePermissions.map((permission) => permission.code);
 
   return {
     ...state,
@@ -119,6 +155,10 @@ function withGovernance(state: Omit<AdminState, "governance"> & Partial<Pick<Adm
         orgId,
         userId,
         locale,
+        roleId: "role-admin",
+        roleCode: "admin",
+        permissionCodes: adminPermissionCodes,
+        timezone: "Asia/Shanghai",
       },
       userPreferences: {
         userId,
@@ -126,11 +166,35 @@ function withGovernance(state: Omit<AdminState, "governance"> & Partial<Pick<Adm
         timezone: "Asia/Shanghai",
       },
       members: [{ memberId: "member-1", orgId, userId, roleId: "role-admin" }],
-      roles: [{ roleId: "role-admin", orgId, code: "admin", displayName: "Administrator" }],
+      roles: [
+        {
+          roleId: "role-admin",
+          orgId,
+          code: "admin",
+          displayName: "Administrator",
+          permissionCodes: adminPermissionCodes,
+          memberCount: 1,
+        },
+        {
+          roleId: "role-viewer",
+          orgId,
+          code: "viewer",
+          displayName: "Viewer",
+          permissionCodes: ["session.read", "user.preferences.write"],
+          memberCount: 0,
+        },
+      ],
+      availablePermissions,
       orgLocaleSettings: {
         orgId,
         defaultLocale: locale,
-        supportedLocales: [locale],
+        supportedLocales: [locale, "en-US"],
+      },
+      capabilities: {
+        canManageRoles: true,
+        canManageMembers: true,
+        canManageOrgSettings: true,
+        canManageUserPreferences: true,
       },
     },
   };
@@ -176,6 +240,36 @@ function withRecentChanges(state: AdminState) {
   };
 }
 
+function syncGovernanceState(state: AdminState["governance"]): AdminState["governance"] {
+  const roles = state.roles.map((role) => ({
+    ...role,
+    memberCount: state.members.filter((member) => member.roleId === role.roleId).length,
+  }));
+  const activeRole =
+    roles.find((role) => role.roleId === state.currentSession.roleId) ?? roles[0] ?? null;
+
+  return {
+    ...state,
+    roles,
+    currentSession: activeRole
+      ? {
+          ...state.currentSession,
+          roleId: activeRole.roleId,
+          roleCode: activeRole.code,
+          permissionCodes: [...activeRole.permissionCodes],
+        }
+      : state.currentSession,
+    capabilities: activeRole
+      ? {
+          canManageRoles: activeRole.permissionCodes.includes("org.roles.write"),
+          canManageMembers: activeRole.permissionCodes.includes("org.members.write"),
+          canManageOrgSettings: activeRole.permissionCodes.includes("org.settings.write"),
+          canManageUserPreferences: activeRole.permissionCodes.includes("user.preferences.write"),
+        }
+      : state.capabilities,
+  };
+}
+
 type Phase1DemoScenarios = {
   admin: Record<AdminMode, AdminState>;
   creatorShot: Record<CreatorShotMode, CreatorShotState>;
@@ -203,12 +297,20 @@ function buildAdminPayload(pathname: string, state: AdminState) {
           orgId: state.governance.currentSession.orgId,
           userId: state.governance.currentSession.userId,
           locale: state.governance.currentSession.locale,
+          roleId: state.governance.currentSession.roleId,
+          roleCode: state.governance.currentSession.roleCode,
+          permissionCodes: state.governance.currentSession.permissionCodes,
+          timezone: state.governance.currentSession.timezone,
         },
       };
     case "/hualala.org.v1.OrgService/ListMembers":
       return { members: state.governance.members };
     case "/hualala.org.v1.OrgService/ListRoles":
       return { roles: state.governance.roles };
+    case "/hualala.org.v1.OrgService/GetOrgLocaleSettings":
+      return { localeSettings: state.governance.orgLocaleSettings };
+    case "/hualala.org.v1.OrgService/ListAvailablePermissions":
+      return { permissions: state.governance.availablePermissions };
     case "/hualala.billing.v1.BillingService/GetBudgetSnapshot":
       return { budgetSnapshot: state.budgetSnapshot };
     case "/hualala.billing.v1.BillingService/ListUsageRecords":
@@ -279,6 +381,18 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
               orgId: "org-1",
               userId: "user-1",
               locale: "zh-CN",
+              roleId: "role-admin",
+              roleCode: "admin",
+              permissionCodes: [
+                "session.read",
+                "user.preferences.write",
+                "org.members.read",
+                "org.roles.read",
+                "org.members.write",
+                "org.settings.write",
+                "org.roles.write",
+              ],
+              timezone: "Asia/Shanghai",
             };
       await route.fulfill(jsonResponse(200, { session }));
       return;
@@ -294,6 +408,18 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
               orgId: "org-1",
               userId: "user-1",
               locale: "zh-CN",
+              roleId: "role-admin",
+              roleCode: "admin",
+              permissionCodes: [
+                "session.read",
+                "user.preferences.write",
+                "org.members.read",
+                "org.roles.read",
+                "org.members.write",
+                "org.settings.write",
+                "org.roles.write",
+              ],
+              timezone: "Asia/Shanghai",
             };
       await route.fulfill(jsonResponse(200, { session }));
       return;
@@ -376,19 +502,92 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         };
         adminState = withRecentChanges({
           ...clone(adminState),
-          governance: {
+          governance: syncGovernanceState({
             ...clone(adminState.governance),
             members: adminState.governance.members.map((member) =>
               member.memberId === body.memberId
                 ? { ...member, roleId: body.roleId ?? member.roleId }
                 : member,
             ),
-          },
+          }),
         });
         const updatedMember = adminState.governance.members.find(
           (member) => member.memberId === body.memberId,
         );
         await route.fulfill(jsonResponse(200, { member: updatedMember }));
+        return;
+      }
+
+      if (pathname === "/hualala.org.v1.OrgService/CreateRole") {
+        const body = route.request().postDataJSON() as {
+          orgId?: string;
+          code?: string;
+          displayName?: string;
+          permissionCodes?: string[];
+        };
+        const nextRole = {
+          roleId: `role-${body.code ?? "custom"}`,
+          orgId: body.orgId ?? adminState.governance.currentSession.orgId,
+          code: body.code ?? "custom",
+          displayName: body.displayName ?? "Custom",
+          permissionCodes: [...(body.permissionCodes ?? [])],
+          memberCount: 0,
+        };
+        adminState = withRecentChanges({
+          ...clone(adminState),
+          governance: syncGovernanceState({
+            ...clone(adminState.governance),
+            roles: [...adminState.governance.roles, nextRole],
+          }),
+        });
+        await route.fulfill(jsonResponse(200, { role: nextRole }));
+        return;
+      }
+
+      if (pathname === "/hualala.org.v1.OrgService/UpdateRole") {
+        const body = route.request().postDataJSON() as {
+          roleId?: string;
+          displayName?: string;
+          permissionCodes?: string[];
+        };
+        let updatedRole:
+          | (AdminState["governance"]["roles"][number] & {
+              memberCount: number;
+            })
+          | undefined;
+        adminState = withRecentChanges({
+          ...clone(adminState),
+          governance: syncGovernanceState({
+            ...clone(adminState.governance),
+            roles: adminState.governance.roles.map((role) => {
+              if (role.roleId !== body.roleId) {
+                return role;
+              }
+              updatedRole = {
+                ...role,
+                displayName: body.displayName ?? role.displayName,
+                permissionCodes: [...(body.permissionCodes ?? role.permissionCodes)],
+              };
+              return updatedRole;
+            }),
+          }),
+        });
+        await route.fulfill(jsonResponse(200, { role: updatedRole }));
+        return;
+      }
+
+      if (pathname === "/hualala.org.v1.OrgService/DeleteRole") {
+        const body = route.request().postDataJSON() as {
+          roleId?: string;
+        };
+        adminState = withRecentChanges({
+          ...clone(adminState),
+          governance: syncGovernanceState({
+            ...clone(adminState.governance),
+            roles: adminState.governance.roles.filter((role) => role.roleId !== body.roleId),
+          }),
+        });
+        await route.fulfill(jsonResponse(200, {}));
         return;
       }
 

@@ -36,6 +36,18 @@ func TestGetCurrentSessionAcceptsSessionCookie(t *testing.T) {
 	if got := session.UserID; got != db.DefaultDevUserID {
 		t.Fatalf("expected dev user %q, got %q", db.DefaultDevUserID, got)
 	}
+	if got := session.RoleID; got != db.DefaultDevRoleID {
+		t.Fatalf("expected role %q, got %q", db.DefaultDevRoleID, got)
+	}
+	if got := session.RoleCode; got != "admin" {
+		t.Fatalf("expected role code admin, got %q", got)
+	}
+	if got := session.Timezone; got != "Asia/Shanghai" {
+		t.Fatalf("expected timezone Asia/Shanghai, got %q", got)
+	}
+	if got := len(session.PermissionCodes); got != 7 {
+		t.Fatalf("expected 7 permission codes, got %d", got)
+	}
 }
 
 func TestStartDevSessionReturnsBootstrapIdentity(t *testing.T) {
@@ -49,6 +61,9 @@ func TestStartDevSessionReturnsBootstrapIdentity(t *testing.T) {
 	}
 	if got := session.SessionID; got != "dev:"+db.DefaultDevOrganizationID+":"+db.DefaultDevUserID {
 		t.Fatalf("unexpected session id %q", got)
+	}
+	if got := session.RoleCode; got != "admin" {
+		t.Fatalf("expected role code admin, got %q", got)
 	}
 }
 
@@ -79,14 +94,17 @@ func TestRefreshSessionRequiresRefreshTokenAndCookie(t *testing.T) {
 	}
 
 	session, err := service.RefreshSession(context.Background(), RefreshSessionInput{
-		CookieHeader:  authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID),
-		RefreshToken:  authsession.DevRefreshToken,
+		CookieHeader: authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID),
+		RefreshToken: authsession.DevRefreshToken,
 	})
 	if err != nil {
 		t.Fatalf("RefreshSession returned error: %v", err)
 	}
 	if got := session.UserID; got != db.DefaultDevUserID {
 		t.Fatalf("expected user %q, got %q", db.DefaultDevUserID, got)
+	}
+	if got := session.Timezone; got != "Asia/Shanghai" {
+		t.Fatalf("expected timezone Asia/Shanghai, got %q", got)
 	}
 }
 
@@ -103,6 +121,7 @@ func seedDevAuthOrgStore(store *db.MemoryStore) {
 		Email:             "dev-user@hualala.local",
 		DisplayName:       "Development Operator",
 		PreferredUILocale: "zh-CN",
+		Timezone:          "Asia/Shanghai",
 	}
 	store.Roles[db.DefaultDevRoleID] = org.Role{
 		ID:          db.DefaultDevRoleID,
@@ -124,5 +143,6 @@ func seedDevAuthOrgStore(store *db.MemoryStore) {
 		"org.roles.read",
 		"org.members.write",
 		"org.settings.write",
+		"org.roles.write",
 	}
 }

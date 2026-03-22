@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createTranslator } from "../../i18n";
 import { AdminOverviewPage } from "./AdminOverviewPage";
 import {
@@ -10,6 +10,44 @@ import type { AdminGovernanceViewModel } from "./governance";
 import type { WorkflowMonitorViewModel, WorkflowRunDetailViewModel } from "./workflow";
 
 describe("AdminOverviewPage", () => {
+  const governancePermissionCatalog = [
+    {
+      code: "session.read",
+      displayName: "Read session",
+      group: "session",
+    },
+    {
+      code: "user.preferences.write",
+      displayName: "Update user preferences",
+      group: "session",
+    },
+    {
+      code: "org.members.read",
+      displayName: "Read members",
+      group: "governance",
+    },
+    {
+      code: "org.roles.read",
+      displayName: "Read roles",
+      group: "governance",
+    },
+    {
+      code: "org.members.write",
+      displayName: "Update members",
+      group: "governance",
+    },
+    {
+      code: "org.settings.write",
+      displayName: "Update org settings",
+      group: "governance",
+    },
+    {
+      code: "org.roles.write",
+      displayName: "Manage roles",
+      group: "governance",
+    },
+  ];
+  const adminPermissionCodes = governancePermissionCatalog.map((permission) => permission.code);
   const overview = {
     budgetSnapshot: {
       projectId: "project-live-1",
@@ -54,6 +92,10 @@ describe("AdminOverviewPage", () => {
       orgId: "org-live-1",
       userId: "user-live-1",
       locale: "zh-CN",
+      roleId: "role-admin",
+      roleCode: "admin",
+      permissionCodes: adminPermissionCodes,
+      timezone: "Asia/Shanghai",
     },
     userPreferences: {
       userId: "user-live-1",
@@ -61,11 +103,35 @@ describe("AdminOverviewPage", () => {
       timezone: "Asia/Shanghai",
     },
     members: [{ memberId: "member-1", orgId: "org-live-1", userId: "user-live-1", roleId: "role-admin" }],
-    roles: [{ roleId: "role-admin", orgId: "org-live-1", code: "admin", displayName: "Administrator" }],
+    roles: [
+      {
+        roleId: "role-admin",
+        orgId: "org-live-1",
+        code: "admin",
+        displayName: "Administrator",
+        permissionCodes: adminPermissionCodes,
+        memberCount: 1,
+      },
+      {
+        roleId: "role-viewer",
+        orgId: "org-live-1",
+        code: "viewer",
+        displayName: "Viewer",
+        permissionCodes: ["session.read", "user.preferences.write"],
+        memberCount: 0,
+      },
+    ],
+    availablePermissions: governancePermissionCatalog,
     orgLocaleSettings: {
       orgId: "org-live-1",
       defaultLocale: "zh-CN",
-      supportedLocales: ["zh-CN"],
+      supportedLocales: ["zh-CN", "en-US"],
+    },
+    capabilities: {
+      canManageRoles: true,
+      canManageMembers: true,
+      canManageOrgSettings: true,
+      canManageUserPreferences: true,
     },
   };
   const workflowMonitor: WorkflowMonitorViewModel = {
@@ -395,6 +461,145 @@ describe("AdminOverviewPage", () => {
     expect(onUpdateOrgLocaleSettings).toHaveBeenCalledWith({
       defaultLocale: "en-US",
     });
+  });
+
+  it("supports role create and edit actions while blocking deletion for in-use roles", () => {
+    const onCreateRole = vi.fn();
+    const onUpdateRole = vi.fn();
+    const onDeleteRole = vi.fn();
+
+    render(
+      <AdminOverviewPage
+        overview={overview}
+        governance={governance}
+        workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onCreateRole={onCreateRole}
+        onUpdateRole={onUpdateRole}
+        onDeleteRole={onDeleteRole}
+      />,
+    );
+
+    const createRoleSection = screen.getByText("新建角色").closest("div");
+    expect(createRoleSection).not.toBeNull();
+    if (!createRoleSection) {
+      throw new Error("create role section should exist");
+    }
+
+    fireEvent.change(within(createRoleSection).getByLabelText("角色代码"), {
+      target: { value: "producer" },
+    });
+    fireEvent.change(within(createRoleSection).getByLabelText("角色名称"), {
+      target: { value: "Producer" },
+    });
+    fireEvent.click(
+      within(createRoleSection).getByLabelText("Manage roles (org.roles.write)"),
+    );
+    fireEvent.click(within(createRoleSection).getByRole("button", { name: "创建角色" }));
+
+    expect(onCreateRole).toHaveBeenCalledWith({
+      code: "producer",
+      displayName: "Producer",
+      permissionCodes: ["org.roles.write"],
+    });
+
+    const viewerCard = screen.getByText("viewer").closest("article");
+    expect(viewerCard).not.toBeNull();
+    if (!viewerCard) {
+      throw new Error("viewer role card should exist");
+    }
+
+    fireEvent.change(
+      within(viewerCard).getByLabelText("编辑角色 viewer 的名称"),
+      {
+        target: { value: "Content Viewer" },
+      },
+    );
+    fireEvent.click(
+      within(viewerCard).getByLabelText("Read roles (org.roles.read)"),
+    );
+    fireEvent.click(within(viewerCard).getByRole("button", { name: "保存角色" }));
+
+    expect(onUpdateRole).toHaveBeenCalledWith({
+      roleId: "role-viewer",
+      displayName: "Content Viewer",
+      permissionCodes: ["session.read", "user.preferences.write", "org.roles.read"],
+    });
+
+    fireEvent.click(within(viewerCard).getByRole("button", { name: "删除角色" }));
+    expect(onDeleteRole).toHaveBeenCalledWith({
+      roleId: "role-viewer",
+    });
+
+    const adminCard = screen.getByText("admin").closest("article");
+    expect(adminCard).not.toBeNull();
+    if (!adminCard) {
+      throw new Error("admin role card should exist");
+    }
+    expect(
+      within(adminCard).getByRole("button", { name: "角色使用中，禁止删除" }),
+    ).toBeDisabled();
+    expect(onDeleteRole).toHaveBeenCalledTimes(1);
+  });
+
+  it("gates role management controls when org.roles.write is missing", () => {
+    const governanceWithoutRoleWrite: AdminGovernanceViewModel = {
+      ...governance,
+      currentSession: {
+        ...governance.currentSession,
+        roleCode: "editor",
+        permissionCodes: [
+          "session.read",
+          "user.preferences.write",
+          "org.members.read",
+          "org.roles.read",
+        ],
+      },
+      capabilities: {
+        ...governance.capabilities,
+        canManageRoles: false,
+      },
+    };
+
+    render(
+      <AdminOverviewPage
+        overview={overview}
+        governance={governanceWithoutRoleWrite}
+        workflowMonitor={workflowMonitor}
+        assetMonitor={assetMonitor}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onCreateRole={vi.fn()}
+        onUpdateRole={vi.fn()}
+        onDeleteRole={vi.fn()}
+      />,
+    );
+
+    const createRoleSection = screen.getByText("新建角色").closest("div");
+    expect(createRoleSection).not.toBeNull();
+    if (!createRoleSection) {
+      throw new Error("create role section should exist");
+    }
+
+    expect(within(createRoleSection).getByLabelText("角色代码")).toBeDisabled();
+    expect(within(createRoleSection).getByLabelText("角色名称")).toBeDisabled();
+    expect(within(createRoleSection).getByRole("button", { name: "创建角色" })).toBeDisabled();
+
+    const viewerCard = screen.getByText("viewer").closest("article");
+    expect(viewerCard).not.toBeNull();
+    if (!viewerCard) {
+      throw new Error("viewer role card should exist");
+    }
+
+    expect(
+      within(viewerCard).getByLabelText("编辑角色 viewer 的名称"),
+    ).toBeDisabled();
+    expect(within(viewerCard).getByRole("button", { name: "保存角色" })).toBeDisabled();
+    expect(within(viewerCard).getByRole("button", { name: "删除角色" })).toBeDisabled();
   });
 
   it("filters workflow runs and opens the workflow detail drawer", () => {

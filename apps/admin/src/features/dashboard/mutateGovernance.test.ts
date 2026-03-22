@@ -1,4 +1,7 @@
 import {
+  createRole,
+  deleteRole,
+  updateRole,
   updateMemberRole,
   updateOrgLocaleSettings,
   updateUserPreferences,
@@ -79,5 +82,69 @@ describe("mutateGovernance", () => {
     expect(member.roleId).toBe("role-editor");
     expect(locale.defaultLocale).toBe("en-US");
     expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("posts role CRUD mutations through the dedicated governance routes", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            role: {
+              roleId: "role-editor",
+              orgId: "org-1",
+              code: "editor",
+              displayName: "Editor",
+              permissionCodes: ["session.read", "org.roles.read"],
+            },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            role: {
+              roleId: "role-editor",
+              orgId: "org-1",
+              code: "editor",
+              displayName: "Content Editor",
+              permissionCodes: ["session.read"],
+            },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+
+    const created = await createRole({
+      orgId: "org-1",
+      userId: "user-1",
+      code: "editor",
+      displayName: "Editor",
+      permissionCodes: ["session.read", "org.roles.read"],
+      baseUrl: "http://127.0.0.1:8080",
+      fetchFn,
+    });
+    const updated = await updateRole({
+      orgId: "org-1",
+      userId: "user-1",
+      roleId: "role-editor",
+      displayName: "Content Editor",
+      permissionCodes: ["session.read"],
+      baseUrl: "http://127.0.0.1:8080",
+      fetchFn,
+    });
+    await deleteRole({
+      orgId: "org-1",
+      userId: "user-1",
+      roleId: "role-editor",
+      baseUrl: "http://127.0.0.1:8080",
+      fetchFn,
+    });
+
+    expect(created.permissionCodes).toEqual(["session.read", "org.roles.read"]);
+    expect(updated.displayName).toBe("Content Editor");
+    expect(fetchFn).toHaveBeenCalledTimes(3);
   });
 });

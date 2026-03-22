@@ -241,6 +241,13 @@ func (s *PostgresStore) SaveRole(ctx context.Context, record org.Role) error {
 	return nil
 }
 
+func (s *PostgresStore) DeleteRole(ctx context.Context, roleID string) error {
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM roles WHERE id = $1`, strings.TrimSpace(roleID)); err != nil {
+		return fmt.Errorf("db: delete role %s: %w", roleID, err)
+	}
+	return nil
+}
+
 func (s *PostgresStore) ListRolePermissions(roleID string) []string {
 	if s == nil || s.db == nil {
 		return nil

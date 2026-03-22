@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hualala/org/v1/org_service.proto.
  */
 export const file_hualala_org_v1_org_service: GenFile = /*@__PURE__*/
-  fileDesc("CiBodWFsYWxhL29yZy92MS9vcmdfc2VydmljZS5wcm90bxIOaHVhbGFsYS5vcmcudjEiTQoGTWVtYmVyEhEKCW1lbWJlcl9pZBgBIAEoCRIOCgZvcmdfaWQYAiABKAkSDwoHdXNlcl9pZBgDIAEoCRIPCgdyb2xlX2lkGAQgASgJIksKBFJvbGUSDwoHcm9sZV9pZBgBIAEoCRIOCgZvcmdfaWQYAiABKAkSDAoEY29kZRgDIAEoCRIUCgxkaXNwbGF5X25hbWUYBCABKAkiVgoRT3JnTG9jYWxlU2V0dGluZ3MSDgoGb3JnX2lkGAEgASgJEhYKDmRlZmF1bHRfbG9jYWxlGAIgASgJEhkKEXN1cHBvcnRlZF9sb2NhbGVzGAMgAygJIiQKEkxpc3RNZW1iZXJzUmVxdWVzdBIOCgZvcmdfaWQYASABKAkiPgoTTGlzdE1lbWJlcnNSZXNwb25zZRInCgdtZW1iZXJzGAEgAygLMhYuaHVhbGFsYS5vcmcudjEuTWVtYmVyIiIKEExpc3RSb2xlc1JlcXVlc3QSDgoGb3JnX2lkGAEgASgJIjgKEUxpc3RSb2xlc1Jlc3BvbnNlEiMKBXJvbGVzGAEgAygLMhQuaHVhbGFsYS5vcmcudjEuUm9sZSJNChdVcGRhdGVNZW1iZXJSb2xlUmVxdWVzdBIOCgZvcmdfaWQYASABKAkSEQoJbWVtYmVyX2lkGAIgASgJEg8KB3JvbGVfaWQYAyABKAkiQgoYVXBkYXRlTWVtYmVyUm9sZVJlc3BvbnNlEiYKBm1lbWJlchgBIAEoCzIWLmh1YWxhbGEub3JnLnYxLk1lbWJlciJjCh5VcGRhdGVPcmdMb2NhbGVTZXR0aW5nc1JlcXVlc3QSDgoGb3JnX2lkGAEgASgJEhYKDmRlZmF1bHRfbG9jYWxlGAIgASgJEhkKEXN1cHBvcnRlZF9sb2NhbGVzGAMgAygJIl0KH1VwZGF0ZU9yZ0xvY2FsZVNldHRpbmdzUmVzcG9uc2USOgoPbG9jYWxlX3NldHRpbmdzGAEgASgLMiEuaHVhbGFsYS5vcmcudjEuT3JnTG9jYWxlU2V0dGluZ3MymQMKCk9yZ1NlcnZpY2USVgoLTGlzdE1lbWJlcnMSIi5odWFsYWxhLm9yZy52MS5MaXN0TWVtYmVyc1JlcXVlc3QaIy5odWFsYWxhLm9yZy52MS5MaXN0TWVtYmVyc1Jlc3BvbnNlElAKCUxpc3RSb2xlcxIgLmh1YWxhbGEub3JnLnYxLkxpc3RSb2xlc1JlcXVlc3QaIS5odWFsYWxhLm9yZy52MS5MaXN0Um9sZXNSZXNwb25zZRJlChBVcGRhdGVNZW1iZXJSb2xlEicuaHVhbGFsYS5vcmcudjEuVXBkYXRlTWVtYmVyUm9sZVJlcXVlc3QaKC5odWFsYWxhLm9yZy52MS5VcGRhdGVNZW1iZXJSb2xlUmVzcG9uc2USegoXVXBkYXRlT3JnTG9jYWxlU2V0dGluZ3MSLi5odWFsYWxhLm9yZy52MS5VcGRhdGVPcmdMb2NhbGVTZXR0aW5nc1JlcXVlc3QaLy5odWFsYWxhLm9yZy52MS5VcGRhdGVPcmdMb2NhbGVTZXR0aW5nc1Jlc3BvbnNlQrkBChJjb20uaHVhbGFsYS5vcmcudjFCD09yZ1NlcnZpY2VQcm90b1ABWjhnaXRodWIuY29tL2h1YWxhbGEvYXBwcy9iYWNrZW5kL2dlbi9odWFsYWxhL29yZy92MTtvcmd2MaICA0hPWKoCDkh1YWxhbGEuT3JnLlYxygIOSHVhbGFsYVxPcmdcVjHiAhpIdWFsYWxhXE9yZ1xWMVxHUEJNZXRhZGF0YeoCEEh1YWxhbGE6Ok9yZzo6VjFiBnByb3RvMw");
+  fileDesc("CiBodWFsYWxhL29yZy92MS9vcmdfc2VydmljZS5wcm90bxIOaHVhbGFsYS5vcmcudjEiTQoGTWVtYmVyEhEKCW1lbWJlcl9pZBgBIAEoCRIOCgZvcmdfaWQYAiABKAkSDwoHdXNlcl9pZBgDIAEoCRIPCgdyb2xlX2lkGAQgASgJImUKBFJvbGUSDwoHcm9sZV9pZBgBIAEoCRIOCgZvcmdfaWQYAiABKAkSDAoEY29kZRgDIAEoCRIUCgxkaXNwbGF5X25hbWUYBCABKAkSGAoQcGVybWlzc2lvbl9jb2RlcxgFIAMoCSJIChNBdmFpbGFibGVQZXJtaXNzaW9uEgwKBGNvZGUYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJEg0KBWdyb3VwGAMgASgJIlYKEU9yZ0xvY2FsZVNldHRpbmdzEg4KBm9yZ19pZBgBIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgCIAEoCRIZChFzdXBwb3J0ZWRfbG9jYWxlcxgDIAMoCSIkChJMaXN0TWVtYmVyc1JlcXVlc3QSDgoGb3JnX2lkGAEgASgJIj4KE0xpc3RNZW1iZXJzUmVzcG9uc2USJwoHbWVtYmVycxgBIAMoCzIWLmh1YWxhbGEub3JnLnYxLk1lbWJlciIiChBMaXN0Um9sZXNSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCSI4ChFMaXN0Um9sZXNSZXNwb25zZRIjCgVyb2xlcxgBIAMoCzIULmh1YWxhbGEub3JnLnYxLlJvbGUiLQobR2V0T3JnTG9jYWxlU2V0dGluZ3NSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCSJaChxHZXRPcmdMb2NhbGVTZXR0aW5nc1Jlc3BvbnNlEjoKD2xvY2FsZV9zZXR0aW5ncxgBIAEoCzIhLmh1YWxhbGEub3JnLnYxLk9yZ0xvY2FsZVNldHRpbmdzIjEKH0xpc3RBdmFpbGFibGVQZXJtaXNzaW9uc1JlcXVlc3QSDgoGb3JnX2lkGAEgASgJIlwKIExpc3RBdmFpbGFibGVQZXJtaXNzaW9uc1Jlc3BvbnNlEjgKC3Blcm1pc3Npb25zGAEgAygLMiMuaHVhbGFsYS5vcmcudjEuQXZhaWxhYmxlUGVybWlzc2lvbiJhChFDcmVhdGVSb2xlUmVxdWVzdBIOCgZvcmdfaWQYASABKAkSDAoEY29kZRgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSGAoQcGVybWlzc2lvbl9jb2RlcxgEIAMoCSI4ChJDcmVhdGVSb2xlUmVzcG9uc2USIgoEcm9sZRgBIAEoCzIULmh1YWxhbGEub3JnLnYxLlJvbGUiZAoRVXBkYXRlUm9sZVJlcXVlc3QSDgoGb3JnX2lkGAEgASgJEg8KB3JvbGVfaWQYAiABKAkSFAoMZGlzcGxheV9uYW1lGAMgASgJEhgKEHBlcm1pc3Npb25fY29kZXMYBCADKAkiOAoSVXBkYXRlUm9sZVJlc3BvbnNlEiIKBHJvbGUYASABKAsyFC5odWFsYWxhLm9yZy52MS5Sb2xlIjQKEURlbGV0ZVJvbGVSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCRIPCgdyb2xlX2lkGAIgASgJIhQKEkRlbGV0ZVJvbGVSZXNwb25zZSJNChdVcGRhdGVNZW1iZXJSb2xlUmVxdWVzdBIOCgZvcmdfaWQYASABKAkSEQoJbWVtYmVyX2lkGAIgASgJEg8KB3JvbGVfaWQYAyABKAkiQgoYVXBkYXRlTWVtYmVyUm9sZVJlc3BvbnNlEiYKBm1lbWJlchgBIAEoCzIWLmh1YWxhbGEub3JnLnYxLk1lbWJlciJjCh5VcGRhdGVPcmdMb2NhbGVTZXR0aW5nc1JlcXVlc3QSDgoGb3JnX2lkGAEgASgJEhYKDmRlZmF1bHRfbG9jYWxlGAIgASgJEhkKEXN1cHBvcnRlZF9sb2NhbGVzGAMgAygJIl0KH1VwZGF0ZU9yZ0xvY2FsZVNldHRpbmdzUmVzcG9uc2USOgoPbG9jYWxlX3NldHRpbmdzGAEgASgLMiEuaHVhbGFsYS5vcmcudjEuT3JnTG9jYWxlU2V0dGluZ3MyigcKCk9yZ1NlcnZpY2USVgoLTGlzdE1lbWJlcnMSIi5odWFsYWxhLm9yZy52MS5MaXN0TWVtYmVyc1JlcXVlc3QaIy5odWFsYWxhLm9yZy52MS5MaXN0TWVtYmVyc1Jlc3BvbnNlElAKCUxpc3RSb2xlcxIgLmh1YWxhbGEub3JnLnYxLkxpc3RSb2xlc1JlcXVlc3QaIS5odWFsYWxhLm9yZy52MS5MaXN0Um9sZXNSZXNwb25zZRJxChRHZXRPcmdMb2NhbGVTZXR0aW5ncxIrLmh1YWxhbGEub3JnLnYxLkdldE9yZ0xvY2FsZVNldHRpbmdzUmVxdWVzdBosLmh1YWxhbGEub3JnLnYxLkdldE9yZ0xvY2FsZVNldHRpbmdzUmVzcG9uc2USfQoYTGlzdEF2YWlsYWJsZVBlcm1pc3Npb25zEi8uaHVhbGFsYS5vcmcudjEuTGlzdEF2YWlsYWJsZVBlcm1pc3Npb25zUmVxdWVzdBowLmh1YWxhbGEub3JnLnYxLkxpc3RBdmFpbGFibGVQZXJtaXNzaW9uc1Jlc3BvbnNlElMKCkNyZWF0ZVJvbGUSIS5odWFsYWxhLm9yZy52MS5DcmVhdGVSb2xlUmVxdWVzdBoiLmh1YWxhbGEub3JnLnYxLkNyZWF0ZVJvbGVSZXNwb25zZRJTCgpVcGRhdGVSb2xlEiEuaHVhbGFsYS5vcmcudjEuVXBkYXRlUm9sZVJlcXVlc3QaIi5odWFsYWxhLm9yZy52MS5VcGRhdGVSb2xlUmVzcG9uc2USUwoKRGVsZXRlUm9sZRIhLmh1YWxhbGEub3JnLnYxLkRlbGV0ZVJvbGVSZXF1ZXN0GiIuaHVhbGFsYS5vcmcudjEuRGVsZXRlUm9sZVJlc3BvbnNlEmUKEFVwZGF0ZU1lbWJlclJvbGUSJy5odWFsYWxhLm9yZy52MS5VcGRhdGVNZW1iZXJSb2xlUmVxdWVzdBooLmh1YWxhbGEub3JnLnYxLlVwZGF0ZU1lbWJlclJvbGVSZXNwb25zZRJ6ChdVcGRhdGVPcmdMb2NhbGVTZXR0aW5ncxIuLmh1YWxhbGEub3JnLnYxLlVwZGF0ZU9yZ0xvY2FsZVNldHRpbmdzUmVxdWVzdBovLmh1YWxhbGEub3JnLnYxLlVwZGF0ZU9yZ0xvY2FsZVNldHRpbmdzUmVzcG9uc2VCuQEKEmNvbS5odWFsYWxhLm9yZy52MUIPT3JnU2VydmljZVByb3RvUAFaOGdpdGh1Yi5jb20vaHVhbGFsYS9hcHBzL2JhY2tlbmQvZ2VuL2h1YWxhbGEvb3JnL3YxO29yZ3YxogIDSE9YqgIOSHVhbGFsYS5PcmcuVjHKAg5IdWFsYWxhXE9yZ1xWMeICGkh1YWxhbGFcT3JnXFYxXEdQQk1ldGFkYXRh6gIQSHVhbGFsYTo6T3JnOjpWMWIGcHJvdG8z");
 
 /**
  * @generated from message hualala.org.v1.Member
@@ -67,6 +67,11 @@ export type Role = Message<"hualala.org.v1.Role"> & {
    * @generated from field: string display_name = 4;
    */
   displayName: string;
+
+  /**
+   * @generated from field: repeated string permission_codes = 5;
+   */
+  permissionCodes: string[];
 };
 
 /**
@@ -75,6 +80,33 @@ export type Role = Message<"hualala.org.v1.Role"> & {
  */
 export const RoleSchema: GenMessage<Role> = /*@__PURE__*/
   messageDesc(file_hualala_org_v1_org_service, 1);
+
+/**
+ * @generated from message hualala.org.v1.AvailablePermission
+ */
+export type AvailablePermission = Message<"hualala.org.v1.AvailablePermission"> & {
+  /**
+   * @generated from field: string code = 1;
+   */
+  code: string;
+
+  /**
+   * @generated from field: string display_name = 2;
+   */
+  displayName: string;
+
+  /**
+   * @generated from field: string group = 3;
+   */
+  group: string;
+};
+
+/**
+ * Describes the message hualala.org.v1.AvailablePermission.
+ * Use `create(AvailablePermissionSchema)` to create a new message.
+ */
+export const AvailablePermissionSchema: GenMessage<AvailablePermission> = /*@__PURE__*/
+  messageDesc(file_hualala_org_v1_org_service, 2);
 
 /**
  * @generated from message hualala.org.v1.OrgLocaleSettings
@@ -101,7 +133,7 @@ export type OrgLocaleSettings = Message<"hualala.org.v1.OrgLocaleSettings"> & {
  * Use `create(OrgLocaleSettingsSchema)` to create a new message.
  */
 export const OrgLocaleSettingsSchema: GenMessage<OrgLocaleSettings> = /*@__PURE__*/
-  messageDesc(file_hualala_org_v1_org_service, 2);
+  messageDesc(file_hualala_org_v1_org_service, 3);
 
 /**
  * @generated from message hualala.org.v1.ListMembersRequest
@@ -118,7 +150,7 @@ export type ListMembersRequest = Message<"hualala.org.v1.ListMembersRequest"> & 
  * Use `create(ListMembersRequestSchema)` to create a new message.
  */
 export const ListMembersRequestSchema: GenMessage<ListMembersRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_org_v1_org_service, 3);
+  messageDesc(file_hualala_org_v1_org_service, 4);
 
 /**
  * @generated from message hualala.org.v1.ListMembersResponse
@@ -135,7 +167,7 @@ export type ListMembersResponse = Message<"hualala.org.v1.ListMembersResponse"> 
  * Use `create(ListMembersResponseSchema)` to create a new message.
  */
 export const ListMembersResponseSchema: GenMessage<ListMembersResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_org_v1_org_service, 4);
+  messageDesc(file_hualala_org_v1_org_service, 5);
 
 /**
  * @generated from message hualala.org.v1.ListRolesRequest
@@ -152,7 +184,7 @@ export type ListRolesRequest = Message<"hualala.org.v1.ListRolesRequest"> & {
  * Use `create(ListRolesRequestSchema)` to create a new message.
  */
 export const ListRolesRequestSchema: GenMessage<ListRolesRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_org_v1_org_service, 5);
+  messageDesc(file_hualala_org_v1_org_service, 6);
 
 /**
  * @generated from message hualala.org.v1.ListRolesResponse
@@ -169,7 +201,208 @@ export type ListRolesResponse = Message<"hualala.org.v1.ListRolesResponse"> & {
  * Use `create(ListRolesResponseSchema)` to create a new message.
  */
 export const ListRolesResponseSchema: GenMessage<ListRolesResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_org_v1_org_service, 6);
+  messageDesc(file_hualala_org_v1_org_service, 7);
+
+/**
+ * @generated from message hualala.org.v1.GetOrgLocaleSettingsRequest
+ */
+export type GetOrgLocaleSettingsRequest = Message<"hualala.org.v1.GetOrgLocaleSettingsRequest"> & {
+  /**
+   * @generated from field: string org_id = 1;
+   */
+  orgId: string;
+};
+
+/**
+ * Describes the message hualala.org.v1.GetOrgLocaleSettingsRequest.
+ * Use `create(GetOrgLocaleSettingsRequestSchema)` to create a new message.
+ */
+export const GetOrgLocaleSettingsRequestSchema: GenMessage<GetOrgLocaleSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_org_v1_org_service, 8);
+
+/**
+ * @generated from message hualala.org.v1.GetOrgLocaleSettingsResponse
+ */
+export type GetOrgLocaleSettingsResponse = Message<"hualala.org.v1.GetOrgLocaleSettingsResponse"> & {
+  /**
+   * @generated from field: hualala.org.v1.OrgLocaleSettings locale_settings = 1;
+   */
+  localeSettings?: OrgLocaleSettings;
+};
+
+/**
+ * Describes the message hualala.org.v1.GetOrgLocaleSettingsResponse.
+ * Use `create(GetOrgLocaleSettingsResponseSchema)` to create a new message.
+ */
+export const GetOrgLocaleSettingsResponseSchema: GenMessage<GetOrgLocaleSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_org_v1_org_service, 9);
+
+/**
+ * @generated from message hualala.org.v1.ListAvailablePermissionsRequest
+ */
+export type ListAvailablePermissionsRequest = Message<"hualala.org.v1.ListAvailablePermissionsRequest"> & {
+  /**
+   * @generated from field: string org_id = 1;
+   */
+  orgId: string;
+};
+
+/**
+ * Describes the message hualala.org.v1.ListAvailablePermissionsRequest.
+ * Use `create(ListAvailablePermissionsRequestSchema)` to create a new message.
+ */
+export const ListAvailablePermissionsRequestSchema: GenMessage<ListAvailablePermissionsRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_org_v1_org_service, 10);
+
+/**
+ * @generated from message hualala.org.v1.ListAvailablePermissionsResponse
+ */
+export type ListAvailablePermissionsResponse = Message<"hualala.org.v1.ListAvailablePermissionsResponse"> & {
+  /**
+   * @generated from field: repeated hualala.org.v1.AvailablePermission permissions = 1;
+   */
+  permissions: AvailablePermission[];
+};
+
+/**
+ * Describes the message hualala.org.v1.ListAvailablePermissionsResponse.
+ * Use `create(ListAvailablePermissionsResponseSchema)` to create a new message.
+ */
+export const ListAvailablePermissionsResponseSchema: GenMessage<ListAvailablePermissionsResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_org_v1_org_service, 11);
+
+/**
+ * @generated from message hualala.org.v1.CreateRoleRequest
+ */
+export type CreateRoleRequest = Message<"hualala.org.v1.CreateRoleRequest"> & {
+  /**
+   * @generated from field: string org_id = 1;
+   */
+  orgId: string;
+
+  /**
+   * @generated from field: string code = 2;
+   */
+  code: string;
+
+  /**
+   * @generated from field: string display_name = 3;
+   */
+  displayName: string;
+
+  /**
+   * @generated from field: repeated string permission_codes = 4;
+   */
+  permissionCodes: string[];
+};
+
+/**
+ * Describes the message hualala.org.v1.CreateRoleRequest.
+ * Use `create(CreateRoleRequestSchema)` to create a new message.
+ */
+export const CreateRoleRequestSchema: GenMessage<CreateRoleRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_org_v1_org_service, 12);
+
+/**
+ * @generated from message hualala.org.v1.CreateRoleResponse
+ */
+export type CreateRoleResponse = Message<"hualala.org.v1.CreateRoleResponse"> & {
+  /**
+   * @generated from field: hualala.org.v1.Role role = 1;
+   */
+  role?: Role;
+};
+
+/**
+ * Describes the message hualala.org.v1.CreateRoleResponse.
+ * Use `create(CreateRoleResponseSchema)` to create a new message.
+ */
+export const CreateRoleResponseSchema: GenMessage<CreateRoleResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_org_v1_org_service, 13);
+
+/**
+ * @generated from message hualala.org.v1.UpdateRoleRequest
+ */
+export type UpdateRoleRequest = Message<"hualala.org.v1.UpdateRoleRequest"> & {
+  /**
+   * @generated from field: string org_id = 1;
+   */
+  orgId: string;
+
+  /**
+   * @generated from field: string role_id = 2;
+   */
+  roleId: string;
+
+  /**
+   * @generated from field: string display_name = 3;
+   */
+  displayName: string;
+
+  /**
+   * @generated from field: repeated string permission_codes = 4;
+   */
+  permissionCodes: string[];
+};
+
+/**
+ * Describes the message hualala.org.v1.UpdateRoleRequest.
+ * Use `create(UpdateRoleRequestSchema)` to create a new message.
+ */
+export const UpdateRoleRequestSchema: GenMessage<UpdateRoleRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_org_v1_org_service, 14);
+
+/**
+ * @generated from message hualala.org.v1.UpdateRoleResponse
+ */
+export type UpdateRoleResponse = Message<"hualala.org.v1.UpdateRoleResponse"> & {
+  /**
+   * @generated from field: hualala.org.v1.Role role = 1;
+   */
+  role?: Role;
+};
+
+/**
+ * Describes the message hualala.org.v1.UpdateRoleResponse.
+ * Use `create(UpdateRoleResponseSchema)` to create a new message.
+ */
+export const UpdateRoleResponseSchema: GenMessage<UpdateRoleResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_org_v1_org_service, 15);
+
+/**
+ * @generated from message hualala.org.v1.DeleteRoleRequest
+ */
+export type DeleteRoleRequest = Message<"hualala.org.v1.DeleteRoleRequest"> & {
+  /**
+   * @generated from field: string org_id = 1;
+   */
+  orgId: string;
+
+  /**
+   * @generated from field: string role_id = 2;
+   */
+  roleId: string;
+};
+
+/**
+ * Describes the message hualala.org.v1.DeleteRoleRequest.
+ * Use `create(DeleteRoleRequestSchema)` to create a new message.
+ */
+export const DeleteRoleRequestSchema: GenMessage<DeleteRoleRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_org_v1_org_service, 16);
+
+/**
+ * @generated from message hualala.org.v1.DeleteRoleResponse
+ */
+export type DeleteRoleResponse = Message<"hualala.org.v1.DeleteRoleResponse"> & {
+};
+
+/**
+ * Describes the message hualala.org.v1.DeleteRoleResponse.
+ * Use `create(DeleteRoleResponseSchema)` to create a new message.
+ */
+export const DeleteRoleResponseSchema: GenMessage<DeleteRoleResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_org_v1_org_service, 17);
 
 /**
  * @generated from message hualala.org.v1.UpdateMemberRoleRequest
@@ -196,7 +429,7 @@ export type UpdateMemberRoleRequest = Message<"hualala.org.v1.UpdateMemberRoleRe
  * Use `create(UpdateMemberRoleRequestSchema)` to create a new message.
  */
 export const UpdateMemberRoleRequestSchema: GenMessage<UpdateMemberRoleRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_org_v1_org_service, 7);
+  messageDesc(file_hualala_org_v1_org_service, 18);
 
 /**
  * @generated from message hualala.org.v1.UpdateMemberRoleResponse
@@ -213,7 +446,7 @@ export type UpdateMemberRoleResponse = Message<"hualala.org.v1.UpdateMemberRoleR
  * Use `create(UpdateMemberRoleResponseSchema)` to create a new message.
  */
 export const UpdateMemberRoleResponseSchema: GenMessage<UpdateMemberRoleResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_org_v1_org_service, 8);
+  messageDesc(file_hualala_org_v1_org_service, 19);
 
 /**
  * @generated from message hualala.org.v1.UpdateOrgLocaleSettingsRequest
@@ -240,7 +473,7 @@ export type UpdateOrgLocaleSettingsRequest = Message<"hualala.org.v1.UpdateOrgLo
  * Use `create(UpdateOrgLocaleSettingsRequestSchema)` to create a new message.
  */
 export const UpdateOrgLocaleSettingsRequestSchema: GenMessage<UpdateOrgLocaleSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_org_v1_org_service, 9);
+  messageDesc(file_hualala_org_v1_org_service, 20);
 
 /**
  * @generated from message hualala.org.v1.UpdateOrgLocaleSettingsResponse
@@ -257,7 +490,7 @@ export type UpdateOrgLocaleSettingsResponse = Message<"hualala.org.v1.UpdateOrgL
  * Use `create(UpdateOrgLocaleSettingsResponseSchema)` to create a new message.
  */
 export const UpdateOrgLocaleSettingsResponseSchema: GenMessage<UpdateOrgLocaleSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_org_v1_org_service, 10);
+  messageDesc(file_hualala_org_v1_org_service, 21);
 
 /**
  * @generated from service hualala.org.v1.OrgService
@@ -278,6 +511,46 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ListRolesRequestSchema;
     output: typeof ListRolesResponseSchema;
+  },
+  /**
+   * @generated from rpc hualala.org.v1.OrgService.GetOrgLocaleSettings
+   */
+  getOrgLocaleSettings: {
+    methodKind: "unary";
+    input: typeof GetOrgLocaleSettingsRequestSchema;
+    output: typeof GetOrgLocaleSettingsResponseSchema;
+  },
+  /**
+   * @generated from rpc hualala.org.v1.OrgService.ListAvailablePermissions
+   */
+  listAvailablePermissions: {
+    methodKind: "unary";
+    input: typeof ListAvailablePermissionsRequestSchema;
+    output: typeof ListAvailablePermissionsResponseSchema;
+  },
+  /**
+   * @generated from rpc hualala.org.v1.OrgService.CreateRole
+   */
+  createRole: {
+    methodKind: "unary";
+    input: typeof CreateRoleRequestSchema;
+    output: typeof CreateRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc hualala.org.v1.OrgService.UpdateRole
+   */
+  updateRole: {
+    methodKind: "unary";
+    input: typeof UpdateRoleRequestSchema;
+    output: typeof UpdateRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc hualala.org.v1.OrgService.DeleteRole
+   */
+  deleteRole: {
+    methodKind: "unary";
+    input: typeof DeleteRoleRequestSchema;
+    output: typeof DeleteRoleResponseSchema;
   },
   /**
    * @generated from rpc hualala.org.v1.OrgService.UpdateMemberRole

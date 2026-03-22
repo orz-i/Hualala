@@ -6,6 +6,10 @@ export type SessionViewModel = {
   orgId: string;
   userId: string;
   locale: string;
+  roleId: string;
+  roleCode: string;
+  permissionCodes: string[];
+  timezone: string;
 };
 
 export type SessionBootstrapOptions = {
@@ -33,6 +37,10 @@ function mapSession(
       orgId?: string;
       userId?: string;
       locale?: string;
+      roleId?: string;
+      roleCode?: string;
+      permissionCodes?: string[];
+      timezone?: string;
     };
   },
 ): SessionViewModel {
@@ -45,6 +53,10 @@ function mapSession(
     orgId: session.orgId,
     userId: session.userId,
     locale: session.locale ?? "zh-CN",
+    roleId: session.roleId ?? "",
+    roleCode: session.roleCode ?? "",
+    permissionCodes: [...(session.permissionCodes ?? [])],
+    timezone: session.timezone ?? "",
   };
 }
 
