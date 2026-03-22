@@ -394,7 +394,7 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 			}
 		}
 		if shotExecutionID != "" {
-			s.publishShotExecutionUpdated(r.Context(), shotExecution, candidateAssetID, mediaAsset.ID)
+			events.PublishShotExecutionUpdated(r.Context(), s.eventPublisher, shotExecution, candidateAssetID, mediaAsset.ID)
 		}
 	}
 
@@ -486,33 +486,6 @@ func (s *Service) publishUploadSessionUpdated(ctx context.Context, session asset
 		ProjectID:      session.ProjectID,
 		ResourceType:   "upload_session",
 		ResourceID:     session.ID,
-		Payload:        string(body),
-	})
-}
-
-func (s *Service) publishShotExecutionUpdated(ctx context.Context, record execution.ShotExecution, candidateAssetID string, assetID string) {
-	if s == nil || s.eventPublisher == nil {
-		return
-	}
-
-	body, err := json.Marshal(map[string]any{
-		"shot_execution_id":  record.ID,
-		"shot_id":            record.ShotID,
-		"status":             record.Status,
-		"current_run_id":     record.CurrentRunID,
-		"candidate_asset_id": strings.TrimSpace(candidateAssetID),
-		"asset_id":           strings.TrimSpace(assetID),
-	})
-	if err != nil {
-		return
-	}
-
-	s.eventPublisher.PublishWithContext(ctx, events.Event{
-		EventType:      "shot.execution.updated",
-		OrganizationID: record.OrgID,
-		ProjectID:      record.ProjectID,
-		ResourceType:   "shot_execution",
-		ResourceID:     record.ID,
 		Payload:        string(body),
 	})
 }

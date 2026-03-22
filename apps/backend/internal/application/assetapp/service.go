@@ -196,7 +196,7 @@ func (s *Service) AddCandidateAsset(ctx context.Context, input AddCandidateAsset
 		return asset.CandidateAsset{}, err
 	}
 
-	s.publishShotExecutionUpdated(ctx, shotExecution, candidate.ID, mediaAsset.ID)
+	events.PublishShotExecutionUpdated(ctx, s.publisher, shotExecution, candidate.ID, mediaAsset.ID)
 	s.publishImportBatchUpdated(ctx, importBatch.ID, importBatch.OrgID, importBatch.ProjectID, importBatch.Status, "candidate_asset.added", candidate.ID, "")
 	return candidate, nil
 }
@@ -387,33 +387,6 @@ func (s *Service) GetAssetProvenanceSummary(_ context.Context, input GetAssetPro
 		ImportBatchID:     record.ImportBatchID,
 		VariantCount:      variantCount,
 	}, nil
-}
-
-func (s *Service) publishShotExecutionUpdated(ctx context.Context, record execution.ShotExecution, candidateAssetID string, assetID string) {
-	if s == nil || s.publisher == nil {
-		return
-	}
-
-	body, err := json.Marshal(map[string]any{
-		"shot_execution_id":  record.ID,
-		"shot_id":            record.ShotID,
-		"status":             record.Status,
-		"current_run_id":     record.CurrentRunID,
-		"candidate_asset_id": strings.TrimSpace(candidateAssetID),
-		"asset_id":           strings.TrimSpace(assetID),
-	})
-	if err != nil {
-		return
-	}
-
-	s.publisher.PublishWithContext(ctx, events.Event{
-		EventType:      "shot.execution.updated",
-		OrganizationID: strings.TrimSpace(record.OrgID),
-		ProjectID:      strings.TrimSpace(record.ProjectID),
-		ResourceType:   "shot_execution",
-		ResourceID:     record.ID,
-		Payload:        string(body),
-	})
 }
 
 func (s *Service) publishImportBatchUpdated(ctx context.Context, importBatchID string, organizationID string, projectID string, status string, reason string, candidateAssetID string, uploadSessionID string) {
