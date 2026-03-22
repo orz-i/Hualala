@@ -1,5 +1,5 @@
 import { createBillingClient, createReviewClient, type HualalaFetch } from "@hualala/sdk";
-import type { AdminOverviewViewModel } from "./AdminOverviewPage";
+import type { AdminOverviewViewModel } from "./overview";
 
 type LoadAdminOverviewOptions = {
   projectId: string;

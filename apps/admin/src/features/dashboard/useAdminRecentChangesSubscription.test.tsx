@@ -1,5 +1,5 @@
 import { renderHook } from "@testing-library/react";
-import type { RecentChangeSummary } from "./AdminOverviewPage";
+import type { RecentChangeSummary } from "./overview";
 import { subscribeAdminRecentChanges } from "./subscribeRecentChanges";
 import { useAdminRecentChangesSubscription } from "./useAdminRecentChangesSubscription";
 

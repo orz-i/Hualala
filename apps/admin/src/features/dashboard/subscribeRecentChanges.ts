@@ -3,7 +3,7 @@ import {
   type HualalaFetch,
   type SSEEventEnvelope,
 } from "@hualala/sdk";
-import type { RecentChangeSummary } from "./AdminOverviewPage";
+import type { RecentChangeSummary } from "./overview";
 
 type SubscribeAdminRecentChangesOptions = {
   organizationId: string;

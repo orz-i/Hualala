@@ -3,7 +3,7 @@ import type { AdminTranslator } from "../../i18n";
 import type {
   AdminOverviewViewModel,
   RecentChangeSummary,
-} from "./AdminOverviewPage";
+} from "./overview";
 import type { AdminGovernanceViewModel } from "./governance";
 import { loadAdminOverview } from "./loadAdminOverview";
 import { loadGovernancePanel } from "./loadGovernancePanel";

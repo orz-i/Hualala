@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { AdminOverviewViewModel } from "../features/dashboard/AdminOverviewPage";
+import type { AdminOverviewViewModel } from "../features/dashboard/overview";
 import { ADMIN_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
 import { useAdminOverviewGovernance } from "../features/dashboard/useAdminOverviewGovernance";
