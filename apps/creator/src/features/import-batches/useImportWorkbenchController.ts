@@ -3,6 +3,7 @@ import type { CreatorMessageKey, CreatorTranslator, LocaleCode } from "../../i18
 import { subscribeWorkbenchEvents } from "../subscribeWorkbenchEvents";
 import type { ActionFeedbackModel } from "../shared/ActionFeedback";
 import { buildImportFeedback } from "../shared/buildActionFeedback";
+import { useAssetProvenanceState } from "../shared/useAssetProvenanceState";
 import { useQueuedSilentRefresh } from "../shared/useQueuedSilentRefresh";
 import { waitForFeedbackPaint } from "../shared/waitForFeedbackPaint";
 import type {
@@ -66,6 +67,20 @@ export function useImportWorkbenchController({
     useState<SelectedUploadFileState | null>(null);
   const [feedback, setFeedback] = useState<ActionFeedbackModel | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const {
+    selectedAssetId,
+    assetProvenanceDetail,
+    assetProvenanceStatus,
+    assetProvenancePending,
+    assetProvenanceErrorMessage,
+    handleOpenAssetProvenance,
+    handleCloseAssetProvenance,
+    resetAssetProvenance,
+  } = useAssetProvenanceState({
+    t,
+    orgId,
+    userId,
+  });
 
   const refreshImportWorkbench = useCallback(async () => {
     if (!importBatchId) {
@@ -88,6 +103,7 @@ export function useImportWorkbenchController({
 
   useEffect(() => {
     if (!enabled || !importBatchId) {
+      resetAssetProvenance();
       startTransition(() => {
         setImportWorkbench(null);
         setSelectedUploadFile(null);
@@ -98,6 +114,7 @@ export function useImportWorkbenchController({
     }
 
     let cancelled = false;
+    resetAssetProvenance();
 
     loadImportBatchWorkbench({
       importBatchId,
@@ -130,7 +147,7 @@ export function useImportWorkbenchController({
     return () => {
       cancelled = true;
     };
-  }, [enabled, importBatchId, orgId, userId]);
+  }, [enabled, importBatchId, orgId, resetAssetProvenance, userId]);
 
   useEffect(() => {
     if (
@@ -353,10 +370,17 @@ export function useImportWorkbenchController({
     selectedUploadFile,
     feedback,
     errorMessage,
+    selectedAssetId,
+    assetProvenanceDetail,
+    assetProvenanceStatus,
+    assetProvenancePending,
+    assetProvenanceErrorMessage,
     handleChooseUploadFile,
     handleRegisterSelectedUpload,
     handleRetryUploadSession,
     handleConfirmMatches,
     handleSelectPrimaryAsset,
+    handleOpenAssetProvenance,
+    handleCloseAssetProvenance,
   };
 }

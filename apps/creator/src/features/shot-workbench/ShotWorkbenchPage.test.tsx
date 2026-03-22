@@ -132,6 +132,7 @@ describe("ShotWorkbenchPage", () => {
     const onStartWorkflow = vi.fn();
     const onRetryWorkflowRun = vi.fn();
     const onSelectPrimaryAsset = vi.fn();
+    const onOpenAssetProvenance = vi.fn();
 
     render(
       <ShotWorkbenchPage
@@ -145,6 +146,7 @@ describe("ShotWorkbenchPage", () => {
         onStartWorkflow={onStartWorkflow}
         onRetryWorkflowRun={onRetryWorkflowRun}
         onSelectPrimaryAsset={onSelectPrimaryAsset}
+        onOpenAssetProvenance={onOpenAssetProvenance}
       />,
     );
 
@@ -158,6 +160,11 @@ describe("ShotWorkbenchPage", () => {
     fireEvent.click(
       within(nonPrimaryCandidateCard as HTMLElement).getByRole("button", {
         name: "设为主素材",
+      }),
+    );
+    fireEvent.click(
+      within(nonPrimaryCandidateCard as HTMLElement).getByRole("button", {
+        name: "查看来源",
       }),
     );
 
@@ -179,6 +186,7 @@ describe("ShotWorkbenchPage", () => {
       shotExecutionId: "shot-exec-1",
       assetId: "asset-2",
     });
+    expect(onOpenAssetProvenance).toHaveBeenCalledWith("asset-2");
   });
 
   it("renders a success or error feedback message when provided", () => {
@@ -384,5 +392,41 @@ describe("ShotWorkbenchPage", () => {
 
     expect(screen.queryByText("当前主素材")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "设为主素材" })).toBeDisabled();
+  });
+
+  it("disables provenance when the candidate asset is missing an asset id", () => {
+    const onOpenAssetProvenance = vi.fn();
+
+    render(
+      <ShotWorkbenchPage
+        workbench={{
+          ...workbench,
+          candidateAssets: [
+            ...workbench.candidateAssets,
+            {
+              id: "candidate-3",
+              assetId: "",
+              shotExecutionId: "shot-exec-1",
+              sourceRunId: "source-run-3",
+            },
+          ],
+        }}
+        workflowPanel={workflowPanel}
+        locale="zh-CN"
+        t={createTranslator("zh-CN")}
+        onLocaleChange={() => {}}
+        onOpenAssetProvenance={onOpenAssetProvenance}
+      />,
+    );
+
+    const disabledCard = screen.getByText("候选：candidate-3").closest("article");
+    expect(disabledCard).not.toBeNull();
+    const disabledButton = within(disabledCard as HTMLElement).getByRole("button", {
+      name: "查看来源",
+    });
+    expect(disabledButton).toBeDisabled();
+
+    fireEvent.click(disabledButton);
+    expect(onOpenAssetProvenance).not.toHaveBeenCalled();
   });
 });

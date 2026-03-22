@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CREATOR_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { loadImportBatchWorkbench } from "../features/import-batches/loadImportBatchWorkbench";
@@ -26,6 +27,7 @@ import {
   ensureDevSession,
   loadCurrentSession,
 } from "../features/session/sessionBootstrap";
+import { loadAssetProvenanceDetails } from "../features/shared/loadAssetProvenanceDetails";
 import { subscribeWorkbenchEvents } from "../features/subscribeWorkbenchEvents";
 import { App } from "./App";
 
@@ -65,6 +67,9 @@ vi.mock("../features/session/sessionBootstrap", () => ({
   isUnauthenticatedSessionError: (error: unknown) =>
     error instanceof Error && (error.message.includes("(401)") || error.message.includes("unauthenticated")),
 }));
+vi.mock("../features/shared/loadAssetProvenanceDetails", () => ({
+  loadAssetProvenanceDetails: vi.fn(),
+}));
 vi.mock("../features/subscribeWorkbenchEvents", () => ({
   subscribeWorkbenchEvents: vi.fn(),
 }));
@@ -87,6 +92,7 @@ const retryShotWorkflowRunMock = vi.mocked(retryShotWorkflowRun);
 const loadCurrentSessionMock = vi.mocked(loadCurrentSession);
 const ensureDevSessionMock = vi.mocked(ensureDevSession);
 const clearCurrentSessionMock = vi.mocked(clearCurrentSession);
+const loadAssetProvenanceDetailsMock = vi.mocked(loadAssetProvenanceDetails);
 const subscribeWorkbenchEventsMock = vi.mocked(subscribeWorkbenchEvents);
 
 let latestWorkbenchSubscription:
@@ -326,6 +332,27 @@ function createShotWorkflowPanel(
   };
 }
 
+function createAssetProvenanceDetail(assetId: string, sourceRunId = "source-run-1") {
+  return {
+    asset: {
+      id: assetId,
+      projectId: "project-1",
+      sourceType: "upload_session",
+      rightsStatus: "clear",
+      importBatchId: "batch-1",
+      locale: "zh-CN",
+      aiAnnotated: true,
+    },
+    provenanceSummary:
+      "source_type=upload_session import_batch_id=batch-1 rights_status=clear",
+    candidateAssetId: `candidate-${assetId}`,
+    shotExecutionId: "shot-exec-1",
+    sourceRunId,
+    importBatchId: "batch-1",
+    variantCount: 2,
+  };
+}
+
 describe("App", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -382,6 +409,9 @@ describe("App", () => {
       latestWorkbenchSubscriptionCleanup = vi.fn();
       return latestWorkbenchSubscriptionCleanup;
     });
+    loadAssetProvenanceDetailsMock.mockResolvedValue(
+      createAssetProvenanceDetail("asset-default"),
+    );
     loadShotReviewTimelineMock.mockResolvedValue(createShotReviewTimeline("default"));
     loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
     startShotWorkflowMock.mockResolvedValue(undefined);
@@ -551,6 +581,62 @@ describe("App", () => {
     expect(await screen.findByText("主素材选择失败：network down")).toBeInTheDocument();
     expect(screen.getByText("batch-live-3")).toBeInTheDocument();
     expect(loadImportBatchWorkbenchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens import asset provenance lazily, keeps the page stable on failure, and clears dialog state on close", async () => {
+    window.history.pushState({}, "", "/?importBatchId=batch-live-provenance");
+    loadImportBatchWorkbenchMock.mockResolvedValue(
+      createImportWorkbenchWithPool("batch-live-provenance", "confirmed"),
+    );
+    loadAssetProvenanceDetailsMock
+      .mockRejectedValueOnce(new Error("network down"))
+      .mockResolvedValueOnce(
+        createAssetProvenanceDetail("asset-batch-live-provenance-2", "source-run-batch-2"),
+      );
+
+    render(<App />);
+
+    expect(await screen.findByText("batch-live-provenance")).toBeInTheDocument();
+
+    fireEvent.click(
+      within(
+        screen
+          .getByText("候选：candidate-batch-live-provenance-2")
+          .closest("article") as HTMLElement,
+      ).getByRole("button", { name: "查看来源" }),
+    );
+
+    await waitFor(() => {
+      expect(loadAssetProvenanceDetailsMock).toHaveBeenCalledWith({
+        assetId: "asset-batch-live-provenance-2",
+        orgId: undefined,
+        userId: undefined,
+      });
+    });
+
+    expect(await screen.findByText("来源详情加载失败：network down")).toBeInTheDocument();
+    expect(screen.getByText("batch-live-provenance")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "关闭来源详情" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "素材来源详情" })).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      within(
+        screen
+          .getByText("候选：candidate-batch-live-provenance-2")
+          .closest("article") as HTMLElement,
+      ).getByRole("button", { name: "查看来源" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "source_type=upload_session import_batch_id=batch-1 rights_status=clear",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("来源运行 ID：source-run-batch-2")).toBeInTheDocument();
+    expect(loadAssetProvenanceDetailsMock).toHaveBeenCalledTimes(2);
   });
 
   it("renders the upload registration actions for the import workbench", async () => {
@@ -881,6 +967,87 @@ describe("App", () => {
     expect(loadShotWorkbenchMock).toHaveBeenCalledTimes(2);
     expect(loadShotReviewTimelineMock).toHaveBeenCalledTimes(2);
     expect(loadShotWorkflowPanelMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("opens shot asset provenance lazily and clears the dialog state after close", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-provenance");
+    loadShotWorkbenchMock.mockResolvedValue(
+      createShotWorkbenchWithPool("shot-provenance", "candidate_ready", "approved"),
+    );
+    loadShotReviewTimelineMock.mockResolvedValue(createShotReviewTimeline("shot-provenance"));
+    loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
+    loadAssetProvenanceDetailsMock.mockResolvedValue(
+      createAssetProvenanceDetail("asset-shot-provenance-2", "source-run-shot-2"),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-shot-provenance")).toBeInTheDocument();
+
+    fireEvent.click(
+      within(
+        screen
+          .getByText("候选：candidate-shot-provenance-2")
+          .closest("article") as HTMLElement,
+      ).getByRole("button", { name: "查看来源" }),
+    );
+
+    await waitFor(() => {
+      expect(loadAssetProvenanceDetailsMock).toHaveBeenCalledWith({
+        assetId: "asset-shot-provenance-2",
+        orgId: undefined,
+        userId: undefined,
+      });
+    });
+
+    expect(await screen.findByRole("dialog", { name: "素材来源详情" })).toBeInTheDocument();
+    expect(screen.getByText("asset-shot-provenance-2")).toBeInTheDocument();
+    expect(screen.getByText("来源运行 ID：source-run-shot-2")).toBeInTheDocument();
+    expect(screen.getByText("shot-exec-shot-provenance")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "关闭来源详情" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "素材来源详情" })).not.toBeInTheDocument();
+    });
+  });
+
+  it("commits shot provenance results under React StrictMode", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-provenance-strict");
+    loadShotWorkbenchMock.mockResolvedValue(
+      createShotWorkbenchWithPool("shot-provenance-strict", "candidate_ready", "approved"),
+    );
+    loadShotReviewTimelineMock.mockResolvedValue(
+      createShotReviewTimeline("shot-provenance-strict"),
+    );
+    loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
+    loadAssetProvenanceDetailsMock.mockResolvedValue(
+      createAssetProvenanceDetail("asset-shot-provenance-strict-2", "source-run-shot-strict-2"),
+    );
+
+    render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+
+    expect(await screen.findByText("shot-exec-shot-provenance-strict")).toBeInTheDocument();
+
+    fireEvent.click(
+      within(
+        screen
+          .getByText("候选：candidate-shot-provenance-strict-2")
+          .closest("article") as HTMLElement,
+      ).getByRole("button", { name: "查看来源" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "source_type=upload_session import_batch_id=batch-1 rights_status=clear",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("来源运行 ID：source-run-shot-strict-2"),
+    ).toBeInTheDocument();
   });
 
   it("subscribes to shot workbench SSE after the first successful load", async () => {
