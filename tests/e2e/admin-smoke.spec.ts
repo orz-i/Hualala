@@ -34,6 +34,10 @@ test("admin smoke: renders overview and updates budget", async ({ page }) => {
   await mockConnectRoutes(page, {
     admin: "success",
   });
+  await page.route("**/hualala.billing.v1.BillingService/UpdateBudgetPolicy", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await route.fallback();
+  });
 
   await page.goto(MOCK_ADMIN_URL);
   await page.getByRole("button", { name: "进入开发会话" }).click();

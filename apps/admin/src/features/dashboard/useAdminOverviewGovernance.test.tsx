@@ -233,6 +233,64 @@ describe("useAdminOverviewGovernance", () => {
     expect(result.current.overview?.budgetSnapshot.limitCents).toBe(240000);
   });
 
+  it("surfaces pending budget feedback before the update resolves", async () => {
+    const budgetUpdateDeferred = createDeferred<{
+      id: string;
+      orgId: string;
+      projectId: string;
+      limitCents: number;
+      reservedCents: number;
+    }>();
+    loadAdminOverviewMock
+      .mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001"))
+      .mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001", 240000));
+    loadGovernancePanelMock.mockResolvedValueOnce(createGovernance("org-demo-001", "user-demo-001"));
+    updateBudgetPolicyMock.mockReturnValueOnce(budgetUpdateDeferred.promise);
+
+    const { result } = renderHook(() =>
+      useAdminOverviewGovernance({
+        sessionState: "ready",
+        projectId: "project-live-001",
+        shotExecutionId: "shot-exec-live-001",
+        identityOverride: undefined,
+        effectiveOrgId: "org-demo-001",
+        effectiveUserId: "user-demo-001",
+        t,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.overview?.budgetSnapshot.limitCents).toBe(120000);
+    });
+
+    act(() => {
+      void result.current.onUpdateBudgetLimit({
+        projectId: "project-live-001",
+        limitCents: 240000,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.budgetFeedback?.tone).toBe("pending");
+      expect(result.current.budgetFeedback?.message).toBe("正在更新预算策略");
+    });
+
+    await act(async () => {
+      budgetUpdateDeferred.resolve({
+        id: "policy-1",
+        orgId: "org-demo-001",
+        projectId: "project-live-001",
+        limitCents: 240000,
+        reservedCents: 18000,
+      });
+      await budgetUpdateDeferred.promise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.budgetFeedback?.tone).toBe("success");
+    });
+  });
+
   it("keeps governance data visible and surfaces an error when governance actions fail", async () => {
     const governance = createGovernance("org-demo-001", "user-demo-001");
     loadAdminOverviewMock.mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001"));
