@@ -67,7 +67,11 @@ export async function loadShotReviewTimeline({
         commentLocale: review.commentLocale ?? "",
       })),
     };
-  } catch {
+  } catch (error) {
+    console.warn("creator: failed to load shot review timeline", {
+      shotExecutionId,
+      error,
+    });
     return {
       evaluationRuns: [],
       shotReviews: [],

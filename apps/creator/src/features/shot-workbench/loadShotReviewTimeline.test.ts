@@ -136,6 +136,7 @@ describe("loadShotReviewTimeline", () => {
   });
 
   it("returns the unavailable state when the review timeline requests fail", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.mocked(createReviewClient).mockReturnValue({
       listEvaluationRuns: vi.fn().mockRejectedValue(new Error("network down")),
       listShotReviews: vi.fn(),
@@ -150,6 +151,10 @@ describe("loadShotReviewTimeline", () => {
       evaluationRuns: [],
       shotReviews: [],
       unavailableMessage: "Review timeline unavailable",
+    });
+    expect(warnSpy).toHaveBeenCalledWith("creator: failed to load shot review timeline", {
+      shotExecutionId: "shot-exec-1",
+      error: expect.any(Error),
     });
   });
 });

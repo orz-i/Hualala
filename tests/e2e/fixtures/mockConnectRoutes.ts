@@ -1171,6 +1171,24 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         return;
       }
 
+      if (pathname === "/hualala.review.v1.ReviewService/ListEvaluationRuns") {
+        await route.fulfill(
+          jsonResponse(200, {
+            evaluationRuns: [],
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.review.v1.ReviewService/ListShotReviews") {
+        await route.fulfill(
+          jsonResponse(200, {
+            shotReviews: [],
+          }),
+        );
+        return;
+      }
+
       if (pathname === "/hualala.execution.v1.ExecutionService/RunSubmissionGateChecks") {
         await delay(120);
         if (scenario.creatorShot === "failure") {
