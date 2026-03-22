@@ -295,6 +295,13 @@ func (s *Service) MarkShotReworkRequired(ctx context.Context, input MarkShotRewo
 	if err := s.executions.SaveShotExecution(ctx, record); err != nil {
 		return execution.ShotExecution{}, err
 	}
+	s.publishShotExecutionUpdated(ctx, record, map[string]any{
+		"shot_execution_id": record.ID,
+		"shot_id":           record.ShotID,
+		"status":            record.Status,
+		"current_run_id":    record.CurrentRunID,
+		"reason":            strings.TrimSpace(input.Reason),
+	})
 	return record, nil
 }
 
