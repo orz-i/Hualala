@@ -1,12 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { runBackendSeed } from "./fixtures/runBackendSeed";
 
+const ADMIN_BASE_URL = "http://127.0.0.1:4173";
+
 function buildAdminUrl(input: {
   projectId: string;
   shotExecutionId: string;
   orgId: string;
 }) {
-  const url = new URL("http://127.0.0.1:4173");
+  const url = new URL(ADMIN_BASE_URL);
   url.searchParams.set("projectId", input.projectId);
   url.searchParams.set("shotExecutionId", input.shotExecutionId);
   url.searchParams.set("orgId", input.orgId);
@@ -123,27 +125,50 @@ test("admin real smoke: creates and cancels a workflow run through the real back
   page,
 }) => {
   const seed = await runBackendSeed();
+  let startWorkflowProtocolVersion: string | null = null;
 
   await page.route("**/hualala.workflow.v1.WorkflowService/CancelWorkflowRun", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 200));
+    await route.continue();
+  });
+  await page.route("**/hualala.workflow.v1.WorkflowService/StartWorkflow", async (route) => {
+    startWorkflowProtocolVersion = await route.request().headerValue("connect-protocol-version");
     await route.continue();
   });
 
   await page.goto(seed.urls.admin);
   await page.getByRole("button", { name: "进入开发会话" }).click();
 
-  const startWorkflowResponse = await page.request.post(
-    "http://127.0.0.1:4173/hualala.workflow.v1.WorkflowService/StartWorkflow",
+  const startWorkflowResponse = await page.evaluate(
+    async ({ adminBaseUrl, orgId, projectId, importBatchId }) => {
+      const response = await fetch(`${adminBaseUrl}/hualala.workflow.v1.WorkflowService/StartWorkflow`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Connect-Protocol-Version": "1",
+        },
+        body: JSON.stringify({
+          organizationId: orgId,
+          projectId,
+          workflowType: "asset.import",
+          resourceId: importBatchId,
+        }),
+      });
+      return {
+        ok: response.ok,
+        status: response.status,
+      };
+    },
     {
-      data: {
-        organizationId: seed.admin.orgId,
-        projectId: seed.admin.projectId,
-        workflowType: "asset.import",
-        resourceId: seed.creatorImport.importBatchId,
-      },
+      adminBaseUrl: ADMIN_BASE_URL,
+      orgId: seed.admin.orgId,
+      projectId: seed.admin.projectId,
+      importBatchId: seed.creatorImport.importBatchId,
     },
   );
-  expect(startWorkflowResponse.ok()).toBeTruthy();
+  expect(startWorkflowResponse.ok).toBeTruthy();
+  expect(startWorkflowResponse.status).toBe(200);
+  expect(startWorkflowProtocolVersion).toBe("1");
 
   await page.reload();
   await expect(page.getByText("工作流监控")).toBeVisible();
