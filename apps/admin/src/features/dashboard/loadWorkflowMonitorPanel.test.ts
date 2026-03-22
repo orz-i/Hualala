@@ -133,4 +133,33 @@ describe("workflow monitor loaders", () => {
     expect(result.steps[1]?.errorCode).toBe("provider_error");
     expect(result.steps[1]?.failedAt).toBe("2024-03-09T16:05:00.000Z");
   });
+
+  it("throws when workflow run detail payload is incomplete", async () => {
+    const fetchFn = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/hualala.workflow.v1.WorkflowService/GetWorkflowRun")) {
+        return new Response(
+          JSON.stringify({
+            workflowRun: {
+              projectId: "project-live-1",
+            },
+            workflowSteps: [],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response("unexpected", { status: 500 });
+    });
+
+    await expect(
+      loadWorkflowRunDetails({
+        workflowRunId: "workflow-run-missing",
+        orgId: "org-live-1",
+        userId: "user-live-1",
+        baseUrl: "http://127.0.0.1:8080",
+        fetchFn,
+      }),
+    ).rejects.toThrow("admin: workflow run detail payload is incomplete");
+  });
 });
