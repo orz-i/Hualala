@@ -237,6 +237,26 @@ function buildOccupantLabel(occupant) {
   return occupant.command;
 }
 
+export function parseLsofMachineReadableOutput(stdout) {
+  const trimmed = stdout?.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const pidMatch = trimmed.match(/^p(\d+)/m);
+  if (!pidMatch) {
+    return null;
+  }
+
+  const parsedPid = Number(pidMatch[1]);
+  const commandMatch = trimmed.match(/^c(.+)/m);
+  const parsedCommand = commandMatch?.[1]?.trim();
+  return {
+    pid: Number.isFinite(parsedPid) ? parsedPid : null,
+    command: parsedCommand || null,
+  };
+}
+
 async function probePort(host, port, timeoutMs = 500) {
   return new Promise((resolveProbe) => {
     let settled = false;
@@ -299,12 +319,23 @@ function describeWindowsPortOccupant(host, port) {
 }
 
 function describeUnixPortOccupant(_host, port) {
-  const lsofResult = spawnSync('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN'], {
+  const lsofResult = spawnSync('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-Fpc'], {
     encoding: 'utf8',
     shell: false,
   });
   if (!lsofResult.error && lsofResult.status === 0) {
-    const lines = lsofResult.stdout.trim().split(/\r?\n/).filter(Boolean);
+    const parsed = parseLsofMachineReadableOutput(lsofResult.stdout);
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  const lsofFallback = spawnSync('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN'], {
+    encoding: 'utf8',
+    shell: false,
+  });
+  if (!lsofFallback.error && lsofFallback.status === 0) {
+    const lines = lsofFallback.stdout.trim().split(/\r?\n/).filter(Boolean);
     if (lines.length >= 2) {
       const parts = lines[1].trim().split(/\s+/);
       return {

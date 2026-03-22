@@ -10,6 +10,7 @@ import {
   defaultDatabaseUrl,
   fetchWithTimeout,
   formatPortConflictError,
+  parseLsofMachineReadableOutput,
   stopTrackedChild,
 } from "./run-dev-real.mjs";
 
@@ -141,4 +142,16 @@ test("formatPortConflictError falls back to host and port when process details a
 
   assert.match(message, /creator 127\.0\.0\.1:4174/);
   assert.match(message, /已被占用/);
+});
+
+test("parseLsofMachineReadableOutput parses lsof -Fpc output", () => {
+  assert.deepEqual(
+    parseLsofMachineReadableOutput("p4242\ncnode\n"),
+    {
+      pid: 4242,
+      command: "node",
+    },
+  );
+
+  assert.equal(parseLsofMachineReadableOutput("cnode\n"), null);
 });

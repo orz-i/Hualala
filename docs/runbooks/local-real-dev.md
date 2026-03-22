@@ -218,7 +218,7 @@ docker run --rm -p 8080:8080 ^
 - 查看 `go run ./apps/backend/cmd/api` 的启动错误
 - 确认 `8080` 端口未被其他进程占用
 
-### 3.1 `dev:real` 一启动就报端口占用并退出
+### 4. `dev:real` 一启动就报端口占用并退出
 
 症状：
 
@@ -232,7 +232,7 @@ docker run --rm -p 8080:8080 ^
 - 如果不确定命中的是哪套进程，以脚本输出的 PID / 命令行为准
 - 只有端口全部空闲后，才应该继续 real 联调
 
-### 3.2 `dev:real:seed` 报 `GetShotWorkbench` 校验失败
+### 5. `dev:real:seed` 报 `GetShotWorkbench` 校验失败
 
 症状：
 
@@ -246,7 +246,7 @@ docker run --rm -p 8080:8080 ^
 - 再检查 `DATABASE_URL` 是否指向预期本地库
 - 必要时清掉旧进程后重跑 `corepack pnpm run dev:real`，再执行 `corepack pnpm run dev:real:seed`
 
-### 4. admin / creator 起不来
+### 6. admin / creator 起不来
 
 症状：
 
@@ -260,7 +260,7 @@ docker run --rm -p 8080:8080 ^
   - `corepack pnpm --filter @hualala/creator exec vite --host 127.0.0.1 --port 4174 --strictPort`
 - 释放冲突端口后重试
 
-### 5. Vite proxy 报 `ECONNREFUSED`
+### 7. Vite proxy 报 `ECONNREFUSED`
 
 症状：
 

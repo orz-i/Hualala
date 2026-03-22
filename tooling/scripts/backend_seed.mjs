@@ -127,6 +127,8 @@ async function postJson(fetchFn, baseUrl, path, body) {
 
 async function verifyShotWorkbenchReachable(fetchFn, baseUrl, { shotId, shotExecutionId }) {
   const path = "/hualala.execution.v1.ExecutionService/GetShotWorkbench";
+  const errorPrefix = `backend-seed: GetShotWorkbench verification failed for shotId=${shotId} expectedShotExecutionId=${shotExecutionId} via ${path}`;
+  const errorSuffix = "，可能连接到旧 backend 或错误数据库。";
   let payload;
 
   try {
@@ -137,24 +139,24 @@ async function verifyShotWorkbenchReachable(fetchFn, baseUrl, { shotId, shotExec
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `backend-seed: GetShotWorkbench verification failed for shotId=${shotId} expectedShotExecutionId=${shotExecutionId} via ${path}; 可能连接到旧 backend 或错误数据库。原始错误: ${detail}`,
+      `${errorPrefix}${errorSuffix} 原始错误: ${detail}`,
     );
   }
 
   const verifiedExecution = payload?.workbench?.shotExecution;
   if (!verifiedExecution?.id) {
     throw new Error(
-      `backend-seed: GetShotWorkbench verification failed for shotId=${shotId} expectedShotExecutionId=${shotExecutionId} via ${path}; workbench.shotExecution.id is missing，可能连接到旧 backend 或错误数据库。`,
+      `${errorPrefix}; workbench.shotExecution.id is missing${errorSuffix}`,
     );
   }
   if (verifiedExecution.shotId !== shotId) {
     throw new Error(
-      `backend-seed: GetShotWorkbench verification failed for shotId=${shotId} expectedShotExecutionId=${shotExecutionId} via ${path}; returned shotId=${verifiedExecution.shotId ?? ""}，可能连接到旧 backend 或错误数据库。`,
+      `${errorPrefix}; returned shotId=${verifiedExecution.shotId ?? ""}${errorSuffix}`,
     );
   }
   if (shotExecutionId && verifiedExecution.id !== shotExecutionId) {
     throw new Error(
-      `backend-seed: GetShotWorkbench verification failed for shotId=${shotId} expectedShotExecutionId=${shotExecutionId} via ${path}; returned shotExecutionId=${verifiedExecution.id}，可能连接到旧 backend 或错误数据库。`,
+      `${errorPrefix}; returned shotExecutionId=${verifiedExecution.id}${errorSuffix}`,
     );
   }
 }
