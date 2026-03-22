@@ -348,6 +348,7 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 	if strings.TrimSpace(session.ImportBatchID) != "" {
 		itemStatus := "uploaded_pending_match"
 		matchedShotID := ""
+		candidateAssetID := ""
 		if shotExecutionID != "" {
 			candidate := asset.CandidateAsset{
 				ID:              s.assets.GenerateCandidateAssetID(),
@@ -360,6 +361,7 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 			if err := s.assets.SaveCandidateAsset(r.Context(), candidate); err != nil {
 				return asset.UploadSession{}, err
 			}
+			candidateAssetID = candidate.ID
 			itemStatus = "matched_pending_confirm"
 			matchedShotID = shotExecution.ShotID
 			shotExecution.Status = "candidate_ready"
@@ -367,7 +369,6 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 			if err := s.executions.SaveShotExecution(r.Context(), shotExecution); err != nil {
 				return asset.UploadSession{}, err
 			}
-			s.publishShotExecutionUpdated(r.Context(), shotExecution, candidate.ID, mediaAsset.ID)
 		}
 
 		item := asset.ImportBatchItem{
@@ -388,6 +389,9 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 			if err := s.assets.SaveImportBatch(r.Context(), batch); err != nil {
 				return asset.UploadSession{}, err
 			}
+		}
+		if shotExecutionID != "" {
+			s.publishShotExecutionUpdated(r.Context(), shotExecution, candidateAssetID, mediaAsset.ID)
 		}
 	}
 

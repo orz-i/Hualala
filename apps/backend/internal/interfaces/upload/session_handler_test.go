@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -574,6 +575,82 @@ func TestCompleteUploadSessionCanAttachCandidateToShotExecution(t *testing.T) {
 	}
 }
 
+func TestCompleteUploadSessionDoesNotPublishShotExecutionEventBeforeImportBatchSave(t *testing.T) {
+	store := db.NewMemoryStore()
+	resetSessionStore(store)
+	seedUploadAuthStore(store)
+	store.ImportBatches["import-batch-1"] = assetdomain.ImportBatch{
+		ID:         "import-batch-1",
+		OrgID:      db.DefaultDevOrganizationID,
+		ProjectID:  uploadTestProjectID,
+		OperatorID: "user-1",
+		SourceType: "upload_session",
+		Status:     "pending_review",
+	}
+	store.ShotExecutions["shot-execution-1"] = executiondomain.ShotExecution{
+		ID:        "shot-execution-1",
+		OrgID:     db.DefaultDevOrganizationID,
+		ProjectID: uploadTestProjectID,
+		ShotID:    "shot-1",
+		Status:    "in_progress",
+	}
+
+	assets := &failingUploadAssetRepository{
+		MemoryStore:         store,
+		saveImportBatchErr:  errors.New("upload test: injected import batch save failure"),
+	}
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, NewService(Dependencies{
+		Assets:         assets,
+		Executions:     store,
+		Policy:         policyapp.NewService(store),
+		Authorizer:     authz.NewAuthorizer(store),
+		EventPublisher: store.EventPublisher,
+	}))
+
+	createRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions", map[string]any{
+		"organization_id":    db.DefaultDevOrganizationID,
+		"project_id":         uploadTestProjectID,
+		"import_batch_id":    "import-batch-1",
+		"file_name":          "shot.png",
+		"checksum":           "sha256:abc123",
+		"size_bytes":         1024,
+		"expires_in_seconds": 60,
+	})
+	sessionID := decodeUploadJSONResponse(t, createRec)["session_id"].(string)
+	store.EventPublisher.Reset()
+
+	completeReqBody, err := json.Marshal(map[string]any{
+		"shot_execution_id": "shot-execution-1",
+		"variant_type":      "original",
+		"mime_type":         "image/png",
+		"locale":            "zh-CN",
+		"rights_status":     "clear",
+		"ai_annotated":      true,
+		"width":             1920,
+		"height":            1080,
+	})
+	if err != nil {
+		t.Fatalf("json.Marshal returned error: %v", err)
+	}
+
+	completeReq := httptest.NewRequest(http.MethodPost, "/upload/sessions/"+sessionID+"/complete", bytes.NewReader(completeReqBody))
+	completeReq.Header.Set("Content-Type", "application/json")
+	completeReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(db.DefaultDevOrganizationID, db.DefaultDevUserID))
+	completeRec := httptest.NewRecorder()
+	mux.ServeHTTP(completeRec, completeReq)
+
+	if completeRec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400 when import batch save fails, got %d with body %s", completeRec.Code, completeRec.Body.String())
+	}
+	if stream := store.EventPublisher.List(db.DefaultDevOrganizationID, uploadTestProjectID, ""); len(stream) != 0 {
+		t.Fatalf("expected no durable events after failed candidate attach completion, got %d", len(stream))
+	}
+	if got := store.ImportBatches["import-batch-1"].Status; got != "pending_review" {
+		t.Fatalf("expected import batch status to remain pending_review after failure, got %q", got)
+	}
+}
+
 func TestUploadSessionRoutesRequireAuthenticatedSession(t *testing.T) {
 	store := db.NewMemoryStore()
 	resetSessionStore(store)
@@ -654,6 +731,26 @@ func newUploadServiceFromStore(store *db.MemoryStore) *Service {
 		Authorizer:     authz.NewAuthorizer(store),
 		EventPublisher: store.EventPublisher,
 	})
+}
+
+type failingUploadAssetRepository struct {
+	*db.MemoryStore
+	saveImportBatchErr     error
+	saveImportBatchItemErr error
+}
+
+func (r *failingUploadAssetRepository) SaveImportBatch(ctx context.Context, record assetdomain.ImportBatch) error {
+	if r != nil && r.saveImportBatchErr != nil {
+		return r.saveImportBatchErr
+	}
+	return r.MemoryStore.SaveImportBatch(ctx, record)
+}
+
+func (r *failingUploadAssetRepository) SaveImportBatchItem(ctx context.Context, record assetdomain.ImportBatchItem) error {
+	if r != nil && r.saveImportBatchItemErr != nil {
+		return r.saveImportBatchItemErr
+	}
+	return r.MemoryStore.SaveImportBatchItem(ctx, record)
 }
 
 func seedUploadAuthStore(store *db.MemoryStore) {
