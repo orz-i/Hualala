@@ -180,3 +180,46 @@ test("scenario initializer keeps admin workflow scope and mock session defaults 
   assert.equal(initialized.creatorShotWorkflowRuns[0]?.projectId, "project-from-shot");
   assert.equal(initialized.creatorShotWorkflowRuns[0]?.resourceId, "shot-execution-1");
 });
+
+test("preview helpers preserve assembly order and provenance scope", async () => {
+  const {
+    createPreviewAssemblyState,
+    upsertPreviewAssemblyState,
+    buildPreviewWorkbenchPayload,
+    buildPreviewAssetProvenancePayload,
+  } = await import("../../tests/e2e/fixtures/mock-connect/preview.ts");
+
+  const initial = createPreviewAssemblyState("project-1");
+  assert.equal(initial.items[0]?.shotId, "shot-preview-1");
+
+  const updated = upsertPreviewAssemblyState(initial, {
+    projectId: "project-1",
+    status: "draft",
+    items: [
+      {
+        itemId: "draft-1",
+        shotId: "shot-preview-2",
+        primaryAssetId: "asset-preview-2",
+        sourceRunId: "run-preview-2",
+        sequence: 1,
+      },
+      {
+        itemId: "item-1",
+        shotId: "shot-preview-1",
+        primaryAssetId: "",
+        sourceRunId: "",
+        sequence: 2,
+      },
+    ],
+  });
+
+  const payload = buildPreviewWorkbenchPayload(updated);
+  assert.equal(payload.assembly.items[0]?.shotId, "shot-preview-2");
+  assert.equal(payload.assembly.items[0]?.sequence, 1);
+  assert.equal(payload.assembly.items[1]?.shotId, "shot-preview-1");
+
+  const provenance = buildPreviewAssetProvenancePayload(updated, "asset-preview-2");
+  assert.equal(provenance?.asset.projectId, "project-1");
+  assert.equal(provenance?.sourceRunId, "run-preview-2");
+  assert.match(provenance?.provenanceSummary ?? "", /preview_assembly=assembly-project-1/);
+});

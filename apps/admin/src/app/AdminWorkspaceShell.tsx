@@ -21,12 +21,14 @@ const navItems: Array<{
     | "nav.overview"
     | "nav.workflow"
     | "nav.assets"
+    | "nav.preview"
     | "nav.collaboration"
     | "nav.governance";
 }> = [
   { route: "overview", key: "nav.overview" },
   { route: "workflow", key: "nav.workflow" },
   { route: "assets", key: "nav.assets" },
+  { route: "preview", key: "nav.preview" },
   { route: "collaboration", key: "nav.collaboration" },
   { route: "governance", key: "nav.governance" },
 ];

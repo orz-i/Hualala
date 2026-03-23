@@ -11,6 +11,8 @@ import {
   ImportBatchWorkbenchPage,
 } from "../features/import-batches/ImportBatchWorkbenchPage";
 import { useImportWorkbenchController } from "../features/import-batches/useImportWorkbenchController";
+import { PreviewWorkbenchPage } from "../features/preview/PreviewWorkbenchPage";
+import { usePreviewWorkbenchController } from "../features/preview/usePreviewWorkbenchController";
 import { ActionFeedback } from "../features/shared/ActionFeedback";
 import { ShotWorkbenchPage } from "../features/shot-workbench/ShotWorkbenchPage";
 import { useShotWorkbenchController } from "../features/shot-workbench/useShotWorkbenchController";
@@ -177,6 +179,17 @@ export function App() {
     userId: effectiveUserId,
   });
 
+  const previewWorkbenchController = usePreviewWorkbenchController({
+    enabled:
+      sessionState === "ready" &&
+      routeState.route === "preview" &&
+      Boolean(routeState.projectId),
+    projectId: routeState.projectId ?? "",
+    t,
+    orgId: effectiveOrgId,
+    userId: effectiveUserId,
+  });
+
   const homeController = useCreatorHomeController({
     enabled: sessionState === "ready" && routeState.route === "home",
     projectId: homeProjectId,
@@ -245,6 +258,21 @@ export function App() {
     [commitRouteState, homeRouteProjectId, routeState],
   );
 
+  const handleOpenPreviewWorkbench = useCallback(() => {
+    const nextProjectId = homeRouteProjectId?.trim();
+    if (!nextProjectId) {
+      return;
+    }
+
+    commitRouteState(
+      {
+        ...selectCreatorRoute(routeState, "preview"),
+        projectId: nextProjectId,
+      },
+      "push",
+    );
+  }, [commitRouteState, homeRouteProjectId, routeState]);
+
   const handleStartDevSession = useCallback(async () => {
     startTransition(() => {
       setSessionState("loading");
@@ -289,6 +317,7 @@ export function App() {
       readRememberedProjectId() ??
       importWorkbenchController.importWorkbench?.importBatch.projectId ??
       collabController.collaborationSession?.scope?.projectId ??
+      previewWorkbenchController.previewWorkbench?.assembly.projectId ??
       shotWorkbenchController.shotWorkbench?.shotExecution.projectId ??
       undefined;
 
@@ -303,6 +332,7 @@ export function App() {
     commitRouteState,
     collabController.collaborationSession?.scope?.projectId,
     importWorkbenchController.importWorkbench,
+    previewWorkbenchController.previewWorkbench?.assembly.projectId,
     routeState,
     shotWorkbenchController.shotWorkbench,
   ]);
@@ -314,13 +344,13 @@ export function App() {
       })
     : t("session.active", { userId: session?.userId ?? "" });
 
-  const workbenchErrorMessage = routeState.route === "imports"
-    ? importWorkbenchController.errorMessage
-    : routeState.route === "shots"
-      ? shotWorkbenchController.errorMessage
-      : routeState.route === "collab"
-        ? collabController.errorMessage
-      : "";
+  const workbenchErrorMessages: Partial<Record<CreatorRouteState["route"], string>> = {
+    imports: importWorkbenchController.errorMessage,
+    shots: shotWorkbenchController.errorMessage,
+    collab: collabController.errorMessage,
+    preview: previewWorkbenchController.errorMessage,
+  };
+  const workbenchErrorMessage = workbenchErrorMessages[routeState.route] ?? "";
   const errorMessage = sessionErrorMessage || workbenchErrorMessage;
 
   if (errorMessage) {
@@ -520,6 +550,86 @@ export function App() {
     );
   }
 
+  if (routeState.route === "preview" && previewWorkbenchController.previewWorkbench) {
+    const previewWorkbench = previewWorkbenchController.previewWorkbench;
+
+    return (
+      <PreviewWorkbenchPage
+        previewWorkbench={previewWorkbench}
+        draftItems={previewWorkbenchController.draftItems}
+        newShotIdInput={previewWorkbenchController.newShotIdInput}
+        newPrimaryAssetIdInput={previewWorkbenchController.newPrimaryAssetIdInput}
+        newSourceRunIdInput={previewWorkbenchController.newSourceRunIdInput}
+        assetProvenanceDetail={previewWorkbenchController.assetProvenanceDetail}
+        assetProvenancePending={previewWorkbenchController.assetProvenancePending}
+        assetProvenanceErrorMessage={previewWorkbenchController.assetProvenanceErrorMessage}
+        t={t}
+        shellHeader={
+          <CreatorWorkspaceShell
+            tone="preview"
+            badge={t("preview.badge")}
+            title={previewWorkbench.assembly.projectId}
+            description={t("preview.header", {
+              status: previewWorkbench.assembly.status,
+              count: previewWorkbench.items.length,
+            })}
+            sessionLabel={sessionLabel}
+            locale={locale}
+            t={t}
+            onLocaleChange={setLocale}
+            onClearSession={
+              identityOverride
+                ? undefined
+                : () => {
+                    void handleClearCurrentSession();
+                  }
+            }
+            onBackHome={handleReturnHome}
+            feedback={
+              previewWorkbenchController.feedback ? (
+                <ActionFeedback feedback={previewWorkbenchController.feedback} />
+              ) : undefined
+            }
+          />
+        }
+        onNewShotIdInputChange={previewWorkbenchController.setNewShotIdInput}
+        onNewPrimaryAssetIdInputChange={previewWorkbenchController.setNewPrimaryAssetIdInput}
+        onNewSourceRunIdInputChange={previewWorkbenchController.setNewSourceRunIdInput}
+        onDraftItemFieldChange={previewWorkbenchController.handleDraftItemFieldChange}
+        onAddItem={previewWorkbenchController.handleAddItem}
+        onRemoveItem={previewWorkbenchController.handleRemoveItem}
+        onMoveItem={previewWorkbenchController.handleMoveItem}
+        onSaveAssembly={() => {
+          void previewWorkbenchController.handleSaveAssembly();
+        }}
+        onOpenShotWorkbench={(shotId) => {
+          const nextShotId = shotId.trim();
+          if (!nextShotId) {
+            return;
+          }
+
+          commitRouteState(
+            {
+              ...selectCreatorRoute(
+                {
+                  ...routeState,
+                  projectId: previewWorkbench.assembly.projectId,
+                },
+                "shots",
+              ),
+              shotId: nextShotId,
+            },
+            "push",
+          );
+        }}
+        onOpenAssetProvenance={(assetId) => {
+          void previewWorkbenchController.handleOpenAssetProvenance(assetId);
+        }}
+        onCloseAssetProvenance={previewWorkbenchController.handleCloseAssetProvenance}
+      />
+    );
+  }
+
   if (routeState.route === "home") {
     return (
       <CreatorHomePage
@@ -556,6 +666,7 @@ export function App() {
         onSubmitProjectId={handleSelectProjectId}
         onShotIdInputChange={homeController.setShotIdInput}
         onSubmitShotId={handleOpenShotWorkbench}
+        onOpenPreview={handleOpenPreviewWorkbench}
         onOpenImportBatch={handleOpenImportWorkbench}
       />
     );
@@ -567,6 +678,10 @@ export function App() {
 
   if (routeState.route === "collab") {
     return <main style={{ padding: "32px" }}>{t("app.loading.collab")}</main>;
+  }
+
+  if (routeState.route === "preview") {
+    return <main style={{ padding: "32px" }}>{t("app.loading.preview")}</main>;
   }
 
   return <main style={{ padding: "32px" }}>{t("app.loading.shot")}</main>;

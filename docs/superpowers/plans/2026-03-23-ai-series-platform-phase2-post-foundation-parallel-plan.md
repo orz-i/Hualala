@@ -101,7 +101,9 @@
 - Phase 2 第一批 shared truth 有文档、有 proto、有 SDK client、有 guard。
 - 实时协同与预演工作台后续产品线可直接消费，不再需要在本分支私扩协议。
 
-## Task 2: 实时协同线
+## Task 2: 实时协同线（已完成）
+
+> Status: 已于 2026-03-23 合入 `master`，PR `#48`
 
 **Files:**
 - Modify: `apps/creator/src/app/creatorRoutes.ts`
@@ -124,21 +126,19 @@
 - Test: `apps/admin/src/app/App.test.tsx`
 - Test: `tests/e2e/phase2-collaboration.spec.ts`
 
-- [ ] 给 creator 新增协同工作台路由，例如 `/collab` 或挂到内容资源深链接，而不是把协同状态塞回 `home / shots / imports`。
-- [ ] 先实现“presence + 锁状态 + 草稿版本”最小闭环，不直接引入完整 CRDT 富文本编辑器。
-- [ ] 将富文本协同适配器留在 creator 端 feature 内，不放进 `packages/sdk`，遵守设计文档 12.5 的边界。
-- [ ] backend 补齐协同会话读写、锁持有者、版本推进、最近冲突摘要，并通过 SSE 广播变更。
-- [ ] admin 新增协同观测页，只负责查看当前协同会话、锁冲突、长时间未释放编辑锁，不承担编辑本身。
-- [ ] mock fixture 为协同补新的假数据模块，不把逻辑重新堆回 `mockConnectRoutes.ts`。
-- [ ] 先跑 unit/hook/component tests，再跑 `corepack pnpm run test:e2e:creator` 和新增 `phase2-collaboration` mock 验收。
-- [ ] 若协同 payload、SSE 事件名或 session identity 不够表达，暂停本线并回到 foundation micro-patch。
+- [x] creator 已新增 `/collab` 路由与独立协同工作台，不再把协同状态塞回 `home / shots / imports`。
+- [x] 已交付 “presence + 锁状态 + 草稿版本” 最小闭环，未引入完整 CRDT 富文本编辑器。
+- [x] 富文本协同适配器继续留在 creator feature 内，没有进入 `packages/sdk`。
+- [x] backend 已补齐协同会话读写、锁持有者、版本推进、最近冲突摘要，并通过 foundation SSE patch 广播变更。
+- [x] admin 已新增协同观测页，只负责查看当前协同会话、锁冲突与滞留编辑锁。
+- [x] 本地与 GitHub CI 已通过 creator/admin 单测、lint、build 与 PR 验证。
 
 **Exit checks:**
 - 至少一个内容对象可被两端看到 presence / lock / draft version。
 - SSE 断连恢复后不会丢失最近协同状态。
 - admin 能看到冲突或滞留会话，不需要登录 creator 才能排障。
 
-## Task 3: 预演工作台线
+## Task 3A: 预演工作台线（薄消费层）
 
 **Files:**
 - Modify: `apps/creator/src/app/creatorRoutes.ts`
@@ -146,30 +146,34 @@
 - Create: `apps/creator/src/features/preview/`
 - Create: `apps/creator/src/features/preview/PreviewWorkbenchPage.tsx`
 - Create: `apps/creator/src/features/preview/usePreviewWorkbenchController.ts`
-- Create: `apps/creator/src/features/preview/previewTimeline.ts`
-- Create: `apps/creator/src/features/preview/previewAssembly.ts`
+- Create: `apps/creator/src/features/preview/loadPreviewWorkbench.ts`
+- Create: `apps/creator/src/features/preview/mutatePreviewWorkbench.ts`
+- Create: `apps/creator/src/features/preview/previewWorkbench.ts`
 - Modify: `apps/admin/src/app/adminRoutes.ts`
-- Create: `apps/admin/src/features/dashboard/preview/`
-- Modify: `apps/backend/internal/interfaces/connect/project_service.go`
-- Modify: `apps/backend/internal/interfaces/connect/asset_service.go`
-- Create: `apps/backend/internal/application/projectapp/preview_service.go`
-- Create: `apps/backend/internal/domain/project/preview.go`
+- Create: `apps/admin/src/features/dashboard/AdminPreviewPage.tsx`
+- Create: `apps/admin/src/features/dashboard/useAdminPreviewController.tsx`
+- Create: `apps/admin/src/features/dashboard/loadAdminPreviewWorkbench.ts`
+- Create: `apps/admin/src/features/dashboard/adminPreview.ts`
 - Test: `apps/creator/src/features/preview/*.test.tsx`
 - Test: `tests/e2e/phase2-preview.spec.ts`
 
-- [ ] 为 creator 新增预演工作台入口，不与镜头工作台混成一个超大页面。
-- [ ] 明确预演对象的最小真相：镜头顺序、所用主素材/候选素材、转场/字幕占位、播放状态、导出状态。
-- [ ] 首批只做“装配 + 回放 + 导出占位 + 追溯入口”，不把多轨音频一次性混入预演主线。
-- [ ] backend 需要能聚合项目/场次/镜头级素材，输出预演所需的装配 payload，并保留来源追踪。
-- [ ] creator 侧把当前已有 shot/import workbench 深链接接入预演上下文，允许从预演跳回镜头或素材来源详情。
-- [ ] admin 侧补预演任务观测与失败定位入口，只做治理/观察，不复制 creator 的操作面。
-- [ ] 先跑 creator 组件测试，再跑新增 `phase2-preview` mock E2E；若导出链路接真实 backend，再补 real smoke。
-- [ ] 若预演对象需要新的 workflow step、asset variant 或导出状态语义，先走 foundation micro-patch。
+- [ ] 为 creator 新增 `/preview?projectId=...` 入口，不与镜头工作台混成一个超大页面。
+- [ ] 当前 3A 只消费已冻结的 `ProjectService.GetPreviewWorkbench / UpsertPreviewAssembly`，不新增 proto、SDK public API 或 preview SSE。
+- [ ] creator 先交付“手动追加 shotId + 删除 + 上移/下移 + 整体保存 + provenance drilldown”最小闭环。
+- [ ] admin 先交付只读预演观测页，确认 assembly 状态、条目数、缺失主素材条目和 provenance 入口。
+- [ ] 新增独立 preview mock fixture 与 `phase2-preview` Playwright 验收，不把 preview 逻辑继续堆回 Phase 1 spec。
+- [ ] 若预演对象需要友好标题、项目级 chooser、导出执行细节或 richer aggregation，拆到 Task 3B / foundation patch。
 
 **Exit checks:**
 - creator 能从项目级入口打开预演工作台并看到镜头顺序与素材引用。
 - 预演页至少有一个稳定的“回到 shot/import/asset provenance”跳转链。
 - 预演失败能在 admin 或 creator 里定位到 workflow / asset / rights / budget 原因。
+
+## Task 3B: 预演 richer aggregation backlog
+
+- [ ] 补 shot / scene 友好标题、项目级 shot chooser 和更多非 ID 化摘要，避免 creator 长期停留在 raw ID 心智。
+- [ ] 评估是否需要项目级 preview 专用 SSE；若需要，先回 foundation patch，而不是在产品线私扩事件名。
+- [ ] 预演导出、真实播放器、字幕/转场 richer payload、多轨音频联动，都放到 3B 之后与音频线协调推进。
 
 ## Task 4: 多轨音频线
 

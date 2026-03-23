@@ -68,6 +68,39 @@ describe("adminRoutes", () => {
     });
   });
 
+  it("parses the preview route and keeps only common query state", () => {
+    expect(
+      parseAdminRouteState({
+        pathname: "/preview",
+        search: "?projectId=project-live-001&shotExecutionId=shot-exec-live-001&orgId=org-live-001&userId=user-live-001",
+      } as Pick<Location, "pathname" | "search">),
+    ).toEqual({
+      route: "preview",
+      projectId: "project-live-001",
+      shotExecutionId: "shot-exec-live-001",
+      orgId: "org-live-001",
+      userId: "user-live-001",
+      workflowRunId: undefined,
+      importBatchId: undefined,
+      assetId: undefined,
+      shotId: undefined,
+    });
+  });
+
+  it("builds preview urls with the common route params only", () => {
+    expect(
+      buildAdminRouteUrl({
+        route: "preview",
+        projectId: "project-live-001",
+        shotExecutionId: "shot-exec-live-001",
+        orgId: "org-live-001",
+        userId: "user-live-001",
+      }),
+    ).toBe(
+      "/preview?projectId=project-live-001&shotExecutionId=shot-exec-live-001&orgId=org-live-001&userId=user-live-001",
+    );
+  });
+
   it("clears route-specific detail state when switching routes", () => {
     expect(
       selectAdminRoute(
