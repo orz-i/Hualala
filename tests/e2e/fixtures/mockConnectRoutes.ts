@@ -537,6 +537,11 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       }
     }
 
-    await route.continue();
+    await route.fulfill(
+      jsonResponse(501, {
+        error: "mock connect route not implemented",
+        pathname,
+      }),
+    );
   });
 }
