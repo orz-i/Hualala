@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListProjectsRequest, ListProjectsResponse } from "./project_service_pb.js";
+import { CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetPreviewWorkbenchRequest, GetPreviewWorkbenchResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListProjectsRequest, ListProjectsResponse, UpsertPreviewAssemblyRequest, UpsertPreviewAssemblyResponse } from "./project_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -55,6 +55,24 @@ export const ProjectService = {
       name: "ListEpisodes",
       I: ListEpisodesRequest,
       O: ListEpisodesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.project.v1.ProjectService.GetPreviewWorkbench
+     */
+    getPreviewWorkbench: {
+      name: "GetPreviewWorkbench",
+      I: GetPreviewWorkbenchRequest,
+      O: GetPreviewWorkbenchResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.project.v1.ProjectService.UpsertPreviewAssembly
+     */
+    upsertPreviewAssembly: {
+      name: "UpsertPreviewAssembly",
+      I: UpsertPreviewAssemblyRequest,
+      O: UpsertPreviewAssemblyResponse,
       kind: MethodKind.Unary,
     },
   }

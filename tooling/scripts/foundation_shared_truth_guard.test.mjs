@@ -108,3 +108,57 @@ test("backend connect contract tests are split into suites instead of one monoli
   assert.doesNotMatch(routesSuite, /testServerRouteDependenciesDoNotExposeRawMemoryStore\(t\)/);
   assert.doesNotMatch(routesSuite, /testCmdAPIAvoidsRepositorySetConstruction\(t\)/);
 });
+
+test("collaboration and preview shared truth stay on foundation proto, sdk, and migration entry points", () => {
+  const contentProto = readFileSync(join(repoRoot, "proto", "hualala", "content", "v1", "content.proto"), "utf8");
+  const projectProto = readFileSync(
+    join(repoRoot, "proto", "hualala", "project", "v1", "project_service.proto"),
+    "utf8",
+  );
+  const assetProto = readFileSync(join(repoRoot, "proto", "hualala", "asset", "v1", "asset.proto"), "utf8");
+  const workflowProto = readFileSync(join(repoRoot, "proto", "hualala", "workflow", "v1", "workflow.proto"), "utf8");
+  const sdkIndex = readFileSync(join(repoRoot, "packages", "sdk", "src", "index.ts"), "utf8");
+  const contractFreeze = readFileSync(join(repoRoot, "docs", "runbooks", "phase2-contract-freeze.md"), "utf8");
+
+  const expectedFiles = [
+    "packages/sdk/src/connect/services/content.ts",
+    "packages/sdk/src/connect/services/project.ts",
+    "infra/migrations/0015_phase2_collab_preview_shared_truth.sql",
+  ];
+  for (const relativePath of expectedFiles) {
+    assert.equal(existsSync(join(repoRoot, ...relativePath.split("/"))), true, `${relativePath} should exist`);
+  }
+
+  const contentService = readFileSync(
+    join(repoRoot, "packages", "sdk", "src", "connect", "services", "content.ts"),
+    "utf8",
+  );
+  const projectService = readFileSync(
+    join(repoRoot, "packages", "sdk", "src", "connect", "services", "project.ts"),
+    "utf8",
+  );
+
+  assert.match(contentProto, /rpc GetCollaborationSession/);
+  assert.match(contentProto, /rpc UpsertCollaborationLease/);
+  assert.match(contentProto, /rpc ReleaseCollaborationLease/);
+  assert.match(projectProto, /rpc GetPreviewWorkbench/);
+  assert.match(projectProto, /rpc UpsertPreviewAssembly/);
+
+  assert.match(contentService, /export function createContentClient/);
+  assert.match(projectService, /export function createProjectClient/);
+  assert.match(sdkIndex, /export \* from "\.\/connect\/services\/content"/);
+  assert.match(sdkIndex, /export \* from "\.\/connect\/services\/project"/);
+  assert.match(sdkIndex, /export \* from "\.\/gen\/hualala\/content\/v1\/content_pb"/);
+  assert.match(sdkIndex, /export \* from "\.\/gen\/hualala\/project\/v1\/project_service_pb"/);
+
+  assert.match(contractFreeze, /proto\/hualala\/content\/v1\/content\.proto/);
+  assert.match(contractFreeze, /proto\/hualala\/project\/v1\/project_service\.proto/);
+  assert.match(contractFreeze, /packages\/sdk\/src\/connect\/services\/content\.ts/);
+  assert.match(contractFreeze, /packages\/sdk\/src\/connect\/services\/project\.ts/);
+  assert.match(contractFreeze, /不扩 `asset\.proto`、`workflow\.proto`/);
+  assert.match(contractFreeze, /audio/);
+  assert.match(contractFreeze, /reuse/);
+
+  assert.doesNotMatch(assetProto, /PreviewAssembly|CollaborationSession|GetPreviewWorkbench|GetCollaborationSession/);
+  assert.doesNotMatch(workflowProto, /PreviewAssembly|CollaborationSession|GetPreviewWorkbench|GetCollaborationSession/);
+});

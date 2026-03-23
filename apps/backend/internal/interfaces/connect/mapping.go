@@ -13,7 +13,9 @@ import (
 	reviewv1 "github.com/hualala/apps/backend/gen/hualala/review/v1"
 	"github.com/hualala/apps/backend/internal/application/assetapp"
 	"github.com/hualala/apps/backend/internal/application/billingapp"
+	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/executionapp"
+	"github.com/hualala/apps/backend/internal/application/projectapp"
 	"github.com/hualala/apps/backend/internal/application/reviewapp"
 	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/domain/auth"
@@ -99,6 +101,33 @@ func mapEpisode(record project.Episode) *projectv1.Episode {
 	}
 }
 
+func mapPreviewAssemblyItem(record project.PreviewAssemblyItem) *projectv1.PreviewAssemblyItem {
+	return &projectv1.PreviewAssemblyItem{
+		ItemId:         record.ID,
+		AssemblyId:     record.AssemblyID,
+		ShotId:         record.ShotID,
+		PrimaryAssetId: record.PrimaryAssetID,
+		SourceRunId:    record.SourceRunID,
+		Sequence:       uint32(record.Sequence),
+	}
+}
+
+func mapPreviewWorkbench(record projectapp.PreviewWorkbench) *projectv1.PreviewAssembly {
+	items := make([]*projectv1.PreviewAssemblyItem, 0, len(record.Items))
+	for _, item := range record.Items {
+		items = append(items, mapPreviewAssemblyItem(item))
+	}
+	return &projectv1.PreviewAssembly{
+		AssemblyId: record.Assembly.ID,
+		ProjectId:  record.Assembly.ProjectID,
+		EpisodeId:  record.Assembly.EpisodeID,
+		Status:     record.Assembly.Status,
+		Items:      items,
+		CreatedAt:  timestampOrNil(record.Assembly.CreatedAt),
+		UpdatedAt:  timestampOrNil(record.Assembly.UpdatedAt),
+	}
+}
+
 func mapScene(record content.Scene) *contentv1.Scene {
 	return &contentv1.Scene{
 		Id:           record.ID,
@@ -129,6 +158,36 @@ func mapContentSnapshot(record content.Snapshot) *contentv1.ContentSnapshot {
 		TranslationGroupId: record.TranslationGroupID,
 		TranslationStatus:  record.TranslationStatus,
 		Body:               record.Body,
+	}
+}
+
+func mapCollaborationPresence(record content.CollaborationPresence) *contentv1.CollaborationPresence {
+	return &contentv1.CollaborationPresence{
+		PresenceId:     record.ID,
+		SessionId:      record.SessionID,
+		UserId:         record.UserID,
+		Status:         record.Status,
+		LastSeenAt:     timestampOrNil(record.LastSeenAt),
+		LeaseExpiresAt: timestampOrNil(record.LeaseExpiresAt),
+	}
+}
+
+func mapCollaborationSession(record contentapp.CollaborationSessionState) *contentv1.CollaborationSession {
+	presences := make([]*contentv1.CollaborationPresence, 0, len(record.Presences))
+	for _, presence := range record.Presences {
+		presences = append(presences, mapCollaborationPresence(presence))
+	}
+	return &contentv1.CollaborationSession{
+		SessionId:        record.Session.ID,
+		OwnerType:        record.Session.OwnerType,
+		OwnerId:          record.Session.OwnerID,
+		DraftVersion:     record.Session.DraftVersion,
+		LockHolderUserId: record.Session.LockHolderUserID,
+		LeaseExpiresAt:   timestampOrNil(record.Session.LeaseExpiresAt),
+		ConflictSummary:  record.Session.ConflictSummary,
+		Presences:        presences,
+		CreatedAt:        timestampOrNil(record.Session.CreatedAt),
+		UpdatedAt:        timestampOrNil(record.Session.UpdatedAt),
 	}
 }
 

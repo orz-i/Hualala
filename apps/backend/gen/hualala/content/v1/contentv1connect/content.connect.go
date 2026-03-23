@@ -58,6 +58,15 @@ const (
 	// ContentServiceCreateLocalizedSnapshotProcedure is the fully-qualified name of the
 	// ContentService's CreateLocalizedSnapshot RPC.
 	ContentServiceCreateLocalizedSnapshotProcedure = "/hualala.content.v1.ContentService/CreateLocalizedSnapshot"
+	// ContentServiceGetCollaborationSessionProcedure is the fully-qualified name of the
+	// ContentService's GetCollaborationSession RPC.
+	ContentServiceGetCollaborationSessionProcedure = "/hualala.content.v1.ContentService/GetCollaborationSession"
+	// ContentServiceUpsertCollaborationLeaseProcedure is the fully-qualified name of the
+	// ContentService's UpsertCollaborationLease RPC.
+	ContentServiceUpsertCollaborationLeaseProcedure = "/hualala.content.v1.ContentService/UpsertCollaborationLease"
+	// ContentServiceReleaseCollaborationLeaseProcedure is the fully-qualified name of the
+	// ContentService's ReleaseCollaborationLease RPC.
+	ContentServiceReleaseCollaborationLeaseProcedure = "/hualala.content.v1.ContentService/ReleaseCollaborationLease"
 )
 
 // ContentServiceClient is a client for the hualala.content.v1.ContentService service.
@@ -71,6 +80,9 @@ type ContentServiceClient interface {
 	UpdateShotStructure(context.Context, *connect.Request[v1.UpdateShotStructureRequest]) (*connect.Response[v1.UpdateShotStructureResponse], error)
 	CreateContentSnapshot(context.Context, *connect.Request[v1.CreateContentSnapshotRequest]) (*connect.Response[v1.CreateContentSnapshotResponse], error)
 	CreateLocalizedSnapshot(context.Context, *connect.Request[v1.CreateLocalizedSnapshotRequest]) (*connect.Response[v1.CreateLocalizedSnapshotResponse], error)
+	GetCollaborationSession(context.Context, *connect.Request[v1.GetCollaborationSessionRequest]) (*connect.Response[v1.GetCollaborationSessionResponse], error)
+	UpsertCollaborationLease(context.Context, *connect.Request[v1.UpsertCollaborationLeaseRequest]) (*connect.Response[v1.UpsertCollaborationLeaseResponse], error)
+	ReleaseCollaborationLease(context.Context, *connect.Request[v1.ReleaseCollaborationLeaseRequest]) (*connect.Response[v1.ReleaseCollaborationLeaseResponse], error)
 }
 
 // NewContentServiceClient constructs a client for the hualala.content.v1.ContentService service. By
@@ -138,20 +150,41 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(contentServiceMethods.ByName("CreateLocalizedSnapshot")),
 			connect.WithClientOptions(opts...),
 		),
+		getCollaborationSession: connect.NewClient[v1.GetCollaborationSessionRequest, v1.GetCollaborationSessionResponse](
+			httpClient,
+			baseURL+ContentServiceGetCollaborationSessionProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("GetCollaborationSession")),
+			connect.WithClientOptions(opts...),
+		),
+		upsertCollaborationLease: connect.NewClient[v1.UpsertCollaborationLeaseRequest, v1.UpsertCollaborationLeaseResponse](
+			httpClient,
+			baseURL+ContentServiceUpsertCollaborationLeaseProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("UpsertCollaborationLease")),
+			connect.WithClientOptions(opts...),
+		),
+		releaseCollaborationLease: connect.NewClient[v1.ReleaseCollaborationLeaseRequest, v1.ReleaseCollaborationLeaseResponse](
+			httpClient,
+			baseURL+ContentServiceReleaseCollaborationLeaseProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("ReleaseCollaborationLease")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // contentServiceClient implements ContentServiceClient.
 type contentServiceClient struct {
-	createScene             *connect.Client[v1.CreateSceneRequest, v1.CreateSceneResponse]
-	createShot              *connect.Client[v1.CreateShotRequest, v1.CreateShotResponse]
-	listScenes              *connect.Client[v1.ListScenesRequest, v1.ListScenesResponse]
-	getScene                *connect.Client[v1.GetSceneRequest, v1.GetSceneResponse]
-	listSceneShots          *connect.Client[v1.ListSceneShotsRequest, v1.ListSceneShotsResponse]
-	getShot                 *connect.Client[v1.GetShotRequest, v1.GetShotResponse]
-	updateShotStructure     *connect.Client[v1.UpdateShotStructureRequest, v1.UpdateShotStructureResponse]
-	createContentSnapshot   *connect.Client[v1.CreateContentSnapshotRequest, v1.CreateContentSnapshotResponse]
-	createLocalizedSnapshot *connect.Client[v1.CreateLocalizedSnapshotRequest, v1.CreateLocalizedSnapshotResponse]
+	createScene               *connect.Client[v1.CreateSceneRequest, v1.CreateSceneResponse]
+	createShot                *connect.Client[v1.CreateShotRequest, v1.CreateShotResponse]
+	listScenes                *connect.Client[v1.ListScenesRequest, v1.ListScenesResponse]
+	getScene                  *connect.Client[v1.GetSceneRequest, v1.GetSceneResponse]
+	listSceneShots            *connect.Client[v1.ListSceneShotsRequest, v1.ListSceneShotsResponse]
+	getShot                   *connect.Client[v1.GetShotRequest, v1.GetShotResponse]
+	updateShotStructure       *connect.Client[v1.UpdateShotStructureRequest, v1.UpdateShotStructureResponse]
+	createContentSnapshot     *connect.Client[v1.CreateContentSnapshotRequest, v1.CreateContentSnapshotResponse]
+	createLocalizedSnapshot   *connect.Client[v1.CreateLocalizedSnapshotRequest, v1.CreateLocalizedSnapshotResponse]
+	getCollaborationSession   *connect.Client[v1.GetCollaborationSessionRequest, v1.GetCollaborationSessionResponse]
+	upsertCollaborationLease  *connect.Client[v1.UpsertCollaborationLeaseRequest, v1.UpsertCollaborationLeaseResponse]
+	releaseCollaborationLease *connect.Client[v1.ReleaseCollaborationLeaseRequest, v1.ReleaseCollaborationLeaseResponse]
 }
 
 // CreateScene calls hualala.content.v1.ContentService.CreateScene.
@@ -199,6 +232,21 @@ func (c *contentServiceClient) CreateLocalizedSnapshot(ctx context.Context, req 
 	return c.createLocalizedSnapshot.CallUnary(ctx, req)
 }
 
+// GetCollaborationSession calls hualala.content.v1.ContentService.GetCollaborationSession.
+func (c *contentServiceClient) GetCollaborationSession(ctx context.Context, req *connect.Request[v1.GetCollaborationSessionRequest]) (*connect.Response[v1.GetCollaborationSessionResponse], error) {
+	return c.getCollaborationSession.CallUnary(ctx, req)
+}
+
+// UpsertCollaborationLease calls hualala.content.v1.ContentService.UpsertCollaborationLease.
+func (c *contentServiceClient) UpsertCollaborationLease(ctx context.Context, req *connect.Request[v1.UpsertCollaborationLeaseRequest]) (*connect.Response[v1.UpsertCollaborationLeaseResponse], error) {
+	return c.upsertCollaborationLease.CallUnary(ctx, req)
+}
+
+// ReleaseCollaborationLease calls hualala.content.v1.ContentService.ReleaseCollaborationLease.
+func (c *contentServiceClient) ReleaseCollaborationLease(ctx context.Context, req *connect.Request[v1.ReleaseCollaborationLeaseRequest]) (*connect.Response[v1.ReleaseCollaborationLeaseResponse], error) {
+	return c.releaseCollaborationLease.CallUnary(ctx, req)
+}
+
 // ContentServiceHandler is an implementation of the hualala.content.v1.ContentService service.
 type ContentServiceHandler interface {
 	CreateScene(context.Context, *connect.Request[v1.CreateSceneRequest]) (*connect.Response[v1.CreateSceneResponse], error)
@@ -210,6 +258,9 @@ type ContentServiceHandler interface {
 	UpdateShotStructure(context.Context, *connect.Request[v1.UpdateShotStructureRequest]) (*connect.Response[v1.UpdateShotStructureResponse], error)
 	CreateContentSnapshot(context.Context, *connect.Request[v1.CreateContentSnapshotRequest]) (*connect.Response[v1.CreateContentSnapshotResponse], error)
 	CreateLocalizedSnapshot(context.Context, *connect.Request[v1.CreateLocalizedSnapshotRequest]) (*connect.Response[v1.CreateLocalizedSnapshotResponse], error)
+	GetCollaborationSession(context.Context, *connect.Request[v1.GetCollaborationSessionRequest]) (*connect.Response[v1.GetCollaborationSessionResponse], error)
+	UpsertCollaborationLease(context.Context, *connect.Request[v1.UpsertCollaborationLeaseRequest]) (*connect.Response[v1.UpsertCollaborationLeaseResponse], error)
+	ReleaseCollaborationLease(context.Context, *connect.Request[v1.ReleaseCollaborationLeaseRequest]) (*connect.Response[v1.ReleaseCollaborationLeaseResponse], error)
 }
 
 // NewContentServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -273,6 +324,24 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 		connect.WithSchema(contentServiceMethods.ByName("CreateLocalizedSnapshot")),
 		connect.WithHandlerOptions(opts...),
 	)
+	contentServiceGetCollaborationSessionHandler := connect.NewUnaryHandler(
+		ContentServiceGetCollaborationSessionProcedure,
+		svc.GetCollaborationSession,
+		connect.WithSchema(contentServiceMethods.ByName("GetCollaborationSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	contentServiceUpsertCollaborationLeaseHandler := connect.NewUnaryHandler(
+		ContentServiceUpsertCollaborationLeaseProcedure,
+		svc.UpsertCollaborationLease,
+		connect.WithSchema(contentServiceMethods.ByName("UpsertCollaborationLease")),
+		connect.WithHandlerOptions(opts...),
+	)
+	contentServiceReleaseCollaborationLeaseHandler := connect.NewUnaryHandler(
+		ContentServiceReleaseCollaborationLeaseProcedure,
+		svc.ReleaseCollaborationLease,
+		connect.WithSchema(contentServiceMethods.ByName("ReleaseCollaborationLease")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hualala.content.v1.ContentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ContentServiceCreateSceneProcedure:
@@ -293,6 +362,12 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 			contentServiceCreateContentSnapshotHandler.ServeHTTP(w, r)
 		case ContentServiceCreateLocalizedSnapshotProcedure:
 			contentServiceCreateLocalizedSnapshotHandler.ServeHTTP(w, r)
+		case ContentServiceGetCollaborationSessionProcedure:
+			contentServiceGetCollaborationSessionHandler.ServeHTTP(w, r)
+		case ContentServiceUpsertCollaborationLeaseProcedure:
+			contentServiceUpsertCollaborationLeaseHandler.ServeHTTP(w, r)
+		case ContentServiceReleaseCollaborationLeaseProcedure:
+			contentServiceReleaseCollaborationLeaseHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -336,4 +411,16 @@ func (UnimplementedContentServiceHandler) CreateContentSnapshot(context.Context,
 
 func (UnimplementedContentServiceHandler) CreateLocalizedSnapshot(context.Context, *connect.Request[v1.CreateLocalizedSnapshotRequest]) (*connect.Response[v1.CreateLocalizedSnapshotResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.content.v1.ContentService.CreateLocalizedSnapshot is not implemented"))
+}
+
+func (UnimplementedContentServiceHandler) GetCollaborationSession(context.Context, *connect.Request[v1.GetCollaborationSessionRequest]) (*connect.Response[v1.GetCollaborationSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.content.v1.ContentService.GetCollaborationSession is not implemented"))
+}
+
+func (UnimplementedContentServiceHandler) UpsertCollaborationLease(context.Context, *connect.Request[v1.UpsertCollaborationLeaseRequest]) (*connect.Response[v1.UpsertCollaborationLeaseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.content.v1.ContentService.UpsertCollaborationLease is not implemented"))
+}
+
+func (UnimplementedContentServiceHandler) ReleaseCollaborationLease(context.Context, *connect.Request[v1.ReleaseCollaborationLeaseRequest]) (*connect.Response[v1.ReleaseCollaborationLeaseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.content.v1.ContentService.ReleaseCollaborationLease is not implemented"))
 }

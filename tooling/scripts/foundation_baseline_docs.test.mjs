@@ -32,4 +32,29 @@ test("repo exposes a phase2 foundation baseline doc with shared truth sources", 
   assert.match(foundationDoc, /corepack pnpm run test:tooling/);
   assert.match(foundationDoc, /go test \.\/apps\/backend\/internal\/interfaces\/connect\/\.\.\. -count=1/);
   assert.match(foundationDoc, /corepack pnpm run test:e2e:phase1:real/);
+  assert.match(foundationDoc, /proto\/hualala\/content\/v1\/content\.proto/);
+  assert.match(foundationDoc, /proto\/hualala\/project\/v1\/project_service\.proto/);
+  assert.match(foundationDoc, /packages\/sdk\/src\/connect\/services\/content\.ts/);
+  assert.match(foundationDoc, /packages\/sdk\/src\/connect\/services\/project\.ts/);
+  assert.match(foundationDoc, /0015_phase2_collab_preview_shared_truth\.sql/);
+});
+
+test("repo exposes a phase2 contract freeze doc for collaboration and preview shared truth", () => {
+  const freezeDoc = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase2-contract-freeze.md"),
+    "utf8",
+  );
+
+  assert.match(freezeDoc, /协同/);
+  assert.match(freezeDoc, /session/);
+  assert.match(freezeDoc, /presence/);
+  assert.match(freezeDoc, /draft version/);
+  assert.match(freezeDoc, /预演/);
+  assert.match(freezeDoc, /preview assembly/);
+  assert.match(freezeDoc, /ordered shot refs/);
+  assert.match(freezeDoc, /selected primary asset refs/);
+  assert.match(freezeDoc, /assembly status/);
+  assert.match(freezeDoc, /不扩 `asset\.proto`、`workflow\.proto`/);
+  assert.match(freezeDoc, /audio/);
+  assert.match(freezeDoc, /reuse/);
 });

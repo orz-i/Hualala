@@ -50,12 +50,22 @@ func (s *PostgresStore) Publisher() *events.Publisher {
 	return s.publisher
 }
 
-func (*PostgresStore) GenerateProjectID() string           { return uuid.NewString() }
-func (*PostgresStore) GenerateEpisodeID() string           { return uuid.NewString() }
-func (*PostgresStore) GenerateSceneID() string             { return uuid.NewString() }
-func (*PostgresStore) GenerateShotID() string              { return uuid.NewString() }
-func (*PostgresStore) GenerateSnapshotID() string          { return uuid.NewString() }
-func (*PostgresStore) GenerateTranslationGroupID() string  { return uuid.NewString() }
+func (*PostgresStore) GenerateProjectID() string          { return uuid.NewString() }
+func (*PostgresStore) GenerateEpisodeID() string          { return uuid.NewString() }
+func (*PostgresStore) GenerateSceneID() string            { return uuid.NewString() }
+func (*PostgresStore) GenerateShotID() string             { return uuid.NewString() }
+func (*PostgresStore) GenerateSnapshotID() string         { return uuid.NewString() }
+func (*PostgresStore) GenerateTranslationGroupID() string { return uuid.NewString() }
+func (*PostgresStore) GenerateCollaborationSessionID() string {
+	return uuid.NewString()
+}
+func (*PostgresStore) GenerateCollaborationPresenceID() string {
+	return uuid.NewString()
+}
+func (*PostgresStore) GeneratePreviewAssemblyID() string { return uuid.NewString() }
+func (*PostgresStore) GeneratePreviewAssemblyItemID() string {
+	return uuid.NewString()
+}
 func (*PostgresStore) GenerateShotExecutionID() string     { return uuid.NewString() }
 func (*PostgresStore) GenerateShotExecutionRunID() string  { return uuid.NewString() }
 func (*PostgresStore) GenerateImportBatchID() string       { return uuid.NewString() }

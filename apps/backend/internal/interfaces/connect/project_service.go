@@ -85,3 +85,40 @@ func (h *projectHandler) ListEpisodes(ctx context.Context, req *connectrpc.Reque
 		Episodes: episodes,
 	}), nil
 }
+
+func (h *projectHandler) GetPreviewWorkbench(ctx context.Context, req *connectrpc.Request[projectv1.GetPreviewWorkbenchRequest]) (*connectrpc.Response[projectv1.GetPreviewWorkbenchResponse], error) {
+	record, err := h.service.GetPreviewWorkbench(ctx, projectapp.GetPreviewWorkbenchInput{
+		ProjectID: req.Msg.GetProjectId(),
+		EpisodeID: req.Msg.GetEpisodeId(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&projectv1.GetPreviewWorkbenchResponse{
+		Assembly: mapPreviewWorkbench(record),
+	}), nil
+}
+
+func (h *projectHandler) UpsertPreviewAssembly(ctx context.Context, req *connectrpc.Request[projectv1.UpsertPreviewAssemblyRequest]) (*connectrpc.Response[projectv1.UpsertPreviewAssemblyResponse], error) {
+	items := make([]projectapp.PreviewAssemblyItemInput, 0, len(req.Msg.GetItems()))
+	for _, item := range req.Msg.GetItems() {
+		items = append(items, projectapp.PreviewAssemblyItemInput{
+			ShotID:         item.GetShotId(),
+			PrimaryAssetID: item.GetPrimaryAssetId(),
+			SourceRunID:    item.GetSourceRunId(),
+			Sequence:       int(item.GetSequence()),
+		})
+	}
+	record, err := h.service.UpsertPreviewAssembly(ctx, projectapp.UpsertPreviewAssemblyInput{
+		ProjectID: req.Msg.GetProjectId(),
+		EpisodeID: req.Msg.GetEpisodeId(),
+		Status:    req.Msg.GetStatus(),
+		Items:     items,
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&projectv1.UpsertPreviewAssemblyResponse{
+		Assembly: mapPreviewWorkbench(record),
+	}), nil
+}

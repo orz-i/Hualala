@@ -26,14 +26,37 @@ type Shot struct {
 }
 
 type Snapshot struct {
-	ID                string
-	OwnerType         string
-	OwnerID           string
-	Locale            string
-	SourceSnapshotID  string
+	ID                 string
+	OwnerType          string
+	OwnerID            string
+	Locale             string
+	SourceSnapshotID   string
 	TranslationGroupID string
-	TranslationStatus string
-	Body              string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	TranslationStatus  string
+	Body               string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+type CollaborationSession struct {
+	ID               string
+	OwnerType        string
+	OwnerID          string
+	DraftVersion     uint32
+	LockHolderUserID string
+	LeaseExpiresAt   time.Time
+	ConflictSummary  string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type CollaborationPresence struct {
+	ID             string
+	SessionID      string
+	UserID         string
+	Status         string
+	LastSeenAt     time.Time
+	LeaseExpiresAt time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }

@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateContentSnapshotRequest, CreateContentSnapshotResponse, CreateLocalizedSnapshotRequest, CreateLocalizedSnapshotResponse, CreateSceneRequest, CreateSceneResponse, CreateShotRequest, CreateShotResponse, GetSceneRequest, GetSceneResponse, GetShotRequest, GetShotResponse, ListSceneShotsRequest, ListSceneShotsResponse, ListScenesRequest, ListScenesResponse, UpdateShotStructureRequest, UpdateShotStructureResponse } from "./content_pb.js";
+import { CreateContentSnapshotRequest, CreateContentSnapshotResponse, CreateLocalizedSnapshotRequest, CreateLocalizedSnapshotResponse, CreateSceneRequest, CreateSceneResponse, CreateShotRequest, CreateShotResponse, GetCollaborationSessionRequest, GetCollaborationSessionResponse, GetSceneRequest, GetSceneResponse, GetShotRequest, GetShotResponse, ListSceneShotsRequest, ListSceneShotsResponse, ListScenesRequest, ListScenesResponse, ReleaseCollaborationLeaseRequest, ReleaseCollaborationLeaseResponse, UpdateShotStructureRequest, UpdateShotStructureResponse, UpsertCollaborationLeaseRequest, UpsertCollaborationLeaseResponse } from "./content_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -91,6 +91,33 @@ export const ContentService = {
       name: "CreateLocalizedSnapshot",
       I: CreateLocalizedSnapshotRequest,
       O: CreateLocalizedSnapshotResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.content.v1.ContentService.GetCollaborationSession
+     */
+    getCollaborationSession: {
+      name: "GetCollaborationSession",
+      I: GetCollaborationSessionRequest,
+      O: GetCollaborationSessionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.content.v1.ContentService.UpsertCollaborationLease
+     */
+    upsertCollaborationLease: {
+      name: "UpsertCollaborationLease",
+      I: UpsertCollaborationLeaseRequest,
+      O: UpsertCollaborationLeaseResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.content.v1.ContentService.ReleaseCollaborationLease
+     */
+    releaseCollaborationLease: {
+      name: "ReleaseCollaborationLease",
+      I: ReleaseCollaborationLeaseRequest,
+      O: ReleaseCollaborationLeaseResponse,
       kind: MethodKind.Unary,
     },
   }

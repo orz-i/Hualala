@@ -120,3 +120,174 @@ func TestProjectAndContentRoutes(t *testing.T) {
 		t.Fatalf("expected shot %q, got %q", shotID, got)
 	}
 }
+
+func TestCollaborationAndPreviewRoutes(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, newRouteDependenciesFromStore(store))
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	projectClient := projectv1connect.NewProjectServiceClient(server.Client(), server.URL)
+	contentClient := contentv1connect.NewContentServiceClient(server.Client(), server.URL)
+
+	projectResp, err := projectClient.CreateProject(ctx, connectrpc.NewRequest(&projectv1.CreateProjectRequest{
+		OrgId:       "org-1",
+		Title:       "Phase 2 Foundation",
+		OwnerUserId: "user-1",
+	}))
+	if err != nil {
+		t.Fatalf("CreateProject returned error: %v", err)
+	}
+	projectID := projectResp.Msg.GetProject().GetProjectId()
+
+	episodeResp, err := projectClient.CreateEpisode(ctx, connectrpc.NewRequest(&projectv1.CreateEpisodeRequest{
+		ProjectId:     projectID,
+		EpisodeNumber: 1,
+		Title:         "第一集",
+	}))
+	if err != nil {
+		t.Fatalf("CreateEpisode returned error: %v", err)
+	}
+	episodeID := episodeResp.Msg.GetEpisode().GetEpisodeId()
+
+	sceneResp, err := contentClient.CreateScene(ctx, connectrpc.NewRequest(&contentv1.CreateSceneRequest{
+		ProjectId:   projectID,
+		EpisodeId:   episodeID,
+		SceneNumber: 1,
+		Title:       "开场",
+	}))
+	if err != nil {
+		t.Fatalf("CreateScene returned error: %v", err)
+	}
+	sceneID := sceneResp.Msg.GetScene().GetId()
+
+	firstShotResp, err := contentClient.CreateShot(ctx, connectrpc.NewRequest(&contentv1.CreateShotRequest{
+		SceneId:    sceneID,
+		ShotNumber: 1,
+		Title:      "第一镜",
+	}))
+	if err != nil {
+		t.Fatalf("CreateShot #1 returned error: %v", err)
+	}
+	secondShotResp, err := contentClient.CreateShot(ctx, connectrpc.NewRequest(&contentv1.CreateShotRequest{
+		SceneId:    sceneID,
+		ShotNumber: 2,
+		Title:      "第二镜",
+	}))
+	if err != nil {
+		t.Fatalf("CreateShot #2 returned error: %v", err)
+	}
+
+	initialSession, err := contentClient.GetCollaborationSession(ctx, connectrpc.NewRequest(&contentv1.GetCollaborationSessionRequest{
+		OwnerType: "shot",
+		OwnerId:   firstShotResp.Msg.GetShot().GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("GetCollaborationSession returned error: %v", err)
+	}
+	if got := initialSession.Msg.GetSession().GetOwnerId(); got != firstShotResp.Msg.GetShot().GetId() {
+		t.Fatalf("expected session owner %q, got %q", firstShotResp.Msg.GetShot().GetId(), got)
+	}
+
+	claimed, err := contentClient.UpsertCollaborationLease(ctx, connectrpc.NewRequest(&contentv1.UpsertCollaborationLeaseRequest{
+		OwnerType:       "shot",
+		OwnerId:         firstShotResp.Msg.GetShot().GetId(),
+		ActorUserId:     "user-1",
+		PresenceStatus:  "editing",
+		DraftVersion:    2,
+		LeaseTtlSeconds: 120,
+	}))
+	if err != nil {
+		t.Fatalf("UpsertCollaborationLease returned error: %v", err)
+	}
+	if got := claimed.Msg.GetSession().GetLockHolderUserId(); got != "user-1" {
+		t.Fatalf("expected lock holder %q, got %q", "user-1", got)
+	}
+
+	_, err = contentClient.ReleaseCollaborationLease(ctx, connectrpc.NewRequest(&contentv1.ReleaseCollaborationLeaseRequest{
+		OwnerType:   "shot",
+		OwnerId:     firstShotResp.Msg.GetShot().GetId(),
+		ActorUserId: "user-2",
+	}))
+	if err == nil {
+		t.Fatalf("expected ReleaseCollaborationLease to reject non-holder release")
+	}
+	if connectrpc.CodeOf(err) != connectrpc.CodeFailedPrecondition {
+		t.Fatalf("expected failed precondition, got %v", connectrpc.CodeOf(err))
+	}
+
+	released, err := contentClient.ReleaseCollaborationLease(ctx, connectrpc.NewRequest(&contentv1.ReleaseCollaborationLeaseRequest{
+		OwnerType:   "shot",
+		OwnerId:     firstShotResp.Msg.GetShot().GetId(),
+		ActorUserId: "user-1",
+	}))
+	if err != nil {
+		t.Fatalf("ReleaseCollaborationLease returned error: %v", err)
+	}
+	if got := released.Msg.GetSession().GetLockHolderUserId(); got != "" {
+		t.Fatalf("expected released lock holder to be empty, got %q", got)
+	}
+
+	_, err = contentClient.GetCollaborationSession(ctx, connectrpc.NewRequest(&contentv1.GetCollaborationSessionRequest{
+		OwnerType: "shot",
+	}))
+	if err == nil {
+		t.Fatalf("expected GetCollaborationSession to reject missing owner_id")
+	}
+	if connectrpc.CodeOf(err) != connectrpc.CodeInvalidArgument {
+		t.Fatalf("expected invalid argument, got %v", connectrpc.CodeOf(err))
+	}
+
+	workbench, err := projectClient.GetPreviewWorkbench(ctx, connectrpc.NewRequest(&projectv1.GetPreviewWorkbenchRequest{
+		ProjectId: projectID,
+		EpisodeId: episodeID,
+	}))
+	if err != nil {
+		t.Fatalf("GetPreviewWorkbench returned error: %v", err)
+	}
+	if got := workbench.Msg.GetAssembly().GetProjectId(); got != projectID {
+		t.Fatalf("expected project %q, got %q", projectID, got)
+	}
+
+	updatedWorkbench, err := projectClient.UpsertPreviewAssembly(ctx, connectrpc.NewRequest(&projectv1.UpsertPreviewAssemblyRequest{
+		ProjectId: projectID,
+		EpisodeId: episodeID,
+		Status:    "ready",
+		Items: []*projectv1.PreviewAssemblyItem{
+			{
+				ShotId:         secondShotResp.Msg.GetShot().GetId(),
+				PrimaryAssetId: "asset-2",
+				SourceRunId:    "run-2",
+				Sequence:       2,
+			},
+			{
+				ShotId:         firstShotResp.Msg.GetShot().GetId(),
+				PrimaryAssetId: "asset-1",
+				SourceRunId:    "run-1",
+				Sequence:       1,
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("UpsertPreviewAssembly returned error: %v", err)
+	}
+	if got := len(updatedWorkbench.Msg.GetAssembly().GetItems()); got != 2 {
+		t.Fatalf("expected 2 preview items, got %d", got)
+	}
+	if got := updatedWorkbench.Msg.GetAssembly().GetItems()[0].GetShotId(); got != firstShotResp.Msg.GetShot().GetId() {
+		t.Fatalf("expected first preview shot %q, got %q", firstShotResp.Msg.GetShot().GetId(), got)
+	}
+
+	_, err = projectClient.GetPreviewWorkbench(ctx, connectrpc.NewRequest(&projectv1.GetPreviewWorkbenchRequest{
+		ProjectId: "missing-project",
+	}))
+	if err == nil {
+		t.Fatalf("expected GetPreviewWorkbench to reject missing project")
+	}
+	if connectrpc.CodeOf(err) != connectrpc.CodeNotFound {
+		t.Fatalf("expected not found, got %v", connectrpc.CodeOf(err))
+	}
+}

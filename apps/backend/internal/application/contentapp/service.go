@@ -64,6 +64,32 @@ type UpdateShotStructureInput struct {
 	ContentLocale string
 }
 
+type CollaborationSessionState struct {
+	Session   content.CollaborationSession
+	Presences []content.CollaborationPresence
+}
+
+type GetCollaborationSessionInput struct {
+	OwnerType string
+	OwnerID   string
+}
+
+type UpsertCollaborationLeaseInput struct {
+	OwnerType       string
+	OwnerID         string
+	ActorUserID     string
+	PresenceStatus  string
+	DraftVersion    uint32
+	LeaseTTLSeconds uint32
+}
+
+type ReleaseCollaborationLeaseInput struct {
+	OwnerType       string
+	OwnerID         string
+	ActorUserID     string
+	ConflictSummary string
+}
+
 func NewService(repo db.ProjectContentRepository) *Service {
 	return &Service{repo: repo}
 }
@@ -294,4 +320,194 @@ func (s *Service) UpdateShotStructure(ctx context.Context, input UpdateShotStruc
 		return content.Shot{}, err
 	}
 	return record, nil
+}
+
+func (s *Service) GetCollaborationSession(ctx context.Context, input GetCollaborationSessionInput) (CollaborationSessionState, error) {
+	if s == nil || s.repo == nil {
+		return CollaborationSessionState{}, errors.New("contentapp: repository is required")
+	}
+	ownerType, ownerID, err := s.normalizeCollaborationOwner(input.OwnerType, input.OwnerID)
+	if err != nil {
+		return CollaborationSessionState{}, err
+	}
+	record, err := s.ensureCollaborationSession(ctx, ownerType, ownerID)
+	if err != nil {
+		return CollaborationSessionState{}, err
+	}
+	return s.buildCollaborationSessionState(record), nil
+}
+
+func (s *Service) UpsertCollaborationLease(ctx context.Context, input UpsertCollaborationLeaseInput) (CollaborationSessionState, error) {
+	if s == nil || s.repo == nil {
+		return CollaborationSessionState{}, errors.New("contentapp: repository is required")
+	}
+	ownerType, ownerID, err := s.normalizeCollaborationOwner(input.OwnerType, input.OwnerID)
+	if err != nil {
+		return CollaborationSessionState{}, err
+	}
+	actorUserID := strings.TrimSpace(input.ActorUserID)
+	if actorUserID == "" {
+		return CollaborationSessionState{}, errors.New("contentapp: actor_user_id is required")
+	}
+
+	record, err := s.ensureCollaborationSession(ctx, ownerType, ownerID)
+	if err != nil {
+		return CollaborationSessionState{}, err
+	}
+
+	now := time.Now().UTC()
+	leaseExpiresAt := now.Add(resolveLeaseTTL(input.LeaseTTLSeconds))
+	if err := s.upsertPresence(ctx, record.ID, actorUserID, input.PresenceStatus, leaseExpiresAt); err != nil {
+		return CollaborationSessionState{}, err
+	}
+
+	if record.LockHolderUserID != "" && record.LockHolderUserID != actorUserID && record.LeaseExpiresAt.After(now) {
+		record.ConflictSummary = fmt.Sprintf("lock held by %s", record.LockHolderUserID)
+		record.UpdatedAt = now
+		if err := s.repo.SaveCollaborationSession(ctx, record); err != nil {
+			return CollaborationSessionState{}, err
+		}
+		return CollaborationSessionState{}, errors.New("contentapp: failed precondition: lock held by another user")
+	}
+
+	record.LockHolderUserID = actorUserID
+	record.LeaseExpiresAt = leaseExpiresAt
+	record.ConflictSummary = ""
+	if input.DraftVersion > 0 {
+		record.DraftVersion = input.DraftVersion
+	} else if record.DraftVersion == 0 {
+		record.DraftVersion = 1
+	}
+	record.UpdatedAt = now
+	if err := s.repo.SaveCollaborationSession(ctx, record); err != nil {
+		return CollaborationSessionState{}, err
+	}
+	return s.buildCollaborationSessionState(record), nil
+}
+
+func (s *Service) ReleaseCollaborationLease(ctx context.Context, input ReleaseCollaborationLeaseInput) (CollaborationSessionState, error) {
+	if s == nil || s.repo == nil {
+		return CollaborationSessionState{}, errors.New("contentapp: repository is required")
+	}
+	ownerType, ownerID, err := s.normalizeCollaborationOwner(input.OwnerType, input.OwnerID)
+	if err != nil {
+		return CollaborationSessionState{}, err
+	}
+	actorUserID := strings.TrimSpace(input.ActorUserID)
+	if actorUserID == "" {
+		return CollaborationSessionState{}, errors.New("contentapp: actor_user_id is required")
+	}
+	record, ok := s.repo.GetCollaborationSession(ownerType, ownerID)
+	if !ok {
+		return CollaborationSessionState{}, errors.New("contentapp: failed precondition: collaboration session not found")
+	}
+	now := time.Now().UTC()
+	if record.LockHolderUserID == "" || !record.LeaseExpiresAt.After(now) {
+		return CollaborationSessionState{}, errors.New("contentapp: failed precondition: active lease not found")
+	}
+	if record.LockHolderUserID != actorUserID {
+		return CollaborationSessionState{}, errors.New("contentapp: failed precondition: lock held by another user")
+	}
+
+	record.LockHolderUserID = ""
+	record.LeaseExpiresAt = time.Time{}
+	record.ConflictSummary = strings.TrimSpace(input.ConflictSummary)
+	record.UpdatedAt = now
+	if err := s.repo.SaveCollaborationSession(ctx, record); err != nil {
+		return CollaborationSessionState{}, err
+	}
+	if err := s.upsertPresence(ctx, record.ID, actorUserID, "released", now); err != nil {
+		return CollaborationSessionState{}, err
+	}
+	return s.buildCollaborationSessionState(record), nil
+}
+
+func (s *Service) normalizeCollaborationOwner(ownerType string, ownerID string) (string, string, error) {
+	normalizedType := strings.TrimSpace(ownerType)
+	normalizedID := strings.TrimSpace(ownerID)
+	if normalizedType == "" {
+		return "", "", errors.New("contentapp: owner_type is required")
+	}
+	if normalizedID == "" {
+		return "", "", errors.New("contentapp: owner_id is required")
+	}
+	switch normalizedType {
+	case "project":
+		if _, ok := s.repo.GetProject(normalizedID); !ok {
+			return "", "", fmt.Errorf("contentapp: project %q not found", normalizedID)
+		}
+	case "episode":
+		if _, ok := s.repo.GetEpisode(normalizedID); !ok {
+			return "", "", fmt.Errorf("contentapp: episode %q not found", normalizedID)
+		}
+	case "scene":
+		if _, ok := s.repo.GetScene(normalizedID); !ok {
+			return "", "", fmt.Errorf("contentapp: scene %q not found", normalizedID)
+		}
+	case "shot":
+		if _, ok := s.repo.GetShot(normalizedID); !ok {
+			return "", "", fmt.Errorf("contentapp: shot %q not found", normalizedID)
+		}
+	default:
+		return "", "", fmt.Errorf("contentapp: owner_type %q is invalid", normalizedType)
+	}
+	return normalizedType, normalizedID, nil
+}
+
+func (s *Service) ensureCollaborationSession(ctx context.Context, ownerType string, ownerID string) (content.CollaborationSession, error) {
+	if record, ok := s.repo.GetCollaborationSession(ownerType, ownerID); ok {
+		return record, nil
+	}
+	now := time.Now().UTC()
+	record := content.CollaborationSession{
+		ID:        s.repo.GenerateCollaborationSessionID(),
+		OwnerType: ownerType,
+		OwnerID:   ownerID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := s.repo.SaveCollaborationSession(ctx, record); err != nil {
+		return content.CollaborationSession{}, err
+	}
+	return record, nil
+}
+
+func (s *Service) upsertPresence(ctx context.Context, sessionID string, userID string, status string, leaseExpiresAt time.Time) error {
+	now := time.Now().UTC()
+	record, ok := s.repo.GetCollaborationPresence(sessionID, userID)
+	if !ok {
+		record = content.CollaborationPresence{
+			ID:        s.repo.GenerateCollaborationPresenceID(),
+			SessionID: sessionID,
+			UserID:    userID,
+			CreatedAt: now,
+		}
+	}
+	record.Status = defaultPresenceStatus(status)
+	record.LastSeenAt = now
+	record.LeaseExpiresAt = leaseExpiresAt
+	record.UpdatedAt = now
+	return s.repo.SaveCollaborationPresence(ctx, record)
+}
+
+func (s *Service) buildCollaborationSessionState(record content.CollaborationSession) CollaborationSessionState {
+	return CollaborationSessionState{
+		Session:   record,
+		Presences: s.repo.ListCollaborationPresences(record.ID),
+	}
+}
+
+func resolveLeaseTTL(raw uint32) time.Duration {
+	if raw == 0 {
+		raw = 300
+	}
+	return time.Duration(raw) * time.Second
+}
+
+func defaultPresenceStatus(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "editing"
+	}
+	return trimmed
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hualala/apps/backend/internal/domain/auth"
+	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/org"
 	"github.com/hualala/apps/backend/internal/domain/project"
 )
@@ -131,5 +132,90 @@ func TestMemoryStorePersistsAndReloadsAuthOrgSnapshot(t *testing.T) {
 	}
 	if got := reloaded.RolePermissions[DefaultDevRoleID]; len(got) != 2 {
 		t.Fatalf("expected 2 restored role permissions, got %v", got)
+	}
+}
+
+func TestMemoryStorePersistsAndReloadsCollaborationAndPreviewSnapshot(t *testing.T) {
+	ctx := context.Background()
+	persister := &fakePersister{}
+
+	store, err := NewPersistentMemoryStore(ctx, persister)
+	if err != nil {
+		t.Fatalf("NewPersistentMemoryStore returned error: %v", err)
+	}
+
+	now := time.Now().UTC().Round(time.Second)
+	sessionID := store.NextCollaborationSessionID()
+	assemblyID := store.NextPreviewAssemblyID()
+	store.CollaborationSessions[sessionID] = content.CollaborationSession{
+		ID:               sessionID,
+		OwnerType:        "shot",
+		OwnerID:          "shot-1",
+		DraftVersion:     4,
+		LockHolderUserID: "user-1",
+		ConflictSummary:  "",
+		CreatedAt:        now,
+		UpdatedAt:        now,
+		LeaseExpiresAt:   now.Add(2 * time.Minute),
+	}
+	presenceID := store.NextCollaborationPresenceID()
+	store.CollaborationPresences[presenceID] = content.CollaborationPresence{
+		ID:             presenceID,
+		SessionID:      sessionID,
+		UserID:         "user-1",
+		Status:         "editing",
+		LastSeenAt:     now,
+		LeaseExpiresAt: now.Add(2 * time.Minute),
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	store.PreviewAssemblies[assemblyID] = project.PreviewAssembly{
+		ID:        assemblyID,
+		ProjectID: "project-1",
+		EpisodeID: "episode-1",
+		Status:    "ready",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	itemID := store.NextPreviewAssemblyItemID()
+	store.PreviewAssemblyItems[itemID] = project.PreviewAssemblyItem{
+		ID:             itemID,
+		AssemblyID:     assemblyID,
+		ShotID:         "shot-1",
+		PrimaryAssetID: "asset-1",
+		SourceRunID:    "run-1",
+		Sequence:       1,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+
+	if err := store.Save(ctx); err != nil {
+		t.Fatalf("Save returned error: %v", err)
+	}
+
+	reloaded, err := NewPersistentMemoryStore(ctx, persister)
+	if err != nil {
+		t.Fatalf("NewPersistentMemoryStore reload returned error: %v", err)
+	}
+
+	session, ok := reloaded.CollaborationSessions[sessionID]
+	if !ok {
+		t.Fatalf("expected collaboration session %q to be restored", sessionID)
+	}
+	if got := session.LockHolderUserID; got != "user-1" {
+		t.Fatalf("expected restored lock holder %q, got %q", "user-1", got)
+	}
+	if got := len(reloaded.CollaborationPresences); got != 1 {
+		t.Fatalf("expected 1 restored collaboration presence, got %d", got)
+	}
+	assembly, ok := reloaded.PreviewAssemblies[assemblyID]
+	if !ok {
+		t.Fatalf("expected preview assembly %q to be restored", assemblyID)
+	}
+	if got := assembly.Status; got != "ready" {
+		t.Fatalf("expected restored preview assembly status %q, got %q", "ready", got)
+	}
+	if got := len(reloaded.PreviewAssemblyItems); got != 1 {
+		t.Fatalf("expected 1 restored preview assembly item, got %d", got)
 	}
 }
