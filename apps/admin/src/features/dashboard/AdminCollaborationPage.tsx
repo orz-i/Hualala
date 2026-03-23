@@ -29,6 +29,22 @@ function formatTimestamp(value: string, fallback: string) {
   return date.toLocaleString();
 }
 
+function buildPresenceKey(
+  presence: AdminCollaborationSessionViewModel["presences"][number],
+  index: number,
+) {
+  if (presence.presenceId) {
+    return presence.presenceId;
+  }
+  return [
+    presence.sessionId || "session",
+    presence.userId || "user",
+    presence.status || "status",
+    presence.leaseExpiresAt || "lease",
+    index,
+  ].join(":");
+}
+
 export function AdminCollaborationPage({
   collaborationSession,
   t,
@@ -87,9 +103,9 @@ export function AdminCollaborationPage({
           <p style={{ margin: 0, color: "#64748b" }}>{t("collaboration.presence.empty")}</p>
         ) : (
           <div style={{ display: "grid", gap: "12px" }}>
-            {presences.map((presence) => (
+            {presences.map((presence, index) => (
               <article
-                key={presence.presenceId || `${presence.userId}-${presence.status}`}
+                key={buildPresenceKey(presence, index)}
                 style={{
                   borderRadius: "14px",
                   background: "rgba(241, 245, 249, 0.9)",
