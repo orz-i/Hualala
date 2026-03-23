@@ -280,6 +280,7 @@ func PublishCollaborationUpdated(ctx context.Context, publisher *Publisher, inpu
 		"updated_at":          input.Session.UpdatedAt.UTC().Format(time.RFC3339),
 	})
 	if err != nil {
+		log.Printf("events: failed to marshal collaboration updated payload: %v", err)
 		return
 	}
 

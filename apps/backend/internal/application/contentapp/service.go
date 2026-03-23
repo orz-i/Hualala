@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -510,8 +511,9 @@ func (s *Service) publishCollaborationEvent(ctx context.Context, ownerType strin
 	if s == nil || s.publisher == nil {
 		return
 	}
-	organizationID, projectID, err := s.resolveCollaborationScope(ownerType, ownerID)
+	organizationID, projectID, err := s.repo.GetCollaborationScope(ownerType, ownerID)
 	if err != nil {
+		log.Printf("contentapp: could not resolve collaboration scope for owner %s/%s: %v", ownerType, ownerID, err)
 		return
 	}
 	events.PublishCollaborationUpdated(ctx, s.publisher, events.PublishCollaborationUpdatedInput{
@@ -522,53 +524,6 @@ func (s *Service) publishCollaborationEvent(ctx context.Context, ownerType strin
 		Session:        state.Session,
 		Presences:      state.Presences,
 	})
-}
-
-func (s *Service) resolveCollaborationScope(ownerType string, ownerID string) (string, string, error) {
-	switch ownerType {
-	case "project":
-		record, ok := s.repo.GetProject(ownerID)
-		if !ok {
-			return "", "", fmt.Errorf("contentapp: project %q not found", ownerID)
-		}
-		return record.OrganizationID, record.ID, nil
-	case "episode":
-		record, ok := s.repo.GetEpisode(ownerID)
-		if !ok {
-			return "", "", fmt.Errorf("contentapp: episode %q not found", ownerID)
-		}
-		projectRecord, ok := s.repo.GetProject(record.ProjectID)
-		if !ok {
-			return "", "", fmt.Errorf("contentapp: project %q not found", record.ProjectID)
-		}
-		return projectRecord.OrganizationID, projectRecord.ID, nil
-	case "scene":
-		record, ok := s.repo.GetScene(ownerID)
-		if !ok {
-			return "", "", fmt.Errorf("contentapp: scene %q not found", ownerID)
-		}
-		projectRecord, ok := s.repo.GetProject(record.ProjectID)
-		if !ok {
-			return "", "", fmt.Errorf("contentapp: project %q not found", record.ProjectID)
-		}
-		return projectRecord.OrganizationID, projectRecord.ID, nil
-	case "shot":
-		record, ok := s.repo.GetShot(ownerID)
-		if !ok {
-			return "", "", fmt.Errorf("contentapp: shot %q not found", ownerID)
-		}
-		sceneRecord, ok := s.repo.GetScene(record.SceneID)
-		if !ok {
-			return "", "", fmt.Errorf("contentapp: scene %q not found", record.SceneID)
-		}
-		projectRecord, ok := s.repo.GetProject(sceneRecord.ProjectID)
-		if !ok {
-			return "", "", fmt.Errorf("contentapp: project %q not found", sceneRecord.ProjectID)
-		}
-		return projectRecord.OrganizationID, projectRecord.ID, nil
-	default:
-		return "", "", fmt.Errorf("contentapp: owner_type %q is invalid", ownerType)
-	}
 }
 
 func resolveLeaseTTL(raw uint32) time.Duration {

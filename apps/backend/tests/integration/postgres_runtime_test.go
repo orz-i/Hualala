@@ -328,6 +328,17 @@ func TestPostgresStorePersistsCollaborationAndPreviewSharedTruth(t *testing.T) {
 	reloadedStore, reloadCloseFn := openNativeIntegrationRuntimeStore(t, storeKey)
 	defer reloadCloseFn()
 
+	organizationID, resolvedProjectID, err := reloadedStore.GetCollaborationScope("shot", shotOneID)
+	if err != nil {
+		t.Fatalf("GetCollaborationScope returned error: %v", err)
+	}
+	if got := organizationID; got != db.DefaultDevOrganizationID {
+		t.Fatalf("expected organization %q, got %q", db.DefaultDevOrganizationID, got)
+	}
+	if got := resolvedProjectID; got != projectID {
+		t.Fatalf("expected resolved project %q, got %q", projectID, got)
+	}
+
 	session, ok := reloadedStore.GetCollaborationSession("shot", shotOneID)
 	if !ok {
 		t.Fatalf("expected collaboration session for shot %q", shotOneID)

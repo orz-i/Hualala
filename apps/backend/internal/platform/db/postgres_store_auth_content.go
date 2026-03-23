@@ -562,6 +562,55 @@ func (s *PostgresStore) GetShot(shotID string) (content.Shot, bool) {
 	return record, true
 }
 
+func (s *PostgresStore) GetCollaborationScope(ownerType string, ownerID string) (string, string, error) {
+	if s == nil || s.db == nil {
+		return "", "", fmt.Errorf("db: collaboration scope store unavailable")
+	}
+
+	normalizedType := strings.TrimSpace(ownerType)
+	normalizedID := strings.TrimSpace(ownerID)
+	var query string
+	switch normalizedType {
+	case "project":
+		query = `
+			SELECT organization_id::text, id::text
+			FROM projects
+			WHERE id = $1
+		`
+	case "episode":
+		query = `
+			SELECT p.organization_id::text, p.id::text
+			FROM episodes e
+			JOIN projects p ON p.id = e.project_id
+			WHERE e.id = $1
+		`
+	case "scene":
+		query = `
+			SELECT p.organization_id::text, p.id::text
+			FROM scenes s
+			JOIN projects p ON p.id = s.project_id
+			WHERE s.id = $1
+		`
+	case "shot":
+		query = `
+			SELECT p.organization_id::text, p.id::text
+			FROM shots sh
+			JOIN scenes s ON s.id = sh.scene_id
+			JOIN projects p ON p.id = s.project_id
+			WHERE sh.id = $1
+		`
+	default:
+		return "", "", fmt.Errorf("db: owner_type %q is invalid", normalizedType)
+	}
+
+	var organizationID string
+	var projectID string
+	if err := s.db.QueryRowContext(context.Background(), query, normalizedID).Scan(&organizationID, &projectID); err != nil {
+		return "", "", fmt.Errorf("db: %s %q not found", normalizedType, normalizedID)
+	}
+	return organizationID, projectID, nil
+}
+
 func (s *PostgresStore) ListShotsByScene(sceneID string) []content.Shot {
 	if s == nil || s.db == nil {
 		return nil
