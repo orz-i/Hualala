@@ -1,10 +1,15 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { AdminOverviewViewModel, RecentChangeSummary } from "./overview";
 import { createTranslator } from "../../i18n";
+import type { AdminOperationsOverviewViewModel } from "./operationsOverview";
+import { loadAdminOperationsOverview } from "./loadAdminOperationsOverview";
 import { loadAdminOverview } from "./loadAdminOverview";
 import { updateBudgetPolicy } from "./mutateBudgetPolicy";
 import { useAdminOverviewController } from "./useAdminOverviewController";
 
+vi.mock("./loadAdminOperationsOverview", () => ({
+  loadAdminOperationsOverview: vi.fn(),
+}));
 vi.mock("./loadAdminOverview", () => ({
   loadAdminOverview: vi.fn(),
 }));
@@ -15,6 +20,7 @@ vi.mock("./waitForFeedbackPaint", () => ({
   waitForFeedbackPaint: vi.fn().mockResolvedValue(undefined),
 }));
 
+const loadAdminOperationsOverviewMock = vi.mocked(loadAdminOperationsOverview);
 const loadAdminOverviewMock = vi.mocked(loadAdminOverview);
 const updateBudgetPolicyMock = vi.mocked(updateBudgetPolicy);
 
@@ -63,6 +69,56 @@ function createOverview(
   };
 }
 
+function createOperationsOverview(
+  overrides: Partial<AdminOperationsOverviewViewModel> = {},
+): AdminOperationsOverviewViewModel {
+  return {
+    blockerCount: 2,
+    blockers: [
+      {
+        id: "budget",
+        kind: "budget",
+        status: "blocked",
+        remainingBudgetCents: 0,
+      },
+      {
+        id: "workflow",
+        kind: "workflow",
+        status: "blocked",
+        failedWorkflowCount: 1,
+        workflowRunId: "workflow-run-1",
+        workflowType: "shot_pipeline",
+        lastError: "provider rejected request",
+        target: {
+          route: "workflow",
+          workflowRunId: "workflow-run-1",
+        },
+      },
+    ],
+    runtimeHealth: {
+      runningWorkflowCount: 1,
+      failedWorkflowCount: 1,
+      pendingImportBatchCount: 1,
+      blockedImportBatchCount: 1,
+      alerts: [
+        {
+          id: "workflow-failed",
+          kind: "workflow_failed",
+          count: 1,
+          workflowRunId: "workflow-run-1",
+          workflowType: "shot_pipeline",
+          lastError: "provider rejected request",
+          target: {
+            route: "workflow",
+            workflowRunId: "workflow-run-1",
+          },
+        },
+      ],
+    },
+    ...overrides,
+  };
+}
+
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
   let reject!: (reason?: unknown) => void;
@@ -83,10 +139,12 @@ describe("useAdminOverviewController", () => {
   it("loads overview once the session is ready", async () => {
     const overviewDeferred = createDeferred<AdminOverviewViewModel>();
     loadAdminOverviewMock.mockReturnValueOnce(overviewDeferred.promise);
+    loadAdminOperationsOverviewMock.mockResolvedValueOnce(createOperationsOverview());
 
     const { result } = renderHook(() =>
       useAdminOverviewController({
         sessionState: "ready",
+        operationsEnabled: true,
         projectId: "project-live-001",
         shotExecutionId: "shot-exec-live-001",
         effectiveOrgId: "org-demo-001",
@@ -107,6 +165,7 @@ describe("useAdminOverviewController", () => {
 
     await waitFor(() => {
       expect(result.current.overview?.budgetSnapshot.projectId).toBe("project-live-001");
+      expect(result.current.operationsOverview?.blockerCount).toBe(2);
     });
   });
 
@@ -114,6 +173,28 @@ describe("useAdminOverviewController", () => {
     loadAdminOverviewMock
       .mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001"))
       .mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001", 240000));
+    loadAdminOperationsOverviewMock
+      .mockResolvedValueOnce(createOperationsOverview())
+      .mockResolvedValueOnce(
+        createOperationsOverview({
+          blockerCount: 1,
+          blockers: [
+            {
+              id: "workflow",
+              kind: "workflow",
+              status: "blocked",
+              failedWorkflowCount: 1,
+              workflowRunId: "workflow-run-1",
+              workflowType: "shot_pipeline",
+              lastError: "provider rejected request",
+              target: {
+                route: "workflow",
+                workflowRunId: "workflow-run-1",
+              },
+            },
+          ],
+        }),
+      );
     updateBudgetPolicyMock.mockResolvedValueOnce({
       id: "policy-1",
       orgId: "org-demo-001",
@@ -125,6 +206,7 @@ describe("useAdminOverviewController", () => {
     const { result } = renderHook(() =>
       useAdminOverviewController({
         sessionState: "ready",
+        operationsEnabled: true,
         projectId: "project-live-001",
         shotExecutionId: "shot-exec-live-001",
         effectiveOrgId: "org-demo-001",
@@ -153,7 +235,9 @@ describe("useAdminOverviewController", () => {
       limitCents: 240000,
     });
     expect(loadAdminOverviewMock).toHaveBeenCalledTimes(2);
+    expect(loadAdminOperationsOverviewMock).toHaveBeenCalledTimes(2);
     expect(result.current.overview?.budgetSnapshot.limitCents).toBe(240000);
+    expect(result.current.operationsOverview?.blockerCount).toBe(1);
   });
 
   it("surfaces pending budget feedback before the update resolves", async () => {
@@ -167,11 +251,15 @@ describe("useAdminOverviewController", () => {
     loadAdminOverviewMock
       .mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001"))
       .mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001", 240000));
+    loadAdminOperationsOverviewMock
+      .mockResolvedValueOnce(createOperationsOverview())
+      .mockResolvedValueOnce(createOperationsOverview({ blockerCount: 1, blockers: [] }));
     updateBudgetPolicyMock.mockReturnValueOnce(budgetUpdateDeferred.promise);
 
     const { result } = renderHook(() =>
       useAdminOverviewController({
         sessionState: "ready",
+        operationsEnabled: true,
         projectId: "project-live-001",
         shotExecutionId: "shot-exec-live-001",
         effectiveOrgId: "org-demo-001",
@@ -213,10 +301,12 @@ describe("useAdminOverviewController", () => {
 
   it("merges recent changes without reloading the whole overview", async () => {
     loadAdminOverviewMock.mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001"));
+    loadAdminOperationsOverviewMock.mockResolvedValueOnce(createOperationsOverview());
 
     const { result } = renderHook(() =>
       useAdminOverviewController({
         sessionState: "ready",
+        operationsEnabled: true,
         projectId: "project-live-001",
         shotExecutionId: "shot-exec-live-001",
         effectiveOrgId: "org-demo-001",
@@ -246,5 +336,27 @@ describe("useAdminOverviewController", () => {
       failedChecksCount: 2,
     });
     expect(loadAdminOverviewMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips operations summary loading when the overview route is inactive", async () => {
+    loadAdminOverviewMock.mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001"));
+
+    const { result } = renderHook(() =>
+      useAdminOverviewController({
+        sessionState: "ready",
+        operationsEnabled: false,
+        projectId: "project-live-001",
+        shotExecutionId: "shot-exec-live-001",
+        effectiveOrgId: "org-demo-001",
+        t,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.overview?.budgetSnapshot.projectId).toBe("project-live-001");
+    });
+
+    expect(result.current.operationsOverview).toBeNull();
+    expect(loadAdminOperationsOverviewMock).not.toHaveBeenCalled();
   });
 });

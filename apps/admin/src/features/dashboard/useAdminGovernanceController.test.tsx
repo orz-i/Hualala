@@ -89,6 +89,7 @@ describe("useAdminGovernanceController", () => {
     const { result } = renderHook(() =>
       useAdminGovernanceController({
         sessionState: "ready",
+        enabled: true,
         identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
         effectiveUserId: "user-demo-001",
@@ -121,6 +122,7 @@ describe("useAdminGovernanceController", () => {
     const { result } = renderHook(() =>
       useAdminGovernanceController({
         sessionState: "ready",
+        enabled: true,
         identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
         effectiveUserId: "user-demo-001",
@@ -162,6 +164,7 @@ describe("useAdminGovernanceController", () => {
     const { result } = renderHook(() =>
       useAdminGovernanceController({
         sessionState: "ready",
+        enabled: true,
         identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
         effectiveUserId: "user-demo-001",
@@ -187,5 +190,24 @@ describe("useAdminGovernanceController", () => {
 
     expect(result.current.governance).toEqual(governance);
     expect(result.current.governanceActionFeedback?.message).toContain("governance exploded");
+  });
+
+  it("does not load governance when the route is not active", async () => {
+    const { result } = renderHook(() =>
+      useAdminGovernanceController({
+        sessionState: "ready",
+        enabled: false,
+        identityOverride: undefined,
+        effectiveOrgId: "org-demo-001",
+        effectiveUserId: "user-demo-001",
+        t,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.governance).toBeNull();
+    });
+
+    expect(loadGovernancePanelMock).not.toHaveBeenCalled();
   });
 });

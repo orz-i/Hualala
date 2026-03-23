@@ -23,6 +23,7 @@ type ActionFeedback = {
 
 export function useAdminWorkflowController({
   sessionState,
+  enabled,
   projectId,
   identityOverride,
   effectiveOrgId,
@@ -30,6 +31,7 @@ export function useAdminWorkflowController({
   t,
 }: {
   sessionState: "loading" | "ready" | "unauthenticated";
+  enabled: boolean;
   projectId: string;
   identityOverride: IdentityOverride;
   effectiveOrgId: string;
@@ -51,6 +53,10 @@ export function useAdminWorkflowController({
   });
 
   const refreshWorkflowMonitor = useCallback(async () => {
+    if (!enabled || sessionState !== "ready") {
+      return;
+    }
+
     const nextWorkflowMonitor = await loadWorkflowMonitorPanel({
       projectId,
       status: workflowStatusFilter,
@@ -64,13 +70,19 @@ export function useAdminWorkflowController({
   }, [
     identityOverride?.orgId,
     identityOverride?.userId,
+    enabled,
     projectId,
+    sessionState,
     workflowStatusFilter,
     workflowTypeFilter,
   ]);
 
   const refreshWorkflowRunDetail = useCallback(
     async (workflowRunId: string) => {
+      if (!enabled || sessionState !== "ready") {
+        return;
+      }
+
       const nextWorkflowRunDetail = await loadWorkflowRunDetails({
         workflowRunId,
         orgId: identityOverride?.orgId,
@@ -80,7 +92,7 @@ export function useAdminWorkflowController({
         setWorkflowRunDetail(nextWorkflowRunDetail);
       });
     },
-    [identityOverride?.orgId, identityOverride?.userId],
+    [enabled, identityOverride?.orgId, identityOverride?.userId, sessionState],
   );
 
   const refreshWorkflowSilently = useCallback(async () => {
@@ -110,7 +122,7 @@ export function useAdminWorkflowController({
   }, [refreshWorkflowMonitor, refreshWorkflowRunDetail, selectedWorkflowRunId]);
 
   useEffect(() => {
-    if (sessionState !== "ready") {
+    if (sessionState !== "ready" || !enabled) {
       startTransition(() => {
         setWorkflowMonitorState(null);
         setWorkflowRunDetail(null);
@@ -160,6 +172,7 @@ export function useAdminWorkflowController({
       cancelled = true;
     };
   }, [
+    enabled,
     identityOverride?.orgId,
     identityOverride?.userId,
     projectId,
@@ -169,7 +182,7 @@ export function useAdminWorkflowController({
   ]);
 
   useEffect(() => {
-    if (sessionState !== "ready") {
+    if (sessionState !== "ready" || !enabled) {
       return;
     }
     if (!selectedWorkflowRunId) {
@@ -203,6 +216,7 @@ export function useAdminWorkflowController({
       cancelled = true;
     };
   }, [
+    enabled,
     identityOverride?.orgId,
     identityOverride?.userId,
     selectedWorkflowRunId,
@@ -225,7 +239,7 @@ export function useAdminWorkflowController({
         userId: string;
       }) => Promise<void>;
     }) => {
-      if (workflowActionPending) {
+      if (!enabled || workflowActionPending) {
         return;
       }
 
@@ -267,6 +281,7 @@ export function useAdminWorkflowController({
     [
       effectiveOrgId,
       effectiveUserId,
+      enabled,
       refreshWorkflowSilently,
       t,
       workflowActionPending,

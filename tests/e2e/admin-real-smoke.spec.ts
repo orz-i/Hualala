@@ -55,7 +55,7 @@ test("admin real smoke: manages roles and permission edits through the real back
   const seed = await runBackendSeed();
 
   await enterAdminSession(page, seed.urls.admin);
-  await page.getByRole("button", { name: "治理" }).click();
+  await page.getByRole("button", { name: "治理", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "角色与权限编辑" }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "角色使用中，禁止删除" })).toBeDisabled();
@@ -110,7 +110,7 @@ test("admin real smoke: opens asset monitor details and completes asset actions 
   );
   await page.getByRole("button", { name: "进入开发会话" }).click();
   await expect(page.getByRole("navigation", { name: "管理端主导航" })).toBeVisible();
-  await page.getByRole("button", { name: "资产" }).click();
+  await page.getByRole("button", { name: "资产", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "资产监控" }).first()).toBeVisible();
   await page.getByRole("button", { name: new RegExp(`查看导入批次详情 ${seed.creatorImport.importBatchId}`) }).click();
@@ -151,7 +151,7 @@ test("admin real smoke: creates and cancels a workflow run through the real back
   });
 
   await enterAdminSession(page, seed.urls.admin);
-  await page.getByRole("button", { name: "工作流" }).click();
+  await page.getByRole("button", { name: "工作流", exact: true }).click();
 
   const startWorkflowResponse = await page.evaluate(
     async ({ adminBaseUrl, orgId, projectId, importBatchId }) => {
@@ -185,7 +185,7 @@ test("admin real smoke: creates and cancels a workflow run through the real back
   expect(startWorkflowProtocolVersion).toBe("1");
 
   await page.reload();
-  await page.getByRole("button", { name: "工作流" }).click();
+  await page.getByRole("button", { name: "工作流", exact: true }).click();
   await expect(page.getByRole("heading", { name: "工作流监控" }).first()).toBeVisible();
   await page.getByRole("button", { name: /查看工作流详情/ }).click();
   await expect(page).toHaveURL(/workflowRunId=/);

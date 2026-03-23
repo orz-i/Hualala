@@ -74,14 +74,17 @@ export function App() {
 
   const overview = useAdminOverviewController({
     sessionState: sessionGate.sessionState,
+    operationsEnabled: routeState.route === "overview",
     projectId,
     shotExecutionId,
     effectiveOrgId: sessionGate.effectiveOrgId,
+    effectiveUserId: sessionGate.effectiveUserId,
     t,
   });
 
   const governance = useAdminGovernanceController({
     sessionState: sessionGate.sessionState,
+    enabled: routeState.route === "governance",
     identityOverride,
     effectiveOrgId: sessionGate.effectiveOrgId,
     effectiveUserId: sessionGate.effectiveUserId,
@@ -90,6 +93,7 @@ export function App() {
 
   const workflow = useAdminWorkflowController({
     sessionState: sessionGate.sessionState,
+    enabled: routeState.route === "workflow",
     projectId,
     identityOverride,
     effectiveOrgId: sessionGate.effectiveOrgId,
@@ -99,6 +103,7 @@ export function App() {
 
   const asset = useAdminAssetController({
     sessionState: sessionGate.sessionState,
+    enabled: routeState.route === "assets",
     projectId,
     identityOverride,
     effectiveOrgId: sessionGate.effectiveOrgId,
@@ -193,10 +198,22 @@ export function App() {
     projectId,
     onRecentChange: overview.applyRecentChange,
     onWorkflowUpdated: () => {
-      void workflow.refreshWorkflowSilently();
+      if (routeState.route === "overview") {
+        void overview.refreshOperationsOverview();
+        return;
+      }
+      if (routeState.route === "workflow") {
+        void workflow.refreshWorkflowSilently();
+      }
     },
     onAssetImportBatchUpdated: () => {
-      void asset.refreshAssetSilently();
+      if (routeState.route === "overview") {
+        void overview.refreshOperationsOverview();
+        return;
+      }
+      if (routeState.route === "assets") {
+        void asset.refreshAssetSilently();
+      }
     },
     onError: (error) => {
       console.warn(error.message);
@@ -356,10 +373,25 @@ export function App() {
     routeContent = (
       <AdminOverviewPage
         overview={overview.overview}
+        operationsOverview={overview.operationsOverview}
         locale={locale}
         t={t}
         budgetFeedback={overview.budgetFeedback ?? undefined}
         onUpdateBudgetLimit={overview.onUpdateBudgetLimit}
+        onNavigateOperationsTarget={(target) => {
+          if (target.route === "workflow") {
+            applyRouteState({
+              ...selectAdminRoute(routeState, "workflow"),
+              workflowRunId: target.workflowRunId,
+            });
+            return;
+          }
+
+          applyRouteState({
+            ...selectAdminRoute(routeState, "assets"),
+            importBatchId: target.importBatchId,
+          });
+        }}
       />
     );
   }
