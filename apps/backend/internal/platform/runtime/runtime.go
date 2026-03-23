@@ -77,8 +77,8 @@ func (f Factory) Services() ServiceSet {
 	repos := f.Repositories()
 	authorizer := authz.NewAuthorizer(repos.AuthOrg)
 	policyService := policyapp.NewService(repos.PolicyReader)
-	gatewayService := gatewayapp.NewService(repos.GatewayStore, gatewayapp.NewFakeAdapter())
-	workflowService := workflowapp.NewService(repos.WorkflowRepo, repos.EventPublisher, temporal.NewInMemoryExecutor(gatewayService), policyService)
+	gatewayService := gatewayapp.NewService(repos.GatewayStore, gatewayapp.NewRuntimeAdapter())
+	workflowService := workflowapp.NewService(repos.WorkflowRepo, repos.EventPublisher, temporal.NewDirectExecutor(gatewayService), policyService)
 
 	return ServiceSet{
 		AuthService:      authapp.NewService(repos.AuthOrg, authorizer),

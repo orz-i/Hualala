@@ -55,6 +55,51 @@ func TestStartWorkflowCreatesRunAndSteps(t *testing.T) {
 	}
 }
 
+func TestStartWorkflowResolvesKnownProviderWhenMissing(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	policy := policyapp.NewService(store)
+	gateway := gatewayapp.NewService(store, gatewayapp.NewFakeAdapter())
+	service := NewService(store, store.Publisher(), temporal.NewInMemoryExecutor(gateway), policy)
+
+	record, err := service.StartWorkflow(ctx, StartWorkflowInput{
+		OrganizationID: "org-1",
+		ProjectID:      "project-1",
+		WorkflowType:   "asset.import",
+		ResourceID:     "batch-1",
+	})
+	if err != nil {
+		t.Fatalf("StartWorkflow returned error: %v", err)
+	}
+	if got := record.Provider; got != "seedance" {
+		t.Fatalf("expected resolved provider seedance, got %q", got)
+	}
+	if record.ExternalRequestID == "" {
+		t.Fatalf("expected external_request_id to be populated")
+	}
+}
+
+func TestStartWorkflowRejectsUnknownWorkflowTypeWithoutProvider(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	policy := policyapp.NewService(store)
+	gateway := gatewayapp.NewService(store, gatewayapp.NewFakeAdapter())
+	service := NewService(store, store.Publisher(), temporal.NewInMemoryExecutor(gateway), policy)
+
+	_, err := service.StartWorkflow(ctx, StartWorkflowInput{
+		OrganizationID: "org-1",
+		ProjectID:      "project-1",
+		WorkflowType:   "unknown.workflow",
+		ResourceID:     "resource-1",
+	})
+	if err == nil {
+		t.Fatalf("expected unknown workflow type to be rejected")
+	}
+	if got := err.Error(); got != "workflowapp: provider is required for workflow_type unknown.workflow" {
+		t.Fatalf("expected provider resolution error, got %q", got)
+	}
+}
+
 func TestStartWorkflowFailureAndRetryCreateNewAttemptSteps(t *testing.T) {
 	ctx := context.Background()
 	store := db.NewMemoryStore()

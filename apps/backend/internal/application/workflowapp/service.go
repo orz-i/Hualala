@@ -61,6 +61,11 @@ type RetryWorkflowRunInput struct {
 	WorkflowRunID string
 }
 
+var defaultProviderByWorkflowType = map[string]string{
+	"asset.import":  "seedance",
+	"shot_pipeline": "seedance",
+}
+
 func NewService(repo db.WorkflowRepository, publisher *events.Publisher, executor temporal.Executor, policy budgetGuard) *Service {
 	return &Service{
 		repo:      repo,
@@ -80,6 +85,10 @@ func (s *Service) StartWorkflow(ctx context.Context, input StartWorkflowInput) (
 	if strings.TrimSpace(input.ResourceID) == "" {
 		return workflow.WorkflowRun{}, errors.New("workflowapp: resource_id is required")
 	}
+	resolvedProvider, err := resolveProvider(input.WorkflowType, input.Provider)
+	if err != nil {
+		return workflow.WorkflowRun{}, err
+	}
 	if s.policy != nil {
 		if err := s.policy.EvaluateBudgetGuard(input.ProjectID, input.EstimatedCostCents); err != nil {
 			return workflow.WorkflowRun{}, err
@@ -96,7 +105,7 @@ func (s *Service) StartWorkflow(ctx context.Context, input StartWorkflowInput) (
 		Status:         workflow.StatusPending,
 		CurrentStep:    attemptStepKey(1, "dispatch"),
 		AttemptCount:   1,
-		Provider:       normalizeProvider(input.Provider),
+		Provider:       resolvedProvider,
 		IdempotencyKey: normalizeIdempotencyKey(input),
 		CreatedAt:      now,
 		UpdatedAt:      now,
@@ -251,7 +260,7 @@ func (s *Service) executeGateway(ctx context.Context, run workflow.WorkflowRun, 
 		return workflow.WorkflowRun{}, err
 	}
 	run.ExternalRequestID = result.ExternalRequestID
-	run.Provider = normalizeProvider(result.Provider)
+	run.Provider = selectGatewayProvider(run.Provider, result.Provider)
 	run.LastError = ""
 	run.UpdatedAt = time.Now().UTC()
 	if err := s.repo.SaveWorkflowRun(ctx, run); err != nil {
@@ -333,11 +342,24 @@ func (s *Service) publishWorkflowUpdated(ctx context.Context, run workflow.Workf
 	})
 }
 
-func normalizeProvider(provider string) string {
-	if strings.TrimSpace(provider) == "" {
-		return "memory-provider"
+func resolveProvider(workflowType string, provider string) (string, error) {
+	if trimmedProvider := strings.TrimSpace(provider); trimmedProvider != "" {
+		return trimmedProvider, nil
 	}
-	return strings.TrimSpace(provider)
+
+	normalizedWorkflowType := strings.TrimSpace(workflowType)
+	if resolvedProvider, ok := defaultProviderByWorkflowType[normalizedWorkflowType]; ok {
+		return resolvedProvider, nil
+	}
+
+	return "", fmt.Errorf("workflowapp: provider is required for workflow_type %s", normalizedWorkflowType)
+}
+
+func selectGatewayProvider(currentProvider string, resultProvider string) string {
+	if trimmedProvider := strings.TrimSpace(resultProvider); trimmedProvider != "" {
+		return trimmedProvider
+	}
+	return strings.TrimSpace(currentProvider)
 }
 
 func normalizeIdempotencyKey(input StartWorkflowInput) string {
