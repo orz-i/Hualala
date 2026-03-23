@@ -3,6 +3,7 @@ package projectapp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -40,6 +41,30 @@ type ListProjectsInput struct {
 
 type ListEpisodesInput struct {
 	ProjectID string
+}
+
+type PreviewWorkbench struct {
+	Assembly project.PreviewAssembly
+	Items    []project.PreviewAssemblyItem
+}
+
+type GetPreviewWorkbenchInput struct {
+	ProjectID string
+	EpisodeID string
+}
+
+type PreviewAssemblyItemInput struct {
+	ShotID         string
+	PrimaryAssetID string
+	SourceRunID    string
+	Sequence       int
+}
+
+type UpsertPreviewAssemblyInput struct {
+	ProjectID string
+	EpisodeID string
+	Status    string
+	Items     []PreviewAssemblyItemInput
 }
 
 func NewService(repo db.ProjectContentRepository) *Service {
@@ -163,4 +188,135 @@ func (s *Service) ListEpisodes(_ context.Context, input ListEpisodesInput) ([]pr
 		return nil, errors.New("projectapp: project_id is required")
 	}
 	return s.repo.ListEpisodesByProject(projectID), nil
+}
+
+func (s *Service) GetPreviewWorkbench(ctx context.Context, input GetPreviewWorkbenchInput) (PreviewWorkbench, error) {
+	if s == nil || s.repo == nil {
+		return PreviewWorkbench{}, errors.New("projectapp: repository is required")
+	}
+	projectID, episodeID, err := s.normalizePreviewScope(input.ProjectID, input.EpisodeID)
+	if err != nil {
+		return PreviewWorkbench{}, err
+	}
+	record, err := s.ensurePreviewAssembly(ctx, projectID, episodeID)
+	if err != nil {
+		return PreviewWorkbench{}, err
+	}
+	return s.buildPreviewWorkbench(record), nil
+}
+
+func (s *Service) UpsertPreviewAssembly(ctx context.Context, input UpsertPreviewAssemblyInput) (PreviewWorkbench, error) {
+	if s == nil || s.repo == nil {
+		return PreviewWorkbench{}, errors.New("projectapp: repository is required")
+	}
+	projectID, episodeID, err := s.normalizePreviewScope(input.ProjectID, input.EpisodeID)
+	if err != nil {
+		return PreviewWorkbench{}, err
+	}
+	record, err := s.ensurePreviewAssembly(ctx, projectID, episodeID)
+	if err != nil {
+		return PreviewWorkbench{}, err
+	}
+	now := time.Now().UTC()
+	record.Status = defaultPreviewStatus(input.Status)
+	record.UpdatedAt = now
+	if err := s.repo.SavePreviewAssembly(ctx, record); err != nil {
+		return PreviewWorkbench{}, err
+	}
+
+	items := make([]project.PreviewAssemblyItem, 0, len(input.Items))
+	for index, item := range input.Items {
+		shotID := strings.TrimSpace(item.ShotID)
+		if shotID == "" {
+			return PreviewWorkbench{}, errors.New("projectapp: shot_id is required")
+		}
+		shot, ok := s.repo.GetShot(shotID)
+		if !ok {
+			return PreviewWorkbench{}, fmt.Errorf("projectapp: shot %q not found", shotID)
+		}
+		scene, ok := s.repo.GetScene(shot.SceneID)
+		if !ok {
+			return PreviewWorkbench{}, fmt.Errorf("projectapp: scene %q not found", shot.SceneID)
+		}
+		if scene.ProjectID != projectID {
+			return PreviewWorkbench{}, errors.New("projectapp: failed precondition: shot scope does not match project")
+		}
+		if episodeID != "" && scene.EpisodeID != episodeID {
+			return PreviewWorkbench{}, errors.New("projectapp: failed precondition: shot scope does not match episode")
+		}
+
+		sequence := item.Sequence
+		if sequence <= 0 {
+			sequence = index + 1
+		}
+		items = append(items, project.PreviewAssemblyItem{
+			ID:             s.repo.GeneratePreviewAssemblyItemID(),
+			AssemblyID:     record.ID,
+			ShotID:         shotID,
+			PrimaryAssetID: strings.TrimSpace(item.PrimaryAssetID),
+			SourceRunID:    strings.TrimSpace(item.SourceRunID),
+			Sequence:       sequence,
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		})
+	}
+	if err := s.repo.ReplacePreviewAssemblyItems(ctx, record.ID, items); err != nil {
+		return PreviewWorkbench{}, err
+	}
+	return s.buildPreviewWorkbench(record), nil
+}
+
+func (s *Service) normalizePreviewScope(projectID string, episodeID string) (string, string, error) {
+	normalizedProjectID := strings.TrimSpace(projectID)
+	if normalizedProjectID == "" {
+		return "", "", errors.New("projectapp: project_id is required")
+	}
+	if _, ok := s.repo.GetProject(normalizedProjectID); !ok {
+		return "", "", errors.New("projectapp: project not found")
+	}
+	normalizedEpisodeID := strings.TrimSpace(episodeID)
+	if normalizedEpisodeID != "" {
+		record, ok := s.repo.GetEpisode(normalizedEpisodeID)
+		if !ok {
+			return "", "", errors.New("projectapp: episode not found")
+		}
+		if record.ProjectID != normalizedProjectID {
+			return "", "", errors.New("projectapp: failed precondition: episode scope does not match project")
+		}
+	}
+	return normalizedProjectID, normalizedEpisodeID, nil
+}
+
+func (s *Service) ensurePreviewAssembly(ctx context.Context, projectID string, episodeID string) (project.PreviewAssembly, error) {
+	if record, ok := s.repo.GetPreviewAssembly(projectID, episodeID); ok {
+		return record, nil
+	}
+	now := time.Now().UTC()
+	record := project.PreviewAssembly{
+		ID:        s.repo.GeneratePreviewAssemblyID(),
+		ProjectID: projectID,
+		EpisodeID: episodeID,
+		Status:    "draft",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := s.repo.SavePreviewAssembly(ctx, record); err != nil {
+		return project.PreviewAssembly{}, err
+	}
+	return record, nil
+}
+
+func (s *Service) buildPreviewWorkbench(record project.PreviewAssembly) PreviewWorkbench {
+	return PreviewWorkbench{
+		Assembly: record,
+		Items:    s.repo.ListPreviewAssemblyItems(record.ID),
+	}
+}
+
+func defaultPreviewStatus(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "draft"
+	}
+	return trimmed
 }

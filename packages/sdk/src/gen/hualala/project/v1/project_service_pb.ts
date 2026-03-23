@@ -4,13 +4,15 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file hualala/project/v1/project_service.proto.
  */
 export const file_hualala_project_v1_project_service: GenFile = /*@__PURE__*/
-  fileDesc("CihodWFsYWxhL3Byb2plY3QvdjEvcHJvamVjdF9zZXJ2aWNlLnByb3RvEhJodWFsYWxhLnByb2plY3QudjEiTAoHUHJvamVjdBISCgpwcm9qZWN0X2lkGAEgASgJEg4KBm9yZ19pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIOCgZzdGF0dXMYBCABKAkiWAoHRXBpc29kZRISCgplcGlzb2RlX2lkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSDQoFdGl0bGUYAyABKAkSFgoOZXBpc29kZV9udW1iZXIYBCABKA0iTAoUQ3JlYXRlUHJvamVjdFJlcXVlc3QSDgoGb3JnX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEhUKDW93bmVyX3VzZXJfaWQYAyABKAkiRQoVQ3JlYXRlUHJvamVjdFJlc3BvbnNlEiwKB3Byb2plY3QYASABKAsyGy5odWFsYWxhLnByb2plY3QudjEuUHJvamVjdCJRChRDcmVhdGVFcGlzb2RlUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhYKDmVwaXNvZGVfbnVtYmVyGAIgASgNEg0KBXRpdGxlGAMgASgJIkUKFUNyZWF0ZUVwaXNvZGVSZXNwb25zZRIsCgdlcGlzb2RlGAEgASgLMhsuaHVhbGFsYS5wcm9qZWN0LnYxLkVwaXNvZGUiJwoRR2V0UHJvamVjdFJlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCSJCChJHZXRQcm9qZWN0UmVzcG9uc2USLAoHcHJvamVjdBgBIAEoCzIbLmh1YWxhbGEucHJvamVjdC52MS5Qcm9qZWN0IiUKE0xpc3RQcm9qZWN0c1JlcXVlc3QSDgoGb3JnX2lkGAEgASgJIkUKFExpc3RQcm9qZWN0c1Jlc3BvbnNlEi0KCHByb2plY3RzGAEgAygLMhsuaHVhbGFsYS5wcm9qZWN0LnYxLlByb2plY3QiKQoTTGlzdEVwaXNvZGVzUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJIkUKFExpc3RFcGlzb2Rlc1Jlc3BvbnNlEi0KCGVwaXNvZGVzGAEgAygLMhsuaHVhbGFsYS5wcm9qZWN0LnYxLkVwaXNvZGUy/wMKDlByb2plY3RTZXJ2aWNlEmQKDUNyZWF0ZVByb2plY3QSKC5odWFsYWxhLnByb2plY3QudjEuQ3JlYXRlUHJvamVjdFJlcXVlc3QaKS5odWFsYWxhLnByb2plY3QudjEuQ3JlYXRlUHJvamVjdFJlc3BvbnNlEmQKDUNyZWF0ZUVwaXNvZGUSKC5odWFsYWxhLnByb2plY3QudjEuQ3JlYXRlRXBpc29kZVJlcXVlc3QaKS5odWFsYWxhLnByb2plY3QudjEuQ3JlYXRlRXBpc29kZVJlc3BvbnNlElsKCkdldFByb2plY3QSJS5odWFsYWxhLnByb2plY3QudjEuR2V0UHJvamVjdFJlcXVlc3QaJi5odWFsYWxhLnByb2plY3QudjEuR2V0UHJvamVjdFJlc3BvbnNlEmEKDExpc3RQcm9qZWN0cxInLmh1YWxhbGEucHJvamVjdC52MS5MaXN0UHJvamVjdHNSZXF1ZXN0GiguaHVhbGFsYS5wcm9qZWN0LnYxLkxpc3RQcm9qZWN0c1Jlc3BvbnNlEmEKDExpc3RFcGlzb2RlcxInLmh1YWxhbGEucHJvamVjdC52MS5MaXN0RXBpc29kZXNSZXF1ZXN0GiguaHVhbGFsYS5wcm9qZWN0LnYxLkxpc3RFcGlzb2Rlc1Jlc3BvbnNlQtkBChZjb20uaHVhbGFsYS5wcm9qZWN0LnYxQhNQcm9qZWN0U2VydmljZVByb3RvUAFaQGdpdGh1Yi5jb20vaHVhbGFsYS9hcHBzL2JhY2tlbmQvZ2VuL2h1YWxhbGEvcHJvamVjdC92MTtwcm9qZWN0djGiAgNIUFiqAhJIdWFsYWxhLlByb2plY3QuVjHKAhJIdWFsYWxhXFByb2plY3RcVjHiAh5IdWFsYWxhXFByb2plY3RcVjFcR1BCTWV0YWRhdGHqAhRIdWFsYWxhOjpQcm9qZWN0OjpWMWIGcHJvdG8z");
+  fileDesc("CihodWFsYWxhL3Byb2plY3QvdjEvcHJvamVjdF9zZXJ2aWNlLnByb3RvEhJodWFsYWxhLnByb2plY3QudjEiTAoHUHJvamVjdBISCgpwcm9qZWN0X2lkGAEgASgJEg4KBm9yZ19pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIOCgZzdGF0dXMYBCABKAkiWAoHRXBpc29kZRISCgplcGlzb2RlX2lkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSDQoFdGl0bGUYAyABKAkSFgoOZXBpc29kZV9udW1iZXIYBCABKA0ijwEKE1ByZXZpZXdBc3NlbWJseUl0ZW0SDwoHaXRlbV9pZBgBIAEoCRITCgthc3NlbWJseV9pZBgCIAEoCRIPCgdzaG90X2lkGAMgASgJEhgKEHByaW1hcnlfYXNzZXRfaWQYBCABKAkSFQoNc291cmNlX3J1bl9pZBgFIAEoCRIQCghzZXF1ZW5jZRgGIAEoDSL2AQoPUHJldmlld0Fzc2VtYmx5EhMKC2Fzc2VtYmx5X2lkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSEgoKZXBpc29kZV9pZBgDIAEoCRIOCgZzdGF0dXMYBCABKAkSNgoFaXRlbXMYBSADKAsyJy5odWFsYWxhLnByb2plY3QudjEuUHJldmlld0Fzc2VtYmx5SXRlbRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJMChRDcmVhdGVQcm9qZWN0UmVxdWVzdBIOCgZvcmdfaWQYASABKAkSDQoFdGl0bGUYAiABKAkSFQoNb3duZXJfdXNlcl9pZBgDIAEoCSJFChVDcmVhdGVQcm9qZWN0UmVzcG9uc2USLAoHcHJvamVjdBgBIAEoCzIbLmh1YWxhbGEucHJvamVjdC52MS5Qcm9qZWN0IlEKFENyZWF0ZUVwaXNvZGVSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSFgoOZXBpc29kZV9udW1iZXIYAiABKA0SDQoFdGl0bGUYAyABKAkiRQoVQ3JlYXRlRXBpc29kZVJlc3BvbnNlEiwKB2VwaXNvZGUYASABKAsyGy5odWFsYWxhLnByb2plY3QudjEuRXBpc29kZSInChFHZXRQcm9qZWN0UmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJIkIKEkdldFByb2plY3RSZXNwb25zZRIsCgdwcm9qZWN0GAEgASgLMhsuaHVhbGFsYS5wcm9qZWN0LnYxLlByb2plY3QiJQoTTGlzdFByb2plY3RzUmVxdWVzdBIOCgZvcmdfaWQYASABKAkiRQoUTGlzdFByb2plY3RzUmVzcG9uc2USLQoIcHJvamVjdHMYASADKAsyGy5odWFsYWxhLnByb2plY3QudjEuUHJvamVjdCIpChNMaXN0RXBpc29kZXNSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkiRQoUTGlzdEVwaXNvZGVzUmVzcG9uc2USLQoIZXBpc29kZXMYASADKAsyGy5odWFsYWxhLnByb2plY3QudjEuRXBpc29kZSJEChpHZXRQcmV2aWV3V29ya2JlbmNoUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkiVAobR2V0UHJldmlld1dvcmtiZW5jaFJlc3BvbnNlEjUKCGFzc2VtYmx5GAEgASgLMiMuaHVhbGFsYS5wcm9qZWN0LnYxLlByZXZpZXdBc3NlbWJseSKOAQocVXBzZXJ0UHJldmlld0Fzc2VtYmx5UmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSDgoGc3RhdHVzGAMgASgJEjYKBWl0ZW1zGAQgAygLMicuaHVhbGFsYS5wcm9qZWN0LnYxLlByZXZpZXdBc3NlbWJseUl0ZW0iVgodVXBzZXJ0UHJldmlld0Fzc2VtYmx5UmVzcG9uc2USNQoIYXNzZW1ibHkYASABKAsyIy5odWFsYWxhLnByb2plY3QudjEuUHJldmlld0Fzc2VtYmx5MvUFCg5Qcm9qZWN0U2VydmljZRJkCg1DcmVhdGVQcm9qZWN0EiguaHVhbGFsYS5wcm9qZWN0LnYxLkNyZWF0ZVByb2plY3RSZXF1ZXN0GikuaHVhbGFsYS5wcm9qZWN0LnYxLkNyZWF0ZVByb2plY3RSZXNwb25zZRJkCg1DcmVhdGVFcGlzb2RlEiguaHVhbGFsYS5wcm9qZWN0LnYxLkNyZWF0ZUVwaXNvZGVSZXF1ZXN0GikuaHVhbGFsYS5wcm9qZWN0LnYxLkNyZWF0ZUVwaXNvZGVSZXNwb25zZRJbCgpHZXRQcm9qZWN0EiUuaHVhbGFsYS5wcm9qZWN0LnYxLkdldFByb2plY3RSZXF1ZXN0GiYuaHVhbGFsYS5wcm9qZWN0LnYxLkdldFByb2plY3RSZXNwb25zZRJhCgxMaXN0UHJvamVjdHMSJy5odWFsYWxhLnByb2plY3QudjEuTGlzdFByb2plY3RzUmVxdWVzdBooLmh1YWxhbGEucHJvamVjdC52MS5MaXN0UHJvamVjdHNSZXNwb25zZRJhCgxMaXN0RXBpc29kZXMSJy5odWFsYWxhLnByb2plY3QudjEuTGlzdEVwaXNvZGVzUmVxdWVzdBooLmh1YWxhbGEucHJvamVjdC52MS5MaXN0RXBpc29kZXNSZXNwb25zZRJ2ChNHZXRQcmV2aWV3V29ya2JlbmNoEi4uaHVhbGFsYS5wcm9qZWN0LnYxLkdldFByZXZpZXdXb3JrYmVuY2hSZXF1ZXN0Gi8uaHVhbGFsYS5wcm9qZWN0LnYxLkdldFByZXZpZXdXb3JrYmVuY2hSZXNwb25zZRJ8ChVVcHNlcnRQcmV2aWV3QXNzZW1ibHkSMC5odWFsYWxhLnByb2plY3QudjEuVXBzZXJ0UHJldmlld0Fzc2VtYmx5UmVxdWVzdBoxLmh1YWxhbGEucHJvamVjdC52MS5VcHNlcnRQcmV2aWV3QXNzZW1ibHlSZXNwb25zZULZAQoWY29tLmh1YWxhbGEucHJvamVjdC52MUITUHJvamVjdFNlcnZpY2VQcm90b1ABWkBnaXRodWIuY29tL2h1YWxhbGEvYXBwcy9iYWNrZW5kL2dlbi9odWFsYWxhL3Byb2plY3QvdjE7cHJvamVjdHYxogIDSFBYqgISSHVhbGFsYS5Qcm9qZWN0LlYxygISSHVhbGFsYVxQcm9qZWN0XFYx4gIeSHVhbGFsYVxQcm9qZWN0XFYxXEdQQk1ldGFkYXRh6gIUSHVhbGFsYTo6UHJvamVjdDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message hualala.project.v1.Project
@@ -77,6 +79,95 @@ export const EpisodeSchema: GenMessage<Episode> = /*@__PURE__*/
   messageDesc(file_hualala_project_v1_project_service, 1);
 
 /**
+ * @generated from message hualala.project.v1.PreviewAssemblyItem
+ */
+export type PreviewAssemblyItem = Message<"hualala.project.v1.PreviewAssemblyItem"> & {
+  /**
+   * @generated from field: string item_id = 1;
+   */
+  itemId: string;
+
+  /**
+   * @generated from field: string assembly_id = 2;
+   */
+  assemblyId: string;
+
+  /**
+   * @generated from field: string shot_id = 3;
+   */
+  shotId: string;
+
+  /**
+   * @generated from field: string primary_asset_id = 4;
+   */
+  primaryAssetId: string;
+
+  /**
+   * @generated from field: string source_run_id = 5;
+   */
+  sourceRunId: string;
+
+  /**
+   * @generated from field: uint32 sequence = 6;
+   */
+  sequence: number;
+};
+
+/**
+ * Describes the message hualala.project.v1.PreviewAssemblyItem.
+ * Use `create(PreviewAssemblyItemSchema)` to create a new message.
+ */
+export const PreviewAssemblyItemSchema: GenMessage<PreviewAssemblyItem> = /*@__PURE__*/
+  messageDesc(file_hualala_project_v1_project_service, 2);
+
+/**
+ * @generated from message hualala.project.v1.PreviewAssembly
+ */
+export type PreviewAssembly = Message<"hualala.project.v1.PreviewAssembly"> & {
+  /**
+   * @generated from field: string assembly_id = 1;
+   */
+  assemblyId: string;
+
+  /**
+   * @generated from field: string project_id = 2;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string episode_id = 3;
+   */
+  episodeId: string;
+
+  /**
+   * @generated from field: string status = 4;
+   */
+  status: string;
+
+  /**
+   * @generated from field: repeated hualala.project.v1.PreviewAssemblyItem items = 5;
+   */
+  items: PreviewAssemblyItem[];
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 6;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 7;
+   */
+  updatedAt?: Timestamp;
+};
+
+/**
+ * Describes the message hualala.project.v1.PreviewAssembly.
+ * Use `create(PreviewAssemblySchema)` to create a new message.
+ */
+export const PreviewAssemblySchema: GenMessage<PreviewAssembly> = /*@__PURE__*/
+  messageDesc(file_hualala_project_v1_project_service, 3);
+
+/**
  * @generated from message hualala.project.v1.CreateProjectRequest
  */
 export type CreateProjectRequest = Message<"hualala.project.v1.CreateProjectRequest"> & {
@@ -101,7 +192,7 @@ export type CreateProjectRequest = Message<"hualala.project.v1.CreateProjectRequ
  * Use `create(CreateProjectRequestSchema)` to create a new message.
  */
 export const CreateProjectRequestSchema: GenMessage<CreateProjectRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 2);
+  messageDesc(file_hualala_project_v1_project_service, 4);
 
 /**
  * @generated from message hualala.project.v1.CreateProjectResponse
@@ -118,7 +209,7 @@ export type CreateProjectResponse = Message<"hualala.project.v1.CreateProjectRes
  * Use `create(CreateProjectResponseSchema)` to create a new message.
  */
 export const CreateProjectResponseSchema: GenMessage<CreateProjectResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 3);
+  messageDesc(file_hualala_project_v1_project_service, 5);
 
 /**
  * @generated from message hualala.project.v1.CreateEpisodeRequest
@@ -145,7 +236,7 @@ export type CreateEpisodeRequest = Message<"hualala.project.v1.CreateEpisodeRequ
  * Use `create(CreateEpisodeRequestSchema)` to create a new message.
  */
 export const CreateEpisodeRequestSchema: GenMessage<CreateEpisodeRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 4);
+  messageDesc(file_hualala_project_v1_project_service, 6);
 
 /**
  * @generated from message hualala.project.v1.CreateEpisodeResponse
@@ -162,7 +253,7 @@ export type CreateEpisodeResponse = Message<"hualala.project.v1.CreateEpisodeRes
  * Use `create(CreateEpisodeResponseSchema)` to create a new message.
  */
 export const CreateEpisodeResponseSchema: GenMessage<CreateEpisodeResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 5);
+  messageDesc(file_hualala_project_v1_project_service, 7);
 
 /**
  * @generated from message hualala.project.v1.GetProjectRequest
@@ -179,7 +270,7 @@ export type GetProjectRequest = Message<"hualala.project.v1.GetProjectRequest"> 
  * Use `create(GetProjectRequestSchema)` to create a new message.
  */
 export const GetProjectRequestSchema: GenMessage<GetProjectRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 6);
+  messageDesc(file_hualala_project_v1_project_service, 8);
 
 /**
  * @generated from message hualala.project.v1.GetProjectResponse
@@ -196,7 +287,7 @@ export type GetProjectResponse = Message<"hualala.project.v1.GetProjectResponse"
  * Use `create(GetProjectResponseSchema)` to create a new message.
  */
 export const GetProjectResponseSchema: GenMessage<GetProjectResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 7);
+  messageDesc(file_hualala_project_v1_project_service, 9);
 
 /**
  * @generated from message hualala.project.v1.ListProjectsRequest
@@ -213,7 +304,7 @@ export type ListProjectsRequest = Message<"hualala.project.v1.ListProjectsReques
  * Use `create(ListProjectsRequestSchema)` to create a new message.
  */
 export const ListProjectsRequestSchema: GenMessage<ListProjectsRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 8);
+  messageDesc(file_hualala_project_v1_project_service, 10);
 
 /**
  * @generated from message hualala.project.v1.ListProjectsResponse
@@ -230,7 +321,7 @@ export type ListProjectsResponse = Message<"hualala.project.v1.ListProjectsRespo
  * Use `create(ListProjectsResponseSchema)` to create a new message.
  */
 export const ListProjectsResponseSchema: GenMessage<ListProjectsResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 9);
+  messageDesc(file_hualala_project_v1_project_service, 11);
 
 /**
  * @generated from message hualala.project.v1.ListEpisodesRequest
@@ -247,7 +338,7 @@ export type ListEpisodesRequest = Message<"hualala.project.v1.ListEpisodesReques
  * Use `create(ListEpisodesRequestSchema)` to create a new message.
  */
 export const ListEpisodesRequestSchema: GenMessage<ListEpisodesRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 10);
+  messageDesc(file_hualala_project_v1_project_service, 12);
 
 /**
  * @generated from message hualala.project.v1.ListEpisodesResponse
@@ -264,7 +355,95 @@ export type ListEpisodesResponse = Message<"hualala.project.v1.ListEpisodesRespo
  * Use `create(ListEpisodesResponseSchema)` to create a new message.
  */
 export const ListEpisodesResponseSchema: GenMessage<ListEpisodesResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 11);
+  messageDesc(file_hualala_project_v1_project_service, 13);
+
+/**
+ * @generated from message hualala.project.v1.GetPreviewWorkbenchRequest
+ */
+export type GetPreviewWorkbenchRequest = Message<"hualala.project.v1.GetPreviewWorkbenchRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string episode_id = 2;
+   */
+  episodeId: string;
+};
+
+/**
+ * Describes the message hualala.project.v1.GetPreviewWorkbenchRequest.
+ * Use `create(GetPreviewWorkbenchRequestSchema)` to create a new message.
+ */
+export const GetPreviewWorkbenchRequestSchema: GenMessage<GetPreviewWorkbenchRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_project_v1_project_service, 14);
+
+/**
+ * @generated from message hualala.project.v1.GetPreviewWorkbenchResponse
+ */
+export type GetPreviewWorkbenchResponse = Message<"hualala.project.v1.GetPreviewWorkbenchResponse"> & {
+  /**
+   * @generated from field: hualala.project.v1.PreviewAssembly assembly = 1;
+   */
+  assembly?: PreviewAssembly;
+};
+
+/**
+ * Describes the message hualala.project.v1.GetPreviewWorkbenchResponse.
+ * Use `create(GetPreviewWorkbenchResponseSchema)` to create a new message.
+ */
+export const GetPreviewWorkbenchResponseSchema: GenMessage<GetPreviewWorkbenchResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_project_v1_project_service, 15);
+
+/**
+ * @generated from message hualala.project.v1.UpsertPreviewAssemblyRequest
+ */
+export type UpsertPreviewAssemblyRequest = Message<"hualala.project.v1.UpsertPreviewAssemblyRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string episode_id = 2;
+   */
+  episodeId: string;
+
+  /**
+   * @generated from field: string status = 3;
+   */
+  status: string;
+
+  /**
+   * @generated from field: repeated hualala.project.v1.PreviewAssemblyItem items = 4;
+   */
+  items: PreviewAssemblyItem[];
+};
+
+/**
+ * Describes the message hualala.project.v1.UpsertPreviewAssemblyRequest.
+ * Use `create(UpsertPreviewAssemblyRequestSchema)` to create a new message.
+ */
+export const UpsertPreviewAssemblyRequestSchema: GenMessage<UpsertPreviewAssemblyRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_project_v1_project_service, 16);
+
+/**
+ * @generated from message hualala.project.v1.UpsertPreviewAssemblyResponse
+ */
+export type UpsertPreviewAssemblyResponse = Message<"hualala.project.v1.UpsertPreviewAssemblyResponse"> & {
+  /**
+   * @generated from field: hualala.project.v1.PreviewAssembly assembly = 1;
+   */
+  assembly?: PreviewAssembly;
+};
+
+/**
+ * Describes the message hualala.project.v1.UpsertPreviewAssemblyResponse.
+ * Use `create(UpsertPreviewAssemblyResponseSchema)` to create a new message.
+ */
+export const UpsertPreviewAssemblyResponseSchema: GenMessage<UpsertPreviewAssemblyResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_project_v1_project_service, 17);
 
 /**
  * @generated from service hualala.project.v1.ProjectService
@@ -309,6 +488,22 @@ export const ProjectService: GenService<{
     methodKind: "unary";
     input: typeof ListEpisodesRequestSchema;
     output: typeof ListEpisodesResponseSchema;
+  },
+  /**
+   * @generated from rpc hualala.project.v1.ProjectService.GetPreviewWorkbench
+   */
+  getPreviewWorkbench: {
+    methodKind: "unary";
+    input: typeof GetPreviewWorkbenchRequestSchema;
+    output: typeof GetPreviewWorkbenchResponseSchema;
+  },
+  /**
+   * @generated from rpc hualala.project.v1.ProjectService.UpsertPreviewAssembly
+   */
+  upsertPreviewAssembly: {
+    methodKind: "unary";
+    input: typeof UpsertPreviewAssemblyRequestSchema;
+    output: typeof UpsertPreviewAssemblyResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_hualala_project_v1_project_service, 0);

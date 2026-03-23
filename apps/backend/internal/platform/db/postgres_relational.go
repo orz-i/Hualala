@@ -210,6 +210,9 @@ func (p *PostgresPersister) loadRelationalSnapshot(ctx context.Context, snapshot
 	if err := p.loadProjectsEpisodesScenesShotsSnapshots(ctx, snapshot); err != nil {
 		return err
 	}
+	if err := p.loadCollaborationAndPreview(ctx, snapshot); err != nil {
+		return err
+	}
 	runExecutionMap, err := p.loadExecutions(ctx, snapshot)
 	if err != nil {
 		return err
@@ -996,6 +999,9 @@ func (p *PostgresPersister) saveRelationalSnapshot(ctx context.Context, tx *sql.
 	if err := p.saveProjectsEpisodesScenesShotsSnapshots(ctx, tx, snapshot); err != nil {
 		return err
 	}
+	if err := p.saveCollaborationAndPreview(ctx, tx, snapshot); err != nil {
+		return err
+	}
 	usageIDsByRun, budgetIDsByProject, err := p.saveExecutionsAssetsReviewBilling(ctx, tx, snapshot)
 	if err != nil {
 		return err
@@ -1091,6 +1097,8 @@ func clearMainTables(ctx context.Context, tx *sql.Tx) error {
 	statements := []string{
 		`DELETE FROM billing_events`,
 		`DELETE FROM usage_records`,
+		`DELETE FROM preview_assembly_items`,
+		`DELETE FROM preview_assemblies`,
 		`DELETE FROM event_outbox`,
 		`DELETE FROM state_transitions`,
 		`DELETE FROM workflow_steps`,
@@ -1107,6 +1115,8 @@ func clearMainTables(ctx context.Context, tx *sql.Tx) error {
 		`DELETE FROM import_batches`,
 		`DELETE FROM shot_execution_runs`,
 		`DELETE FROM shot_executions`,
+		`DELETE FROM collaboration_presences`,
+		`DELETE FROM collaboration_sessions`,
 		`DELETE FROM content_snapshots`,
 		`DELETE FROM shots`,
 		`DELETE FROM scenes`,

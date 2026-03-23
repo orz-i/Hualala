@@ -9,6 +9,7 @@ package contentv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -273,6 +274,206 @@ func (x *ContentSnapshot) GetBody() string {
 	return ""
 }
 
+type CollaborationPresence struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	PresenceId     string                 `protobuf:"bytes,1,opt,name=presence_id,json=presenceId,proto3" json:"presence_id,omitempty"`
+	SessionId      string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	UserId         string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Status         string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	LastSeenAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=last_seen_at,json=lastSeenAt,proto3" json:"last_seen_at,omitempty"`
+	LeaseExpiresAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=lease_expires_at,json=leaseExpiresAt,proto3" json:"lease_expires_at,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CollaborationPresence) Reset() {
+	*x = CollaborationPresence{}
+	mi := &file_hualala_content_v1_content_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CollaborationPresence) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CollaborationPresence) ProtoMessage() {}
+
+func (x *CollaborationPresence) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_content_v1_content_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CollaborationPresence.ProtoReflect.Descriptor instead.
+func (*CollaborationPresence) Descriptor() ([]byte, []int) {
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CollaborationPresence) GetPresenceId() string {
+	if x != nil {
+		return x.PresenceId
+	}
+	return ""
+}
+
+func (x *CollaborationPresence) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *CollaborationPresence) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *CollaborationPresence) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *CollaborationPresence) GetLastSeenAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastSeenAt
+	}
+	return nil
+}
+
+func (x *CollaborationPresence) GetLeaseExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LeaseExpiresAt
+	}
+	return nil
+}
+
+type CollaborationSession struct {
+	state            protoimpl.MessageState   `protogen:"open.v1"`
+	SessionId        string                   `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	OwnerType        string                   `protobuf:"bytes,2,opt,name=owner_type,json=ownerType,proto3" json:"owner_type,omitempty"`
+	OwnerId          string                   `protobuf:"bytes,3,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	DraftVersion     uint32                   `protobuf:"varint,4,opt,name=draft_version,json=draftVersion,proto3" json:"draft_version,omitempty"`
+	LockHolderUserId string                   `protobuf:"bytes,5,opt,name=lock_holder_user_id,json=lockHolderUserId,proto3" json:"lock_holder_user_id,omitempty"`
+	LeaseExpiresAt   *timestamppb.Timestamp   `protobuf:"bytes,6,opt,name=lease_expires_at,json=leaseExpiresAt,proto3" json:"lease_expires_at,omitempty"`
+	ConflictSummary  string                   `protobuf:"bytes,7,opt,name=conflict_summary,json=conflictSummary,proto3" json:"conflict_summary,omitempty"`
+	Presences        []*CollaborationPresence `protobuf:"bytes,8,rep,name=presences,proto3" json:"presences,omitempty"`
+	CreatedAt        *timestamppb.Timestamp   `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt        *timestamppb.Timestamp   `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *CollaborationSession) Reset() {
+	*x = CollaborationSession{}
+	mi := &file_hualala_content_v1_content_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CollaborationSession) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CollaborationSession) ProtoMessage() {}
+
+func (x *CollaborationSession) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_content_v1_content_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CollaborationSession.ProtoReflect.Descriptor instead.
+func (*CollaborationSession) Descriptor() ([]byte, []int) {
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *CollaborationSession) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *CollaborationSession) GetOwnerType() string {
+	if x != nil {
+		return x.OwnerType
+	}
+	return ""
+}
+
+func (x *CollaborationSession) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *CollaborationSession) GetDraftVersion() uint32 {
+	if x != nil {
+		return x.DraftVersion
+	}
+	return 0
+}
+
+func (x *CollaborationSession) GetLockHolderUserId() string {
+	if x != nil {
+		return x.LockHolderUserId
+	}
+	return ""
+}
+
+func (x *CollaborationSession) GetLeaseExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LeaseExpiresAt
+	}
+	return nil
+}
+
+func (x *CollaborationSession) GetConflictSummary() string {
+	if x != nil {
+		return x.ConflictSummary
+	}
+	return ""
+}
+
+func (x *CollaborationSession) GetPresences() []*CollaborationPresence {
+	if x != nil {
+		return x.Presences
+	}
+	return nil
+}
+
+func (x *CollaborationSession) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *CollaborationSession) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
 type CreateSceneRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
@@ -285,7 +486,7 @@ type CreateSceneRequest struct {
 
 func (x *CreateSceneRequest) Reset() {
 	*x = CreateSceneRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[3]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -297,7 +498,7 @@ func (x *CreateSceneRequest) String() string {
 func (*CreateSceneRequest) ProtoMessage() {}
 
 func (x *CreateSceneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[3]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -310,7 +511,7 @@ func (x *CreateSceneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSceneRequest.ProtoReflect.Descriptor instead.
 func (*CreateSceneRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{3}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateSceneRequest) GetProjectId() string {
@@ -350,7 +551,7 @@ type CreateSceneResponse struct {
 
 func (x *CreateSceneResponse) Reset() {
 	*x = CreateSceneResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[4]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -362,7 +563,7 @@ func (x *CreateSceneResponse) String() string {
 func (*CreateSceneResponse) ProtoMessage() {}
 
 func (x *CreateSceneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[4]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -375,7 +576,7 @@ func (x *CreateSceneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSceneResponse.ProtoReflect.Descriptor instead.
 func (*CreateSceneResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{4}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CreateSceneResponse) GetScene() *Scene {
@@ -396,7 +597,7 @@ type CreateShotRequest struct {
 
 func (x *CreateShotRequest) Reset() {
 	*x = CreateShotRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[5]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -408,7 +609,7 @@ func (x *CreateShotRequest) String() string {
 func (*CreateShotRequest) ProtoMessage() {}
 
 func (x *CreateShotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[5]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -421,7 +622,7 @@ func (x *CreateShotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateShotRequest.ProtoReflect.Descriptor instead.
 func (*CreateShotRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{5}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CreateShotRequest) GetSceneId() string {
@@ -454,7 +655,7 @@ type CreateShotResponse struct {
 
 func (x *CreateShotResponse) Reset() {
 	*x = CreateShotResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[6]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -466,7 +667,7 @@ func (x *CreateShotResponse) String() string {
 func (*CreateShotResponse) ProtoMessage() {}
 
 func (x *CreateShotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[6]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -479,7 +680,7 @@ func (x *CreateShotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateShotResponse.ProtoReflect.Descriptor instead.
 func (*CreateShotResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{6}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CreateShotResponse) GetShot() *Shot {
@@ -500,7 +701,7 @@ type ListScenesRequest struct {
 
 func (x *ListScenesRequest) Reset() {
 	*x = ListScenesRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[7]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -512,7 +713,7 @@ func (x *ListScenesRequest) String() string {
 func (*ListScenesRequest) ProtoMessage() {}
 
 func (x *ListScenesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[7]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -525,7 +726,7 @@ func (x *ListScenesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListScenesRequest.ProtoReflect.Descriptor instead.
 func (*ListScenesRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{7}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListScenesRequest) GetProjectId() string {
@@ -558,7 +759,7 @@ type ListScenesResponse struct {
 
 func (x *ListScenesResponse) Reset() {
 	*x = ListScenesResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[8]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -570,7 +771,7 @@ func (x *ListScenesResponse) String() string {
 func (*ListScenesResponse) ProtoMessage() {}
 
 func (x *ListScenesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[8]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -583,7 +784,7 @@ func (x *ListScenesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListScenesResponse.ProtoReflect.Descriptor instead.
 func (*ListScenesResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{8}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListScenesResponse) GetScenes() []*Scene {
@@ -603,7 +804,7 @@ type GetSceneRequest struct {
 
 func (x *GetSceneRequest) Reset() {
 	*x = GetSceneRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[9]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -615,7 +816,7 @@ func (x *GetSceneRequest) String() string {
 func (*GetSceneRequest) ProtoMessage() {}
 
 func (x *GetSceneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[9]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -628,7 +829,7 @@ func (x *GetSceneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSceneRequest.ProtoReflect.Descriptor instead.
 func (*GetSceneRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{9}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetSceneRequest) GetSceneId() string {
@@ -654,7 +855,7 @@ type GetSceneResponse struct {
 
 func (x *GetSceneResponse) Reset() {
 	*x = GetSceneResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[10]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -666,7 +867,7 @@ func (x *GetSceneResponse) String() string {
 func (*GetSceneResponse) ProtoMessage() {}
 
 func (x *GetSceneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[10]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -679,7 +880,7 @@ func (x *GetSceneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSceneResponse.ProtoReflect.Descriptor instead.
 func (*GetSceneResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{10}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetSceneResponse) GetScene() *Scene {
@@ -699,7 +900,7 @@ type ListSceneShotsRequest struct {
 
 func (x *ListSceneShotsRequest) Reset() {
 	*x = ListSceneShotsRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[11]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -711,7 +912,7 @@ func (x *ListSceneShotsRequest) String() string {
 func (*ListSceneShotsRequest) ProtoMessage() {}
 
 func (x *ListSceneShotsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[11]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -724,7 +925,7 @@ func (x *ListSceneShotsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSceneShotsRequest.ProtoReflect.Descriptor instead.
 func (*ListSceneShotsRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{11}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListSceneShotsRequest) GetSceneId() string {
@@ -750,7 +951,7 @@ type ListSceneShotsResponse struct {
 
 func (x *ListSceneShotsResponse) Reset() {
 	*x = ListSceneShotsResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[12]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -762,7 +963,7 @@ func (x *ListSceneShotsResponse) String() string {
 func (*ListSceneShotsResponse) ProtoMessage() {}
 
 func (x *ListSceneShotsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[12]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -775,7 +976,7 @@ func (x *ListSceneShotsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSceneShotsResponse.ProtoReflect.Descriptor instead.
 func (*ListSceneShotsResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{12}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListSceneShotsResponse) GetShots() []*Shot {
@@ -795,7 +996,7 @@ type GetShotRequest struct {
 
 func (x *GetShotRequest) Reset() {
 	*x = GetShotRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[13]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -807,7 +1008,7 @@ func (x *GetShotRequest) String() string {
 func (*GetShotRequest) ProtoMessage() {}
 
 func (x *GetShotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[13]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -820,7 +1021,7 @@ func (x *GetShotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetShotRequest.ProtoReflect.Descriptor instead.
 func (*GetShotRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{13}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetShotRequest) GetShotId() string {
@@ -846,7 +1047,7 @@ type GetShotResponse struct {
 
 func (x *GetShotResponse) Reset() {
 	*x = GetShotResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[14]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -858,7 +1059,7 @@ func (x *GetShotResponse) String() string {
 func (*GetShotResponse) ProtoMessage() {}
 
 func (x *GetShotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[14]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -871,7 +1072,7 @@ func (x *GetShotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetShotResponse.ProtoReflect.Descriptor instead.
 func (*GetShotResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{14}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetShotResponse) GetShot() *Shot {
@@ -892,7 +1093,7 @@ type UpdateShotStructureRequest struct {
 
 func (x *UpdateShotStructureRequest) Reset() {
 	*x = UpdateShotStructureRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[15]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -904,7 +1105,7 @@ func (x *UpdateShotStructureRequest) String() string {
 func (*UpdateShotStructureRequest) ProtoMessage() {}
 
 func (x *UpdateShotStructureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[15]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -917,7 +1118,7 @@ func (x *UpdateShotStructureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateShotStructureRequest.ProtoReflect.Descriptor instead.
 func (*UpdateShotStructureRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{15}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *UpdateShotStructureRequest) GetShotId() string {
@@ -950,7 +1151,7 @@ type UpdateShotStructureResponse struct {
 
 func (x *UpdateShotStructureResponse) Reset() {
 	*x = UpdateShotStructureResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[16]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -962,7 +1163,7 @@ func (x *UpdateShotStructureResponse) String() string {
 func (*UpdateShotStructureResponse) ProtoMessage() {}
 
 func (x *UpdateShotStructureResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[16]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -975,7 +1176,7 @@ func (x *UpdateShotStructureResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateShotStructureResponse.ProtoReflect.Descriptor instead.
 func (*UpdateShotStructureResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{16}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *UpdateShotStructureResponse) GetShot() *Shot {
@@ -997,7 +1198,7 @@ type CreateContentSnapshotRequest struct {
 
 func (x *CreateContentSnapshotRequest) Reset() {
 	*x = CreateContentSnapshotRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[17]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1009,7 +1210,7 @@ func (x *CreateContentSnapshotRequest) String() string {
 func (*CreateContentSnapshotRequest) ProtoMessage() {}
 
 func (x *CreateContentSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[17]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1022,7 +1223,7 @@ func (x *CreateContentSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateContentSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*CreateContentSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{17}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CreateContentSnapshotRequest) GetOwnerType() string {
@@ -1062,7 +1263,7 @@ type CreateContentSnapshotResponse struct {
 
 func (x *CreateContentSnapshotResponse) Reset() {
 	*x = CreateContentSnapshotResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[18]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1074,7 +1275,7 @@ func (x *CreateContentSnapshotResponse) String() string {
 func (*CreateContentSnapshotResponse) ProtoMessage() {}
 
 func (x *CreateContentSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[18]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1087,7 +1288,7 @@ func (x *CreateContentSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateContentSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*CreateContentSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{18}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CreateContentSnapshotResponse) GetSnapshot() *ContentSnapshot {
@@ -1108,7 +1309,7 @@ type CreateLocalizedSnapshotRequest struct {
 
 func (x *CreateLocalizedSnapshotRequest) Reset() {
 	*x = CreateLocalizedSnapshotRequest{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[19]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1120,7 +1321,7 @@ func (x *CreateLocalizedSnapshotRequest) String() string {
 func (*CreateLocalizedSnapshotRequest) ProtoMessage() {}
 
 func (x *CreateLocalizedSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[19]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1133,7 +1334,7 @@ func (x *CreateLocalizedSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateLocalizedSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*CreateLocalizedSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{19}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CreateLocalizedSnapshotRequest) GetSourceSnapshotId() string {
@@ -1166,7 +1367,7 @@ type CreateLocalizedSnapshotResponse struct {
 
 func (x *CreateLocalizedSnapshotResponse) Reset() {
 	*x = CreateLocalizedSnapshotResponse{}
-	mi := &file_hualala_content_v1_content_proto_msgTypes[20]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1178,7 +1379,7 @@ func (x *CreateLocalizedSnapshotResponse) String() string {
 func (*CreateLocalizedSnapshotResponse) ProtoMessage() {}
 
 func (x *CreateLocalizedSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_content_v1_content_proto_msgTypes[20]
+	mi := &file_hualala_content_v1_content_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1191,7 +1392,7 @@ func (x *CreateLocalizedSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateLocalizedSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*CreateLocalizedSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{20}
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CreateLocalizedSnapshotResponse) GetSnapshot() *ContentSnapshot {
@@ -1201,11 +1402,347 @@ func (x *CreateLocalizedSnapshotResponse) GetSnapshot() *ContentSnapshot {
 	return nil
 }
 
+type GetCollaborationSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OwnerType     string                 `protobuf:"bytes,1,opt,name=owner_type,json=ownerType,proto3" json:"owner_type,omitempty"`
+	OwnerId       string                 `protobuf:"bytes,2,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCollaborationSessionRequest) Reset() {
+	*x = GetCollaborationSessionRequest{}
+	mi := &file_hualala_content_v1_content_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCollaborationSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCollaborationSessionRequest) ProtoMessage() {}
+
+func (x *GetCollaborationSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_content_v1_content_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCollaborationSessionRequest.ProtoReflect.Descriptor instead.
+func (*GetCollaborationSessionRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *GetCollaborationSessionRequest) GetOwnerType() string {
+	if x != nil {
+		return x.OwnerType
+	}
+	return ""
+}
+
+func (x *GetCollaborationSessionRequest) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+type GetCollaborationSessionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Session       *CollaborationSession  `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCollaborationSessionResponse) Reset() {
+	*x = GetCollaborationSessionResponse{}
+	mi := &file_hualala_content_v1_content_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCollaborationSessionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCollaborationSessionResponse) ProtoMessage() {}
+
+func (x *GetCollaborationSessionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_content_v1_content_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCollaborationSessionResponse.ProtoReflect.Descriptor instead.
+func (*GetCollaborationSessionResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GetCollaborationSessionResponse) GetSession() *CollaborationSession {
+	if x != nil {
+		return x.Session
+	}
+	return nil
+}
+
+type UpsertCollaborationLeaseRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	OwnerType       string                 `protobuf:"bytes,1,opt,name=owner_type,json=ownerType,proto3" json:"owner_type,omitempty"`
+	OwnerId         string                 `protobuf:"bytes,2,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	ActorUserId     string                 `protobuf:"bytes,3,opt,name=actor_user_id,json=actorUserId,proto3" json:"actor_user_id,omitempty"`
+	PresenceStatus  string                 `protobuf:"bytes,4,opt,name=presence_status,json=presenceStatus,proto3" json:"presence_status,omitempty"`
+	DraftVersion    uint32                 `protobuf:"varint,5,opt,name=draft_version,json=draftVersion,proto3" json:"draft_version,omitempty"`
+	LeaseTtlSeconds uint32                 `protobuf:"varint,6,opt,name=lease_ttl_seconds,json=leaseTtlSeconds,proto3" json:"lease_ttl_seconds,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *UpsertCollaborationLeaseRequest) Reset() {
+	*x = UpsertCollaborationLeaseRequest{}
+	mi := &file_hualala_content_v1_content_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpsertCollaborationLeaseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpsertCollaborationLeaseRequest) ProtoMessage() {}
+
+func (x *UpsertCollaborationLeaseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_content_v1_content_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpsertCollaborationLeaseRequest.ProtoReflect.Descriptor instead.
+func (*UpsertCollaborationLeaseRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *UpsertCollaborationLeaseRequest) GetOwnerType() string {
+	if x != nil {
+		return x.OwnerType
+	}
+	return ""
+}
+
+func (x *UpsertCollaborationLeaseRequest) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *UpsertCollaborationLeaseRequest) GetActorUserId() string {
+	if x != nil {
+		return x.ActorUserId
+	}
+	return ""
+}
+
+func (x *UpsertCollaborationLeaseRequest) GetPresenceStatus() string {
+	if x != nil {
+		return x.PresenceStatus
+	}
+	return ""
+}
+
+func (x *UpsertCollaborationLeaseRequest) GetDraftVersion() uint32 {
+	if x != nil {
+		return x.DraftVersion
+	}
+	return 0
+}
+
+func (x *UpsertCollaborationLeaseRequest) GetLeaseTtlSeconds() uint32 {
+	if x != nil {
+		return x.LeaseTtlSeconds
+	}
+	return 0
+}
+
+type UpsertCollaborationLeaseResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Session       *CollaborationSession  `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpsertCollaborationLeaseResponse) Reset() {
+	*x = UpsertCollaborationLeaseResponse{}
+	mi := &file_hualala_content_v1_content_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpsertCollaborationLeaseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpsertCollaborationLeaseResponse) ProtoMessage() {}
+
+func (x *UpsertCollaborationLeaseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_content_v1_content_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpsertCollaborationLeaseResponse.ProtoReflect.Descriptor instead.
+func (*UpsertCollaborationLeaseResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *UpsertCollaborationLeaseResponse) GetSession() *CollaborationSession {
+	if x != nil {
+		return x.Session
+	}
+	return nil
+}
+
+type ReleaseCollaborationLeaseRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	OwnerType       string                 `protobuf:"bytes,1,opt,name=owner_type,json=ownerType,proto3" json:"owner_type,omitempty"`
+	OwnerId         string                 `protobuf:"bytes,2,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	ActorUserId     string                 `protobuf:"bytes,3,opt,name=actor_user_id,json=actorUserId,proto3" json:"actor_user_id,omitempty"`
+	ConflictSummary string                 `protobuf:"bytes,4,opt,name=conflict_summary,json=conflictSummary,proto3" json:"conflict_summary,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ReleaseCollaborationLeaseRequest) Reset() {
+	*x = ReleaseCollaborationLeaseRequest{}
+	mi := &file_hualala_content_v1_content_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReleaseCollaborationLeaseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReleaseCollaborationLeaseRequest) ProtoMessage() {}
+
+func (x *ReleaseCollaborationLeaseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_content_v1_content_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReleaseCollaborationLeaseRequest.ProtoReflect.Descriptor instead.
+func (*ReleaseCollaborationLeaseRequest) Descriptor() ([]byte, []int) {
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ReleaseCollaborationLeaseRequest) GetOwnerType() string {
+	if x != nil {
+		return x.OwnerType
+	}
+	return ""
+}
+
+func (x *ReleaseCollaborationLeaseRequest) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *ReleaseCollaborationLeaseRequest) GetActorUserId() string {
+	if x != nil {
+		return x.ActorUserId
+	}
+	return ""
+}
+
+func (x *ReleaseCollaborationLeaseRequest) GetConflictSummary() string {
+	if x != nil {
+		return x.ConflictSummary
+	}
+	return ""
+}
+
+type ReleaseCollaborationLeaseResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Session       *CollaborationSession  `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReleaseCollaborationLeaseResponse) Reset() {
+	*x = ReleaseCollaborationLeaseResponse{}
+	mi := &file_hualala_content_v1_content_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReleaseCollaborationLeaseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReleaseCollaborationLeaseResponse) ProtoMessage() {}
+
+func (x *ReleaseCollaborationLeaseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_content_v1_content_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReleaseCollaborationLeaseResponse.ProtoReflect.Descriptor instead.
+func (*ReleaseCollaborationLeaseResponse) Descriptor() ([]byte, []int) {
+	return file_hualala_content_v1_content_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ReleaseCollaborationLeaseResponse) GetSession() *CollaborationSession {
+	if x != nil {
+		return x.Session
+	}
+	return nil
+}
+
 var File_hualala_content_v1_content_proto protoreflect.FileDescriptor
 
 const file_hualala_content_v1_content_proto_rawDesc = "" +
 	"\n" +
-	" hualala/content/v1/content.proto\x12\x12hualala.content.v1\"\x85\x01\n" +
+	" hualala/content/v1/content.proto\x12\x12hualala.content.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x85\x01\n" +
 	"\x05Scene\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1228,7 +1765,33 @@ const file_hualala_content_v1_content_proto_rawDesc = "" +
 	"\x12source_snapshot_id\x18\x05 \x01(\tR\x10sourceSnapshotId\x120\n" +
 	"\x14translation_group_id\x18\x06 \x01(\tR\x12translationGroupId\x12-\n" +
 	"\x12translation_status\x18\a \x01(\tR\x11translationStatus\x12\x12\n" +
-	"\x04body\x18\b \x01(\tR\x04body\"\x8b\x01\n" +
+	"\x04body\x18\b \x01(\tR\x04body\"\x8c\x02\n" +
+	"\x15CollaborationPresence\x12\x1f\n" +
+	"\vpresence_id\x18\x01 \x01(\tR\n" +
+	"presenceId\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x12<\n" +
+	"\flast_seen_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"lastSeenAt\x12D\n" +
+	"\x10lease_expires_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x0eleaseExpiresAt\"\xf3\x03\n" +
+	"\x14CollaborationSession\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
+	"\n" +
+	"owner_type\x18\x02 \x01(\tR\townerType\x12\x19\n" +
+	"\bowner_id\x18\x03 \x01(\tR\aownerId\x12#\n" +
+	"\rdraft_version\x18\x04 \x01(\rR\fdraftVersion\x12-\n" +
+	"\x13lock_holder_user_id\x18\x05 \x01(\tR\x10lockHolderUserId\x12D\n" +
+	"\x10lease_expires_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x0eleaseExpiresAt\x12)\n" +
+	"\x10conflict_summary\x18\a \x01(\tR\x0fconflictSummary\x12G\n" +
+	"\tpresences\x18\b \x03(\v2).hualala.content.v1.CollaborationPresenceR\tpresences\x129\n" +
+	"\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x8b\x01\n" +
 	"\x12CreateSceneRequest\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x1d\n" +
@@ -1287,7 +1850,32 @@ const file_hualala_content_v1_content_proto_rawDesc = "" +
 	"\x0econtent_locale\x18\x02 \x01(\tR\rcontentLocale\x12\x12\n" +
 	"\x04body\x18\x03 \x01(\tR\x04body\"b\n" +
 	"\x1fCreateLocalizedSnapshotResponse\x12?\n" +
-	"\bsnapshot\x18\x01 \x01(\v2#.hualala.content.v1.ContentSnapshotR\bsnapshot2\xb9\a\n" +
+	"\bsnapshot\x18\x01 \x01(\v2#.hualala.content.v1.ContentSnapshotR\bsnapshot\"Z\n" +
+	"\x1eGetCollaborationSessionRequest\x12\x1d\n" +
+	"\n" +
+	"owner_type\x18\x01 \x01(\tR\townerType\x12\x19\n" +
+	"\bowner_id\x18\x02 \x01(\tR\aownerId\"e\n" +
+	"\x1fGetCollaborationSessionResponse\x12B\n" +
+	"\asession\x18\x01 \x01(\v2(.hualala.content.v1.CollaborationSessionR\asession\"\xf9\x01\n" +
+	"\x1fUpsertCollaborationLeaseRequest\x12\x1d\n" +
+	"\n" +
+	"owner_type\x18\x01 \x01(\tR\townerType\x12\x19\n" +
+	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12\"\n" +
+	"\ractor_user_id\x18\x03 \x01(\tR\vactorUserId\x12'\n" +
+	"\x0fpresence_status\x18\x04 \x01(\tR\x0epresenceStatus\x12#\n" +
+	"\rdraft_version\x18\x05 \x01(\rR\fdraftVersion\x12*\n" +
+	"\x11lease_ttl_seconds\x18\x06 \x01(\rR\x0fleaseTtlSeconds\"f\n" +
+	" UpsertCollaborationLeaseResponse\x12B\n" +
+	"\asession\x18\x01 \x01(\v2(.hualala.content.v1.CollaborationSessionR\asession\"\xab\x01\n" +
+	" ReleaseCollaborationLeaseRequest\x12\x1d\n" +
+	"\n" +
+	"owner_type\x18\x01 \x01(\tR\townerType\x12\x19\n" +
+	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12\"\n" +
+	"\ractor_user_id\x18\x03 \x01(\tR\vactorUserId\x12)\n" +
+	"\x10conflict_summary\x18\x04 \x01(\tR\x0fconflictSummary\"g\n" +
+	"!ReleaseCollaborationLeaseResponse\x12B\n" +
+	"\asession\x18\x01 \x01(\v2(.hualala.content.v1.CollaborationSessionR\asession2\xd1\n" +
+	"\n" +
 	"\x0eContentService\x12^\n" +
 	"\vCreateScene\x12&.hualala.content.v1.CreateSceneRequest\x1a'.hualala.content.v1.CreateSceneResponse\x12[\n" +
 	"\n" +
@@ -1299,7 +1887,10 @@ const file_hualala_content_v1_content_proto_rawDesc = "" +
 	"\aGetShot\x12\".hualala.content.v1.GetShotRequest\x1a#.hualala.content.v1.GetShotResponse\x12v\n" +
 	"\x13UpdateShotStructure\x12..hualala.content.v1.UpdateShotStructureRequest\x1a/.hualala.content.v1.UpdateShotStructureResponse\x12|\n" +
 	"\x15CreateContentSnapshot\x120.hualala.content.v1.CreateContentSnapshotRequest\x1a1.hualala.content.v1.CreateContentSnapshotResponse\x12\x82\x01\n" +
-	"\x17CreateLocalizedSnapshot\x122.hualala.content.v1.CreateLocalizedSnapshotRequest\x1a3.hualala.content.v1.CreateLocalizedSnapshotResponseB\xd2\x01\n" +
+	"\x17CreateLocalizedSnapshot\x122.hualala.content.v1.CreateLocalizedSnapshotRequest\x1a3.hualala.content.v1.CreateLocalizedSnapshotResponse\x12\x82\x01\n" +
+	"\x17GetCollaborationSession\x122.hualala.content.v1.GetCollaborationSessionRequest\x1a3.hualala.content.v1.GetCollaborationSessionResponse\x12\x85\x01\n" +
+	"\x18UpsertCollaborationLease\x123.hualala.content.v1.UpsertCollaborationLeaseRequest\x1a4.hualala.content.v1.UpsertCollaborationLeaseResponse\x12\x88\x01\n" +
+	"\x19ReleaseCollaborationLease\x124.hualala.content.v1.ReleaseCollaborationLeaseRequest\x1a5.hualala.content.v1.ReleaseCollaborationLeaseResponseB\xd2\x01\n" +
 	"\x16com.hualala.content.v1B\fContentProtoP\x01Z@github.com/hualala/apps/backend/gen/hualala/content/v1;contentv1\xa2\x02\x03HCX\xaa\x02\x12Hualala.Content.V1\xca\x02\x12Hualala\\Content\\V1\xe2\x02\x1eHualala\\Content\\V1\\GPBMetadata\xea\x02\x14Hualala::Content::V1b\x06proto3"
 
 var (
@@ -1314,63 +1905,87 @@ func file_hualala_content_v1_content_proto_rawDescGZIP() []byte {
 	return file_hualala_content_v1_content_proto_rawDescData
 }
 
-var file_hualala_content_v1_content_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_hualala_content_v1_content_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_hualala_content_v1_content_proto_goTypes = []any{
-	(*Scene)(nil),                           // 0: hualala.content.v1.Scene
-	(*Shot)(nil),                            // 1: hualala.content.v1.Shot
-	(*ContentSnapshot)(nil),                 // 2: hualala.content.v1.ContentSnapshot
-	(*CreateSceneRequest)(nil),              // 3: hualala.content.v1.CreateSceneRequest
-	(*CreateSceneResponse)(nil),             // 4: hualala.content.v1.CreateSceneResponse
-	(*CreateShotRequest)(nil),               // 5: hualala.content.v1.CreateShotRequest
-	(*CreateShotResponse)(nil),              // 6: hualala.content.v1.CreateShotResponse
-	(*ListScenesRequest)(nil),               // 7: hualala.content.v1.ListScenesRequest
-	(*ListScenesResponse)(nil),              // 8: hualala.content.v1.ListScenesResponse
-	(*GetSceneRequest)(nil),                 // 9: hualala.content.v1.GetSceneRequest
-	(*GetSceneResponse)(nil),                // 10: hualala.content.v1.GetSceneResponse
-	(*ListSceneShotsRequest)(nil),           // 11: hualala.content.v1.ListSceneShotsRequest
-	(*ListSceneShotsResponse)(nil),          // 12: hualala.content.v1.ListSceneShotsResponse
-	(*GetShotRequest)(nil),                  // 13: hualala.content.v1.GetShotRequest
-	(*GetShotResponse)(nil),                 // 14: hualala.content.v1.GetShotResponse
-	(*UpdateShotStructureRequest)(nil),      // 15: hualala.content.v1.UpdateShotStructureRequest
-	(*UpdateShotStructureResponse)(nil),     // 16: hualala.content.v1.UpdateShotStructureResponse
-	(*CreateContentSnapshotRequest)(nil),    // 17: hualala.content.v1.CreateContentSnapshotRequest
-	(*CreateContentSnapshotResponse)(nil),   // 18: hualala.content.v1.CreateContentSnapshotResponse
-	(*CreateLocalizedSnapshotRequest)(nil),  // 19: hualala.content.v1.CreateLocalizedSnapshotRequest
-	(*CreateLocalizedSnapshotResponse)(nil), // 20: hualala.content.v1.CreateLocalizedSnapshotResponse
+	(*Scene)(nil),                             // 0: hualala.content.v1.Scene
+	(*Shot)(nil),                              // 1: hualala.content.v1.Shot
+	(*ContentSnapshot)(nil),                   // 2: hualala.content.v1.ContentSnapshot
+	(*CollaborationPresence)(nil),             // 3: hualala.content.v1.CollaborationPresence
+	(*CollaborationSession)(nil),              // 4: hualala.content.v1.CollaborationSession
+	(*CreateSceneRequest)(nil),                // 5: hualala.content.v1.CreateSceneRequest
+	(*CreateSceneResponse)(nil),               // 6: hualala.content.v1.CreateSceneResponse
+	(*CreateShotRequest)(nil),                 // 7: hualala.content.v1.CreateShotRequest
+	(*CreateShotResponse)(nil),                // 8: hualala.content.v1.CreateShotResponse
+	(*ListScenesRequest)(nil),                 // 9: hualala.content.v1.ListScenesRequest
+	(*ListScenesResponse)(nil),                // 10: hualala.content.v1.ListScenesResponse
+	(*GetSceneRequest)(nil),                   // 11: hualala.content.v1.GetSceneRequest
+	(*GetSceneResponse)(nil),                  // 12: hualala.content.v1.GetSceneResponse
+	(*ListSceneShotsRequest)(nil),             // 13: hualala.content.v1.ListSceneShotsRequest
+	(*ListSceneShotsResponse)(nil),            // 14: hualala.content.v1.ListSceneShotsResponse
+	(*GetShotRequest)(nil),                    // 15: hualala.content.v1.GetShotRequest
+	(*GetShotResponse)(nil),                   // 16: hualala.content.v1.GetShotResponse
+	(*UpdateShotStructureRequest)(nil),        // 17: hualala.content.v1.UpdateShotStructureRequest
+	(*UpdateShotStructureResponse)(nil),       // 18: hualala.content.v1.UpdateShotStructureResponse
+	(*CreateContentSnapshotRequest)(nil),      // 19: hualala.content.v1.CreateContentSnapshotRequest
+	(*CreateContentSnapshotResponse)(nil),     // 20: hualala.content.v1.CreateContentSnapshotResponse
+	(*CreateLocalizedSnapshotRequest)(nil),    // 21: hualala.content.v1.CreateLocalizedSnapshotRequest
+	(*CreateLocalizedSnapshotResponse)(nil),   // 22: hualala.content.v1.CreateLocalizedSnapshotResponse
+	(*GetCollaborationSessionRequest)(nil),    // 23: hualala.content.v1.GetCollaborationSessionRequest
+	(*GetCollaborationSessionResponse)(nil),   // 24: hualala.content.v1.GetCollaborationSessionResponse
+	(*UpsertCollaborationLeaseRequest)(nil),   // 25: hualala.content.v1.UpsertCollaborationLeaseRequest
+	(*UpsertCollaborationLeaseResponse)(nil),  // 26: hualala.content.v1.UpsertCollaborationLeaseResponse
+	(*ReleaseCollaborationLeaseRequest)(nil),  // 27: hualala.content.v1.ReleaseCollaborationLeaseRequest
+	(*ReleaseCollaborationLeaseResponse)(nil), // 28: hualala.content.v1.ReleaseCollaborationLeaseResponse
+	(*timestamppb.Timestamp)(nil),             // 29: google.protobuf.Timestamp
 }
 var file_hualala_content_v1_content_proto_depIdxs = []int32{
-	0,  // 0: hualala.content.v1.CreateSceneResponse.scene:type_name -> hualala.content.v1.Scene
-	1,  // 1: hualala.content.v1.CreateShotResponse.shot:type_name -> hualala.content.v1.Shot
-	0,  // 2: hualala.content.v1.ListScenesResponse.scenes:type_name -> hualala.content.v1.Scene
-	0,  // 3: hualala.content.v1.GetSceneResponse.scene:type_name -> hualala.content.v1.Scene
-	1,  // 4: hualala.content.v1.ListSceneShotsResponse.shots:type_name -> hualala.content.v1.Shot
-	1,  // 5: hualala.content.v1.GetShotResponse.shot:type_name -> hualala.content.v1.Shot
-	1,  // 6: hualala.content.v1.UpdateShotStructureResponse.shot:type_name -> hualala.content.v1.Shot
-	2,  // 7: hualala.content.v1.CreateContentSnapshotResponse.snapshot:type_name -> hualala.content.v1.ContentSnapshot
-	2,  // 8: hualala.content.v1.CreateLocalizedSnapshotResponse.snapshot:type_name -> hualala.content.v1.ContentSnapshot
-	3,  // 9: hualala.content.v1.ContentService.CreateScene:input_type -> hualala.content.v1.CreateSceneRequest
-	5,  // 10: hualala.content.v1.ContentService.CreateShot:input_type -> hualala.content.v1.CreateShotRequest
-	7,  // 11: hualala.content.v1.ContentService.ListScenes:input_type -> hualala.content.v1.ListScenesRequest
-	9,  // 12: hualala.content.v1.ContentService.GetScene:input_type -> hualala.content.v1.GetSceneRequest
-	11, // 13: hualala.content.v1.ContentService.ListSceneShots:input_type -> hualala.content.v1.ListSceneShotsRequest
-	13, // 14: hualala.content.v1.ContentService.GetShot:input_type -> hualala.content.v1.GetShotRequest
-	15, // 15: hualala.content.v1.ContentService.UpdateShotStructure:input_type -> hualala.content.v1.UpdateShotStructureRequest
-	17, // 16: hualala.content.v1.ContentService.CreateContentSnapshot:input_type -> hualala.content.v1.CreateContentSnapshotRequest
-	19, // 17: hualala.content.v1.ContentService.CreateLocalizedSnapshot:input_type -> hualala.content.v1.CreateLocalizedSnapshotRequest
-	4,  // 18: hualala.content.v1.ContentService.CreateScene:output_type -> hualala.content.v1.CreateSceneResponse
-	6,  // 19: hualala.content.v1.ContentService.CreateShot:output_type -> hualala.content.v1.CreateShotResponse
-	8,  // 20: hualala.content.v1.ContentService.ListScenes:output_type -> hualala.content.v1.ListScenesResponse
-	10, // 21: hualala.content.v1.ContentService.GetScene:output_type -> hualala.content.v1.GetSceneResponse
-	12, // 22: hualala.content.v1.ContentService.ListSceneShots:output_type -> hualala.content.v1.ListSceneShotsResponse
-	14, // 23: hualala.content.v1.ContentService.GetShot:output_type -> hualala.content.v1.GetShotResponse
-	16, // 24: hualala.content.v1.ContentService.UpdateShotStructure:output_type -> hualala.content.v1.UpdateShotStructureResponse
-	18, // 25: hualala.content.v1.ContentService.CreateContentSnapshot:output_type -> hualala.content.v1.CreateContentSnapshotResponse
-	20, // 26: hualala.content.v1.ContentService.CreateLocalizedSnapshot:output_type -> hualala.content.v1.CreateLocalizedSnapshotResponse
-	18, // [18:27] is the sub-list for method output_type
-	9,  // [9:18] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	29, // 0: hualala.content.v1.CollaborationPresence.last_seen_at:type_name -> google.protobuf.Timestamp
+	29, // 1: hualala.content.v1.CollaborationPresence.lease_expires_at:type_name -> google.protobuf.Timestamp
+	29, // 2: hualala.content.v1.CollaborationSession.lease_expires_at:type_name -> google.protobuf.Timestamp
+	3,  // 3: hualala.content.v1.CollaborationSession.presences:type_name -> hualala.content.v1.CollaborationPresence
+	29, // 4: hualala.content.v1.CollaborationSession.created_at:type_name -> google.protobuf.Timestamp
+	29, // 5: hualala.content.v1.CollaborationSession.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 6: hualala.content.v1.CreateSceneResponse.scene:type_name -> hualala.content.v1.Scene
+	1,  // 7: hualala.content.v1.CreateShotResponse.shot:type_name -> hualala.content.v1.Shot
+	0,  // 8: hualala.content.v1.ListScenesResponse.scenes:type_name -> hualala.content.v1.Scene
+	0,  // 9: hualala.content.v1.GetSceneResponse.scene:type_name -> hualala.content.v1.Scene
+	1,  // 10: hualala.content.v1.ListSceneShotsResponse.shots:type_name -> hualala.content.v1.Shot
+	1,  // 11: hualala.content.v1.GetShotResponse.shot:type_name -> hualala.content.v1.Shot
+	1,  // 12: hualala.content.v1.UpdateShotStructureResponse.shot:type_name -> hualala.content.v1.Shot
+	2,  // 13: hualala.content.v1.CreateContentSnapshotResponse.snapshot:type_name -> hualala.content.v1.ContentSnapshot
+	2,  // 14: hualala.content.v1.CreateLocalizedSnapshotResponse.snapshot:type_name -> hualala.content.v1.ContentSnapshot
+	4,  // 15: hualala.content.v1.GetCollaborationSessionResponse.session:type_name -> hualala.content.v1.CollaborationSession
+	4,  // 16: hualala.content.v1.UpsertCollaborationLeaseResponse.session:type_name -> hualala.content.v1.CollaborationSession
+	4,  // 17: hualala.content.v1.ReleaseCollaborationLeaseResponse.session:type_name -> hualala.content.v1.CollaborationSession
+	5,  // 18: hualala.content.v1.ContentService.CreateScene:input_type -> hualala.content.v1.CreateSceneRequest
+	7,  // 19: hualala.content.v1.ContentService.CreateShot:input_type -> hualala.content.v1.CreateShotRequest
+	9,  // 20: hualala.content.v1.ContentService.ListScenes:input_type -> hualala.content.v1.ListScenesRequest
+	11, // 21: hualala.content.v1.ContentService.GetScene:input_type -> hualala.content.v1.GetSceneRequest
+	13, // 22: hualala.content.v1.ContentService.ListSceneShots:input_type -> hualala.content.v1.ListSceneShotsRequest
+	15, // 23: hualala.content.v1.ContentService.GetShot:input_type -> hualala.content.v1.GetShotRequest
+	17, // 24: hualala.content.v1.ContentService.UpdateShotStructure:input_type -> hualala.content.v1.UpdateShotStructureRequest
+	19, // 25: hualala.content.v1.ContentService.CreateContentSnapshot:input_type -> hualala.content.v1.CreateContentSnapshotRequest
+	21, // 26: hualala.content.v1.ContentService.CreateLocalizedSnapshot:input_type -> hualala.content.v1.CreateLocalizedSnapshotRequest
+	23, // 27: hualala.content.v1.ContentService.GetCollaborationSession:input_type -> hualala.content.v1.GetCollaborationSessionRequest
+	25, // 28: hualala.content.v1.ContentService.UpsertCollaborationLease:input_type -> hualala.content.v1.UpsertCollaborationLeaseRequest
+	27, // 29: hualala.content.v1.ContentService.ReleaseCollaborationLease:input_type -> hualala.content.v1.ReleaseCollaborationLeaseRequest
+	6,  // 30: hualala.content.v1.ContentService.CreateScene:output_type -> hualala.content.v1.CreateSceneResponse
+	8,  // 31: hualala.content.v1.ContentService.CreateShot:output_type -> hualala.content.v1.CreateShotResponse
+	10, // 32: hualala.content.v1.ContentService.ListScenes:output_type -> hualala.content.v1.ListScenesResponse
+	12, // 33: hualala.content.v1.ContentService.GetScene:output_type -> hualala.content.v1.GetSceneResponse
+	14, // 34: hualala.content.v1.ContentService.ListSceneShots:output_type -> hualala.content.v1.ListSceneShotsResponse
+	16, // 35: hualala.content.v1.ContentService.GetShot:output_type -> hualala.content.v1.GetShotResponse
+	18, // 36: hualala.content.v1.ContentService.UpdateShotStructure:output_type -> hualala.content.v1.UpdateShotStructureResponse
+	20, // 37: hualala.content.v1.ContentService.CreateContentSnapshot:output_type -> hualala.content.v1.CreateContentSnapshotResponse
+	22, // 38: hualala.content.v1.ContentService.CreateLocalizedSnapshot:output_type -> hualala.content.v1.CreateLocalizedSnapshotResponse
+	24, // 39: hualala.content.v1.ContentService.GetCollaborationSession:output_type -> hualala.content.v1.GetCollaborationSessionResponse
+	26, // 40: hualala.content.v1.ContentService.UpsertCollaborationLease:output_type -> hualala.content.v1.UpsertCollaborationLeaseResponse
+	28, // 41: hualala.content.v1.ContentService.ReleaseCollaborationLease:output_type -> hualala.content.v1.ReleaseCollaborationLeaseResponse
+	30, // [30:42] is the sub-list for method output_type
+	18, // [18:30] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_hualala_content_v1_content_proto_init() }
@@ -1384,7 +1999,7 @@ func file_hualala_content_v1_content_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hualala_content_v1_content_proto_rawDesc), len(file_hualala_content_v1_content_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

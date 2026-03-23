@@ -4,6 +4,8 @@ package hualala.content.v1;
 
 option go_package = "github.com/hualala/apps/backend/gen/hualala/content/v1;contentv1";
 
+import "google/protobuf/timestamp.proto";
+
 service ContentService {
   rpc CreateScene(CreateSceneRequest) returns (CreateSceneResponse);
   rpc CreateShot(CreateShotRequest) returns (CreateShotResponse);
@@ -14,6 +16,9 @@ service ContentService {
   rpc UpdateShotStructure(UpdateShotStructureRequest) returns (UpdateShotStructureResponse);
   rpc CreateContentSnapshot(CreateContentSnapshotRequest) returns (CreateContentSnapshotResponse);
   rpc CreateLocalizedSnapshot(CreateLocalizedSnapshotRequest) returns (CreateLocalizedSnapshotResponse);
+  rpc GetCollaborationSession(GetCollaborationSessionRequest) returns (GetCollaborationSessionResponse);
+  rpc UpsertCollaborationLease(UpsertCollaborationLeaseRequest) returns (UpsertCollaborationLeaseResponse);
+  rpc ReleaseCollaborationLease(ReleaseCollaborationLeaseRequest) returns (ReleaseCollaborationLeaseResponse);
 }
 
 message Scene {
@@ -41,6 +46,28 @@ message ContentSnapshot {
   string translation_group_id = 6;
   string translation_status = 7;
   string body = 8;
+}
+
+message CollaborationPresence {
+  string presence_id = 1;
+  string session_id = 2;
+  string user_id = 3;
+  string status = 4;
+  google.protobuf.Timestamp last_seen_at = 5;
+  google.protobuf.Timestamp lease_expires_at = 6;
+}
+
+message CollaborationSession {
+  string session_id = 1;
+  string owner_type = 2;
+  string owner_id = 3;
+  uint32 draft_version = 4;
+  string lock_holder_user_id = 5;
+  google.protobuf.Timestamp lease_expires_at = 6;
+  string conflict_summary = 7;
+  repeated CollaborationPresence presences = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
 }
 
 message CreateSceneRequest {
@@ -130,4 +157,37 @@ message CreateLocalizedSnapshotRequest {
 
 message CreateLocalizedSnapshotResponse {
   ContentSnapshot snapshot = 1;
+}
+
+message GetCollaborationSessionRequest {
+  string owner_type = 1;
+  string owner_id = 2;
+}
+
+message GetCollaborationSessionResponse {
+  CollaborationSession session = 1;
+}
+
+message UpsertCollaborationLeaseRequest {
+  string owner_type = 1;
+  string owner_id = 2;
+  string actor_user_id = 3;
+  string presence_status = 4;
+  uint32 draft_version = 5;
+  uint32 lease_ttl_seconds = 6;
+}
+
+message UpsertCollaborationLeaseResponse {
+  CollaborationSession session = 1;
+}
+
+message ReleaseCollaborationLeaseRequest {
+  string owner_type = 1;
+  string owner_id = 2;
+  string actor_user_id = 3;
+  string conflict_summary = 4;
+}
+
+message ReleaseCollaborationLeaseResponse {
+  CollaborationSession session = 1;
 }

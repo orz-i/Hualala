@@ -48,6 +48,12 @@ const (
 	// ProjectServiceListEpisodesProcedure is the fully-qualified name of the ProjectService's
 	// ListEpisodes RPC.
 	ProjectServiceListEpisodesProcedure = "/hualala.project.v1.ProjectService/ListEpisodes"
+	// ProjectServiceGetPreviewWorkbenchProcedure is the fully-qualified name of the ProjectService's
+	// GetPreviewWorkbench RPC.
+	ProjectServiceGetPreviewWorkbenchProcedure = "/hualala.project.v1.ProjectService/GetPreviewWorkbench"
+	// ProjectServiceUpsertPreviewAssemblyProcedure is the fully-qualified name of the ProjectService's
+	// UpsertPreviewAssembly RPC.
+	ProjectServiceUpsertPreviewAssemblyProcedure = "/hualala.project.v1.ProjectService/UpsertPreviewAssembly"
 )
 
 // ProjectServiceClient is a client for the hualala.project.v1.ProjectService service.
@@ -57,6 +63,8 @@ type ProjectServiceClient interface {
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
+	GetPreviewWorkbench(context.Context, *connect.Request[v1.GetPreviewWorkbenchRequest]) (*connect.Response[v1.GetPreviewWorkbenchResponse], error)
+	UpsertPreviewAssembly(context.Context, *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error)
 }
 
 // NewProjectServiceClient constructs a client for the hualala.project.v1.ProjectService service. By
@@ -100,16 +108,30 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(projectServiceMethods.ByName("ListEpisodes")),
 			connect.WithClientOptions(opts...),
 		),
+		getPreviewWorkbench: connect.NewClient[v1.GetPreviewWorkbenchRequest, v1.GetPreviewWorkbenchResponse](
+			httpClient,
+			baseURL+ProjectServiceGetPreviewWorkbenchProcedure,
+			connect.WithSchema(projectServiceMethods.ByName("GetPreviewWorkbench")),
+			connect.WithClientOptions(opts...),
+		),
+		upsertPreviewAssembly: connect.NewClient[v1.UpsertPreviewAssemblyRequest, v1.UpsertPreviewAssemblyResponse](
+			httpClient,
+			baseURL+ProjectServiceUpsertPreviewAssemblyProcedure,
+			connect.WithSchema(projectServiceMethods.ByName("UpsertPreviewAssembly")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // projectServiceClient implements ProjectServiceClient.
 type projectServiceClient struct {
-	createProject *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
-	createEpisode *connect.Client[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse]
-	getProject    *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
-	listProjects  *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
-	listEpisodes  *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
+	createProject         *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
+	createEpisode         *connect.Client[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse]
+	getProject            *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
+	listProjects          *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
+	listEpisodes          *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
+	getPreviewWorkbench   *connect.Client[v1.GetPreviewWorkbenchRequest, v1.GetPreviewWorkbenchResponse]
+	upsertPreviewAssembly *connect.Client[v1.UpsertPreviewAssemblyRequest, v1.UpsertPreviewAssemblyResponse]
 }
 
 // CreateProject calls hualala.project.v1.ProjectService.CreateProject.
@@ -137,6 +159,16 @@ func (c *projectServiceClient) ListEpisodes(ctx context.Context, req *connect.Re
 	return c.listEpisodes.CallUnary(ctx, req)
 }
 
+// GetPreviewWorkbench calls hualala.project.v1.ProjectService.GetPreviewWorkbench.
+func (c *projectServiceClient) GetPreviewWorkbench(ctx context.Context, req *connect.Request[v1.GetPreviewWorkbenchRequest]) (*connect.Response[v1.GetPreviewWorkbenchResponse], error) {
+	return c.getPreviewWorkbench.CallUnary(ctx, req)
+}
+
+// UpsertPreviewAssembly calls hualala.project.v1.ProjectService.UpsertPreviewAssembly.
+func (c *projectServiceClient) UpsertPreviewAssembly(ctx context.Context, req *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error) {
+	return c.upsertPreviewAssembly.CallUnary(ctx, req)
+}
+
 // ProjectServiceHandler is an implementation of the hualala.project.v1.ProjectService service.
 type ProjectServiceHandler interface {
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
@@ -144,6 +176,8 @@ type ProjectServiceHandler interface {
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
+	GetPreviewWorkbench(context.Context, *connect.Request[v1.GetPreviewWorkbenchRequest]) (*connect.Response[v1.GetPreviewWorkbenchResponse], error)
+	UpsertPreviewAssembly(context.Context, *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error)
 }
 
 // NewProjectServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -183,6 +217,18 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		connect.WithSchema(projectServiceMethods.ByName("ListEpisodes")),
 		connect.WithHandlerOptions(opts...),
 	)
+	projectServiceGetPreviewWorkbenchHandler := connect.NewUnaryHandler(
+		ProjectServiceGetPreviewWorkbenchProcedure,
+		svc.GetPreviewWorkbench,
+		connect.WithSchema(projectServiceMethods.ByName("GetPreviewWorkbench")),
+		connect.WithHandlerOptions(opts...),
+	)
+	projectServiceUpsertPreviewAssemblyHandler := connect.NewUnaryHandler(
+		ProjectServiceUpsertPreviewAssemblyProcedure,
+		svc.UpsertPreviewAssembly,
+		connect.WithSchema(projectServiceMethods.ByName("UpsertPreviewAssembly")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hualala.project.v1.ProjectService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProjectServiceCreateProjectProcedure:
@@ -195,6 +241,10 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 			projectServiceListProjectsHandler.ServeHTTP(w, r)
 		case ProjectServiceListEpisodesProcedure:
 			projectServiceListEpisodesHandler.ServeHTTP(w, r)
+		case ProjectServiceGetPreviewWorkbenchProcedure:
+			projectServiceGetPreviewWorkbenchHandler.ServeHTTP(w, r)
+		case ProjectServiceUpsertPreviewAssemblyProcedure:
+			projectServiceUpsertPreviewAssemblyHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -222,4 +272,12 @@ func (UnimplementedProjectServiceHandler) ListProjects(context.Context, *connect
 
 func (UnimplementedProjectServiceHandler) ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.ListEpisodes is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) GetPreviewWorkbench(context.Context, *connect.Request[v1.GetPreviewWorkbenchRequest]) (*connect.Response[v1.GetPreviewWorkbenchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.GetPreviewWorkbench is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) UpsertPreviewAssembly(context.Context, *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.UpsertPreviewAssembly is not implemented"))
 }

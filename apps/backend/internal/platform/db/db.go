@@ -37,6 +37,10 @@ type Snapshot struct {
 	NextShotID            int
 	NextSnapshotID        int
 	NextGroupID           int
+	NextCollaborationID   int
+	NextPresenceID        int
+	NextPreviewAssemblyID int
+	NextPreviewItemID     int
 	NextExecutionID       int
 	NextRunID             int
 	NextImportBatchID     int
@@ -57,35 +61,39 @@ type Snapshot struct {
 	NextStateTransitionID int
 	NextGatewayRequestID  int
 
-	Organizations      map[string]org.Organization
-	Users              map[string]auth.User
-	Roles              map[string]org.Role
-	Memberships        map[string]org.Member
-	RolePermissions    map[string][]string
-	Projects           map[string]project.Project
-	Episodes           map[string]project.Episode
-	Scenes             map[string]content.Scene
-	Shots              map[string]content.Shot
-	Snapshots          map[string]content.Snapshot
-	ShotExecutions     map[string]execution.ShotExecution
-	ShotExecutionRuns  map[string]execution.ShotExecutionRun
-	ImportBatches      map[string]asset.ImportBatch
-	ImportBatchItems   map[string]asset.ImportBatchItem
-	UploadSessions     map[string]asset.UploadSession
-	UploadFiles        map[string]asset.UploadFile
-	MediaAssets        map[string]asset.MediaAsset
-	MediaAssetVariants map[string]asset.MediaAssetVariant
-	CandidateAssets    map[string]asset.CandidateAsset
-	Reviews            map[string]review.ShotReview
-	EvaluationRuns     map[string]review.EvaluationRun
-	Budgets            map[string]billing.ProjectBudget
-	UsageRecords       map[string]billing.UsageRecord
-	BillingEvents      map[string]billing.BillingEvent
-	WorkflowRuns       map[string]workflow.WorkflowRun
-	WorkflowSteps      map[string]workflow.WorkflowStep
-	Jobs               map[string]workflow.Job
-	StateTransitions   map[string]workflow.StateTransition
-	GatewayResults     map[string]gateway.GatewayResult
+	Organizations          map[string]org.Organization
+	Users                  map[string]auth.User
+	Roles                  map[string]org.Role
+	Memberships            map[string]org.Member
+	RolePermissions        map[string][]string
+	Projects               map[string]project.Project
+	Episodes               map[string]project.Episode
+	Scenes                 map[string]content.Scene
+	Shots                  map[string]content.Shot
+	Snapshots              map[string]content.Snapshot
+	CollaborationSessions  map[string]content.CollaborationSession
+	CollaborationPresences map[string]content.CollaborationPresence
+	PreviewAssemblies      map[string]project.PreviewAssembly
+	PreviewAssemblyItems   map[string]project.PreviewAssemblyItem
+	ShotExecutions         map[string]execution.ShotExecution
+	ShotExecutionRuns      map[string]execution.ShotExecutionRun
+	ImportBatches          map[string]asset.ImportBatch
+	ImportBatchItems       map[string]asset.ImportBatchItem
+	UploadSessions         map[string]asset.UploadSession
+	UploadFiles            map[string]asset.UploadFile
+	MediaAssets            map[string]asset.MediaAsset
+	MediaAssetVariants     map[string]asset.MediaAssetVariant
+	CandidateAssets        map[string]asset.CandidateAsset
+	Reviews                map[string]review.ShotReview
+	EvaluationRuns         map[string]review.EvaluationRun
+	Budgets                map[string]billing.ProjectBudget
+	UsageRecords           map[string]billing.UsageRecord
+	BillingEvents          map[string]billing.BillingEvent
+	WorkflowRuns           map[string]workflow.WorkflowRun
+	WorkflowSteps          map[string]workflow.WorkflowStep
+	Jobs                   map[string]workflow.Job
+	StateTransitions       map[string]workflow.StateTransition
+	GatewayResults         map[string]gateway.GatewayResult
 }
 
 type MemoryStore struct {
@@ -97,6 +105,10 @@ type MemoryStore struct {
 	nextShotID            int
 	nextSnapshotID        int
 	nextGroupID           int
+	nextCollaborationID   int
+	nextPresenceID        int
+	nextPreviewAssemblyID int
+	nextPreviewItemID     int
 	nextExecutionID       int
 	nextRunID             int
 	nextImportBatchID     int
@@ -117,72 +129,80 @@ type MemoryStore struct {
 	nextStateTransitionID int
 	nextGatewayRequestID  int
 
-	Organizations      map[string]org.Organization
-	Users              map[string]auth.User
-	Roles              map[string]org.Role
-	Memberships        map[string]org.Member
-	RolePermissions    map[string][]string
-	Projects           map[string]project.Project
-	Episodes           map[string]project.Episode
-	Scenes             map[string]content.Scene
-	Shots              map[string]content.Shot
-	Snapshots          map[string]content.Snapshot
-	ShotExecutions     map[string]execution.ShotExecution
-	ShotExecutionRuns  map[string]execution.ShotExecutionRun
-	ImportBatches      map[string]asset.ImportBatch
-	ImportBatchItems   map[string]asset.ImportBatchItem
-	UploadSessions     map[string]asset.UploadSession
-	UploadFiles        map[string]asset.UploadFile
-	MediaAssets        map[string]asset.MediaAsset
-	MediaAssetVariants map[string]asset.MediaAssetVariant
-	CandidateAssets    map[string]asset.CandidateAsset
-	Reviews            map[string]review.ShotReview
-	EvaluationRuns     map[string]review.EvaluationRun
-	Budgets            map[string]billing.ProjectBudget
-	UsageRecords       map[string]billing.UsageRecord
-	BillingEvents      map[string]billing.BillingEvent
-	WorkflowRuns       map[string]workflow.WorkflowRun
-	WorkflowSteps      map[string]workflow.WorkflowStep
-	Jobs               map[string]workflow.Job
-	StateTransitions   map[string]workflow.StateTransition
-	GatewayResults     map[string]gateway.GatewayResult
-	EventPublisher     *events.Publisher
-	persister          SnapshotPersister
-	useUUIDIDs         bool
+	Organizations          map[string]org.Organization
+	Users                  map[string]auth.User
+	Roles                  map[string]org.Role
+	Memberships            map[string]org.Member
+	RolePermissions        map[string][]string
+	Projects               map[string]project.Project
+	Episodes               map[string]project.Episode
+	Scenes                 map[string]content.Scene
+	Shots                  map[string]content.Shot
+	Snapshots              map[string]content.Snapshot
+	CollaborationSessions  map[string]content.CollaborationSession
+	CollaborationPresences map[string]content.CollaborationPresence
+	PreviewAssemblies      map[string]project.PreviewAssembly
+	PreviewAssemblyItems   map[string]project.PreviewAssemblyItem
+	ShotExecutions         map[string]execution.ShotExecution
+	ShotExecutionRuns      map[string]execution.ShotExecutionRun
+	ImportBatches          map[string]asset.ImportBatch
+	ImportBatchItems       map[string]asset.ImportBatchItem
+	UploadSessions         map[string]asset.UploadSession
+	UploadFiles            map[string]asset.UploadFile
+	MediaAssets            map[string]asset.MediaAsset
+	MediaAssetVariants     map[string]asset.MediaAssetVariant
+	CandidateAssets        map[string]asset.CandidateAsset
+	Reviews                map[string]review.ShotReview
+	EvaluationRuns         map[string]review.EvaluationRun
+	Budgets                map[string]billing.ProjectBudget
+	UsageRecords           map[string]billing.UsageRecord
+	BillingEvents          map[string]billing.BillingEvent
+	WorkflowRuns           map[string]workflow.WorkflowRun
+	WorkflowSteps          map[string]workflow.WorkflowStep
+	Jobs                   map[string]workflow.Job
+	StateTransitions       map[string]workflow.StateTransition
+	GatewayResults         map[string]gateway.GatewayResult
+	EventPublisher         *events.Publisher
+	persister              SnapshotPersister
+	useUUIDIDs             bool
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		Organizations:      make(map[string]org.Organization),
-		Users:              make(map[string]auth.User),
-		Roles:              make(map[string]org.Role),
-		Memberships:        make(map[string]org.Member),
-		RolePermissions:    make(map[string][]string),
-		Projects:           make(map[string]project.Project),
-		Episodes:           make(map[string]project.Episode),
-		Scenes:             make(map[string]content.Scene),
-		Shots:              make(map[string]content.Shot),
-		Snapshots:          make(map[string]content.Snapshot),
-		ShotExecutions:     make(map[string]execution.ShotExecution),
-		ShotExecutionRuns:  make(map[string]execution.ShotExecutionRun),
-		ImportBatches:      make(map[string]asset.ImportBatch),
-		ImportBatchItems:   make(map[string]asset.ImportBatchItem),
-		UploadSessions:     make(map[string]asset.UploadSession),
-		UploadFiles:        make(map[string]asset.UploadFile),
-		MediaAssets:        make(map[string]asset.MediaAsset),
-		MediaAssetVariants: make(map[string]asset.MediaAssetVariant),
-		CandidateAssets:    make(map[string]asset.CandidateAsset),
-		Reviews:            make(map[string]review.ShotReview),
-		EvaluationRuns:     make(map[string]review.EvaluationRun),
-		Budgets:            make(map[string]billing.ProjectBudget),
-		UsageRecords:       make(map[string]billing.UsageRecord),
-		BillingEvents:      make(map[string]billing.BillingEvent),
-		WorkflowRuns:       make(map[string]workflow.WorkflowRun),
-		WorkflowSteps:      make(map[string]workflow.WorkflowStep),
-		Jobs:               make(map[string]workflow.Job),
-		StateTransitions:   make(map[string]workflow.StateTransition),
-		GatewayResults:     make(map[string]gateway.GatewayResult),
-		EventPublisher:     events.NewPublisher(),
+		Organizations:          make(map[string]org.Organization),
+		Users:                  make(map[string]auth.User),
+		Roles:                  make(map[string]org.Role),
+		Memberships:            make(map[string]org.Member),
+		RolePermissions:        make(map[string][]string),
+		Projects:               make(map[string]project.Project),
+		Episodes:               make(map[string]project.Episode),
+		Scenes:                 make(map[string]content.Scene),
+		Shots:                  make(map[string]content.Shot),
+		Snapshots:              make(map[string]content.Snapshot),
+		CollaborationSessions:  make(map[string]content.CollaborationSession),
+		CollaborationPresences: make(map[string]content.CollaborationPresence),
+		PreviewAssemblies:      make(map[string]project.PreviewAssembly),
+		PreviewAssemblyItems:   make(map[string]project.PreviewAssemblyItem),
+		ShotExecutions:         make(map[string]execution.ShotExecution),
+		ShotExecutionRuns:      make(map[string]execution.ShotExecutionRun),
+		ImportBatches:          make(map[string]asset.ImportBatch),
+		ImportBatchItems:       make(map[string]asset.ImportBatchItem),
+		UploadSessions:         make(map[string]asset.UploadSession),
+		UploadFiles:            make(map[string]asset.UploadFile),
+		MediaAssets:            make(map[string]asset.MediaAsset),
+		MediaAssetVariants:     make(map[string]asset.MediaAssetVariant),
+		CandidateAssets:        make(map[string]asset.CandidateAsset),
+		Reviews:                make(map[string]review.ShotReview),
+		EvaluationRuns:         make(map[string]review.EvaluationRun),
+		Budgets:                make(map[string]billing.ProjectBudget),
+		UsageRecords:           make(map[string]billing.UsageRecord),
+		BillingEvents:          make(map[string]billing.BillingEvent),
+		WorkflowRuns:           make(map[string]workflow.WorkflowRun),
+		WorkflowSteps:          make(map[string]workflow.WorkflowStep),
+		Jobs:                   make(map[string]workflow.Job),
+		StateTransitions:       make(map[string]workflow.StateTransition),
+		GatewayResults:         make(map[string]gateway.GatewayResult),
+		EventPublisher:         events.NewPublisher(),
 	}
 }
 
@@ -235,60 +255,68 @@ func (s *MemoryStore) snapshot() Snapshot {
 	defer s.mu.RUnlock()
 
 	return Snapshot{
-		NextProjectID:         s.nextProjectID,
-		NextEpisodeID:         s.nextEpisodeID,
-		NextSceneID:           s.nextSceneID,
-		NextShotID:            s.nextShotID,
-		NextSnapshotID:        s.nextSnapshotID,
-		NextGroupID:           s.nextGroupID,
-		NextExecutionID:       s.nextExecutionID,
-		NextRunID:             s.nextRunID,
-		NextImportBatchID:     s.nextImportBatchID,
-		NextImportBatchItemID: s.nextImportBatchItemID,
-		NextUploadSessionID:   s.nextUploadSessionID,
-		NextUploadFileID:      s.nextUploadFileID,
-		NextAssetID:           s.nextAssetID,
-		NextVariantID:         s.nextVariantID,
-		NextCandidateID:       s.nextCandidateID,
-		NextReviewID:          s.nextReviewID,
-		NextBudgetID:          s.nextBudgetID,
-		NextUsageID:           s.nextUsageID,
-		NextBillingEventID:    s.nextBillingEventID,
-		NextEvaluationRunID:   s.nextEvaluationRunID,
-		NextWorkflowRunID:     s.nextWorkflowRunID,
-		NextWorkflowStepID:    s.nextWorkflowStepID,
-		NextJobID:             s.nextJobID,
-		NextStateTransitionID: s.nextStateTransitionID,
-		NextGatewayRequestID:  s.nextGatewayRequestID,
-		Organizations:         cloneMap(s.Organizations),
-		Users:                 cloneMap(s.Users),
-		Roles:                 cloneMap(s.Roles),
-		Memberships:           cloneMap(s.Memberships),
-		RolePermissions:       cloneStringSliceMap(s.RolePermissions),
-		Projects:              cloneMap(s.Projects),
-		Episodes:              cloneMap(s.Episodes),
-		Scenes:                cloneMap(s.Scenes),
-		Shots:                 cloneMap(s.Shots),
-		Snapshots:             cloneMap(s.Snapshots),
-		ShotExecutions:        cloneMap(s.ShotExecutions),
-		ShotExecutionRuns:     cloneMap(s.ShotExecutionRuns),
-		ImportBatches:         cloneMap(s.ImportBatches),
-		ImportBatchItems:      cloneMap(s.ImportBatchItems),
-		UploadSessions:        cloneMap(s.UploadSessions),
-		UploadFiles:           cloneMap(s.UploadFiles),
-		MediaAssets:           cloneMap(s.MediaAssets),
-		MediaAssetVariants:    cloneMap(s.MediaAssetVariants),
-		CandidateAssets:       cloneMap(s.CandidateAssets),
-		Reviews:               cloneMap(s.Reviews),
-		EvaluationRuns:        cloneMap(s.EvaluationRuns),
-		Budgets:               cloneMap(s.Budgets),
-		UsageRecords:          cloneMap(s.UsageRecords),
-		BillingEvents:         cloneMap(s.BillingEvents),
-		WorkflowRuns:          cloneMap(s.WorkflowRuns),
-		WorkflowSteps:         cloneMap(s.WorkflowSteps),
-		Jobs:                  cloneMap(s.Jobs),
-		StateTransitions:      cloneMap(s.StateTransitions),
-		GatewayResults:        cloneMap(s.GatewayResults),
+		NextProjectID:          s.nextProjectID,
+		NextEpisodeID:          s.nextEpisodeID,
+		NextSceneID:            s.nextSceneID,
+		NextShotID:             s.nextShotID,
+		NextSnapshotID:         s.nextSnapshotID,
+		NextGroupID:            s.nextGroupID,
+		NextCollaborationID:    s.nextCollaborationID,
+		NextPresenceID:         s.nextPresenceID,
+		NextPreviewAssemblyID:  s.nextPreviewAssemblyID,
+		NextPreviewItemID:      s.nextPreviewItemID,
+		NextExecutionID:        s.nextExecutionID,
+		NextRunID:              s.nextRunID,
+		NextImportBatchID:      s.nextImportBatchID,
+		NextImportBatchItemID:  s.nextImportBatchItemID,
+		NextUploadSessionID:    s.nextUploadSessionID,
+		NextUploadFileID:       s.nextUploadFileID,
+		NextAssetID:            s.nextAssetID,
+		NextVariantID:          s.nextVariantID,
+		NextCandidateID:        s.nextCandidateID,
+		NextReviewID:           s.nextReviewID,
+		NextBudgetID:           s.nextBudgetID,
+		NextUsageID:            s.nextUsageID,
+		NextBillingEventID:     s.nextBillingEventID,
+		NextEvaluationRunID:    s.nextEvaluationRunID,
+		NextWorkflowRunID:      s.nextWorkflowRunID,
+		NextWorkflowStepID:     s.nextWorkflowStepID,
+		NextJobID:              s.nextJobID,
+		NextStateTransitionID:  s.nextStateTransitionID,
+		NextGatewayRequestID:   s.nextGatewayRequestID,
+		Organizations:          cloneMap(s.Organizations),
+		Users:                  cloneMap(s.Users),
+		Roles:                  cloneMap(s.Roles),
+		Memberships:            cloneMap(s.Memberships),
+		RolePermissions:        cloneStringSliceMap(s.RolePermissions),
+		Projects:               cloneMap(s.Projects),
+		Episodes:               cloneMap(s.Episodes),
+		Scenes:                 cloneMap(s.Scenes),
+		Shots:                  cloneMap(s.Shots),
+		Snapshots:              cloneMap(s.Snapshots),
+		CollaborationSessions:  cloneMap(s.CollaborationSessions),
+		CollaborationPresences: cloneMap(s.CollaborationPresences),
+		PreviewAssemblies:      cloneMap(s.PreviewAssemblies),
+		PreviewAssemblyItems:   cloneMap(s.PreviewAssemblyItems),
+		ShotExecutions:         cloneMap(s.ShotExecutions),
+		ShotExecutionRuns:      cloneMap(s.ShotExecutionRuns),
+		ImportBatches:          cloneMap(s.ImportBatches),
+		ImportBatchItems:       cloneMap(s.ImportBatchItems),
+		UploadSessions:         cloneMap(s.UploadSessions),
+		UploadFiles:            cloneMap(s.UploadFiles),
+		MediaAssets:            cloneMap(s.MediaAssets),
+		MediaAssetVariants:     cloneMap(s.MediaAssetVariants),
+		CandidateAssets:        cloneMap(s.CandidateAssets),
+		Reviews:                cloneMap(s.Reviews),
+		EvaluationRuns:         cloneMap(s.EvaluationRuns),
+		Budgets:                cloneMap(s.Budgets),
+		UsageRecords:           cloneMap(s.UsageRecords),
+		BillingEvents:          cloneMap(s.BillingEvents),
+		WorkflowRuns:           cloneMap(s.WorkflowRuns),
+		WorkflowSteps:          cloneMap(s.WorkflowSteps),
+		Jobs:                   cloneMap(s.Jobs),
+		StateTransitions:       cloneMap(s.StateTransitions),
+		GatewayResults:         cloneMap(s.GatewayResults),
 	}
 }
 
@@ -302,6 +330,10 @@ func (s *MemoryStore) applySnapshot(snapshot Snapshot) {
 	s.nextShotID = snapshot.NextShotID
 	s.nextSnapshotID = snapshot.NextSnapshotID
 	s.nextGroupID = snapshot.NextGroupID
+	s.nextCollaborationID = snapshot.NextCollaborationID
+	s.nextPresenceID = snapshot.NextPresenceID
+	s.nextPreviewAssemblyID = snapshot.NextPreviewAssemblyID
+	s.nextPreviewItemID = snapshot.NextPreviewItemID
 	s.nextExecutionID = snapshot.NextExecutionID
 	s.nextRunID = snapshot.NextRunID
 	s.nextImportBatchID = snapshot.NextImportBatchID
@@ -332,6 +364,10 @@ func (s *MemoryStore) applySnapshot(snapshot Snapshot) {
 	s.Scenes = cloneMap(snapshot.Scenes)
 	s.Shots = cloneMap(snapshot.Shots)
 	s.Snapshots = cloneMap(snapshot.Snapshots)
+	s.CollaborationSessions = cloneMap(snapshot.CollaborationSessions)
+	s.CollaborationPresences = cloneMap(snapshot.CollaborationPresences)
+	s.PreviewAssemblies = cloneMap(snapshot.PreviewAssemblies)
+	s.PreviewAssemblyItems = cloneMap(snapshot.PreviewAssemblyItems)
 	s.ShotExecutions = cloneMap(snapshot.ShotExecutions)
 	s.ShotExecutionRuns = cloneMap(snapshot.ShotExecutionRuns)
 	s.ImportBatches = cloneMap(snapshot.ImportBatches)
@@ -421,6 +457,38 @@ func (s *MemoryStore) NextTranslationGroupID() string {
 	}
 	s.nextGroupID++
 	return fmt.Sprintf("translation-group-%d", s.nextGroupID)
+}
+
+func (s *MemoryStore) NextCollaborationSessionID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
+	s.nextCollaborationID++
+	return fmt.Sprintf("collaboration-session-%d", s.nextCollaborationID)
+}
+
+func (s *MemoryStore) NextCollaborationPresenceID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
+	s.nextPresenceID++
+	return fmt.Sprintf("collaboration-presence-%d", s.nextPresenceID)
+}
+
+func (s *MemoryStore) NextPreviewAssemblyID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
+	s.nextPreviewAssemblyID++
+	return fmt.Sprintf("preview-assembly-%d", s.nextPreviewAssemblyID)
+}
+
+func (s *MemoryStore) NextPreviewAssemblyItemID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
+	s.nextPreviewItemID++
+	return fmt.Sprintf("preview-assembly-item-%d", s.nextPreviewItemID)
 }
 
 func (s *MemoryStore) NextShotExecutionID() string {

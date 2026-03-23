@@ -4,12 +4,16 @@ package hualala.project.v1;
 
 option go_package = "github.com/hualala/apps/backend/gen/hualala/project/v1;projectv1";
 
+import "google/protobuf/timestamp.proto";
+
 service ProjectService {
   rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
   rpc CreateEpisode(CreateEpisodeRequest) returns (CreateEpisodeResponse);
   rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
   rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
   rpc ListEpisodes(ListEpisodesRequest) returns (ListEpisodesResponse);
+  rpc GetPreviewWorkbench(GetPreviewWorkbenchRequest) returns (GetPreviewWorkbenchResponse);
+  rpc UpsertPreviewAssembly(UpsertPreviewAssemblyRequest) returns (UpsertPreviewAssemblyResponse);
 }
 
 message Project {
@@ -24,6 +28,25 @@ message Episode {
   string project_id = 2;
   string title = 3;
   uint32 episode_number = 4;
+}
+
+message PreviewAssemblyItem {
+  string item_id = 1;
+  string assembly_id = 2;
+  string shot_id = 3;
+  string primary_asset_id = 4;
+  string source_run_id = 5;
+  uint32 sequence = 6;
+}
+
+message PreviewAssembly {
+  string assembly_id = 1;
+  string project_id = 2;
+  string episode_id = 3;
+  string status = 4;
+  repeated PreviewAssemblyItem items = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
 }
 
 message CreateProjectRequest {
@@ -68,4 +91,24 @@ message ListEpisodesRequest {
 
 message ListEpisodesResponse {
   repeated Episode episodes = 1;
+}
+
+message GetPreviewWorkbenchRequest {
+  string project_id = 1;
+  string episode_id = 2;
+}
+
+message GetPreviewWorkbenchResponse {
+  PreviewAssembly assembly = 1;
+}
+
+message UpsertPreviewAssemblyRequest {
+  string project_id = 1;
+  string episode_id = 2;
+  string status = 3;
+  repeated PreviewAssemblyItem items = 4;
+}
+
+message UpsertPreviewAssemblyResponse {
+  PreviewAssembly assembly = 1;
 }

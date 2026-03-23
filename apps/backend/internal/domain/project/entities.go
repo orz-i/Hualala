@@ -23,3 +23,23 @@ type Episode struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+type PreviewAssembly struct {
+	ID        string
+	ProjectID string
+	EpisodeID string
+	Status    string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type PreviewAssemblyItem struct {
+	ID             string
+	AssemblyID     string
+	ShotID         string
+	PrimaryAssetID string
+	SourceRunID    string
+	Sequence       int
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}

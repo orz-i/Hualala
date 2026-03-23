@@ -177,6 +177,185 @@ func TestPostgresGatewayResultsPersistConcurrentKeys(t *testing.T) {
 	}
 }
 
+func TestPostgresStorePersistsCollaborationAndPreviewSharedTruth(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	storeKey := "collaboration-preview"
+	resetNativeIntegrationRuntimeStore(t)
+	runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, storeKey)
+
+	now := publishedAt()
+	projectID := runtimeStore.GenerateProjectID()
+	if err := runtimeStore.SaveProject(context.Background(), project.Project{
+		ID:                   projectID,
+		OrganizationID:       db.DefaultDevOrganizationID,
+		OwnerUserID:          db.DefaultDevUserID,
+		Title:                "Collaboration Preview",
+		Status:               "draft",
+		CurrentStage:         "planning",
+		PrimaryContentLocale: "zh-CN",
+		CreatedAt:            now,
+		UpdatedAt:            now,
+	}); err != nil {
+		t.Fatalf("SaveProject returned error: %v", err)
+	}
+
+	episodeID := runtimeStore.GenerateEpisodeID()
+	if err := runtimeStore.SaveEpisode(context.Background(), project.Episode{
+		ID:        episodeID,
+		ProjectID: projectID,
+		EpisodeNo: 1,
+		Title:     "第一集",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}); err != nil {
+		t.Fatalf("SaveEpisode returned error: %v", err)
+	}
+
+	sceneID := runtimeStore.GenerateSceneID()
+	if err := runtimeStore.SaveScene(context.Background(), contentdomain.Scene{
+		ID:           sceneID,
+		ProjectID:    projectID,
+		EpisodeID:    episodeID,
+		SceneNo:      1,
+		Code:         "SCENE-001",
+		Title:        "开场",
+		SourceLocale: "zh-CN",
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}); err != nil {
+		t.Fatalf("SaveScene returned error: %v", err)
+	}
+
+	shotOneID := runtimeStore.GenerateShotID()
+	if err := runtimeStore.SaveShot(context.Background(), contentdomain.Shot{
+		ID:           shotOneID,
+		SceneID:      sceneID,
+		ShotNo:       1,
+		Code:         "SCENE-001-SHOT-001",
+		Title:        "第一镜",
+		SourceLocale: "zh-CN",
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}); err != nil {
+		t.Fatalf("SaveShot #1 returned error: %v", err)
+	}
+
+	shotTwoID := runtimeStore.GenerateShotID()
+	if err := runtimeStore.SaveShot(context.Background(), contentdomain.Shot{
+		ID:           shotTwoID,
+		SceneID:      sceneID,
+		ShotNo:       2,
+		Code:         "SCENE-001-SHOT-002",
+		Title:        "第二镜",
+		SourceLocale: "zh-CN",
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}); err != nil {
+		t.Fatalf("SaveShot #2 returned error: %v", err)
+	}
+
+	sessionID := runtimeStore.GenerateCollaborationSessionID()
+	if err := runtimeStore.SaveCollaborationSession(context.Background(), contentdomain.CollaborationSession{
+		ID:               sessionID,
+		OwnerType:        "shot",
+		OwnerID:          shotOneID,
+		DraftVersion:     7,
+		LockHolderUserID: db.DefaultDevUserID,
+		ConflictSummary:  "",
+		LeaseExpiresAt:   now.Add(3 * time.Minute),
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}); err != nil {
+		t.Fatalf("SaveCollaborationSession returned error: %v", err)
+	}
+
+	presenceID := runtimeStore.GenerateCollaborationPresenceID()
+	if err := runtimeStore.SaveCollaborationPresence(context.Background(), contentdomain.CollaborationPresence{
+		ID:             presenceID,
+		SessionID:      sessionID,
+		UserID:         db.DefaultDevUserID,
+		Status:         "editing",
+		LastSeenAt:     now,
+		LeaseExpiresAt: now.Add(3 * time.Minute),
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}); err != nil {
+		t.Fatalf("SaveCollaborationPresence returned error: %v", err)
+	}
+
+	assemblyID := runtimeStore.GeneratePreviewAssemblyID()
+	if err := runtimeStore.SavePreviewAssembly(context.Background(), project.PreviewAssembly{
+		ID:        assemblyID,
+		ProjectID: projectID,
+		EpisodeID: episodeID,
+		Status:    "ready",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}); err != nil {
+		t.Fatalf("SavePreviewAssembly returned error: %v", err)
+	}
+	if err := runtimeStore.ReplacePreviewAssemblyItems(context.Background(), assemblyID, []project.PreviewAssemblyItem{
+		{
+			ID:             runtimeStore.GeneratePreviewAssemblyItemID(),
+			AssemblyID:     assemblyID,
+			ShotID:         shotOneID,
+			PrimaryAssetID: "asset-1",
+			SourceRunID:    "run-1",
+			Sequence:       1,
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		},
+		{
+			ID:             runtimeStore.GeneratePreviewAssemblyItemID(),
+			AssemblyID:     assemblyID,
+			ShotID:         shotTwoID,
+			PrimaryAssetID: "asset-2",
+			SourceRunID:    "run-2",
+			Sequence:       2,
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		},
+	}); err != nil {
+		t.Fatalf("ReplacePreviewAssemblyItems returned error: %v", err)
+	}
+
+	closeFn()
+
+	reloadedStore, reloadCloseFn := openNativeIntegrationRuntimeStore(t, storeKey)
+	defer reloadCloseFn()
+
+	session, ok := reloadedStore.GetCollaborationSession("shot", shotOneID)
+	if !ok {
+		t.Fatalf("expected collaboration session for shot %q", shotOneID)
+	}
+	if got := session.DraftVersion; got != 7 {
+		t.Fatalf("expected draft version %d, got %d", 7, got)
+	}
+	presences := reloadedStore.ListCollaborationPresences(session.ID)
+	if len(presences) != 1 {
+		t.Fatalf("expected 1 collaboration presence after reload, got %d", len(presences))
+	}
+
+	assembly, ok := reloadedStore.GetPreviewAssembly(projectID, episodeID)
+	if !ok {
+		t.Fatalf("expected preview assembly for %s/%s", projectID, episodeID)
+	}
+	if got := assembly.Status; got != "ready" {
+		t.Fatalf("expected preview assembly status %q, got %q", "ready", got)
+	}
+	items := reloadedStore.ListPreviewAssemblyItems(assembly.ID)
+	if len(items) != 2 {
+		t.Fatalf("expected 2 preview items after reload, got %d", len(items))
+	}
+	if got := items[0].ShotID; got != shotOneID {
+		t.Fatalf("expected first preview item shot %q, got %q", shotOneID, got)
+	}
+}
+
 func TestExpiredUploadSessionRetryPersistsAcrossReopen(t *testing.T) {
 	cfg := config.Load()
 	if cfg.DBDriver != "postgres" {

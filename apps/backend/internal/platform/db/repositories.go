@@ -78,6 +78,23 @@ type ProjectContentRepository interface {
 	SaveSnapshot(ctx context.Context, record content.Snapshot) error
 	GetSnapshot(snapshotID string) (content.Snapshot, bool)
 	ListSnapshotsByOwner(ownerType string, ownerID string) []content.Snapshot
+
+	GenerateCollaborationSessionID() string
+	SaveCollaborationSession(ctx context.Context, record content.CollaborationSession) error
+	GetCollaborationSession(ownerType string, ownerID string) (content.CollaborationSession, bool)
+
+	GenerateCollaborationPresenceID() string
+	SaveCollaborationPresence(ctx context.Context, record content.CollaborationPresence) error
+	GetCollaborationPresence(sessionID string, userID string) (content.CollaborationPresence, bool)
+	ListCollaborationPresences(sessionID string) []content.CollaborationPresence
+
+	GeneratePreviewAssemblyID() string
+	SavePreviewAssembly(ctx context.Context, record project.PreviewAssembly) error
+	GetPreviewAssembly(projectID string, episodeID string) (project.PreviewAssembly, bool)
+
+	GeneratePreviewAssemblyItemID() string
+	ReplacePreviewAssemblyItems(ctx context.Context, assemblyID string, items []project.PreviewAssemblyItem) error
+	ListPreviewAssemblyItems(assemblyID string) []project.PreviewAssemblyItem
 }
 
 type ExecutionRepository interface {
@@ -195,12 +212,22 @@ func (s *MemoryStore) save(ctx context.Context, mutate func()) error {
 	return s.Persist(ctx)
 }
 
-func (s *MemoryStore) GenerateProjectID() string           { return s.NextProjectID() }
-func (s *MemoryStore) GenerateEpisodeID() string           { return s.NextEpisodeID() }
-func (s *MemoryStore) GenerateSceneID() string             { return s.NextSceneID() }
-func (s *MemoryStore) GenerateShotID() string              { return s.NextShotID() }
-func (s *MemoryStore) GenerateSnapshotID() string          { return s.NextSnapshotID() }
-func (s *MemoryStore) GenerateTranslationGroupID() string  { return s.NextTranslationGroupID() }
+func (s *MemoryStore) GenerateProjectID() string          { return s.NextProjectID() }
+func (s *MemoryStore) GenerateEpisodeID() string          { return s.NextEpisodeID() }
+func (s *MemoryStore) GenerateSceneID() string            { return s.NextSceneID() }
+func (s *MemoryStore) GenerateShotID() string             { return s.NextShotID() }
+func (s *MemoryStore) GenerateSnapshotID() string         { return s.NextSnapshotID() }
+func (s *MemoryStore) GenerateTranslationGroupID() string { return s.NextTranslationGroupID() }
+func (s *MemoryStore) GenerateCollaborationSessionID() string {
+	return s.NextCollaborationSessionID()
+}
+func (s *MemoryStore) GenerateCollaborationPresenceID() string {
+	return s.NextCollaborationPresenceID()
+}
+func (s *MemoryStore) GeneratePreviewAssemblyID() string { return s.NextPreviewAssemblyID() }
+func (s *MemoryStore) GeneratePreviewAssemblyItemID() string {
+	return s.NextPreviewAssemblyItemID()
+}
 func (s *MemoryStore) GenerateShotExecutionID() string     { return s.NextShotExecutionID() }
 func (s *MemoryStore) GenerateShotExecutionRunID() string  { return s.NextShotExecutionRunID() }
 func (s *MemoryStore) GenerateImportBatchID() string       { return s.NextImportBatchID() }
@@ -423,6 +450,90 @@ func (s *MemoryStore) ListSnapshotsByOwner(ownerType string, ownerID string) []c
 	}
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].ID < items[j].ID
+	})
+	return items
+}
+
+func (s *MemoryStore) SaveCollaborationSession(ctx context.Context, record content.CollaborationSession) error {
+	return s.save(ctx, func() { s.CollaborationSessions[record.ID] = record })
+}
+
+func (s *MemoryStore) GetCollaborationSession(ownerType string, ownerID string) (content.CollaborationSession, bool) {
+	for _, record := range s.CollaborationSessions {
+		if record.OwnerType == ownerType && record.OwnerID == ownerID {
+			return record, true
+		}
+	}
+	return content.CollaborationSession{}, false
+}
+
+func (s *MemoryStore) SaveCollaborationPresence(ctx context.Context, record content.CollaborationPresence) error {
+	return s.save(ctx, func() { s.CollaborationPresences[record.ID] = record })
+}
+
+func (s *MemoryStore) GetCollaborationPresence(sessionID string, userID string) (content.CollaborationPresence, bool) {
+	for _, record := range s.CollaborationPresences {
+		if record.SessionID == sessionID && record.UserID == userID {
+			return record, true
+		}
+	}
+	return content.CollaborationPresence{}, false
+}
+
+func (s *MemoryStore) ListCollaborationPresences(sessionID string) []content.CollaborationPresence {
+	items := make([]content.CollaborationPresence, 0)
+	for _, record := range s.CollaborationPresences {
+		if record.SessionID == sessionID {
+			items = append(items, record)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if !items[i].UpdatedAt.Equal(items[j].UpdatedAt) {
+			return items[i].UpdatedAt.Before(items[j].UpdatedAt)
+		}
+		return items[i].ID < items[j].ID
+	})
+	return items
+}
+
+func (s *MemoryStore) SavePreviewAssembly(ctx context.Context, record project.PreviewAssembly) error {
+	return s.save(ctx, func() { s.PreviewAssemblies[record.ID] = record })
+}
+
+func (s *MemoryStore) GetPreviewAssembly(projectID string, episodeID string) (project.PreviewAssembly, bool) {
+	for _, record := range s.PreviewAssemblies {
+		if record.ProjectID == projectID && record.EpisodeID == episodeID {
+			return record, true
+		}
+	}
+	return project.PreviewAssembly{}, false
+}
+
+func (s *MemoryStore) ReplacePreviewAssemblyItems(ctx context.Context, assemblyID string, items []project.PreviewAssemblyItem) error {
+	return s.save(ctx, func() {
+		for id, record := range s.PreviewAssemblyItems {
+			if record.AssemblyID == assemblyID {
+				delete(s.PreviewAssemblyItems, id)
+			}
+		}
+		for _, item := range items {
+			s.PreviewAssemblyItems[item.ID] = item
+		}
+	})
+}
+
+func (s *MemoryStore) ListPreviewAssemblyItems(assemblyID string) []project.PreviewAssemblyItem {
+	items := make([]project.PreviewAssemblyItem, 0)
+	for _, record := range s.PreviewAssemblyItems {
+		if record.AssemblyID == assemblyID {
+			items = append(items, record)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Sequence == items[j].Sequence {
+			return items[i].ID < items[j].ID
+		}
+		return items[i].Sequence < items[j].Sequence
 	})
 	return items
 }

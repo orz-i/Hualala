@@ -142,3 +142,48 @@ func (h *contentHandler) CreateLocalizedSnapshot(ctx context.Context, req *conne
 		Snapshot: mapContentSnapshot(record),
 	}), nil
 }
+
+func (h *contentHandler) GetCollaborationSession(ctx context.Context, req *connectrpc.Request[contentv1.GetCollaborationSessionRequest]) (*connectrpc.Response[contentv1.GetCollaborationSessionResponse], error) {
+	record, err := h.service.GetCollaborationSession(ctx, contentapp.GetCollaborationSessionInput{
+		OwnerType: req.Msg.GetOwnerType(),
+		OwnerID:   req.Msg.GetOwnerId(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&contentv1.GetCollaborationSessionResponse{
+		Session: mapCollaborationSession(record),
+	}), nil
+}
+
+func (h *contentHandler) UpsertCollaborationLease(ctx context.Context, req *connectrpc.Request[contentv1.UpsertCollaborationLeaseRequest]) (*connectrpc.Response[contentv1.UpsertCollaborationLeaseResponse], error) {
+	record, err := h.service.UpsertCollaborationLease(ctx, contentapp.UpsertCollaborationLeaseInput{
+		OwnerType:       req.Msg.GetOwnerType(),
+		OwnerID:         req.Msg.GetOwnerId(),
+		ActorUserID:     req.Msg.GetActorUserId(),
+		PresenceStatus:  req.Msg.GetPresenceStatus(),
+		DraftVersion:    req.Msg.GetDraftVersion(),
+		LeaseTTLSeconds: req.Msg.GetLeaseTtlSeconds(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&contentv1.UpsertCollaborationLeaseResponse{
+		Session: mapCollaborationSession(record),
+	}), nil
+}
+
+func (h *contentHandler) ReleaseCollaborationLease(ctx context.Context, req *connectrpc.Request[contentv1.ReleaseCollaborationLeaseRequest]) (*connectrpc.Response[contentv1.ReleaseCollaborationLeaseResponse], error) {
+	record, err := h.service.ReleaseCollaborationLease(ctx, contentapp.ReleaseCollaborationLeaseInput{
+		OwnerType:       req.Msg.GetOwnerType(),
+		OwnerID:         req.Msg.GetOwnerId(),
+		ActorUserID:     req.Msg.GetActorUserId(),
+		ConflictSummary: req.Msg.GetConflictSummary(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&contentv1.ReleaseCollaborationLeaseResponse{
+		Session: mapCollaborationSession(record),
+	}), nil
+}
