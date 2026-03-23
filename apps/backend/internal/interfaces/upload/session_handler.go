@@ -135,6 +135,7 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 				AIAnnotated     bool   `json:"ai_annotated"`
 				Width           int    `json:"width"`
 				Height          int    `json:"height"`
+				DurationMs      int    `json:"duration_ms"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
@@ -149,7 +150,7 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 				writeUploadError(w, err)
 				return
 			}
-			session, err := service.CompleteSession(r, sessionID, request.ShotExecutionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.AIAnnotated, request.Width, request.Height)
+			session, err := service.CompleteSession(r, sessionID, request.ShotExecutionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.AIAnnotated, request.Width, request.Height, request.DurationMs)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
 					http.NotFound(w, r)
@@ -269,7 +270,7 @@ func (s *Service) RetrySession(r *http.Request, sessionID string) (asset.UploadS
 	return session, nil
 }
 
-func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecutionID string, variantType string, mimeType string, locale string, rightsStatus string, aiAnnotated bool, width int, height int) (asset.UploadSession, error) {
+func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecutionID string, variantType string, mimeType string, locale string, rightsStatus string, aiAnnotated bool, width int, height int, durationMs int) (asset.UploadSession, error) {
 	if s == nil || s.assets == nil {
 		return asset.UploadSession{}, fmt.Errorf("upload: asset repository is required")
 	}
@@ -307,6 +308,7 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 		OrgID:         session.OrgID,
 		ProjectID:     session.ProjectID,
 		ImportBatchID: session.ImportBatchID,
+		MediaType:     inferMediaTypeFromMIME(mimeType),
 		SourceType:    "upload_session",
 		Locale:        strings.TrimSpace(locale),
 		RightsStatus:  strings.TrimSpace(rightsStatus),
@@ -342,6 +344,7 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 		MimeType:     strings.TrimSpace(mimeType),
 		Width:        width,
 		Height:       height,
+		DurationMS:   durationMs,
 		CreatedAt:    now,
 	}
 	if err := s.assets.SaveMediaAssetVariant(r.Context(), variant); err != nil {
@@ -415,6 +418,22 @@ func parseSessionPath(path string) (string, string) {
 		return parts[0], ""
 	}
 	return parts[0], parts[1]
+}
+
+func inferMediaTypeFromMIME(mimeType string) string {
+	normalized := strings.ToLower(strings.TrimSpace(mimeType))
+	switch {
+	case strings.HasPrefix(normalized, "audio/"):
+		return "audio"
+	case strings.HasPrefix(normalized, "video/"):
+		return "video"
+	case strings.HasPrefix(normalized, "image/"):
+		return "image"
+	case strings.HasPrefix(normalized, "application/pdf"), strings.HasPrefix(normalized, "text/"):
+		return "document"
+	default:
+		return "image"
+	}
 }
 
 func (s *Service) writeSessionResponse(w http.ResponseWriter, statusCode int, session asset.UploadSession) {

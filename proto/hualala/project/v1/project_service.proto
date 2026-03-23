@@ -14,6 +14,8 @@ service ProjectService {
   rpc ListEpisodes(ListEpisodesRequest) returns (ListEpisodesResponse);
   rpc GetPreviewWorkbench(GetPreviewWorkbenchRequest) returns (GetPreviewWorkbenchResponse);
   rpc UpsertPreviewAssembly(UpsertPreviewAssemblyRequest) returns (UpsertPreviewAssemblyResponse);
+  rpc GetAudioWorkbench(GetAudioWorkbenchRequest) returns (GetAudioWorkbenchResponse);
+  rpc UpsertAudioTimeline(UpsertAudioTimelineRequest) returns (UpsertAudioTimelineResponse);
 }
 
 message Project {
@@ -47,6 +49,42 @@ message PreviewAssembly {
   repeated PreviewAssemblyItem items = 5;
   google.protobuf.Timestamp created_at = 6;
   google.protobuf.Timestamp updated_at = 7;
+}
+
+message AudioClip {
+  string clip_id = 1;
+  string track_id = 2;
+  string asset_id = 3;
+  string source_run_id = 4;
+  uint32 sequence = 5;
+  uint32 start_ms = 6;
+  uint32 duration_ms = 7;
+  uint32 trim_in_ms = 8;
+  uint32 trim_out_ms = 9;
+}
+
+message AudioTrack {
+  string track_id = 1;
+  string timeline_id = 2;
+  string track_type = 3;
+  string display_name = 4;
+  uint32 sequence = 5;
+  bool muted = 6;
+  bool solo = 7;
+  uint32 volume_percent = 8;
+  repeated AudioClip clips = 9;
+}
+
+message AudioTimeline {
+  string audio_timeline_id = 1;
+  string project_id = 2;
+  string episode_id = 3;
+  string status = 4;
+  string render_workflow_run_id = 5;
+  string render_status = 6;
+  repeated AudioTrack tracks = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
 }
 
 message CreateProjectRequest {
@@ -111,4 +149,26 @@ message UpsertPreviewAssemblyRequest {
 
 message UpsertPreviewAssemblyResponse {
   PreviewAssembly assembly = 1;
+}
+
+message GetAudioWorkbenchRequest {
+  string project_id = 1;
+  string episode_id = 2;
+}
+
+message GetAudioWorkbenchResponse {
+  AudioTimeline timeline = 1;
+}
+
+message UpsertAudioTimelineRequest {
+  string project_id = 1;
+  string episode_id = 2;
+  string status = 3;
+  string render_workflow_run_id = 4;
+  string render_status = 5;
+  repeated AudioTrack tracks = 6;
+}
+
+message UpsertAudioTimelineResponse {
+  AudioTimeline timeline = 1;
 }

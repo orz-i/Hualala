@@ -154,6 +154,7 @@ func (s *Service) AddCandidateAsset(ctx context.Context, input AddCandidateAsset
 		OrgID:         requestOrgID,
 		ProjectID:     requestProjectID,
 		ImportBatchID: importBatchID,
+		MediaType:     "image",
 		SourceType:    strings.TrimSpace(input.SourceType),
 		Locale:        strings.TrimSpace(input.AssetLocale),
 		RightsStatus:  strings.TrimSpace(input.RightsStatus),

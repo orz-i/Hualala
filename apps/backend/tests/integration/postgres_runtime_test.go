@@ -30,6 +30,7 @@ import (
 	executiondomain "github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/domain/gateway"
 	"github.com/hualala/apps/backend/internal/domain/project"
+	"github.com/hualala/apps/backend/internal/domain/workflow"
 	connectiface "github.com/hualala/apps/backend/internal/interfaces/connect"
 	"github.com/hualala/apps/backend/internal/platform/authsession"
 	"github.com/hualala/apps/backend/internal/platform/config"
@@ -364,6 +365,198 @@ func TestPostgresStorePersistsCollaborationAndPreviewSharedTruth(t *testing.T) {
 	}
 	if got := items[0].ShotID; got != shotOneID {
 		t.Fatalf("expected first preview item shot %q, got %q", shotOneID, got)
+	}
+}
+
+func TestPostgresStorePersistsAudioTimelineAndAudioAssetFields(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	storeKey := "audio-timeline"
+	resetNativeIntegrationRuntimeStore(t)
+	runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, storeKey)
+
+	now := publishedAt()
+	projectID := runtimeStore.GenerateProjectID()
+	if err := runtimeStore.SaveProject(context.Background(), project.Project{
+		ID:                   projectID,
+		OrganizationID:       db.DefaultDevOrganizationID,
+		OwnerUserID:          db.DefaultDevUserID,
+		Title:                "Audio Timeline",
+		Status:               "draft",
+		CurrentStage:         "planning",
+		PrimaryContentLocale: "zh-CN",
+		CreatedAt:            now,
+		UpdatedAt:            now,
+	}); err != nil {
+		t.Fatalf("SaveProject returned error: %v", err)
+	}
+
+	episodeID := runtimeStore.GenerateEpisodeID()
+	if err := runtimeStore.SaveEpisode(context.Background(), project.Episode{
+		ID:        episodeID,
+		ProjectID: projectID,
+		EpisodeNo: 1,
+		Title:     "第一集",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}); err != nil {
+		t.Fatalf("SaveEpisode returned error: %v", err)
+	}
+
+	assetID := runtimeStore.GenerateMediaAssetID()
+	if err := runtimeStore.SaveMediaAsset(context.Background(), assetdomain.MediaAsset{
+		ID:           assetID,
+		OrgID:        db.DefaultDevOrganizationID,
+		ProjectID:    projectID,
+		MediaType:    "audio",
+		SourceType:   "workflow_import",
+		Locale:       "zh-CN",
+		RightsStatus: "clear",
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}); err != nil {
+		t.Fatalf("SaveMediaAsset returned error: %v", err)
+	}
+
+	uploadFileID := runtimeStore.GenerateUploadFileID()
+	uploadSessionID := runtimeStore.GenerateUploadSessionID()
+	if err := runtimeStore.SaveUploadSession(context.Background(), assetdomain.UploadSession{
+		ID:        uploadSessionID,
+		OrgID:     db.DefaultDevOrganizationID,
+		ProjectID: projectID,
+		Status:    "uploaded",
+		FileName:  "dialogue.mp3",
+		Checksum:  "sha256:audio",
+		SizeBytes: 1024,
+		CreatedAt: now,
+		ExpiresAt: now.Add(15 * time.Minute),
+	}); err != nil {
+		t.Fatalf("SaveUploadSession returned error: %v", err)
+	}
+	if err := runtimeStore.SaveUploadFile(context.Background(), assetdomain.UploadFile{
+		ID:              uploadFileID,
+		UploadSessionID: uploadSessionID,
+		FileName:        "dialogue.mp3",
+		MimeType:        "audio/mpeg",
+		Checksum:        "sha256:audio",
+		SizeBytes:       1024,
+		CreatedAt:       now,
+	}); err != nil {
+		t.Fatalf("SaveUploadFile returned error: %v", err)
+	}
+	if err := runtimeStore.SaveMediaAssetVariant(context.Background(), assetdomain.MediaAssetVariant{
+		ID:           runtimeStore.GenerateMediaAssetVariantID(),
+		AssetID:      assetID,
+		UploadFileID: uploadFileID,
+		VariantType:  "original",
+		MimeType:     "audio/mpeg",
+		DurationMS:   64000,
+		CreatedAt:    now,
+	}); err != nil {
+		t.Fatalf("SaveMediaAssetVariant returned error: %v", err)
+	}
+
+	workflowRunID := runtimeStore.GenerateWorkflowRunID()
+	if err := runtimeStore.SaveWorkflowRun(context.Background(), workflow.WorkflowRun{
+		ID:           workflowRunID,
+		OrgID:        db.DefaultDevOrganizationID,
+		ProjectID:    projectID,
+		WorkflowType: "audio.render_mix",
+		ResourceID:   "audio-timeline-resource",
+		Status:       workflow.StatusPending,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}); err != nil {
+		t.Fatalf("SaveWorkflowRun returned error: %v", err)
+	}
+
+	timelineID := runtimeStore.GenerateAudioTimelineID()
+	if err := runtimeStore.SaveAudioTimeline(context.Background(), project.AudioTimeline{
+		ID:                  timelineID,
+		ProjectID:           projectID,
+		EpisodeID:           episodeID,
+		Status:              "ready",
+		RenderWorkflowRunID: workflowRunID,
+		RenderStatus:        "queued",
+		CreatedAt:           now,
+		UpdatedAt:           now,
+	}); err != nil {
+		t.Fatalf("SaveAudioTimeline returned error: %v", err)
+	}
+
+	trackID := runtimeStore.GenerateAudioTrackID()
+	if err := runtimeStore.ReplaceAudioTracks(context.Background(), timelineID, []project.AudioTrack{
+		{
+			ID:            trackID,
+			TimelineID:    timelineID,
+			TrackType:     "dialogue",
+			DisplayName:   "对白",
+			Sequence:      1,
+			VolumePercent: 100,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceAudioTracks returned error: %v", err)
+	}
+	if err := runtimeStore.ReplaceAudioClips(context.Background(), trackID, []project.AudioClip{
+		{
+			ID:          runtimeStore.GenerateAudioClipID(),
+			TrackID:     trackID,
+			AssetID:     assetID,
+			SourceRunID: workflowRunID,
+			Sequence:    1,
+			StartMs:     0,
+			DurationMs:  64000,
+			TrimInMs:    0,
+			TrimOutMs:   120,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceAudioClips returned error: %v", err)
+	}
+
+	closeFn()
+
+	reloadedStore, reloadCloseFn := openNativeIntegrationRuntimeStore(t, storeKey)
+	defer reloadCloseFn()
+
+	timeline, ok := reloadedStore.GetAudioTimeline(projectID, episodeID)
+	if !ok {
+		t.Fatalf("expected audio timeline for %s/%s", projectID, episodeID)
+	}
+	if got := timeline.RenderWorkflowRunID; got != workflowRunID {
+		t.Fatalf("expected render workflow run %q, got %q", workflowRunID, got)
+	}
+	tracks := reloadedStore.ListAudioTracks(timeline.ID)
+	if len(tracks) != 1 {
+		t.Fatalf("expected 1 audio track after reload, got %d", len(tracks))
+	}
+	clips := reloadedStore.ListAudioClips(tracks[0].ID)
+	if len(clips) != 1 {
+		t.Fatalf("expected 1 audio clip after reload, got %d", len(clips))
+	}
+	if got := clips[0].AssetID; got != assetID {
+		t.Fatalf("expected audio clip asset %q, got %q", assetID, got)
+	}
+
+	assetRecord, ok := reloadedStore.GetMediaAsset(assetID)
+	if !ok {
+		t.Fatalf("expected media asset %q after reload", assetID)
+	}
+	if got := assetRecord.MediaType; got != "audio" {
+		t.Fatalf("expected media type %q, got %q", "audio", got)
+	}
+	variants := reloadedStore.ListMediaAssetVariantsByAssetIDs([]string{assetID})
+	if len(variants) != 1 {
+		t.Fatalf("expected 1 media asset variant after reload, got %d", len(variants))
+	}
+	if got := variants[0].DurationMS; got != 64000 {
+		t.Fatalf("expected variant duration %d, got %d", 64000, got)
 	}
 }
 

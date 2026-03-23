@@ -549,19 +549,20 @@ func (s *PostgresStore) SaveMediaAsset(ctx context.Context, record asset.MediaAs
 			id, organization_id, project_id, import_batch_id, upload_file_id, asset_type,
 			source_type, storage_key, ai_disclosure_status, rights_status, consent_status,
 			created_at, updated_at, locale, ai_annotated
-		) VALUES ($1, $2, $3, $4, $5, 'image', $6, $7, $8, $9, 'unknown', $10, $11, $12, $13)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'unknown', $11, $12, $13, $14)
 		ON CONFLICT (id) DO UPDATE
 		SET organization_id = EXCLUDED.organization_id,
 		    project_id = EXCLUDED.project_id,
 		    import_batch_id = EXCLUDED.import_batch_id,
 		    upload_file_id = EXCLUDED.upload_file_id,
+		    asset_type = EXCLUDED.asset_type,
 		    source_type = EXCLUDED.source_type,
 		    ai_disclosure_status = EXCLUDED.ai_disclosure_status,
 		    rights_status = EXCLUDED.rights_status,
 		    updated_at = EXCLUDED.updated_at,
 		    locale = EXCLUDED.locale,
 		    ai_annotated = EXCLUDED.ai_annotated
-	`, record.ID, record.OrgID, record.ProjectID, nullableUUID(record.ImportBatchID), nullableUUID(s.lookupUploadFileIDByAssetID(ctx, record.ID)), defaultString(record.SourceType, "upload_session"), fmt.Sprintf("media-assets/%s", record.ID), aiDisclosureStatus, defaultString(record.RightsStatus, "unknown"), record.CreatedAt, record.UpdatedAt, emptyToNil(record.Locale), record.AIAnnotated)
+	`, record.ID, record.OrgID, record.ProjectID, nullableUUID(record.ImportBatchID), nullableUUID(s.lookupUploadFileIDByAssetID(ctx, record.ID)), normalizeAssetMediaType(record.MediaType), defaultString(record.SourceType, "upload_session"), fmt.Sprintf("media-assets/%s", record.ID), aiDisclosureStatus, defaultString(record.RightsStatus, "unknown"), record.CreatedAt, record.UpdatedAt, emptyToNil(record.Locale), record.AIAnnotated)
 	if err != nil {
 		return fmt.Errorf("db: upsert media asset %s: %w", record.ID, err)
 	}
@@ -575,10 +576,10 @@ func (s *PostgresStore) GetMediaAsset(assetID string) (asset.MediaAsset, bool) {
 	record := asset.MediaAsset{}
 	err := s.db.QueryRowContext(context.Background(), `
 		SELECT id::text, organization_id::text, project_id::text, COALESCE(import_batch_id::text, ''),
-		       source_type, COALESCE(locale, ''), rights_status, ai_annotated, created_at, updated_at
+		       asset_type, source_type, COALESCE(locale, ''), rights_status, ai_annotated, created_at, updated_at
 		FROM media_assets
 		WHERE id = $1
-	`, strings.TrimSpace(assetID)).Scan(&record.ID, &record.OrgID, &record.ProjectID, &record.ImportBatchID, &record.SourceType, &record.Locale, &record.RightsStatus, &record.AIAnnotated, &record.CreatedAt, &record.UpdatedAt)
+	`, strings.TrimSpace(assetID)).Scan(&record.ID, &record.OrgID, &record.ProjectID, &record.ImportBatchID, &record.MediaType, &record.SourceType, &record.Locale, &record.RightsStatus, &record.AIAnnotated, &record.CreatedAt, &record.UpdatedAt)
 	if err != nil {
 		return asset.MediaAsset{}, false
 	}
@@ -593,7 +594,7 @@ func (s *PostgresStore) ListMediaAssetsByImportBatch(importBatchID string) []ass
 	}
 	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id::text, organization_id::text, project_id::text, COALESCE(import_batch_id::text, ''),
-		       source_type, COALESCE(locale, ''), rights_status, ai_annotated, created_at, updated_at
+		       asset_type, source_type, COALESCE(locale, ''), rights_status, ai_annotated, created_at, updated_at
 		FROM media_assets
 		WHERE import_batch_id = $1
 		ORDER BY id ASC
@@ -606,7 +607,7 @@ func (s *PostgresStore) ListMediaAssetsByImportBatch(importBatchID string) []ass
 	items := make([]asset.MediaAsset, 0)
 	for rows.Next() {
 		var record asset.MediaAsset
-		if err := rows.Scan(&record.ID, &record.OrgID, &record.ProjectID, &record.ImportBatchID, &record.SourceType, &record.Locale, &record.RightsStatus, &record.AIAnnotated, &record.CreatedAt, &record.UpdatedAt); err != nil {
+		if err := rows.Scan(&record.ID, &record.OrgID, &record.ProjectID, &record.ImportBatchID, &record.MediaType, &record.SourceType, &record.Locale, &record.RightsStatus, &record.AIAnnotated, &record.CreatedAt, &record.UpdatedAt); err != nil {
 			return nil
 		}
 		record.CreatedAt = record.CreatedAt.UTC()
@@ -625,16 +626,17 @@ func (s *PostgresStore) SaveMediaAssetVariant(ctx context.Context, record asset.
 
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO media_asset_variants (
-			id, media_asset_id, variant_type, storage_key, mime_type, width, height, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			id, media_asset_id, variant_type, storage_key, mime_type, width, height, duration_ms, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (id) DO UPDATE
 		SET media_asset_id = EXCLUDED.media_asset_id,
 		    variant_type = EXCLUDED.variant_type,
 		    mime_type = EXCLUDED.mime_type,
 		    width = EXCLUDED.width,
 		    height = EXCLUDED.height,
+		    duration_ms = EXCLUDED.duration_ms,
 		    updated_at = EXCLUDED.updated_at
-	`, record.ID, record.AssetID, defaultString(record.VariantType, "original"), fmt.Sprintf("media-asset-variants/%s", record.ID), emptyToNil(record.MimeType), nullableInt(record.Width), nullableInt(record.Height), record.CreatedAt, record.CreatedAt); err != nil {
+	`, record.ID, record.AssetID, defaultString(record.VariantType, "original"), fmt.Sprintf("media-asset-variants/%s", record.ID), emptyToNil(record.MimeType), nullableInt(record.Width), nullableInt(record.Height), nullableInt(record.DurationMS), record.CreatedAt, record.CreatedAt); err != nil {
 		return fmt.Errorf("db: upsert media asset variant %s: %w", record.ID, err)
 	}
 	if strings.TrimSpace(record.UploadFileID) != "" {
@@ -655,7 +657,8 @@ func (s *PostgresStore) SaveMediaAssetVariant(ctx context.Context, record asset.
 func (s *PostgresStore) ListMediaAssetVariantsByUploadFileIDs(uploadFileIDs []string) []asset.MediaAssetVariant {
 	return s.listMediaAssetVariants(`
 		SELECT media_asset_variants.id::text, media_asset_variants.media_asset_id::text, COALESCE(media_assets.upload_file_id::text, ''), media_asset_variants.variant_type,
-		       COALESCE(media_asset_variants.mime_type, ''), COALESCE(media_asset_variants.width, 0), COALESCE(media_asset_variants.height, 0), media_asset_variants.created_at
+		       COALESCE(media_asset_variants.mime_type, ''), COALESCE(media_asset_variants.width, 0), COALESCE(media_asset_variants.height, 0),
+		       COALESCE(media_asset_variants.duration_ms, 0), media_asset_variants.created_at
 		FROM media_asset_variants
 		JOIN media_assets ON media_assets.id = media_asset_variants.media_asset_id
 		WHERE media_assets.upload_file_id = ANY($1::uuid[])
@@ -666,7 +669,8 @@ func (s *PostgresStore) ListMediaAssetVariantsByUploadFileIDs(uploadFileIDs []st
 func (s *PostgresStore) ListMediaAssetVariantsByAssetIDs(assetIDs []string) []asset.MediaAssetVariant {
 	return s.listMediaAssetVariants(`
 		SELECT media_asset_variants.id::text, media_asset_variants.media_asset_id::text, COALESCE(media_assets.upload_file_id::text, ''), media_asset_variants.variant_type,
-		       COALESCE(media_asset_variants.mime_type, ''), COALESCE(media_asset_variants.width, 0), COALESCE(media_asset_variants.height, 0), media_asset_variants.created_at
+		       COALESCE(media_asset_variants.mime_type, ''), COALESCE(media_asset_variants.width, 0), COALESCE(media_asset_variants.height, 0),
+		       COALESCE(media_asset_variants.duration_ms, 0), media_asset_variants.created_at
 		FROM media_asset_variants
 		JOIN media_assets ON media_assets.id = media_asset_variants.media_asset_id
 		WHERE media_asset_id = ANY($1::uuid[])
@@ -687,7 +691,7 @@ func (s *PostgresStore) listMediaAssetVariants(query string, ids any) []asset.Me
 	items := make([]asset.MediaAssetVariant, 0)
 	for rows.Next() {
 		var record asset.MediaAssetVariant
-		if err := rows.Scan(&record.ID, &record.AssetID, &record.UploadFileID, &record.VariantType, &record.MimeType, &record.Width, &record.Height, &record.CreatedAt); err != nil {
+		if err := rows.Scan(&record.ID, &record.AssetID, &record.UploadFileID, &record.VariantType, &record.MimeType, &record.Width, &record.Height, &record.DurationMS, &record.CreatedAt); err != nil {
 			return nil
 		}
 		record.CreatedAt = record.CreatedAt.UTC()

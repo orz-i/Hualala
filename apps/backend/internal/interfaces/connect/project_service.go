@@ -122,3 +122,58 @@ func (h *projectHandler) UpsertPreviewAssembly(ctx context.Context, req *connect
 		Assembly: mapPreviewWorkbench(record),
 	}), nil
 }
+
+func (h *projectHandler) GetAudioWorkbench(ctx context.Context, req *connectrpc.Request[projectv1.GetAudioWorkbenchRequest]) (*connectrpc.Response[projectv1.GetAudioWorkbenchResponse], error) {
+	record, err := h.service.GetAudioWorkbench(ctx, projectapp.GetAudioWorkbenchInput{
+		ProjectID: req.Msg.GetProjectId(),
+		EpisodeID: req.Msg.GetEpisodeId(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&projectv1.GetAudioWorkbenchResponse{
+		Timeline: mapAudioWorkbench(record),
+	}), nil
+}
+
+func (h *projectHandler) UpsertAudioTimeline(ctx context.Context, req *connectrpc.Request[projectv1.UpsertAudioTimelineRequest]) (*connectrpc.Response[projectv1.UpsertAudioTimelineResponse], error) {
+	tracks := make([]projectapp.AudioTrackInput, 0, len(req.Msg.GetTracks()))
+	for _, track := range req.Msg.GetTracks() {
+		clips := make([]projectapp.AudioClipInput, 0, len(track.GetClips()))
+		for _, clip := range track.GetClips() {
+			clips = append(clips, projectapp.AudioClipInput{
+				AssetID:     clip.GetAssetId(),
+				SourceRunID: clip.GetSourceRunId(),
+				Sequence:    int(clip.GetSequence()),
+				StartMs:     int(clip.GetStartMs()),
+				DurationMs:  int(clip.GetDurationMs()),
+				TrimInMs:    int(clip.GetTrimInMs()),
+				TrimOutMs:   int(clip.GetTrimOutMs()),
+			})
+		}
+		tracks = append(tracks, projectapp.AudioTrackInput{
+			TrackType:     track.GetTrackType(),
+			DisplayName:   track.GetDisplayName(),
+			Sequence:      int(track.GetSequence()),
+			Muted:         track.GetMuted(),
+			Solo:          track.GetSolo(),
+			VolumePercent: int(track.GetVolumePercent()),
+			Clips:         clips,
+		})
+	}
+
+	record, err := h.service.UpsertAudioTimeline(ctx, projectapp.UpsertAudioTimelineInput{
+		ProjectID:           req.Msg.GetProjectId(),
+		EpisodeID:           req.Msg.GetEpisodeId(),
+		Status:              req.Msg.GetStatus(),
+		RenderWorkflowRunID: req.Msg.GetRenderWorkflowRunId(),
+		RenderStatus:        req.Msg.GetRenderStatus(),
+		Tracks:              tracks,
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&projectv1.UpsertAudioTimelineResponse{
+		Timeline: mapAudioWorkbench(record),
+	}), nil
+}

@@ -55,6 +55,7 @@ message MediaAsset {
   string import_batch_id = 5;
   string locale = 6;
   bool ai_annotated = 7;
+  string media_type = 8;
 }
 
 message ShotCandidateAsset {
@@ -94,6 +95,7 @@ message MediaAssetVariant {
   string mime_type = 5;
   uint32 width = 6;
   uint32 height = 7;
+  uint32 duration_ms = 8;
 }
 
 message ImportBatchShotExecution {

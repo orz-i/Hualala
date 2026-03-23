@@ -128,6 +128,56 @@ func mapPreviewWorkbench(record projectapp.PreviewWorkbench) *projectv1.PreviewA
 	}
 }
 
+func mapAudioClip(record project.AudioClip) *projectv1.AudioClip {
+	return &projectv1.AudioClip{
+		ClipId:      record.ID,
+		TrackId:     record.TrackID,
+		AssetId:     record.AssetID,
+		SourceRunId: record.SourceRunID,
+		Sequence:    uint32(record.Sequence),
+		StartMs:     uint32(record.StartMs),
+		DurationMs:  uint32(record.DurationMs),
+		TrimInMs:    uint32(record.TrimInMs),
+		TrimOutMs:   uint32(record.TrimOutMs),
+	}
+}
+
+func mapAudioTrack(record project.AudioTrack) *projectv1.AudioTrack {
+	clips := make([]*projectv1.AudioClip, 0, len(record.Clips))
+	for _, clip := range record.Clips {
+		clips = append(clips, mapAudioClip(clip))
+	}
+	return &projectv1.AudioTrack{
+		TrackId:       record.ID,
+		TimelineId:    record.TimelineID,
+		TrackType:     record.TrackType,
+		DisplayName:   record.DisplayName,
+		Sequence:      uint32(record.Sequence),
+		Muted:         record.Muted,
+		Solo:          record.Solo,
+		VolumePercent: uint32(record.VolumePercent),
+		Clips:         clips,
+	}
+}
+
+func mapAudioWorkbench(record projectapp.AudioWorkbench) *projectv1.AudioTimeline {
+	tracks := make([]*projectv1.AudioTrack, 0, len(record.Tracks))
+	for _, track := range record.Tracks {
+		tracks = append(tracks, mapAudioTrack(track))
+	}
+	return &projectv1.AudioTimeline{
+		AudioTimelineId:     record.Timeline.ID,
+		ProjectId:           record.Timeline.ProjectID,
+		EpisodeId:           record.Timeline.EpisodeID,
+		Status:              record.Timeline.Status,
+		RenderWorkflowRunId: record.Timeline.RenderWorkflowRunID,
+		RenderStatus:        record.Timeline.RenderStatus,
+		Tracks:              tracks,
+		CreatedAt:           timestampOrNil(record.Timeline.CreatedAt),
+		UpdatedAt:           timestampOrNil(record.Timeline.UpdatedAt),
+	}
+}
+
 func mapScene(record content.Scene) *contentv1.Scene {
 	return &contentv1.Scene{
 		Id:           record.ID,
@@ -279,6 +329,7 @@ func mapMediaAsset(record asset.MediaAsset) *assetv1.MediaAsset {
 		Id:            record.ID,
 		ProjectId:     record.ProjectID,
 		ImportBatchId: record.ImportBatchID,
+		MediaType:     record.MediaType,
 		SourceType:    record.SourceType,
 		Locale:        record.Locale,
 		RightsStatus:  record.RightsStatus,
@@ -330,6 +381,7 @@ func mapMediaAssetVariant(record asset.MediaAssetVariant) *assetv1.MediaAssetVar
 		MimeType:     record.MimeType,
 		Width:        uint32(record.Width),
 		Height:       uint32(record.Height),
+		DurationMs:   uint32(record.DurationMS),
 	}
 }
 
