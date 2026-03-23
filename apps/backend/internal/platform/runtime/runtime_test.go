@@ -78,8 +78,8 @@ func TestFactoryWorkerServicesProcessQueuedWorkflowJobs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetWorkflowRun returned error: %v", err)
 	}
-	if got := record.Status; got != workflow.StatusRunning {
-		t.Fatalf("expected running workflow status after worker dispatch, got %q", got)
+	if got := record.Status; got != workflow.StatusCompleted {
+		t.Fatalf("expected completed workflow status after worker dispatch, got %q", got)
 	}
 	if record.ExternalRequestID == "" {
 		t.Fatalf("expected worker services to populate external_request_id")

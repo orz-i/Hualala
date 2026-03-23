@@ -104,20 +104,20 @@ func TestProcessNextWorkflowJobFailsAndRetryRequeuesNextAttempt(t *testing.T) {
 		t.Fatalf("expected retried workflow job to be processed")
 	}
 
-	running, err := service.GetWorkflowRun(ctx, GetWorkflowRunInput{WorkflowRunID: failed.ID})
+	completed, err := service.GetWorkflowRun(ctx, GetWorkflowRunInput{WorkflowRunID: failed.ID})
 	if err != nil {
 		t.Fatalf("GetWorkflowRun after retry returned error: %v", err)
 	}
-	if got := running.Status; got != workflow.StatusRunning {
-		t.Fatalf("expected running status after gateway accept, got %q", got)
+	if got := completed.Status; got != workflow.StatusCompleted {
+		t.Fatalf("expected completed status after gateway accept, got %q", got)
 	}
-	if got := running.AttemptCount; got != 2 {
+	if got := completed.AttemptCount; got != 2 {
 		t.Fatalf("expected attempt_count 2 after retry processing, got %d", got)
 	}
-	if got := running.CurrentStep; got != "attempt_2.gateway" {
+	if got := completed.CurrentStep; got != "attempt_2.gateway" {
 		t.Fatalf("expected current_step attempt_2.gateway after retry, got %q", got)
 	}
-	if running.ExternalRequestID == "" {
+	if completed.ExternalRequestID == "" {
 		t.Fatalf("expected worker to populate external_request_id")
 	}
 
@@ -127,6 +127,14 @@ func TestProcessNextWorkflowJobFailsAndRetryRequeuesNextAttempt(t *testing.T) {
 	}
 	if got := allSteps[3].Status; got != workflow.StatusCompleted {
 		t.Fatalf("expected completed gateway step after retry, got %q", got)
+	}
+
+	transitions = store.ListStateTransitions(workflow.ResourceTypeWorkflowRun, failed.ID)
+	if len(transitions) != 6 {
+		t.Fatalf("expected pending->running->failed->pending->running->completed transitions, got %d", len(transitions))
+	}
+	if got := transitions[5].ToState; got != workflow.StatusCompleted {
+		t.Fatalf("expected final transition to completed, got %q", got)
 	}
 }
 

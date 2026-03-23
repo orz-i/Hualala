@@ -353,10 +353,11 @@ func (s *Service) processWorkflowJob(ctx context.Context, job workflow.Job) erro
 
 	run.Provider = selectGatewayProvider(run.Provider, result.Provider)
 	run.ExternalRequestID = strings.TrimSpace(result.ExternalRequestID)
+	run.Status = workflow.StatusCompleted
 	run.LastError = ""
 	run.CurrentStep = gatewayStep.StepKey
 	run.UpdatedAt = completedAt
-	if err := s.repo.SaveWorkflowRun(ctx, run); err != nil {
+	if err := s.saveWorkflowRunState(ctx, run, workflow.StatusRunning, "gateway_completed"); err != nil {
 		return err
 	}
 	s.publishWorkflowUpdated(ctx, run)

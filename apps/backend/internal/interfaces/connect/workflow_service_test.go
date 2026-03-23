@@ -84,59 +84,46 @@ func TestWorkflowRoutesQueueAndExposeWorkerProgress(t *testing.T) {
 		t.Fatalf("expected worker to process queued workflow job")
 	}
 
-	fetchedRunning, err := client.GetWorkflowRun(ctx, connectrpc.NewRequest(&workflowv1.GetWorkflowRunRequest{
+	fetchedCompleted, err := client.GetWorkflowRun(ctx, connectrpc.NewRequest(&workflowv1.GetWorkflowRunRequest{
 		WorkflowRunId: runID,
 	}))
 	if err != nil {
 		t.Fatalf("GetWorkflowRun after worker returned error: %v", err)
 	}
-	if got := fetchedRunning.Msg.GetWorkflowRun().GetStatus(); got != "running" {
-		t.Fatalf("expected running workflow status after worker processing, got %q", got)
+	if got := fetchedCompleted.Msg.GetWorkflowRun().GetStatus(); got != "completed" {
+		t.Fatalf("expected completed workflow status after worker processing, got %q", got)
 	}
-	if got := fetchedRunning.Msg.GetWorkflowRun().GetCurrentStep(); got != "attempt_1.gateway" {
+	if got := fetchedCompleted.Msg.GetWorkflowRun().GetCurrentStep(); got != "attempt_1.gateway" {
 		t.Fatalf("expected current_step attempt_1.gateway, got %q", got)
 	}
-	if fetchedRunning.Msg.GetWorkflowRun().GetExternalRequestId() == "" {
+	if fetchedCompleted.Msg.GetWorkflowRun().GetExternalRequestId() == "" {
 		t.Fatalf("expected worker to populate external_request_id")
 	}
-	if len(fetchedRunning.Msg.GetWorkflowSteps()) != 2 {
-		t.Fatalf("expected 2 workflow steps after worker processing, got %d", len(fetchedRunning.Msg.GetWorkflowSteps()))
+	if len(fetchedCompleted.Msg.GetWorkflowSteps()) != 2 {
+		t.Fatalf("expected 2 workflow steps after worker processing, got %d", len(fetchedCompleted.Msg.GetWorkflowSteps()))
 	}
 
 	listed, err := client.ListWorkflowRuns(ctx, connectrpc.NewRequest(&workflowv1.ListWorkflowRunsRequest{
 		ProjectId:    "project-1",
 		ResourceId:   "batch-1",
-		Status:       "running",
+		Status:       "completed",
 		WorkflowType: "asset.import",
 	}))
 	if err != nil {
 		t.Fatalf("ListWorkflowRuns returned error: %v", err)
 	}
 	if len(listed.Msg.GetWorkflowRuns()) != 1 {
-		t.Fatalf("expected 1 running workflow run, got %d", len(listed.Msg.GetWorkflowRuns()))
+		t.Fatalf("expected 1 completed workflow run, got %d", len(listed.Msg.GetWorkflowRuns()))
 	}
 
-	cancelled, err := client.CancelWorkflowRun(ctx, connectrpc.NewRequest(&workflowv1.CancelWorkflowRunRequest{
+	_, err = client.CancelWorkflowRun(ctx, connectrpc.NewRequest(&workflowv1.CancelWorkflowRunRequest{
 		WorkflowRunId: runID,
 	}))
-	if err != nil {
-		t.Fatalf("CancelWorkflowRun returned error: %v", err)
+	if err == nil {
+		t.Fatalf("expected cancel on completed workflow run to be rejected")
 	}
-	if got := cancelled.Msg.GetWorkflowRun().GetStatus(); got != "cancelled" {
-		t.Fatalf("expected cancelled workflow status, got %q", got)
-	}
-
-	cancelledDetails, err := client.GetWorkflowRun(ctx, connectrpc.NewRequest(&workflowv1.GetWorkflowRunRequest{
-		WorkflowRunId: runID,
-	}))
-	if err != nil {
-		t.Fatalf("GetWorkflowRun after cancel returned error: %v", err)
-	}
-	if got := cancelledDetails.Msg.GetWorkflowRun().GetCurrentStep(); got != "attempt_1.cancel" {
-		t.Fatalf("expected current_step attempt_1.cancel after cancel, got %q", got)
-	}
-	if len(cancelledDetails.Msg.GetWorkflowSteps()) != 3 {
-		t.Fatalf("expected 3 workflow steps after cancel, got %d", len(cancelledDetails.Msg.GetWorkflowSteps()))
+	if !strings.Contains(err.Error(), "policyapp: completed workflow run cannot be cancelled") {
+		t.Fatalf("expected completed cancel rejection message, got %v", err)
 	}
 }
 
@@ -227,20 +214,20 @@ func TestWorkflowRoutesExposeProviderFailureAndPolicyRejections(t *testing.T) {
 	}
 	processed, err = workerService.ProcessNextWorkflowJob(ctx)
 	if err != nil {
-		t.Fatalf("ProcessNextWorkflowJob for running workflow returned error: %v", err)
+		t.Fatalf("ProcessNextWorkflowJob for completed workflow returned error: %v", err)
 	}
 	if !processed {
-		t.Fatalf("expected worker to process running workflow job")
+		t.Fatalf("expected worker to process completed workflow job")
 	}
 
 	_, err = client.RetryWorkflowRun(ctx, connectrpc.NewRequest(&workflowv1.RetryWorkflowRunRequest{
 		WorkflowRunId: runningQueued.Msg.GetWorkflowRun().GetId(),
 	}))
 	if err == nil {
-		t.Fatalf("expected retry on running workflow run to be rejected")
+		t.Fatalf("expected retry on completed workflow run to be rejected")
 	}
-	if !strings.Contains(err.Error(), "policyapp: running workflow run cannot be retried") {
-		t.Fatalf("expected running retry rejection message, got %v", err)
+	if !strings.Contains(err.Error(), "policyapp: completed workflow run cannot be retried") {
+		t.Fatalf("expected completed retry rejection message, got %v", err)
 	}
 
 	_, err = client.CancelWorkflowRun(ctx, connectrpc.NewRequest(&workflowv1.CancelWorkflowRunRequest{

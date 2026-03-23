@@ -120,14 +120,14 @@ func TestReliabilityFlow(t *testing.T) {
 		t.Fatalf("expected retried workflow job to be drained once, got %d", processedCount)
 	}
 
-	runningRun, err := apiWorkflowService.GetWorkflowRun(ctx, workflowapp.GetWorkflowRunInput{
+	completedRun, err := apiWorkflowService.GetWorkflowRun(ctx, workflowapp.GetWorkflowRunInput{
 		WorkflowRunID: failedRun.ID,
 	})
 	if err != nil {
 		t.Fatalf("GetWorkflowRun after retry returned error: %v", err)
 	}
-	if got := runningRun.Status; got != workflow.StatusRunning {
-		t.Fatalf("expected running workflow status after retry dispatch, got %q", got)
+	if got := completedRun.Status; got != workflow.StatusCompleted {
+		t.Fatalf("expected completed workflow status after retry dispatch, got %q", got)
 	}
 
 	successQueued, err := apiWorkflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
