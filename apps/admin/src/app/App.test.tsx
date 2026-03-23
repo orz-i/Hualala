@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { AdminOverviewViewModel } from "../features/dashboard/overview";
+import type { AdminOperationsOverviewViewModel } from "../features/dashboard/operationsOverview";
 import { ADMIN_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
 import { useAdminGovernanceController } from "../features/dashboard/useAdminGovernanceController";
@@ -18,7 +19,41 @@ vi.mock("../features/dashboard/AdminOverviewPage", () => ({
   AdminOverviewPage: (props: Record<string, unknown>) => {
     lastAdminOverviewPageProps = props;
     const overview = props.overview as AdminOverviewViewModel;
-    return <div data-testid="admin-overview-page">{overview.budgetSnapshot.projectId}</div>;
+    return (
+      <div data-testid="admin-overview-page">
+        {overview.budgetSnapshot.projectId}
+        <button
+          type="button"
+          onClick={() =>
+            (
+              props.onNavigateOperationsTarget as
+                | ((target: { route: "workflow"; workflowRunId: string }) => void)
+                | undefined
+            )?.({
+              route: "workflow",
+              workflowRunId: "workflow-run-1",
+            })
+          }
+        >
+          overview-open-workflow
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            (
+              props.onNavigateOperationsTarget as
+                | ((target: { route: "assets"; importBatchId: string }) => void)
+                | undefined
+            )?.({
+              route: "assets",
+              importBatchId: "batch-live-1",
+            })
+          }
+        >
+          overview-open-asset
+        </button>
+      </div>
+    );
   },
 }));
 vi.mock("../features/dashboard/AdminWorkflowPage", () => ({
@@ -135,6 +170,61 @@ function createOverview(projectId: string, shotExecutionId: string): AdminOvervi
   };
 }
 
+function createOperationsOverview(): AdminOperationsOverviewViewModel {
+  return {
+    blockerCount: 2,
+    blockers: [
+      {
+        id: "workflow",
+        kind: "workflow",
+        status: "blocked",
+        failedWorkflowCount: 1,
+        workflowRunId: "workflow-run-1",
+        workflowType: "shot_pipeline",
+        lastError: "provider rejected request",
+        target: {
+          route: "workflow",
+          workflowRunId: "workflow-run-1",
+        },
+      },
+      {
+        id: "asset",
+        kind: "asset",
+        status: "blocked",
+        pendingConfirmationCount: 1,
+        blockedImportBatchCount: 1,
+        importBatchId: "batch-live-1",
+        batchStatus: "pending_review",
+        missingMediaAssetCount: 1,
+        target: {
+          route: "assets",
+          importBatchId: "batch-live-1",
+        },
+      },
+    ],
+    runtimeHealth: {
+      runningWorkflowCount: 0,
+      failedWorkflowCount: 1,
+      pendingImportBatchCount: 1,
+      blockedImportBatchCount: 1,
+      alerts: [
+        {
+          id: "workflow-failed",
+          kind: "workflow_failed",
+          count: 1,
+          workflowRunId: "workflow-run-1",
+          workflowType: "shot_pipeline",
+          lastError: "provider rejected request",
+          target: {
+            route: "workflow",
+            workflowRunId: "workflow-run-1",
+          },
+        },
+      ],
+    },
+  };
+}
+
 function createGovernance(orgId: string, userId: string) {
   return {
     currentSession: {
@@ -210,9 +300,11 @@ function buildSessionGate(overrides: Record<string, unknown> = {}) {
 function buildOverviewController(overrides: Record<string, unknown> = {}) {
   return {
     overview: createOverview("project-live-001", "shot-exec-live-001"),
+    operationsOverview: createOperationsOverview(),
     errorMessage: "",
     budgetFeedback: null,
     refreshOverview: vi.fn(),
+    refreshOperationsOverview: vi.fn(),
     applyRecentChange: vi.fn(),
     onUpdateBudgetLimit: vi.fn(),
     ...overrides,
@@ -376,6 +468,7 @@ describe("App", () => {
     });
     expect(useAdminOverviewControllerMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        operationsEnabled: true,
         projectId: "project-query-1",
         shotExecutionId: "shot-query-1",
         effectiveOrgId: "org-override-001",
@@ -389,10 +482,12 @@ describe("App", () => {
         },
         effectiveOrgId: "org-override-001",
         effectiveUserId: "user-override-001",
+        enabled: false,
       }),
     );
     expect(useAdminWorkflowControllerMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        enabled: false,
         projectId: "project-query-1",
         identityOverride: {
           orgId: "org-override-001",
@@ -402,6 +497,7 @@ describe("App", () => {
     );
     expect(useAdminAssetControllerMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        enabled: false,
         projectId: "project-query-1",
         identityOverride: {
           orgId: "org-override-001",
@@ -425,6 +521,16 @@ describe("App", () => {
 
     render(<App />);
 
+    expect(useAdminOverviewControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationsEnabled: false,
+      }),
+    );
+    expect(useAdminWorkflowControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+      }),
+    );
     expect(screen.getByTestId("admin-workflow-page")).toHaveTextContent("workflow-run-1");
     expect(screen.queryByTestId("admin-overview-page")).not.toBeInTheDocument();
   });
@@ -562,6 +668,44 @@ describe("App", () => {
     expect(screen.getByTestId("admin-workflow-page")).toHaveTextContent("workflow-run-1");
   });
 
+  it("navigates from the overview workflow summary cta and preserves route params", () => {
+    window.history.pushState(
+      {},
+      "",
+      "/overview?projectId=project-live-001&shotExecutionId=shot-exec-live-001&orgId=org-override-001&userId=user-override-001",
+    );
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "overview-open-workflow" }));
+
+    expect(window.location.pathname).toBe("/workflow");
+    expect(window.location.search).toContain("projectId=project-live-001");
+    expect(window.location.search).toContain("shotExecutionId=shot-exec-live-001");
+    expect(window.location.search).toContain("orgId=org-override-001");
+    expect(window.location.search).toContain("userId=user-override-001");
+    expect(window.location.search).toContain("workflowRunId=workflow-run-1");
+  });
+
+  it("navigates from the overview asset summary cta and preserves route params", () => {
+    window.history.pushState(
+      {},
+      "",
+      "/overview?projectId=project-live-001&shotExecutionId=shot-exec-live-001&orgId=org-override-001&userId=user-override-001",
+    );
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "overview-open-asset" }));
+
+    expect(window.location.pathname).toBe("/assets");
+    expect(window.location.search).toContain("projectId=project-live-001");
+    expect(window.location.search).toContain("shotExecutionId=shot-exec-live-001");
+    expect(window.location.search).toContain("orgId=org-override-001");
+    expect(window.location.search).toContain("userId=user-override-001");
+    expect(window.location.search).toContain("importBatchId=batch-live-1");
+  });
+
   it("restores workflow detail selection from workflowRunId query and syncs close/open actions back to the url", () => {
     const workflow = buildWorkflow({
       onSelectWorkflowRun: vi.fn(),
@@ -626,6 +770,71 @@ describe("App", () => {
 
     expect(screen.getByTestId("admin-assets-page")).toHaveTextContent("batch-live-1");
     expect(screen.queryByTestId("admin-overview-page")).not.toBeInTheDocument();
+  });
+
+  it("refreshes overview operations summary for workflow and asset events while overview is active", () => {
+    const overview = buildOverviewController({
+      refreshOperationsOverview: vi.fn(),
+    });
+    const workflow = buildWorkflow({
+      refreshWorkflowSilently: vi.fn(),
+    });
+    const asset = buildAsset({
+      refreshAssetSilently: vi.fn(),
+    });
+    useAdminOverviewControllerMock.mockReturnValue(overview as never);
+    useAdminWorkflowControllerMock.mockReturnValue(workflow as never);
+    useAdminAssetControllerMock.mockReturnValue(asset as never);
+
+    render(<App />);
+
+    const subscription = useAdminRecentChangesSubscriptionMock.mock.calls.at(-1)?.[0];
+    subscription?.onWorkflowUpdated();
+    subscription?.onAssetImportBatchUpdated();
+
+    expect(overview.refreshOperationsOverview).toHaveBeenCalledTimes(2);
+    expect(workflow.refreshWorkflowSilently).not.toHaveBeenCalled();
+    expect(asset.refreshAssetSilently).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the active workflow route when workflow updates arrive", () => {
+    const overview = buildOverviewController({
+      refreshOperationsOverview: vi.fn(),
+    });
+    const workflow = buildWorkflow({
+      refreshWorkflowSilently: vi.fn(),
+    });
+    useAdminOverviewControllerMock.mockReturnValue(overview as never);
+    useAdminWorkflowControllerMock.mockReturnValue(workflow as never);
+    window.history.pushState({}, "", "/workflow?projectId=project-live-001");
+
+    render(<App />);
+
+    const subscription = useAdminRecentChangesSubscriptionMock.mock.calls.at(-1)?.[0];
+    subscription?.onWorkflowUpdated();
+
+    expect(workflow.refreshWorkflowSilently).toHaveBeenCalledTimes(1);
+    expect(overview.refreshOperationsOverview).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the active asset route when asset import batch updates arrive", () => {
+    const overview = buildOverviewController({
+      refreshOperationsOverview: vi.fn(),
+    });
+    const asset = buildAsset({
+      refreshAssetSilently: vi.fn(),
+    });
+    useAdminOverviewControllerMock.mockReturnValue(overview as never);
+    useAdminAssetControllerMock.mockReturnValue(asset as never);
+    window.history.pushState({}, "", "/assets?projectId=project-live-001");
+
+    render(<App />);
+
+    const subscription = useAdminRecentChangesSubscriptionMock.mock.calls.at(-1)?.[0];
+    subscription?.onAssetImportBatchUpdated();
+
+    expect(asset.refreshAssetSilently).toHaveBeenCalledTimes(1);
+    expect(overview.refreshOperationsOverview).not.toHaveBeenCalled();
   });
 
   it("shows the override banner and hides the clear button when identity override is active", () => {

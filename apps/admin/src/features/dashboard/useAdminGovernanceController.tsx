@@ -26,12 +26,14 @@ type ActionFeedback = {
 
 export function useAdminGovernanceController({
   sessionState,
+  enabled,
   identityOverride,
   effectiveOrgId,
   effectiveUserId,
   t,
 }: {
   sessionState: "loading" | "ready" | "unauthenticated";
+  enabled: boolean;
   identityOverride: IdentityOverride;
   effectiveOrgId: string;
   effectiveUserId: string;
@@ -44,6 +46,10 @@ export function useAdminGovernanceController({
   const [governanceActionPending, setGovernanceActionPending] = useState(false);
 
   const refreshGovernance = useCallback(async () => {
+    if (!enabled || sessionState !== "ready") {
+      return;
+    }
+
     const nextGovernance = await loadGovernancePanel({
       orgId: identityOverride?.orgId,
       userId: identityOverride?.userId,
@@ -52,7 +58,7 @@ export function useAdminGovernanceController({
       setGovernance(nextGovernance);
       setErrorMessage("");
     });
-  }, [identityOverride?.orgId, identityOverride?.userId]);
+  }, [enabled, identityOverride?.orgId, identityOverride?.userId, sessionState]);
 
   const runGovernanceAction = useCallback(
     async ({
@@ -64,7 +70,7 @@ export function useAdminGovernanceController({
       successMessage: string;
       execute: (input: { orgId: string; userId: string }) => Promise<unknown>;
     }) => {
-      if (governanceActionPending) {
+      if (!enabled || governanceActionPending) {
         return;
       }
 
@@ -102,11 +108,18 @@ export function useAdminGovernanceController({
         });
       }
     },
-    [effectiveOrgId, effectiveUserId, governanceActionPending, refreshGovernance, t],
+    [
+      effectiveOrgId,
+      effectiveUserId,
+      enabled,
+      governanceActionPending,
+      refreshGovernance,
+      t,
+    ],
   );
 
   useEffect(() => {
-    if (sessionState !== "ready") {
+    if (sessionState !== "ready" || !enabled) {
       startTransition(() => {
         setGovernance(null);
         setErrorMessage("");
@@ -146,7 +159,7 @@ export function useAdminGovernanceController({
     return () => {
       cancelled = true;
     };
-  }, [identityOverride?.orgId, identityOverride?.userId, sessionState]);
+  }, [enabled, identityOverride?.orgId, identityOverride?.userId, sessionState]);
 
   return {
     governance,

@@ -51,6 +51,7 @@ describe("useAdminAssetController", () => {
     const { result } = renderHook(() =>
       useAdminAssetController({
         sessionState: "ready",
+        enabled: true,
         projectId: "project-live-001",
         identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
@@ -99,6 +100,7 @@ describe("useAdminAssetController", () => {
     const { result } = renderHook(() =>
       useAdminAssetController({
         sessionState: "ready",
+        enabled: true,
         projectId: "project-live-001",
         identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
@@ -150,5 +152,27 @@ describe("useAdminAssetController", () => {
     expect(result.current.selectedImportItemIds).toEqual([]);
     expect(result.current.importBatchDetail?.batch.id).toBe("import-batch-1");
     expect(result.current.assetProvenanceDetail?.asset.id).toBe("media-asset-1");
+  });
+
+  it("does not load asset monitor or details when the asset route is disabled", async () => {
+    const { result } = renderHook(() =>
+      useAdminAssetController({
+        sessionState: "ready",
+        enabled: false,
+        projectId: "project-live-001",
+        identityOverride: undefined,
+        effectiveOrgId: "org-demo-001",
+        effectiveUserId: "user-demo-001",
+        t,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.assetMonitor.importBatches).toEqual([]);
+    });
+
+    expect(loadAssetMonitorPanelMock).not.toHaveBeenCalled();
+    expect(loadImportBatchDetailsMock).not.toHaveBeenCalled();
+    expect(loadAssetProvenanceDetailsMock).not.toHaveBeenCalled();
   });
 });

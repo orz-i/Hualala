@@ -123,6 +123,7 @@ describe("useAdminWorkflowController", () => {
     const { result } = renderHook(() =>
       useAdminWorkflowController({
         sessionState: "ready",
+        enabled: true,
         projectId: "project-live-001",
         identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
@@ -172,6 +173,7 @@ describe("useAdminWorkflowController", () => {
     const { result } = renderHook(() =>
       useAdminWorkflowController({
         sessionState: "ready",
+        enabled: true,
         projectId: "project-live-001",
         identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
@@ -223,6 +225,7 @@ describe("useAdminWorkflowController", () => {
     const { result } = renderHook(() =>
       useAdminWorkflowController({
         sessionState: "ready",
+        enabled: true,
         projectId: "project-live-001",
         identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
@@ -266,6 +269,7 @@ describe("useAdminWorkflowController", () => {
     const { result } = renderHook(() =>
       useAdminWorkflowController({
         sessionState: "ready",
+        enabled: true,
         projectId: "project-live-001",
         identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
@@ -306,6 +310,7 @@ describe("useAdminWorkflowController", () => {
     const { result } = renderHook(() =>
       useAdminWorkflowController({
         sessionState: "ready",
+        enabled: true,
         projectId: "project-live-001",
         identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
@@ -345,5 +350,26 @@ describe("useAdminWorkflowController", () => {
     await waitFor(() => {
       expect(loadWorkflowMonitorPanelMock).toHaveBeenCalledTimes(3);
     });
+  });
+
+  it("does not load workflow data when the controller is disabled for an off-route render", async () => {
+    const { result } = renderHook(() =>
+      useAdminWorkflowController({
+        sessionState: "ready",
+        enabled: false,
+        projectId: "project-live-001",
+        identityOverride: undefined,
+        effectiveOrgId: "org-demo-001",
+        effectiveUserId: "user-demo-001",
+        t,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.workflowMonitor.runs).toEqual([]);
+    });
+
+    expect(loadWorkflowMonitorPanelMock).not.toHaveBeenCalled();
+    expect(loadWorkflowRunDetailsMock).not.toHaveBeenCalled();
   });
 });

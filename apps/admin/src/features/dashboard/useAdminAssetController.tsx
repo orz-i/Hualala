@@ -13,6 +13,7 @@ type IdentityOverride =
 
 export function useAdminAssetController({
   sessionState,
+  enabled,
   projectId,
   identityOverride,
   effectiveOrgId,
@@ -20,19 +21,21 @@ export function useAdminAssetController({
   t,
 }: {
   sessionState: "loading" | "ready" | "unauthenticated";
+  enabled: boolean;
   projectId: string;
   identityOverride: IdentityOverride;
   effectiveOrgId: string;
   effectiveUserId: string;
   t: AdminTranslator;
 }) {
+  const effectiveSessionState = enabled ? sessionState : "loading";
   const monitorState = useAssetMonitorState({
-    sessionState,
+    sessionState: effectiveSessionState,
     projectId,
     identityOverride,
   });
   const detailState = useAssetDetailState({
-    sessionState,
+    sessionState: effectiveSessionState,
     identityOverride,
   });
   const refreshQueue = useAssetRefreshQueue({
@@ -59,7 +62,7 @@ export function useAdminAssetController({
     selectedImportItemIds: detailState.selectedImportItemIds,
     assetActionFeedback: assetActions.assetActionFeedback,
     assetActionPending: assetActions.assetActionPending,
-    refreshAssetSilently: refreshQueue.refreshAssetSilently,
+    refreshAssetSilently: enabled ? refreshQueue.refreshAssetSilently : async () => {},
     onAssetStatusFilterChange: monitorState.onAssetStatusFilterChange,
     onAssetSourceTypeFilterChange: monitorState.onAssetSourceTypeFilterChange,
     onSelectImportBatch: (importBatchId: string) => {

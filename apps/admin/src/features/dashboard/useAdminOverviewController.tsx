@@ -1,5 +1,7 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
 import type { AdminTranslator } from "../../i18n";
+import type { AdminOperationsOverviewViewModel } from "./operationsOverview";
+import { loadAdminOperationsOverview } from "./loadAdminOperationsOverview";
 import type {
   AdminOverviewViewModel,
   RecentChangeSummary,
@@ -34,33 +36,92 @@ function mergeRecentChanges(
 
 export function useAdminOverviewController({
   sessionState,
+  operationsEnabled,
   projectId,
   shotExecutionId,
   effectiveOrgId,
+  effectiveUserId,
   t,
 }: {
   sessionState: "loading" | "ready" | "unauthenticated";
+  operationsEnabled: boolean;
   projectId: string;
   shotExecutionId: string;
   effectiveOrgId: string;
+  effectiveUserId?: string;
   t: AdminTranslator;
 }) {
   const [overview, setOverview] = useState<AdminOverviewViewModel | null>(null);
+  const [operationsOverview, setOperationsOverview] =
+    useState<AdminOperationsOverviewViewModel | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [budgetFeedback, setBudgetFeedback] = useState<ActionFeedback>(null);
 
-  const refreshOverview = useCallback(async () => {
+  const loadOverviewState = useCallback(async () => {
     const nextOverview = await loadAdminOverview({ projectId, shotExecutionId });
+    const nextOperationsOverview = operationsEnabled
+      ? await loadAdminOperationsOverview({
+          projectId,
+          shotExecutionId,
+          orgId: effectiveOrgId,
+          userId: effectiveUserId,
+          overview: nextOverview,
+        })
+      : null;
+
+    return {
+      nextOverview,
+      nextOperationsOverview,
+    };
+  }, [
+    effectiveOrgId,
+    effectiveUserId,
+    operationsEnabled,
+    projectId,
+    shotExecutionId,
+  ]);
+
+  const refreshOverview = useCallback(async () => {
+    const { nextOverview, nextOperationsOverview } = await loadOverviewState();
     startTransition(() => {
       setOverview(nextOverview);
+      setOperationsOverview(nextOperationsOverview);
       setErrorMessage("");
     });
-  }, [projectId, shotExecutionId]);
+  }, [loadOverviewState]);
+
+  const refreshOperationsOverview = useCallback(async () => {
+    if (sessionState !== "ready" || !operationsEnabled) {
+      return;
+    }
+
+    const nextOperationsOverview = await loadAdminOperationsOverview({
+      projectId,
+      shotExecutionId,
+      orgId: effectiveOrgId,
+      userId: effectiveUserId,
+      overview: overview ?? undefined,
+    });
+
+    startTransition(() => {
+      setOperationsOverview(nextOperationsOverview);
+      setErrorMessage("");
+    });
+  }, [
+    effectiveOrgId,
+    effectiveUserId,
+    operationsEnabled,
+    overview,
+    projectId,
+    sessionState,
+    shotExecutionId,
+  ]);
 
   useEffect(() => {
     if (sessionState !== "ready") {
       startTransition(() => {
         setOverview(null);
+        setOperationsOverview(null);
         setErrorMessage("");
         setBudgetFeedback(null);
       });
@@ -69,13 +130,14 @@ export function useAdminOverviewController({
 
     let cancelled = false;
 
-    loadAdminOverview({ projectId, shotExecutionId })
-      .then((nextOverview) => {
+    loadOverviewState()
+      .then(({ nextOverview, nextOperationsOverview }) => {
         if (cancelled) {
           return;
         }
         startTransition(() => {
           setOverview(nextOverview);
+          setOperationsOverview(nextOperationsOverview);
           setErrorMessage("");
         });
       })
@@ -87,13 +149,14 @@ export function useAdminOverviewController({
         startTransition(() => {
           setErrorMessage(message);
           setOverview(null);
+          setOperationsOverview(null);
         });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [projectId, sessionState, shotExecutionId]);
+  }, [loadOverviewState, sessionState]);
 
   const onUpdateBudgetLimit = useCallback(
     async (input: { projectId: string; limitCents: number }) => {
@@ -148,9 +211,11 @@ export function useAdminOverviewController({
 
   return {
     overview,
+    operationsOverview,
     errorMessage,
     budgetFeedback,
     refreshOverview,
+    refreshOperationsOverview,
     applyRecentChange,
     onUpdateBudgetLimit,
   };

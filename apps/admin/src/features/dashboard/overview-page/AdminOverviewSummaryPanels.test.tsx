@@ -10,6 +10,7 @@ describe("AdminOverviewSummaryPanels", () => {
     render(
       <AdminOverviewSummaryPanels
         overview={createOverview()}
+        operationsOverview={null}
         t={createTranslator("zh-CN")}
         onUpdateBudgetLimit={onUpdateBudgetLimit}
         budgetFeedback={{

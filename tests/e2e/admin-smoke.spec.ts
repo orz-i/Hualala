@@ -50,14 +50,20 @@ test("admin smoke: renders overview and updates budget", async ({ page }) => {
   await expect(
     page.getByRole("complementary").getByRole("heading", { name: "project-live-1" }),
   ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "发布阻断摘要" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "运行监控摘要" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "最近变更" })).toBeVisible();
   await expect(page.getByText("最近计费事件")).toBeVisible();
   await expect(page.getByText("最近评估结果")).toBeVisible();
   await expect(page.getByText("最近评审结论")).toBeVisible();
   await page.getByTestId("ui-locale-select").selectOption("en-US");
+  await expect(page.getByRole("heading", { name: "Release Blockers" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Runtime Health" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recent Changes" })).toBeVisible();
   await page.reload();
   await expect(page.getByTestId("ui-locale-select")).toHaveValue("en-US");
+  await expect(page.getByRole("heading", { name: "Release Blockers" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Runtime Health" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recent Changes" })).toBeVisible();
 
   await page.getByLabel("Budget limit (yuan)").fill("1500");
@@ -87,13 +93,40 @@ test("admin smoke: keeps overview visible on budget update failure", async ({ pa
   ).toBeVisible();
 });
 
+test("admin smoke: overview summary ctas preserve query params when jumping to workflow and assets", async ({
+  page,
+}) => {
+  await mockConnectRoutes(page, {
+    admin: "success",
+  });
+
+  await enterAdminSession(page);
+
+  await page.getByRole("button", { name: "转到工作流" }).first().click();
+  await expect(page).toHaveURL(/\/workflow\?/);
+  await expect(page).toHaveURL(/projectId=project-live-1/);
+  await expect(page).toHaveURL(/shotExecutionId=shot-exec-live-1/);
+  await expect(page).toHaveURL(/workflowRunId=workflow-run-1/);
+  await expect(page.getByRole("heading", { name: "工作流监控" }).first()).toBeVisible();
+
+  await page.goto(MOCK_ADMIN_URL);
+  await expect(page.getByRole("navigation", { name: "管理端主导航" })).toBeVisible();
+
+  await page.getByRole("button", { name: "转到资产" }).first().click();
+  await expect(page).toHaveURL(/\/assets\?/);
+  await expect(page).toHaveURL(/projectId=project-live-1/);
+  await expect(page).toHaveURL(/shotExecutionId=shot-exec-live-1/);
+  await expect(page).toHaveURL(/importBatchId=/);
+  await expect(page.getByRole("heading", { name: "资产监控" }).first()).toBeVisible();
+});
+
 test("admin smoke: manages custom roles and permission edits", async ({ page }) => {
   await mockConnectRoutes(page, {
     admin: "success",
   });
 
   await enterAdminSession(page);
-  await page.getByRole("button", { name: "治理" }).click();
+  await page.getByRole("button", { name: "治理", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "角色与权限编辑" }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "角色使用中，禁止删除" })).toBeDisabled();
@@ -191,7 +224,7 @@ test("admin smoke: retries a failed workflow run from the workflow monitor", asy
   });
 
   await enterAdminSession(page);
-  await page.getByRole("button", { name: "工作流" }).click();
+  await page.getByRole("button", { name: "工作流", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "工作流监控" }).first()).toBeVisible();
   await page.getByRole("button", { name: "查看工作流详情 workflow-run-1" }).click();
@@ -212,7 +245,7 @@ test("admin smoke: confirms asset matches and selects a primary asset from asset
   });
 
   await enterAdminSession(page);
-  await page.getByRole("button", { name: "资产" }).click();
+  await page.getByRole("button", { name: "资产", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "资产监控" }).first()).toBeVisible();
   await page.getByRole("button", { name: /查看导入批次详情/ }).click();
