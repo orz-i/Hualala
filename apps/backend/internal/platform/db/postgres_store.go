@@ -72,6 +72,8 @@ func (*PostgresStore) GenerateUsageRecordID() string       { return uuid.NewStri
 func (*PostgresStore) GenerateBillingEventID() string      { return uuid.NewString() }
 func (*PostgresStore) GenerateWorkflowRunID() string       { return uuid.NewString() }
 func (*PostgresStore) GenerateWorkflowStepID() string      { return uuid.NewString() }
+func (*PostgresStore) GenerateJobID() string               { return uuid.NewString() }
+func (*PostgresStore) GenerateStateTransitionID() string   { return uuid.NewString() }
 func (*PostgresStore) GenerateGatewayExternalRequestID() string {
 	return uuid.NewString()
 }

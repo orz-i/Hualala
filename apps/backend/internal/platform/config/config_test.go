@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"testing"
+	"time"
 )
 
 func TestLoadReadsDatabaseSettingsFromEnvironment(t *testing.T) {
@@ -10,6 +11,7 @@ func TestLoadReadsDatabaseSettingsFromEnvironment(t *testing.T) {
 	t.Setenv("DB_DRIVER", "postgres")
 	t.Setenv("DATABASE_URL", "postgres://hualala:hualala@127.0.0.1:5432/hualala?sslmode=disable")
 	t.Setenv("AUTO_MIGRATE", "true")
+	t.Setenv("WORKER_POLL_INTERVAL_MS", "750")
 
 	cfg := Load()
 
@@ -25,10 +27,13 @@ func TestLoadReadsDatabaseSettingsFromEnvironment(t *testing.T) {
 	if !cfg.AutoMigrate {
 		t.Fatalf("expected AutoMigrate to be true")
 	}
+	if got := cfg.WorkerPollInterval; got != 750*time.Millisecond {
+		t.Fatalf("expected WorkerPollInterval %s, got %s", 750*time.Millisecond, got)
+	}
 }
 
 func TestLoadFallsBackToSafeDefaults(t *testing.T) {
-	for _, key := range []string{"HTTP_ADDR", "DB_DRIVER", "DATABASE_URL", "AUTO_MIGRATE"} {
+	for _, key := range []string{"HTTP_ADDR", "DB_DRIVER", "DATABASE_URL", "AUTO_MIGRATE", "WORKER_POLL_INTERVAL_MS"} {
 		if err := os.Unsetenv(key); err != nil {
 			t.Fatalf("Unsetenv(%q) returned error: %v", key, err)
 		}
@@ -47,5 +52,8 @@ func TestLoadFallsBackToSafeDefaults(t *testing.T) {
 	}
 	if !cfg.AutoMigrate {
 		t.Fatalf("expected AutoMigrate to default to true")
+	}
+	if got := cfg.WorkerPollInterval; got != 250*time.Millisecond {
+		t.Fatalf("expected default WorkerPollInterval %s, got %s", 250*time.Millisecond, got)
 	}
 }

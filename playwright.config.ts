@@ -3,7 +3,7 @@ import { defineConfig } from "@playwright/test";
 const serverTarget = process.env.PW_SERVER_TARGET ?? "all";
 
 const backendServer = {
-  command: "node tooling/scripts/run-backend-dev.mjs",
+  command: "node tooling/scripts/run-backend-real-dev.mjs",
   url: "http://127.0.0.1:8080/healthz",
   reuseExistingServer: true,
   timeout: 120_000,

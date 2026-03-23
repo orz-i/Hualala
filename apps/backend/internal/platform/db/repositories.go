@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/domain/auth"
@@ -170,11 +172,19 @@ type GatewayResultStore interface {
 type WorkflowRepository interface {
 	GenerateWorkflowRunID() string
 	GenerateWorkflowStepID() string
+	GenerateJobID() string
+	GenerateStateTransitionID() string
 	SaveWorkflowRun(ctx context.Context, record workflow.WorkflowRun) error
 	SaveWorkflowStep(ctx context.Context, record workflow.WorkflowStep) error
+	SaveJob(ctx context.Context, record workflow.Job) error
+	SaveStateTransition(ctx context.Context, record workflow.StateTransition) error
 	GetWorkflowRun(workflowRunID string) (workflow.WorkflowRun, bool)
+	GetJob(jobID string) (workflow.Job, bool)
 	ListWorkflowSteps(workflowRunID string) []workflow.WorkflowStep
 	ListWorkflowRuns(projectID, resourceID, status, workflowType string) []workflow.WorkflowRun
+	ListJobs(resourceType, resourceID, jobType, status string) []workflow.Job
+	ListStateTransitions(resourceType, resourceID string) []workflow.StateTransition
+	ClaimNextJob(ctx context.Context, jobType string) (workflow.Job, bool, error)
 }
 
 func (s *MemoryStore) save(ctx context.Context, mutate func()) error {
@@ -207,6 +217,8 @@ func (s *MemoryStore) GenerateUsageRecordID() string       { return s.NextUsageR
 func (s *MemoryStore) GenerateBillingEventID() string      { return s.NextBillingEventID() }
 func (s *MemoryStore) GenerateWorkflowRunID() string       { return s.NextWorkflowRunID() }
 func (s *MemoryStore) GenerateWorkflowStepID() string      { return s.NextWorkflowStepID() }
+func (s *MemoryStore) GenerateJobID() string               { return s.NextJobID() }
+func (s *MemoryStore) GenerateStateTransitionID() string   { return s.NextStateTransitionID() }
 func (s *MemoryStore) GenerateGatewayExternalRequestID() string {
 	return s.NextGatewayExternalRequestID()
 }
@@ -794,8 +806,21 @@ func (s *MemoryStore) SaveWorkflowStep(ctx context.Context, record workflow.Work
 	return s.save(ctx, func() { s.WorkflowSteps[record.ID] = record })
 }
 
+func (s *MemoryStore) SaveJob(ctx context.Context, record workflow.Job) error {
+	return s.save(ctx, func() { s.Jobs[record.ID] = record })
+}
+
+func (s *MemoryStore) SaveStateTransition(ctx context.Context, record workflow.StateTransition) error {
+	return s.save(ctx, func() { s.StateTransitions[record.ID] = record })
+}
+
 func (s *MemoryStore) GetWorkflowRun(workflowRunID string) (workflow.WorkflowRun, bool) {
 	record, ok := s.WorkflowRuns[workflowRunID]
+	return record, ok
+}
+
+func (s *MemoryStore) GetJob(jobID string) (workflow.Job, bool) {
+	record, ok := s.Jobs[jobID]
 	return record, ok
 }
 
@@ -846,4 +871,70 @@ func (s *MemoryStore) ListWorkflowRuns(projectID, resourceID, status, workflowTy
 		return items[i].ID > items[j].ID
 	})
 	return items
+}
+
+func (s *MemoryStore) ListJobs(resourceType, resourceID, jobType, status string) []workflow.Job {
+	items := make([]workflow.Job, 0)
+	for _, record := range s.Jobs {
+		if resourceType != "" && record.ResourceType != resourceType {
+			continue
+		}
+		if resourceID != "" && record.ResourceID != resourceID {
+			continue
+		}
+		if jobType != "" && record.JobType != jobType {
+			continue
+		}
+		if status != "" && record.Status != status {
+			continue
+		}
+		items = append(items, record)
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Priority != items[j].Priority {
+			return items[i].Priority > items[j].Priority
+		}
+		if !items[i].CreatedAt.Equal(items[j].CreatedAt) {
+			return items[i].CreatedAt.Before(items[j].CreatedAt)
+		}
+		return items[i].ID < items[j].ID
+	})
+	return items
+}
+
+func (s *MemoryStore) ListStateTransitions(resourceType, resourceID string) []workflow.StateTransition {
+	items := make([]workflow.StateTransition, 0)
+	for _, record := range s.StateTransitions {
+		if resourceType != "" && record.ResourceType != resourceType {
+			continue
+		}
+		if resourceID != "" && record.ResourceID != resourceID {
+			continue
+		}
+		items = append(items, record)
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if !items[i].CreatedAt.Equal(items[j].CreatedAt) {
+			return items[i].CreatedAt.Before(items[j].CreatedAt)
+		}
+		return items[i].ID < items[j].ID
+	})
+	return items
+}
+
+func (s *MemoryStore) ClaimNextJob(ctx context.Context, jobType string) (workflow.Job, bool, error) {
+	items := s.ListJobs("", "", strings.TrimSpace(jobType), workflow.StatusPending)
+	for _, item := range items {
+		if !item.ScheduledAt.IsZero() && item.ScheduledAt.After(time.Now().UTC()) {
+			continue
+		}
+		item.Status = workflow.StatusRunning
+		item.StartedAt = time.Now().UTC()
+		item.UpdatedAt = item.StartedAt
+		if err := s.SaveJob(ctx, item); err != nil {
+			return workflow.Job{}, false, err
+		}
+		return item, true, nil
+	}
+	return workflow.Job{}, false, nil
 }

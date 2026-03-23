@@ -96,11 +96,32 @@ func (f *IntegrationFixture) SeedBudget(t *testing.T, record billing.ProjectBudg
 	return record
 }
 
-func (f *IntegrationFixture) NewWorkflowServices(adapter *gatewayapp.FakeAdapter) (*policyapp.Service, *gatewayapp.Service, *workflowapp.Service) {
+func (f *IntegrationFixture) NewWorkflowServices(adapter *gatewayapp.FakeAdapter) (*policyapp.Service, *gatewayapp.Service, *workflowapp.Service, *workflowapp.Service) {
 	policyService := policyapp.NewService(f.Store)
 	gatewayService := gatewayapp.NewService(f.Store, adapter)
-	workflowService := workflowapp.NewService(f.Store, f.Store.Publisher(), temporal.NewInMemoryExecutor(gatewayService), policyService)
-	return policyService, gatewayService, workflowService
+	apiWorkflowService := workflowapp.NewService(f.Store, f.Store.Publisher(), nil, policyService)
+	workerWorkflowService := workflowapp.NewService(f.Store, f.Store.Publisher(), temporal.NewInMemoryExecutor(gatewayService), policyService)
+	return policyService, gatewayService, apiWorkflowService, workerWorkflowService
+}
+
+func (f *IntegrationFixture) DrainWorkflowJobs(t *testing.T, worker *workflowapp.Service) int {
+	t.Helper()
+
+	if worker == nil {
+		t.Fatal("worker workflow service is required")
+	}
+
+	processedCount := 0
+	for {
+		processed, err := worker.ProcessNextWorkflowJob(context.Background())
+		if err != nil {
+			t.Fatalf("ProcessNextWorkflowJob returned error: %v", err)
+		}
+		if !processed {
+			return processedCount
+		}
+		processedCount++
+	}
 }
 
 func (f *IntegrationFixture) RouteDependencies(overrides func(*runtime.ServiceSet)) connectiface.RouteDependencies {

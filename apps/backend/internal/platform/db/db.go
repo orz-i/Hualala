@@ -53,6 +53,8 @@ type Snapshot struct {
 	NextEvaluationRunID   int
 	NextWorkflowRunID     int
 	NextWorkflowStepID    int
+	NextJobID             int
+	NextStateTransitionID int
 	NextGatewayRequestID  int
 
 	Organizations      map[string]org.Organization
@@ -81,6 +83,8 @@ type Snapshot struct {
 	BillingEvents      map[string]billing.BillingEvent
 	WorkflowRuns       map[string]workflow.WorkflowRun
 	WorkflowSteps      map[string]workflow.WorkflowStep
+	Jobs               map[string]workflow.Job
+	StateTransitions   map[string]workflow.StateTransition
 	GatewayResults     map[string]gateway.GatewayResult
 }
 
@@ -109,6 +113,8 @@ type MemoryStore struct {
 	nextEvaluationRunID   int
 	nextWorkflowRunID     int
 	nextWorkflowStepID    int
+	nextJobID             int
+	nextStateTransitionID int
 	nextGatewayRequestID  int
 
 	Organizations      map[string]org.Organization
@@ -137,6 +143,8 @@ type MemoryStore struct {
 	BillingEvents      map[string]billing.BillingEvent
 	WorkflowRuns       map[string]workflow.WorkflowRun
 	WorkflowSteps      map[string]workflow.WorkflowStep
+	Jobs               map[string]workflow.Job
+	StateTransitions   map[string]workflow.StateTransition
 	GatewayResults     map[string]gateway.GatewayResult
 	EventPublisher     *events.Publisher
 	persister          SnapshotPersister
@@ -171,6 +179,8 @@ func NewMemoryStore() *MemoryStore {
 		BillingEvents:      make(map[string]billing.BillingEvent),
 		WorkflowRuns:       make(map[string]workflow.WorkflowRun),
 		WorkflowSteps:      make(map[string]workflow.WorkflowStep),
+		Jobs:               make(map[string]workflow.Job),
+		StateTransitions:   make(map[string]workflow.StateTransition),
 		GatewayResults:     make(map[string]gateway.GatewayResult),
 		EventPublisher:     events.NewPublisher(),
 	}
@@ -247,6 +257,8 @@ func (s *MemoryStore) snapshot() Snapshot {
 		NextEvaluationRunID:   s.nextEvaluationRunID,
 		NextWorkflowRunID:     s.nextWorkflowRunID,
 		NextWorkflowStepID:    s.nextWorkflowStepID,
+		NextJobID:             s.nextJobID,
+		NextStateTransitionID: s.nextStateTransitionID,
 		NextGatewayRequestID:  s.nextGatewayRequestID,
 		Organizations:         cloneMap(s.Organizations),
 		Users:                 cloneMap(s.Users),
@@ -274,6 +286,8 @@ func (s *MemoryStore) snapshot() Snapshot {
 		BillingEvents:         cloneMap(s.BillingEvents),
 		WorkflowRuns:          cloneMap(s.WorkflowRuns),
 		WorkflowSteps:         cloneMap(s.WorkflowSteps),
+		Jobs:                  cloneMap(s.Jobs),
+		StateTransitions:      cloneMap(s.StateTransitions),
 		GatewayResults:        cloneMap(s.GatewayResults),
 	}
 }
@@ -304,6 +318,8 @@ func (s *MemoryStore) applySnapshot(snapshot Snapshot) {
 	s.nextEvaluationRunID = snapshot.NextEvaluationRunID
 	s.nextWorkflowRunID = snapshot.NextWorkflowRunID
 	s.nextWorkflowStepID = snapshot.NextWorkflowStepID
+	s.nextJobID = snapshot.NextJobID
+	s.nextStateTransitionID = snapshot.NextStateTransitionID
 	s.nextGatewayRequestID = snapshot.NextGatewayRequestID
 
 	s.Organizations = cloneMap(snapshot.Organizations)
@@ -332,6 +348,8 @@ func (s *MemoryStore) applySnapshot(snapshot Snapshot) {
 	s.BillingEvents = cloneMap(snapshot.BillingEvents)
 	s.WorkflowRuns = cloneMap(snapshot.WorkflowRuns)
 	s.WorkflowSteps = cloneMap(snapshot.WorkflowSteps)
+	s.Jobs = cloneMap(snapshot.Jobs)
+	s.StateTransitions = cloneMap(snapshot.StateTransitions)
 	s.GatewayResults = cloneMap(snapshot.GatewayResults)
 }
 
@@ -531,6 +549,22 @@ func (s *MemoryStore) NextWorkflowStepID() string {
 	}
 	s.nextWorkflowStepID++
 	return fmt.Sprintf("workflow-step-%d", s.nextWorkflowStepID)
+}
+
+func (s *MemoryStore) NextJobID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
+	s.nextJobID++
+	return fmt.Sprintf("job-%d", s.nextJobID)
+}
+
+func (s *MemoryStore) NextStateTransitionID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
+	s.nextStateTransitionID++
+	return fmt.Sprintf("state-transition-%d", s.nextStateTransitionID)
 }
 
 func (s *MemoryStore) NextGatewayExternalRequestID() string {

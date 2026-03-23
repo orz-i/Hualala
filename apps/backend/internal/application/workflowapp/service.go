@@ -61,6 +61,11 @@ type RetryWorkflowRunInput struct {
 	WorkflowRunID string
 }
 
+type workflowJobPayload struct {
+	WorkflowRunID string `json:"workflow_run_id"`
+	AttemptCount  int    `json:"attempt_count"`
+}
+
 var defaultProviderByWorkflowType = map[string]string{
 	"asset.import":  "seedance",
 	"shot_pipeline": "seedance",
@@ -110,10 +115,17 @@ func (s *Service) StartWorkflow(ctx context.Context, input StartWorkflowInput) (
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
-	if err := s.repo.SaveWorkflowRun(ctx, run); err != nil {
+	if err := s.saveWorkflowRunState(ctx, run, "", "queued"); err != nil {
 		return workflow.WorkflowRun{}, err
 	}
-	return s.runAttempt(ctx, run)
+	if _, err := s.createAttemptStep(ctx, run, "dispatch", workflow.StatusCompleted); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
+	if err := s.enqueueWorkflowJob(ctx, run); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
+	s.publishWorkflowUpdated(ctx, run)
+	return run, nil
 }
 
 func (s *Service) GetWorkflowRun(_ context.Context, input GetWorkflowRunInput) (workflow.WorkflowRun, error) {
@@ -156,27 +168,40 @@ func (s *Service) CancelWorkflowRun(ctx context.Context, input CancelWorkflowRun
 			return workflow.WorkflowRun{}, err
 		}
 	}
-	cancelKey := attemptStepKey(record.AttemptCount, "cancel")
-	if s.hasWorkflowStep(record.ID, cancelKey) {
-		record.Status = workflow.StatusCancelled
-		record.CurrentStep = cancelKey
-		record.LastError = ""
-		record.UpdatedAt = time.Now().UTC()
-		if err := s.repo.SaveWorkflowRun(ctx, record); err != nil {
+
+	now := time.Now().UTC()
+	for _, job := range s.repo.ListJobs(workflow.ResourceTypeWorkflowRun, record.ID, workflow.JobTypeWorkflowDispatch, "") {
+		if job.Status != workflow.StatusPending && job.Status != workflow.StatusRunning {
+			continue
+		}
+		job.Status = workflow.StatusCancelled
+		job.ErrorCode = ""
+		job.ErrorMessage = ""
+		job.UpdatedAt = now
+		if err := s.repo.SaveJob(ctx, job); err != nil {
 			return workflow.WorkflowRun{}, err
 		}
-		s.publishWorkflowUpdated(ctx, record)
-		return record, nil
 	}
-	cancelStep, err := s.createAttemptStep(ctx, record, "cancel", workflow.StatusCompleted)
-	if err != nil {
+	if err := s.cancelAttemptGatewayStep(ctx, record, now); err != nil {
 		return workflow.WorkflowRun{}, err
 	}
+
+	cancelKey := attemptStepKey(record.AttemptCount, "cancel")
+	cancelStep, ok := s.findWorkflowStep(record.ID, cancelKey)
+	if !ok {
+		var err error
+		cancelStep, err = s.createAttemptStep(ctx, record, "cancel", workflow.StatusCompleted)
+		if err != nil {
+			return workflow.WorkflowRun{}, err
+		}
+	}
+
+	previousStatus := record.Status
 	record.Status = workflow.StatusCancelled
 	record.CurrentStep = cancelStep.StepKey
 	record.LastError = ""
-	record.UpdatedAt = time.Now().UTC()
-	if err := s.repo.SaveWorkflowRun(ctx, record); err != nil {
+	record.UpdatedAt = now
+	if err := s.saveWorkflowRunState(ctx, record, previousStatus, "cancelled"); err != nil {
 		return workflow.WorkflowRun{}, err
 	}
 	s.publishWorkflowUpdated(ctx, record)
@@ -193,81 +218,240 @@ func (s *Service) RetryWorkflowRun(ctx context.Context, input RetryWorkflowRunIn
 			return workflow.WorkflowRun{}, err
 		}
 	}
+
 	record.AttemptCount++
+	record.ExternalRequestID = ""
 	record.LastError = ""
+	previousStatus := record.Status
 	record.Status = workflow.StatusPending
 	record.CurrentStep = attemptStepKey(record.AttemptCount, "dispatch")
 	record.UpdatedAt = time.Now().UTC()
-	if err := s.repo.SaveWorkflowRun(ctx, record); err != nil {
+	if err := s.saveWorkflowRunState(ctx, record, previousStatus, "retry_queued"); err != nil {
 		return workflow.WorkflowRun{}, err
 	}
-	return s.runAttempt(ctx, record)
+	if _, err := s.createAttemptStep(ctx, record, "dispatch", workflow.StatusCompleted); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
+	if err := s.enqueueWorkflowJob(ctx, record); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
+	s.publishWorkflowUpdated(ctx, record)
+	return record, nil
 }
 
-func (s *Service) runAttempt(ctx context.Context, run workflow.WorkflowRun) (workflow.WorkflowRun, error) {
-	dispatchStep, err := s.createAttemptStep(ctx, run, "dispatch", workflow.StatusCompleted)
-	if err != nil {
-		return workflow.WorkflowRun{}, err
+func (s *Service) ProcessNextWorkflowJob(ctx context.Context) (bool, error) {
+	if s == nil || s.repo == nil {
+		return false, errors.New("workflowapp: repository is required")
 	}
-	_ = dispatchStep
-	gatewayStep, err := s.createAttemptStep(ctx, run, "gateway", workflow.StatusRunning)
+	job, ok, err := s.repo.ClaimNextJob(ctx, workflow.JobTypeWorkflowDispatch)
 	if err != nil {
-		return workflow.WorkflowRun{}, err
+		return false, err
 	}
+	if !ok {
+		return false, nil
+	}
+	if s.executor == nil {
+		return true, errors.New("workflowapp: executor is required")
+	}
+	return true, s.processWorkflowJob(ctx, job)
+}
+
+func (s *Service) processWorkflowJob(ctx context.Context, job workflow.Job) error {
+	payload, err := parseWorkflowJobPayload(job)
+	if err != nil {
+		return s.failJobOnly(ctx, job, "invalid_payload", err.Error())
+	}
+	run, ok := s.repo.GetWorkflowRun(payload.WorkflowRunID)
+	if !ok {
+		return s.failJobOnly(ctx, job, "workflow_run_missing", fmt.Sprintf("workflow run %s not found", payload.WorkflowRunID))
+	}
+	if run.Status == workflow.StatusCancelled {
+		return s.cancelJobOnly(ctx, job)
+	}
+	if payload.AttemptCount > 0 && payload.AttemptCount != run.AttemptCount {
+		return s.cancelJobOnly(ctx, job)
+	}
+
+	now := time.Now().UTC()
+	gatewayStep, err := s.ensureGatewayStep(ctx, run, now)
+	if err != nil {
+		return err
+	}
+
+	previousStatus := run.Status
 	run.Status = workflow.StatusRunning
 	run.CurrentStep = gatewayStep.StepKey
-	run.UpdatedAt = time.Now().UTC()
-	if err := s.repo.SaveWorkflowRun(ctx, run); err != nil {
-		return workflow.WorkflowRun{}, err
+	run.LastError = ""
+	run.UpdatedAt = now
+	if err := s.saveWorkflowRunState(ctx, run, previousStatus, "claimed"); err != nil {
+		return err
 	}
 	s.publishWorkflowUpdated(ctx, run)
-	return s.executeGateway(ctx, run, gatewayStep)
-}
 
-func (s *Service) executeGateway(ctx context.Context, run workflow.WorkflowRun, gatewayStep workflow.WorkflowStep) (workflow.WorkflowRun, error) {
-	if s.executor == nil {
-		return run, nil
-	}
-	result, err := s.executor.Execute(ctx, gateway.GatewayRequest{
+	result, execErr := s.executor.Execute(ctx, gateway.GatewayRequest{
 		WorkflowRunID:     run.ID,
 		ResourceID:        run.ResourceID,
 		Provider:          run.Provider,
 		IdempotencyKey:    run.IdempotencyKey,
 		ExternalRequestID: run.ExternalRequestID,
 	})
-	if err != nil {
+
+	refreshedJob, _ := s.repo.GetJob(job.ID)
+	refreshedRun, foundRun := s.repo.GetWorkflowRun(run.ID)
+	if refreshedJob.Status == workflow.StatusCancelled || (foundRun && refreshedRun.Status == workflow.StatusCancelled) {
+		return s.discardCancelledResult(ctx, chooseJob(job, refreshedJob), chooseRun(run, refreshedRun, foundRun))
+	}
+
+	if execErr != nil {
 		gatewayStep.Status = workflow.StatusFailed
 		gatewayStep.ErrorCode = "provider_error"
-		gatewayStep.ErrorMessage = err.Error()
+		gatewayStep.ErrorMessage = execErr.Error()
 		gatewayStep.FailedAt = time.Now().UTC()
 		gatewayStep.UpdatedAt = gatewayStep.FailedAt
-		if persistErr := s.repo.SaveWorkflowStep(ctx, gatewayStep); persistErr != nil {
-			return workflow.WorkflowRun{}, fmt.Errorf("workflowapp: save failed workflow step: %w (original execution error: %w)", persistErr, err)
+		if err := s.repo.SaveWorkflowStep(ctx, gatewayStep); err != nil {
+			return fmt.Errorf("workflowapp: save failed workflow step: %w", err)
 		}
+
+		job.Status = workflow.StatusFailed
+		job.ErrorCode = "provider_error"
+		job.ErrorMessage = execErr.Error()
+		job.FailedAt = gatewayStep.FailedAt
+		job.UpdatedAt = gatewayStep.FailedAt
+		if err := s.repo.SaveJob(ctx, job); err != nil {
+			return err
+		}
+
 		run.Status = workflow.StatusFailed
-		run.LastError = err.Error()
-		run.UpdatedAt = time.Now().UTC()
-		if persistErr := s.repo.SaveWorkflowRun(ctx, run); persistErr != nil {
-			return workflow.WorkflowRun{}, persistErr
+		run.LastError = execErr.Error()
+		run.CurrentStep = gatewayStep.StepKey
+		run.UpdatedAt = gatewayStep.FailedAt
+		if err := s.saveWorkflowRunState(ctx, run, workflow.StatusRunning, "gateway_failed"); err != nil {
+			return err
 		}
 		s.publishWorkflowUpdated(ctx, run)
-		return run, nil
+		return nil
 	}
+
+	completedAt := time.Now().UTC()
 	gatewayStep.Status = workflow.StatusCompleted
-	gatewayStep.CompletedAt = time.Now().UTC()
-	gatewayStep.UpdatedAt = gatewayStep.CompletedAt
+	gatewayStep.ErrorCode = ""
+	gatewayStep.ErrorMessage = ""
+	gatewayStep.CompletedAt = completedAt
+	gatewayStep.UpdatedAt = completedAt
 	if err := s.repo.SaveWorkflowStep(ctx, gatewayStep); err != nil {
-		return workflow.WorkflowRun{}, err
+		return err
 	}
-	run.ExternalRequestID = result.ExternalRequestID
+
+	job.Status = workflow.StatusCompleted
+	job.ErrorCode = ""
+	job.ErrorMessage = ""
+	job.CompletedAt = completedAt
+	job.UpdatedAt = completedAt
+	if err := s.repo.SaveJob(ctx, job); err != nil {
+		return err
+	}
+
 	run.Provider = selectGatewayProvider(run.Provider, result.Provider)
+	run.ExternalRequestID = strings.TrimSpace(result.ExternalRequestID)
 	run.LastError = ""
-	run.UpdatedAt = time.Now().UTC()
+	run.CurrentStep = gatewayStep.StepKey
+	run.UpdatedAt = completedAt
 	if err := s.repo.SaveWorkflowRun(ctx, run); err != nil {
-		return workflow.WorkflowRun{}, err
+		return err
 	}
 	s.publishWorkflowUpdated(ctx, run)
-	return run, nil
+	return nil
+}
+
+func (s *Service) enqueueWorkflowJob(ctx context.Context, run workflow.WorkflowRun) error {
+	now := time.Now().UTC()
+	payload, err := json.Marshal(workflowJobPayload{
+		WorkflowRunID: run.ID,
+		AttemptCount:  run.AttemptCount,
+	})
+	if err != nil {
+		return fmt.Errorf("workflowapp: encode workflow job payload: %w", err)
+	}
+	return s.repo.SaveJob(ctx, workflow.Job{
+		ID:           s.repo.GenerateJobID(),
+		OrgID:        run.OrgID,
+		ProjectID:    run.ProjectID,
+		ResourceType: workflow.ResourceTypeWorkflowRun,
+		ResourceID:   run.ID,
+		JobType:      workflow.JobTypeWorkflowDispatch,
+		Status:       workflow.StatusPending,
+		Priority:     100,
+		Payload:      string(payload),
+		ScheduledAt:  now,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+}
+
+func (s *Service) ensureGatewayStep(ctx context.Context, run workflow.WorkflowRun, now time.Time) (workflow.WorkflowStep, error) {
+	stepKey := attemptStepKey(run.AttemptCount, "gateway")
+	if step, ok := s.findWorkflowStep(run.ID, stepKey); ok {
+		if step.Status != workflow.StatusRunning {
+			step.Status = workflow.StatusRunning
+			step.ErrorCode = ""
+			step.ErrorMessage = ""
+			if step.StartedAt.IsZero() {
+				step.StartedAt = now
+			}
+			step.UpdatedAt = now
+			if err := s.repo.SaveWorkflowStep(ctx, step); err != nil {
+				return workflow.WorkflowStep{}, err
+			}
+		}
+		return step, nil
+	}
+	return s.createAttemptStep(ctx, run, "gateway", workflow.StatusRunning)
+}
+
+func (s *Service) cancelAttemptGatewayStep(ctx context.Context, run workflow.WorkflowRun, now time.Time) error {
+	gatewayKey := attemptStepKey(run.AttemptCount, "gateway")
+	step, ok := s.findWorkflowStep(run.ID, gatewayKey)
+	if !ok {
+		return nil
+	}
+	if step.Status != workflow.StatusPending && step.Status != workflow.StatusRunning {
+		return nil
+	}
+	step.Status = workflow.StatusCancelled
+	step.ErrorCode = ""
+	step.ErrorMessage = ""
+	step.UpdatedAt = now
+	return s.repo.SaveWorkflowStep(ctx, step)
+}
+
+func (s *Service) discardCancelledResult(ctx context.Context, job workflow.Job, run workflow.WorkflowRun) error {
+	now := time.Now().UTC()
+	if job.Status != workflow.StatusCancelled {
+		job.Status = workflow.StatusCancelled
+		job.UpdatedAt = now
+		if err := s.repo.SaveJob(ctx, job); err != nil {
+			return err
+		}
+	}
+	return s.cancelAttemptGatewayStep(ctx, run, now)
+}
+
+func (s *Service) failJobOnly(ctx context.Context, job workflow.Job, code string, message string) error {
+	now := time.Now().UTC()
+	job.Status = workflow.StatusFailed
+	job.ErrorCode = strings.TrimSpace(code)
+	job.ErrorMessage = strings.TrimSpace(message)
+	job.FailedAt = now
+	job.UpdatedAt = now
+	return s.repo.SaveJob(ctx, job)
+}
+
+func (s *Service) cancelJobOnly(ctx context.Context, job workflow.Job) error {
+	job.Status = workflow.StatusCancelled
+	job.ErrorCode = ""
+	job.ErrorMessage = ""
+	job.UpdatedAt = time.Now().UTC()
+	return s.repo.SaveJob(ctx, job)
 }
 
 func (s *Service) createAttemptStep(ctx context.Context, run workflow.WorkflowRun, suffix string, status string) (workflow.WorkflowStep, error) {
@@ -308,13 +492,33 @@ func (s *Service) nextAttemptStepOrder(run workflow.WorkflowRun, suffix string) 
 	return attemptStepOrder(run.AttemptCount, suffix)
 }
 
-func (s *Service) hasWorkflowStep(workflowRunID string, stepKey string) bool {
+func (s *Service) findWorkflowStep(workflowRunID string, stepKey string) (workflow.WorkflowStep, bool) {
 	for _, step := range s.repo.ListWorkflowSteps(workflowRunID) {
 		if step.StepKey == stepKey {
-			return true
+			return step, true
 		}
 	}
-	return false
+	return workflow.WorkflowStep{}, false
+}
+
+func (s *Service) saveWorkflowRunState(ctx context.Context, run workflow.WorkflowRun, previousStatus string, reason string) error {
+	if err := s.repo.SaveWorkflowRun(ctx, run); err != nil {
+		return err
+	}
+	if strings.TrimSpace(previousStatus) == strings.TrimSpace(run.Status) {
+		return nil
+	}
+	return s.repo.SaveStateTransition(ctx, workflow.StateTransition{
+		ID:           s.repo.GenerateStateTransitionID(),
+		OrgID:        run.OrgID,
+		ProjectID:    run.ProjectID,
+		ResourceType: workflow.ResourceTypeWorkflowRun,
+		ResourceID:   run.ID,
+		FromState:    strings.TrimSpace(previousStatus),
+		ToState:      strings.TrimSpace(run.Status),
+		Reason:       strings.TrimSpace(reason),
+		CreatedAt:    time.Now().UTC(),
+	})
 }
 
 func (s *Service) publishWorkflowUpdated(ctx context.Context, run workflow.WorkflowRun) {
@@ -340,6 +544,39 @@ func (s *Service) publishWorkflowUpdated(ctx context.Context, run workflow.Workf
 		ResourceID:     run.ID,
 		Payload:        string(payload),
 	})
+}
+
+func parseWorkflowJobPayload(job workflow.Job) (workflowJobPayload, error) {
+	payload := workflowJobPayload{}
+	if strings.TrimSpace(job.Payload) != "" {
+		if err := json.Unmarshal([]byte(job.Payload), &payload); err != nil {
+			return workflowJobPayload{}, fmt.Errorf("workflowapp: decode workflow job payload: %w", err)
+		}
+	}
+	if strings.TrimSpace(payload.WorkflowRunID) == "" {
+		payload.WorkflowRunID = strings.TrimSpace(job.ResourceID)
+	}
+	if payload.AttemptCount <= 0 {
+		payload.AttemptCount = 1
+	}
+	if strings.TrimSpace(payload.WorkflowRunID) == "" {
+		return workflowJobPayload{}, errors.New("workflowapp: workflow job payload missing workflow_run_id")
+	}
+	return payload, nil
+}
+
+func chooseRun(fallback workflow.WorkflowRun, current workflow.WorkflowRun, ok bool) workflow.WorkflowRun {
+	if ok {
+		return current
+	}
+	return fallback
+}
+
+func chooseJob(fallback workflow.Job, current workflow.Job) workflow.Job {
+	if strings.TrimSpace(current.ID) != "" {
+		return current
+	}
+	return fallback
 }
 
 func resolveProvider(workflowType string, provider string) (string, error) {

@@ -2,65 +2,18 @@ package workflowapp
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
-	"github.com/hualala/apps/backend/internal/application/gatewayapp"
 	"github.com/hualala/apps/backend/internal/application/policyapp"
 	"github.com/hualala/apps/backend/internal/domain/workflow"
 	"github.com/hualala/apps/backend/internal/platform/db"
-	"github.com/hualala/apps/backend/internal/platform/temporal"
 )
 
-func TestStartWorkflowCreatesRunAndSteps(t *testing.T) {
+func TestStartWorkflowQueuesRunDispatchStepAndJob(t *testing.T) {
 	ctx := context.Background()
 	store := db.NewMemoryStore()
-	policy := policyapp.NewService(store)
-	gateway := gatewayapp.NewService(store, gatewayapp.NewFakeAdapter())
-	service := NewService(store, store.Publisher(), temporal.NewInMemoryExecutor(gateway), policy)
-
-	record, err := service.StartWorkflow(ctx, StartWorkflowInput{
-		OrganizationID: "org-1",
-		ProjectID:      "project-1",
-		WorkflowType:   "shot_pipeline",
-		ResourceID:     "shot-exec-1",
-		Provider:       "seedance",
-	})
-	if err != nil {
-		t.Fatalf("StartWorkflow returned error: %v", err)
-	}
-
-	if got := record.AttemptCount; got != 1 {
-		t.Fatalf("expected attempt_count 1, got %d", got)
-	}
-	if got := record.CurrentStep; got != "attempt_1.gateway" {
-		t.Fatalf("expected current_step attempt_1.gateway, got %q", got)
-	}
-	if got := record.Provider; got != "seedance" {
-		t.Fatalf("expected provider seedance, got %q", got)
-	}
-	steps := store.ListWorkflowSteps(record.ID)
-	if len(steps) != 2 {
-		t.Fatalf("expected 2 workflow steps, got %d", len(steps))
-	}
-	if got := steps[0].StepKey; got != "attempt_1.dispatch" {
-		t.Fatalf("expected first step attempt_1.dispatch, got %q", got)
-	}
-	if got := steps[1].StepKey; got != "attempt_1.gateway" {
-		t.Fatalf("expected second step attempt_1.gateway, got %q", got)
-	}
-	if got := steps[1].Status; got != workflow.StatusCompleted {
-		t.Fatalf("expected gateway step completed, got %q", got)
-	}
-}
-
-func TestStartWorkflowResolvesKnownProviderWhenMissing(t *testing.T) {
-	ctx := context.Background()
-	store := db.NewMemoryStore()
-	policy := policyapp.NewService(store)
-	gateway := gatewayapp.NewService(store, gatewayapp.NewFakeAdapter())
-	service := NewService(store, store.Publisher(), temporal.NewInMemoryExecutor(gateway), policy)
+	service := NewService(store, store.Publisher(), nil, policyapp.NewService(store))
 
 	record, err := service.StartWorkflow(ctx, StartWorkflowInput{
 		OrganizationID: "org-1",
@@ -71,96 +24,150 @@ func TestStartWorkflowResolvesKnownProviderWhenMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StartWorkflow returned error: %v", err)
 	}
+
+	if got := record.Status; got != workflow.StatusPending {
+		t.Fatalf("expected pending status, got %q", got)
+	}
+	if got := record.AttemptCount; got != 1 {
+		t.Fatalf("expected attempt_count 1, got %d", got)
+	}
+	if got := record.CurrentStep; got != "attempt_1.dispatch" {
+		t.Fatalf("expected current_step attempt_1.dispatch, got %q", got)
+	}
 	if got := record.Provider; got != "seedance" {
-		t.Fatalf("expected resolved provider seedance, got %q", got)
+		t.Fatalf("expected provider seedance, got %q", got)
 	}
-	if record.ExternalRequestID == "" {
-		t.Fatalf("expected external_request_id to be populated")
+	if got := record.ExternalRequestID; got != "" {
+		t.Fatalf("expected empty external_request_id before worker claim, got %q", got)
+	}
+
+	steps := store.ListWorkflowSteps(record.ID)
+	if len(steps) != 1 {
+		t.Fatalf("expected 1 workflow step, got %d", len(steps))
+	}
+	if got := steps[0].StepKey; got != "attempt_1.dispatch" {
+		t.Fatalf("expected dispatch step, got %q", got)
+	}
+	if got := steps[0].Status; got != workflow.StatusCompleted {
+		t.Fatalf("expected dispatch step completed, got %q", got)
+	}
+
+	jobs := store.ListJobs(workflow.ResourceTypeWorkflowRun, record.ID, workflow.JobTypeWorkflowDispatch, "")
+	if len(jobs) != 1 {
+		t.Fatalf("expected 1 queued workflow job, got %d", len(jobs))
+	}
+	if got := jobs[0].Status; got != workflow.StatusPending {
+		t.Fatalf("expected pending workflow job, got %q", got)
+	}
+
+	transitions := store.ListStateTransitions(workflow.ResourceTypeWorkflowRun, record.ID)
+	if len(transitions) != 1 {
+		t.Fatalf("expected 1 workflow state transition, got %d", len(transitions))
+	}
+	if got := transitions[0].FromState; got != "" {
+		t.Fatalf("expected empty from_state for first transition, got %q", got)
+	}
+	if got := transitions[0].ToState; got != workflow.StatusPending {
+		t.Fatalf("expected pending transition, got %q", got)
 	}
 }
 
-func TestStartWorkflowRejectsUnknownWorkflowTypeWithoutProvider(t *testing.T) {
+func TestRetryWorkflowRunRequeuesFailedAttemptWithoutSyncExecution(t *testing.T) {
 	ctx := context.Background()
 	store := db.NewMemoryStore()
-	policy := policyapp.NewService(store)
-	gateway := gatewayapp.NewService(store, gatewayapp.NewFakeAdapter())
-	service := NewService(store, store.Publisher(), temporal.NewInMemoryExecutor(gateway), policy)
+	service := NewService(store, store.Publisher(), nil, policyapp.NewService(store))
 
-	_, err := service.StartWorkflow(ctx, StartWorkflowInput{
-		OrganizationID: "org-1",
-		ProjectID:      "project-1",
-		WorkflowType:   "unknown.workflow",
-		ResourceID:     "resource-1",
-	})
-	if err == nil {
-		t.Fatalf("expected unknown workflow type to be rejected")
+	now := time.Now().UTC()
+	record := workflow.WorkflowRun{
+		ID:                store.NextWorkflowRunID(),
+		OrgID:             "org-1",
+		ProjectID:         "project-1",
+		ResourceID:        "shot-exec-1",
+		WorkflowType:      "shot_pipeline",
+		Status:            workflow.StatusFailed,
+		LastError:         "provider failed",
+		CurrentStep:       "attempt_1.gateway",
+		AttemptCount:      1,
+		Provider:          "seedance",
+		IdempotencyKey:    "idem-1",
+		ExternalRequestID: "external-request-1",
+		CreatedAt:         now.Add(-2 * time.Minute),
+		UpdatedAt:         now.Add(-1 * time.Minute),
 	}
-	if got := err.Error(); got != "workflowapp: provider is required for workflow_type unknown.workflow" {
-		t.Fatalf("expected provider resolution error, got %q", got)
+	if err := store.SaveWorkflowRun(ctx, record); err != nil {
+		t.Fatalf("SaveWorkflowRun returned error: %v", err)
 	}
-}
-
-func TestStartWorkflowFailureAndRetryCreateNewAttemptSteps(t *testing.T) {
-	ctx := context.Background()
-	store := db.NewMemoryStore()
-	adapter := gatewayapp.NewFakeAdapter()
-	adapter.SetProviderFailure("seedance", errors.New("provider failed"))
-	policy := policyapp.NewService(store)
-	gateway := gatewayapp.NewService(store, adapter)
-	service := NewService(store, store.Publisher(), temporal.NewInMemoryExecutor(gateway), policy)
-
-	failed, err := service.StartWorkflow(ctx, StartWorkflowInput{
-		OrganizationID: "org-1",
-		ProjectID:      "project-1",
-		WorkflowType:   "shot_pipeline",
-		ResourceID:     "shot-exec-2",
-		Provider:       "seedance",
-	})
-	if err != nil {
-		t.Fatalf("StartWorkflow returned error: %v", err)
+	if err := store.SaveWorkflowStep(ctx, workflow.WorkflowStep{
+		ID:            store.NextWorkflowStepID(),
+		WorkflowRunID: record.ID,
+		StepKey:       "attempt_1.dispatch",
+		StepOrder:     1,
+		Status:        workflow.StatusCompleted,
+		StartedAt:     now.Add(-90 * time.Second),
+		CompletedAt:   now.Add(-90 * time.Second),
+		CreatedAt:     now.Add(-90 * time.Second),
+		UpdatedAt:     now.Add(-90 * time.Second),
+	}); err != nil {
+		t.Fatalf("SaveWorkflowStep dispatch returned error: %v", err)
 	}
-	if got := failed.Status; got != workflow.StatusFailed {
-		t.Fatalf("expected failed status, got %q", got)
-	}
-	if got := failed.LastError; got != "provider failed" {
-		t.Fatalf("expected last_error provider failed, got %q", got)
-	}
-	firstAttemptSteps := store.ListWorkflowSteps(failed.ID)
-	if len(firstAttemptSteps) != 2 {
-		t.Fatalf("expected 2 workflow steps after first attempt, got %d", len(firstAttemptSteps))
-	}
-	if got := firstAttemptSteps[1].Status; got != workflow.StatusFailed {
-		t.Fatalf("expected failed gateway step, got %q", got)
-	}
-	if got := firstAttemptSteps[1].ErrorCode; got != "provider_error" {
-		t.Fatalf("expected gateway step error_code provider_error, got %q", got)
-	}
-	if got := firstAttemptSteps[1].ErrorMessage; got != "provider failed" {
-		t.Fatalf("expected gateway step error_message provider failed, got %q", got)
+	if err := store.SaveWorkflowStep(ctx, workflow.WorkflowStep{
+		ID:            store.NextWorkflowStepID(),
+		WorkflowRunID: record.ID,
+		StepKey:       "attempt_1.gateway",
+		StepOrder:     2,
+		Status:        workflow.StatusFailed,
+		ErrorCode:     "provider_error",
+		ErrorMessage:  "provider failed",
+		StartedAt:     now.Add(-60 * time.Second),
+		FailedAt:      now.Add(-30 * time.Second),
+		CreatedAt:     now.Add(-60 * time.Second),
+		UpdatedAt:     now.Add(-30 * time.Second),
+	}); err != nil {
+		t.Fatalf("SaveWorkflowStep gateway returned error: %v", err)
 	}
 
-	adapter.ClearProviderFailure("seedance")
-	retried, err := service.RetryWorkflowRun(ctx, RetryWorkflowRunInput{
-		WorkflowRunID: failed.ID,
-	})
+	retried, err := service.RetryWorkflowRun(ctx, RetryWorkflowRunInput{WorkflowRunID: record.ID})
 	if err != nil {
 		t.Fatalf("RetryWorkflowRun returned error: %v", err)
+	}
+	if got := retried.Status; got != workflow.StatusPending {
+		t.Fatalf("expected retried status pending, got %q", got)
 	}
 	if got := retried.AttemptCount; got != 2 {
 		t.Fatalf("expected attempt_count 2 after retry, got %d", got)
 	}
-	if got := retried.CurrentStep; got != "attempt_2.gateway" {
-		t.Fatalf("expected current_step attempt_2.gateway after retry, got %q", got)
+	if got := retried.CurrentStep; got != "attempt_2.dispatch" {
+		t.Fatalf("expected current_step attempt_2.dispatch after retry, got %q", got)
 	}
-	allSteps := store.ListWorkflowSteps(failed.ID)
-	if len(allSteps) != 4 {
-		t.Fatalf("expected 4 workflow steps after retry, got %d", len(allSteps))
+	if got := retried.ExternalRequestID; got != "" {
+		t.Fatalf("expected retry response to clear external_request_id, got %q", got)
 	}
-	if got := allSteps[2].StepKey; got != "attempt_2.dispatch" {
+	if got := retried.LastError; got != "" {
+		t.Fatalf("expected retry response to clear last_error, got %q", got)
+	}
+
+	steps := store.ListWorkflowSteps(record.ID)
+	if len(steps) != 3 {
+		t.Fatalf("expected 3 workflow steps after retry queueing, got %d", len(steps))
+	}
+	if got := steps[2].StepKey; got != "attempt_2.dispatch" {
 		t.Fatalf("expected third step attempt_2.dispatch, got %q", got)
 	}
-	if got := allSteps[3].StepKey; got != "attempt_2.gateway" {
-		t.Fatalf("expected fourth step attempt_2.gateway, got %q", got)
+
+	jobs := store.ListJobs(workflow.ResourceTypeWorkflowRun, record.ID, workflow.JobTypeWorkflowDispatch, workflow.StatusPending)
+	if len(jobs) != 1 {
+		t.Fatalf("expected 1 pending workflow job after retry, got %d", len(jobs))
+	}
+
+	transitions := store.ListStateTransitions(workflow.ResourceTypeWorkflowRun, record.ID)
+	if len(transitions) != 1 {
+		t.Fatalf("expected 1 workflow transition after retry, got %d", len(transitions))
+	}
+	if got := transitions[0].FromState; got != workflow.StatusFailed {
+		t.Fatalf("expected retry transition from failed, got %q", got)
+	}
+	if got := transitions[0].ToState; got != workflow.StatusPending {
+		t.Fatalf("expected retry transition to pending, got %q", got)
 	}
 }
 
@@ -202,54 +209,24 @@ func TestRetryWorkflowRunRejectsNonFailedStatuses(t *testing.T) {
 			if got := err.Error(); got != tc.wantError {
 				t.Fatalf("expected error %q, got %q", tc.wantError, got)
 			}
-
-			saved, ok := store.GetWorkflowRun(runID)
-			if !ok {
-				t.Fatalf("expected workflow run %q to remain stored", runID)
-			}
-			if got := saved.Status; got != tc.status {
-				t.Fatalf("expected workflow status to remain %q, got %q", tc.status, got)
-			}
-			if steps := store.ListWorkflowSteps(runID); len(steps) != 0 {
-				t.Fatalf("expected no workflow steps to be created, got %d", len(steps))
-			}
 		})
 	}
 }
 
-func TestCancelWorkflowRunAddsCancelAuditStep(t *testing.T) {
+func TestCancelWorkflowRunCancelsPendingJobAndAddsCancelAuditStep(t *testing.T) {
 	ctx := context.Background()
 	store := db.NewMemoryStore()
 	service := NewService(store, store.Publisher(), nil, policyapp.NewService(store))
 
-	record := workflow.WorkflowRun{
-		ID:           store.NextWorkflowRunID(),
-		OrgID:        "org-1",
-		ProjectID:    "project-1",
-		ResourceID:   "shot-exec-1",
-		WorkflowType: "shot_pipeline",
-		Status:       workflow.StatusRunning,
-		AttemptCount: 2,
-		CurrentStep:  "attempt_2.gateway",
-		LastError:    "old error",
-		CreatedAt:    time.Now().UTC().Add(-2 * time.Minute),
-		UpdatedAt:    time.Now().UTC().Add(-1 * time.Minute),
-	}
-	if err := store.SaveWorkflowRun(ctx, record); err != nil {
-		t.Fatalf("SaveWorkflowRun returned error: %v", err)
-	}
-	existingStep := workflow.WorkflowStep{
-		ID:            store.NextWorkflowStepID(),
-		WorkflowRunID: record.ID,
-		StepKey:       "attempt_2.gateway",
-		StepOrder:     4,
-		Status:        workflow.StatusRunning,
-		StartedAt:     time.Now().UTC().Add(-30 * time.Second),
-		CreatedAt:     time.Now().UTC().Add(-30 * time.Second),
-		UpdatedAt:     time.Now().UTC().Add(-30 * time.Second),
-	}
-	if err := store.SaveWorkflowStep(ctx, existingStep); err != nil {
-		t.Fatalf("SaveWorkflowStep returned error: %v", err)
+	record, err := service.StartWorkflow(ctx, StartWorkflowInput{
+		OrganizationID: "org-1",
+		ProjectID:      "project-1",
+		WorkflowType:   "shot_pipeline",
+		ResourceID:     "shot-exec-1",
+		Provider:       "seedance",
+	})
+	if err != nil {
+		t.Fatalf("StartWorkflow returned error: %v", err)
 	}
 
 	cancelled, err := service.CancelWorkflowRun(ctx, CancelWorkflowRunInput{WorkflowRunID: record.ID})
@@ -259,117 +236,51 @@ func TestCancelWorkflowRunAddsCancelAuditStep(t *testing.T) {
 	if got := cancelled.Status; got != workflow.StatusCancelled {
 		t.Fatalf("expected cancelled status, got %q", got)
 	}
-	if got := cancelled.CurrentStep; got != "attempt_2.cancel" {
-		t.Fatalf("expected current_step attempt_2.cancel, got %q", got)
+	if got := cancelled.CurrentStep; got != "attempt_1.cancel" {
+		t.Fatalf("expected current_step attempt_1.cancel, got %q", got)
 	}
-	if got := cancelled.LastError; got != "" {
-		t.Fatalf("expected last_error cleared, got %q", got)
+	if got := cancelled.ExternalRequestID; got != "" {
+		t.Fatalf("expected empty external_request_id after cancelling pending run, got %q", got)
 	}
 
 	steps := store.ListWorkflowSteps(record.ID)
 	if len(steps) != 2 {
 		t.Fatalf("expected 2 workflow steps after cancel, got %d", len(steps))
 	}
-	cancelStep := steps[1]
-	if got := cancelStep.StepKey; got != "attempt_2.cancel" {
-		t.Fatalf("expected cancel step attempt_2.cancel, got %q", got)
+	if got := steps[1].StepKey; got != "attempt_1.cancel" {
+		t.Fatalf("expected cancel step attempt_1.cancel, got %q", got)
 	}
-	if got := cancelStep.StepOrder; got != 5 {
-		t.Fatalf("expected cancel step order 5, got %d", got)
-	}
-	if got := cancelStep.Status; got != workflow.StatusCompleted {
+	if got := steps[1].Status; got != workflow.StatusCompleted {
 		t.Fatalf("expected cancel step completed, got %q", got)
 	}
-	if cancelStep.StartedAt.IsZero() || cancelStep.CompletedAt.IsZero() {
-		t.Fatalf("expected cancel step started_at and completed_at to be set")
+
+	jobs := store.ListJobs(workflow.ResourceTypeWorkflowRun, record.ID, workflow.JobTypeWorkflowDispatch, "")
+	if len(jobs) != 1 {
+		t.Fatalf("expected 1 workflow job to remain stored, got %d", len(jobs))
+	}
+	if got := jobs[0].Status; got != workflow.StatusCancelled {
+		t.Fatalf("expected queued workflow job to be cancelled, got %q", got)
+	}
+
+	transitions := store.ListStateTransitions(workflow.ResourceTypeWorkflowRun, record.ID)
+	if len(transitions) != 2 {
+		t.Fatalf("expected 2 workflow state transitions after cancel, got %d", len(transitions))
+	}
+	if got := transitions[1].FromState; got != workflow.StatusPending {
+		t.Fatalf("expected cancel transition from pending, got %q", got)
+	}
+	if got := transitions[1].ToState; got != workflow.StatusCancelled {
+		t.Fatalf("expected cancel transition to cancelled, got %q", got)
 	}
 }
 
-func TestCancelWorkflowRunReusesExistingCancelAuditStep(t *testing.T) {
-	ctx := context.Background()
-	store := db.NewMemoryStore()
-	service := NewService(store, store.Publisher(), nil, policyapp.NewService(store))
-
-	record := workflow.WorkflowRun{
-		ID:           store.NextWorkflowRunID(),
-		OrgID:        "org-1",
-		ProjectID:    "project-1",
-		ResourceID:   "shot-exec-1",
-		WorkflowType: "shot_pipeline",
-		Status:       workflow.StatusRunning,
-		AttemptCount: 2,
-		CurrentStep:  "attempt_2.gateway",
-		LastError:    "provider failed",
-		CreatedAt:    time.Now().UTC().Add(-2 * time.Minute),
-		UpdatedAt:    time.Now().UTC().Add(-1 * time.Minute),
-	}
-	if err := store.SaveWorkflowRun(ctx, record); err != nil {
-		t.Fatalf("SaveWorkflowRun returned error: %v", err)
-	}
-	if err := store.SaveWorkflowStep(ctx, workflow.WorkflowStep{
-		ID:            store.NextWorkflowStepID(),
-		WorkflowRunID: record.ID,
-		StepKey:       "attempt_2.dispatch",
-		StepOrder:     3,
-		Status:        workflow.StatusCompleted,
-		StartedAt:     time.Now().UTC().Add(-45 * time.Second),
-		CompletedAt:   time.Now().UTC().Add(-45 * time.Second),
-		CreatedAt:     time.Now().UTC().Add(-45 * time.Second),
-		UpdatedAt:     time.Now().UTC().Add(-45 * time.Second),
-	}); err != nil {
-		t.Fatalf("SaveWorkflowStep dispatch returned error: %v", err)
-	}
-	if err := store.SaveWorkflowStep(ctx, workflow.WorkflowStep{
-		ID:            store.NextWorkflowStepID(),
-		WorkflowRunID: record.ID,
-		StepKey:       "attempt_2.gateway",
-		StepOrder:     4,
-		Status:        workflow.StatusRunning,
-		StartedAt:     time.Now().UTC().Add(-30 * time.Second),
-		CreatedAt:     time.Now().UTC().Add(-30 * time.Second),
-		UpdatedAt:     time.Now().UTC().Add(-30 * time.Second),
-	}); err != nil {
-		t.Fatalf("SaveWorkflowStep gateway returned error: %v", err)
-	}
-	cancelStep := workflow.WorkflowStep{
-		ID:            store.NextWorkflowStepID(),
-		WorkflowRunID: record.ID,
-		StepKey:       "attempt_2.cancel",
-		StepOrder:     5,
-		Status:        workflow.StatusCompleted,
-		StartedAt:     time.Now().UTC().Add(-5 * time.Second),
-		CompletedAt:   time.Now().UTC().Add(-5 * time.Second),
-		CreatedAt:     time.Now().UTC().Add(-5 * time.Second),
-		UpdatedAt:     time.Now().UTC().Add(-5 * time.Second),
-	}
-	if err := store.SaveWorkflowStep(ctx, cancelStep); err != nil {
-		t.Fatalf("SaveWorkflowStep cancel returned error: %v", err)
-	}
-
-	cancelled, err := service.CancelWorkflowRun(ctx, CancelWorkflowRunInput{WorkflowRunID: record.ID})
-	if err != nil {
-		t.Fatalf("CancelWorkflowRun returned error: %v", err)
-	}
-	if got := cancelled.CurrentStep; got != "attempt_2.cancel" {
-		t.Fatalf("expected current_step attempt_2.cancel, got %q", got)
-	}
-	steps := store.ListWorkflowSteps(record.ID)
-	if len(steps) != 3 {
-		t.Fatalf("expected existing cancel step to be reused, got %d steps", len(steps))
-	}
-	if got := steps[2].ID; got != cancelStep.ID {
-		t.Fatalf("expected cancel step id %q to be reused, got %q", cancelStep.ID, got)
-	}
-}
-
-func TestCancelWorkflowRunRejectsNonRunningStatuses(t *testing.T) {
+func TestCancelWorkflowRunRejectsTerminalStatuses(t *testing.T) {
 	ctx := context.Background()
 	testCases := []struct {
 		name      string
 		status    string
 		wantError string
 	}{
-		{name: "pending", status: workflow.StatusPending, wantError: "policyapp: pending workflow run cannot be cancelled"},
 		{name: "failed", status: workflow.StatusFailed, wantError: "policyapp: failed workflow run cannot be cancelled"},
 		{name: "completed", status: workflow.StatusCompleted, wantError: "policyapp: completed workflow run cannot be cancelled"},
 		{name: "cancelled", status: workflow.StatusCancelled, wantError: "policyapp: cancelled workflow run cannot be cancelled"},
@@ -399,17 +310,6 @@ func TestCancelWorkflowRunRejectsNonRunningStatuses(t *testing.T) {
 			}
 			if got := err.Error(); got != tc.wantError {
 				t.Fatalf("expected error %q, got %q", tc.wantError, got)
-			}
-
-			saved, ok := store.GetWorkflowRun(runID)
-			if !ok {
-				t.Fatalf("expected workflow run %q to remain stored", runID)
-			}
-			if got := saved.Status; got != tc.status {
-				t.Fatalf("expected workflow status to remain %q, got %q", tc.status, got)
-			}
-			if steps := store.ListWorkflowSteps(runID); len(steps) != 0 {
-				t.Fatalf("expected no workflow steps to be created, got %d", len(steps))
 			}
 		})
 	}
