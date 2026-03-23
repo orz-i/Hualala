@@ -49,6 +49,25 @@ describe("adminRoutes", () => {
     ).toBe("/assets?projectId=project-live-001&shotExecutionId=shot-exec-live-001");
   });
 
+  it("parses the collaboration route and keeps shotId in query state", () => {
+    expect(
+      parseAdminRouteState({
+        pathname: "/collaboration",
+        search: "?projectId=project-live-001&shotExecutionId=shot-exec-live-001&shotId=shot-live-1",
+      } as Pick<Location, "pathname" | "search">),
+    ).toEqual({
+      route: "collaboration",
+      projectId: "project-live-001",
+      shotExecutionId: "shot-exec-live-001",
+      orgId: undefined,
+      userId: undefined,
+      workflowRunId: undefined,
+      importBatchId: undefined,
+      assetId: undefined,
+      shotId: "shot-live-1",
+    });
+  });
+
   it("clears route-specific detail state when switching routes", () => {
     expect(
       selectAdminRoute(

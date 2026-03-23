@@ -1,10 +1,12 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useLocaleState } from "../i18n";
 import { AdminAssetsPage } from "../features/dashboard/AdminAssetsPage";
+import { AdminCollaborationPage } from "../features/dashboard/AdminCollaborationPage";
 import { AdminGovernancePage } from "../features/dashboard/AdminGovernancePage";
 import { AdminOverviewPage } from "../features/dashboard/AdminOverviewPage";
 import { AdminWorkflowPage } from "../features/dashboard/AdminWorkflowPage";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
+import { useAdminCollaborationController } from "../features/dashboard/useAdminCollaborationController";
 import { useAdminGovernanceController } from "../features/dashboard/useAdminGovernanceController";
 import { useAdminOverviewController } from "../features/dashboard/useAdminOverviewController";
 import { useAdminRecentChangesSubscription } from "../features/dashboard/useAdminRecentChangesSubscription";
@@ -106,6 +108,16 @@ export function App() {
     enabled: routeState.route === "assets",
     projectId,
     identityOverride,
+    effectiveOrgId: sessionGate.effectiveOrgId,
+    effectiveUserId: sessionGate.effectiveUserId,
+    t,
+  });
+
+  const collaboration = useAdminCollaborationController({
+    sessionState: sessionGate.sessionState,
+    enabled: routeState.route === "collaboration",
+    projectId,
+    shotId: routeState.shotId,
     effectiveOrgId: sessionGate.effectiveOrgId,
     effectiveUserId: sessionGate.effectiveUserId,
     t,
@@ -225,6 +237,8 @@ export function App() {
       ? overview.errorMessage
       : routeState.route === "governance"
         ? governance.errorMessage
+        : routeState.route === "collaboration"
+          ? collaboration.errorMessage
         : "";
   const errorMessage = sessionGate.errorMessage || routeErrorMessage;
 
@@ -272,6 +286,10 @@ export function App() {
 
   if (routeState.route === "governance" && !governance.governance) {
     return <main style={{ padding: "32px" }}>{t("app.loading")}</main>;
+  }
+
+  if (routeState.route === "collaboration" && !collaboration.collaborationSession) {
+    return <main style={{ padding: "32px" }}>{t("app.loading.collaboration")}</main>;
   }
 
   const sessionLabel = identityOverride
@@ -367,6 +385,13 @@ export function App() {
         onCreateRole={governance.onCreateRole}
         onUpdateRole={governance.onUpdateRole}
         onDeleteRole={governance.onDeleteRole}
+      />
+    );
+  } else if (routeState.route === "collaboration" && collaboration.collaborationSession) {
+    routeContent = (
+      <AdminCollaborationPage
+        collaborationSession={collaboration.collaborationSession}
+        t={t}
       />
     );
   } else if (overview.overview) {

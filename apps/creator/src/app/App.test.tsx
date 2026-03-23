@@ -33,6 +33,10 @@ import { loadAssetProvenanceDetails } from "../features/shared/loadAssetProvenan
 import { subscribeWorkbenchEvents } from "../features/subscribeWorkbenchEvents";
 import { App } from "./App";
 
+const { useCollabControllerMock } = vi.hoisted(() => ({
+  useCollabControllerMock: vi.fn(),
+}));
+
 vi.mock("../features/shot-workbench/loadShotWorkbench", () => ({
   loadShotWorkbench: vi.fn(),
 }));
@@ -78,6 +82,18 @@ vi.mock("../features/shared/loadAssetProvenanceDetails", () => ({
 vi.mock("../features/subscribeWorkbenchEvents", () => ({
   subscribeWorkbenchEvents: vi.fn(),
 }));
+vi.mock("../features/collaboration/useCollabController", () => ({
+  useCollabController: useCollabControllerMock,
+}));
+
+let lastCollabWorkbenchPageProps: Record<string, unknown> | null = null;
+
+vi.mock("../features/collaboration/CollabWorkbenchPage", () => ({
+  CollabWorkbenchPage: (props: Record<string, unknown>) => {
+    lastCollabWorkbenchPageProps = props;
+    return <div data-testid="creator-collab-page">creator-collab-page</div>;
+  },
+}));
 
 const loadShotWorkbenchMock = vi.mocked(loadShotWorkbench);
 const loadShotReviewTimelineMock = vi.mocked(loadShotReviewTimeline);
@@ -111,6 +127,29 @@ let latestWorkbenchSubscription:
     }
   | undefined;
 let latestWorkbenchSubscriptionCleanup: ReturnType<typeof vi.fn>;
+
+function createCollabControllerState() {
+  return {
+    collaborationSession: {
+      session: {
+        sessionId: "session-shot-collab-1",
+        ownerType: "shot",
+        ownerId: "shot-collab-1",
+        draftVersion: 4,
+        lockHolderUserId: "user-1",
+      },
+      presences: [],
+    },
+    feedback: null,
+    errorMessage: "",
+    claimDraftVersionInput: "4",
+    conflictSummaryInput: "",
+    setClaimDraftVersionInput: vi.fn(),
+    setConflictSummaryInput: vi.fn(),
+    handleClaimLease: vi.fn(),
+    handleReleaseLease: vi.fn(),
+  };
+}
 
 function createImportWorkbench(batchId: string, status = "matched_pending_confirm") {
   return {
@@ -379,6 +418,7 @@ function createAssetProvenanceDetail(assetId: string, sourceRunId = "source-run-
 describe("App", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    lastCollabWorkbenchPageProps = null;
     latestWorkbenchSubscription = undefined;
     latestWorkbenchSubscriptionCleanup = vi.fn();
     window.history.replaceState({}, "", "/");
@@ -433,6 +473,7 @@ describe("App", () => {
       latestWorkbenchSubscriptionCleanup = vi.fn();
       return latestWorkbenchSubscriptionCleanup;
     });
+    useCollabControllerMock.mockReturnValue(createCollabControllerState());
     loadImportBatchSummariesMock.mockResolvedValue([]);
     loadAssetProvenanceDetailsMock.mockResolvedValue(
       createAssetProvenanceDetail("asset-default"),
@@ -497,6 +538,36 @@ describe("App", () => {
     expect(loadShotWorkbenchMock).not.toHaveBeenCalled();
     expect(loadImportBatchWorkbenchMock).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "加载批次" })).toBeDisabled();
+  });
+
+  it("renders the collaboration route when pathname is /collab", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/collab?shotId=shot-collab-1&orgId=org-override-001&userId=user-override-001",
+    );
+
+    render(<App />);
+
+    expect(await screen.findByTestId("creator-collab-page")).toBeInTheDocument();
+    expect(useCollabControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        ownerType: "shot",
+        ownerId: "shot-collab-1",
+        orgId: "org-override-001",
+        userId: "user-override-001",
+      }),
+    );
+    expect(lastCollabWorkbenchPageProps).toEqual(
+      expect.objectContaining({
+        collaborationSession: expect.objectContaining({
+          session: expect.objectContaining({
+            ownerId: "shot-collab-1",
+          }),
+        }),
+      }),
+    );
   });
 
   it("loads import batches from the projectId query param and remembers it locally", async () => {

@@ -10,10 +10,15 @@ import { useAdminWorkflowController } from "../features/dashboard/useAdminWorkfl
 import { useAdminSessionGate } from "../features/session/useAdminSessionGate";
 import { App } from "./App";
 
+const { useAdminCollaborationControllerMock } = vi.hoisted(() => ({
+  useAdminCollaborationControllerMock: vi.fn(),
+}));
+
 let lastAdminOverviewPageProps: Record<string, unknown> | null = null;
 let lastAdminWorkflowPageProps: Record<string, unknown> | null = null;
 let lastAdminAssetsPageProps: Record<string, unknown> | null = null;
 let lastAdminGovernancePageProps: Record<string, unknown> | null = null;
+let lastAdminCollaborationPageProps: Record<string, unknown> | null = null;
 
 vi.mock("../features/dashboard/AdminOverviewPage", () => ({
   AdminOverviewPage: (props: Record<string, unknown>) => {
@@ -103,6 +108,12 @@ vi.mock("../features/dashboard/AdminGovernancePage", () => ({
     return <div data-testid="admin-governance-page">{governance.currentSession.orgId}</div>;
   },
 }));
+vi.mock("../features/dashboard/AdminCollaborationPage", () => ({
+  AdminCollaborationPage: (props: Record<string, unknown>) => {
+    lastAdminCollaborationPageProps = props;
+    return <div data-testid="admin-collaboration-page">admin-collaboration-page</div>;
+  },
+}));
 vi.mock("../features/session/useAdminSessionGate", () => ({
   useAdminSessionGate: vi.fn(),
 }));
@@ -117,6 +128,9 @@ vi.mock("../features/dashboard/useAdminWorkflowController", () => ({
 }));
 vi.mock("../features/dashboard/useAdminAssetController", () => ({
   useAdminAssetController: vi.fn(),
+}));
+vi.mock("../features/dashboard/useAdminCollaborationController", () => ({
+  useAdminCollaborationController: useAdminCollaborationControllerMock,
 }));
 vi.mock("../features/dashboard/useAdminRecentChangesSubscription", () => ({
   useAdminRecentChangesSubscription: vi.fn(),
@@ -414,6 +428,25 @@ function buildAsset(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function buildCollaboration(overrides: Record<string, unknown> = {}) {
+  return {
+    collaborationSession: {
+      session: {
+        sessionId: "session-shot-collab-1",
+        ownerType: "shot",
+        ownerId: "shot-collab-1",
+        draftVersion: 4,
+        lockHolderUserId: "user-demo-001",
+      },
+      presences: [],
+      alerts: [],
+    },
+    errorMessage: "",
+    refreshCollaborationSilently: vi.fn(),
+    ...overrides,
+  };
+}
+
 describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -421,6 +454,7 @@ describe("App", () => {
     lastAdminWorkflowPageProps = null;
     lastAdminAssetsPageProps = null;
     lastAdminGovernancePageProps = null;
+    lastAdminCollaborationPageProps = null;
     window.localStorage.clear();
     window.localStorage.setItem(ADMIN_UI_LOCALE_STORAGE_KEY, "zh-CN");
     window.history.pushState({}, "", "/");
@@ -430,6 +464,7 @@ describe("App", () => {
     useAdminGovernanceControllerMock.mockReturnValue(buildGovernanceController() as never);
     useAdminWorkflowControllerMock.mockReturnValue(buildWorkflow() as never);
     useAdminAssetControllerMock.mockReturnValue(buildAsset() as never);
+    useAdminCollaborationControllerMock.mockReturnValue(buildCollaboration());
     useAdminRecentChangesSubscriptionMock.mockImplementation(() => undefined);
   });
 
@@ -551,6 +586,38 @@ describe("App", () => {
 
     expect(screen.getByTestId("admin-governance-page")).toHaveTextContent("org-demo-001");
     expect(screen.queryByTestId("admin-overview-page")).not.toBeInTheDocument();
+  });
+
+  it("renders the collaboration route when pathname is /collaboration", () => {
+    window.history.pushState(
+      {},
+      "",
+      "/collaboration?projectId=project-live-001&shotExecutionId=shot-exec-live-001&shotId=shot-collab-1",
+    );
+
+    render(<App />);
+
+    expect(useAdminCollaborationControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        projectId: "project-live-001",
+        shotId: "shot-collab-1",
+        effectiveOrgId: "org-demo-001",
+        effectiveUserId: "user-demo-001",
+      }),
+    );
+    expect(screen.getByTestId("admin-collaboration-page")).toHaveTextContent(
+      "admin-collaboration-page",
+    );
+    expect(lastAdminCollaborationPageProps).toEqual(
+      expect.objectContaining({
+        collaborationSession: expect.objectContaining({
+          session: expect.objectContaining({
+            ownerId: "shot-collab-1",
+          }),
+        }),
+      }),
+    );
   });
 
   it("renders the loading gate while the session is bootstrapping", () => {

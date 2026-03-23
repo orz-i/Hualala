@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 
-type SilentRefreshScope = "shot" | "import";
+type SilentRefreshScope = "shot" | "import" | "collaboration";
 
 export function useQueuedSilentRefresh(
   scope: SilentRefreshScope,
