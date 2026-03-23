@@ -564,9 +564,7 @@ export function App() {
         newSourceRunIdInput={previewWorkbenchController.newSourceRunIdInput}
         assetProvenanceDetail={previewWorkbenchController.assetProvenanceDetail}
         assetProvenancePending={previewWorkbenchController.assetProvenancePending}
-        assetProvenanceErrorMessage={
-          previewWorkbenchController.assetProvenanceErrorMessage || undefined
-        }
+        assetProvenanceErrorMessage={previewWorkbenchController.assetProvenanceErrorMessage}
         t={t}
         shellHeader={
           <CreatorWorkspaceShell
