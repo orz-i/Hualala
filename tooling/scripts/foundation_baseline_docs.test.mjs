@@ -54,6 +54,8 @@ test("repo exposes a phase2 contract freeze doc for collaboration and preview sh
   assert.match(freezeDoc, /ordered shot refs/);
   assert.match(freezeDoc, /selected primary asset refs/);
   assert.match(freezeDoc, /assembly status/);
+  assert.match(freezeDoc, /content\.collaboration\.updated/);
+  assert.match(freezeDoc, /change_kind/);
   assert.match(freezeDoc, /不扩 `asset\.proto`、`workflow\.proto`/);
   assert.match(freezeDoc, /audio/);
   assert.match(freezeDoc, /reuse/);

@@ -4,15 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 type Service struct {
-	repo db.ProjectContentRepository
+	repo      db.ProjectContentRepository
+	publisher *events.Publisher
 }
 
 type CreateSceneInput struct {
@@ -90,8 +93,11 @@ type ReleaseCollaborationLeaseInput struct {
 	ConflictSummary string
 }
 
-func NewService(repo db.ProjectContentRepository) *Service {
-	return &Service{repo: repo}
+func NewService(repo db.ProjectContentRepository, publisher *events.Publisher) *Service {
+	return &Service{
+		repo:      repo,
+		publisher: publisher,
+	}
 }
 
 func (s *Service) CreateScene(ctx context.Context, input CreateSceneInput) (content.Scene, error) {
@@ -382,7 +388,9 @@ func (s *Service) UpsertCollaborationLease(ctx context.Context, input UpsertColl
 	if err := s.repo.SaveCollaborationSession(ctx, record); err != nil {
 		return CollaborationSessionState{}, err
 	}
-	return s.buildCollaborationSessionState(record), nil
+	state := s.buildCollaborationSessionState(record)
+	s.publishCollaborationEvent(ctx, record.OwnerType, record.OwnerID, state, actorUserID, "lease_claimed")
+	return state, nil
 }
 
 func (s *Service) ReleaseCollaborationLease(ctx context.Context, input ReleaseCollaborationLeaseInput) (CollaborationSessionState, error) {
@@ -419,7 +427,9 @@ func (s *Service) ReleaseCollaborationLease(ctx context.Context, input ReleaseCo
 	if err := s.upsertPresence(ctx, record.ID, actorUserID, "released", now); err != nil {
 		return CollaborationSessionState{}, err
 	}
-	return s.buildCollaborationSessionState(record), nil
+	state := s.buildCollaborationSessionState(record)
+	s.publishCollaborationEvent(ctx, record.OwnerType, record.OwnerID, state, actorUserID, "lease_released")
+	return state, nil
 }
 
 func (s *Service) normalizeCollaborationOwner(ownerType string, ownerID string) (string, string, error) {
@@ -495,6 +505,25 @@ func (s *Service) buildCollaborationSessionState(record content.CollaborationSes
 		Session:   record,
 		Presences: s.repo.ListCollaborationPresences(record.ID),
 	}
+}
+
+func (s *Service) publishCollaborationEvent(ctx context.Context, ownerType string, ownerID string, state CollaborationSessionState, changedUserID string, changeKind string) {
+	if s == nil || s.publisher == nil {
+		return
+	}
+	organizationID, projectID, err := s.repo.GetCollaborationScope(ownerType, ownerID)
+	if err != nil {
+		log.Printf("contentapp: could not resolve collaboration scope for owner %s/%s: %v", ownerType, ownerID, err)
+		return
+	}
+	events.PublishCollaborationUpdated(ctx, s.publisher, events.PublishCollaborationUpdatedInput{
+		OrganizationID: organizationID,
+		ProjectID:      projectID,
+		ChangedUserID:  changedUserID,
+		ChangeKind:     changeKind,
+		Session:        state.Session,
+		Presences:      state.Presences,
+	})
 }
 
 func resolveLeaseTTL(raw uint32) time.Duration {

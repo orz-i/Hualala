@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -72,6 +73,7 @@ type ProjectContentRepository interface {
 	SaveShot(ctx context.Context, record content.Shot) error
 	GetShot(shotID string) (content.Shot, bool)
 	ListShotsByScene(sceneID string) []content.Shot
+	GetCollaborationScope(ownerType string, ownerID string) (string, string, error)
 
 	GenerateSnapshotID() string
 	GenerateTranslationGroupID() string
@@ -414,6 +416,55 @@ func (s *MemoryStore) SaveShot(ctx context.Context, record content.Shot) error {
 func (s *MemoryStore) GetShot(shotID string) (content.Shot, bool) {
 	record, ok := s.Shots[shotID]
 	return record, ok
+}
+
+func (s *MemoryStore) GetCollaborationScope(ownerType string, ownerID string) (string, string, error) {
+	normalizedType := strings.TrimSpace(ownerType)
+	normalizedID := strings.TrimSpace(ownerID)
+	switch normalizedType {
+	case "project":
+		record, ok := s.GetProject(normalizedID)
+		if !ok {
+			return "", "", fmt.Errorf("db: project %q not found", normalizedID)
+		}
+		return record.OrganizationID, record.ID, nil
+	case "episode":
+		record, ok := s.GetEpisode(normalizedID)
+		if !ok {
+			return "", "", fmt.Errorf("db: episode %q not found", normalizedID)
+		}
+		projectRecord, ok := s.GetProject(record.ProjectID)
+		if !ok {
+			return "", "", fmt.Errorf("db: project %q not found", record.ProjectID)
+		}
+		return projectRecord.OrganizationID, projectRecord.ID, nil
+	case "scene":
+		record, ok := s.GetScene(normalizedID)
+		if !ok {
+			return "", "", fmt.Errorf("db: scene %q not found", normalizedID)
+		}
+		projectRecord, ok := s.GetProject(record.ProjectID)
+		if !ok {
+			return "", "", fmt.Errorf("db: project %q not found", record.ProjectID)
+		}
+		return projectRecord.OrganizationID, projectRecord.ID, nil
+	case "shot":
+		record, ok := s.GetShot(normalizedID)
+		if !ok {
+			return "", "", fmt.Errorf("db: shot %q not found", normalizedID)
+		}
+		sceneRecord, ok := s.GetScene(record.SceneID)
+		if !ok {
+			return "", "", fmt.Errorf("db: scene %q not found", record.SceneID)
+		}
+		projectRecord, ok := s.GetProject(sceneRecord.ProjectID)
+		if !ok {
+			return "", "", fmt.Errorf("db: project %q not found", sceneRecord.ProjectID)
+		}
+		return projectRecord.OrganizationID, projectRecord.ID, nil
+	default:
+		return "", "", fmt.Errorf("db: owner_type %q is invalid", normalizedType)
+	}
 }
 
 func (s *MemoryStore) ListShotsByScene(sceneID string) []content.Shot {

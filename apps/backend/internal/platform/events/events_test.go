@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
 )
 
@@ -153,6 +154,66 @@ func TestPublishShotExecutionUpdatedTrimsScopeAndPayloadFields(t *testing.T) {
 	}
 	if got := payload["asset_id"].(string); got != "asset-1" {
 		t.Fatalf("expected trimmed asset_id %q, got %q", "asset-1", got)
+	}
+}
+
+func TestPublishCollaborationUpdatedTrimsScopeAndPayloadFields(t *testing.T) {
+	publisher := NewPublisher()
+	leaseExpiresAt := time.Unix(200, 0).UTC()
+
+	PublishCollaborationUpdated(context.Background(), publisher, PublishCollaborationUpdatedInput{
+		OrganizationID: " org-1 ",
+		ProjectID:      " project-1 ",
+		ChangedUserID:  " user-1 ",
+		ChangeKind:     " lease_claimed ",
+		Session: content.CollaborationSession{
+			ID:               "session-1",
+			OwnerType:        "shot",
+			OwnerID:          "shot-1",
+			DraftVersion:     3,
+			LockHolderUserID: " user-1 ",
+			LeaseExpiresAt:   leaseExpiresAt,
+			ConflictSummary:  " locked ",
+		},
+		Presences: []content.CollaborationPresence{
+			{ID: "presence-1", UserID: "user-1"},
+			{ID: "presence-2", UserID: "user-2"},
+		},
+	})
+
+	items := publisher.List("org-1", "project-1", "")
+	if len(items) != 1 {
+		t.Fatalf("expected trimmed replay query to return 1 event, got %d", len(items))
+	}
+	event := items[0]
+	if got := event.EventType; got != "content.collaboration.updated" {
+		t.Fatalf("expected collaboration event type, got %q", got)
+	}
+	if got := event.ResourceType; got != "collaboration_session" {
+		t.Fatalf("expected resource type %q, got %q", "collaboration_session", got)
+	}
+	if got := event.ResourceID; got != "session-1" {
+		t.Fatalf("expected resource id %q, got %q", "session-1", got)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(event.Payload), &payload); err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v", err)
+	}
+	if got := payload["change_kind"].(string); got != "lease_claimed" {
+		t.Fatalf("expected change_kind %q, got %q", "lease_claimed", got)
+	}
+	if got := payload["changed_user_id"].(string); got != "user-1" {
+		t.Fatalf("expected changed_user_id %q, got %q", "user-1", got)
+	}
+	if got := payload["lock_holder_user_id"].(string); got != "user-1" {
+		t.Fatalf("expected lock_holder_user_id %q, got %q", "user-1", got)
+	}
+	if got := payload["presence_count"].(float64); got != 2 {
+		t.Fatalf("expected presence_count %d, got %v", 2, got)
+	}
+	if got := payload["lease_expires_at"].(string); got != leaseExpiresAt.Format(time.RFC3339) {
+		t.Fatalf("expected lease_expires_at %q, got %q", leaseExpiresAt.Format(time.RFC3339), got)
 	}
 }
 

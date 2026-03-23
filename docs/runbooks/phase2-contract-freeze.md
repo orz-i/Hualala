@@ -10,6 +10,7 @@
 - `proto/hualala/project/v1/project_service.proto`
 - `packages/sdk/src/connect/services/content.ts`
 - `packages/sdk/src/connect/services/project.ts`
+- `packages/sdk/src/sse/*`
 - `infra/migrations/0015_phase2_collab_preview_shared_truth.sql`
 
 ## 协同 Shared Truth
@@ -30,6 +31,23 @@
 - presence 列表
 - 最近冲突摘要
 
+本轮同时冻结首个协同 SSE 事件：
+
+- `content.collaboration.updated`
+
+固定 payload 只承载共享真相摘要，不承载页面局部状态：
+
+- `session_id`
+- `owner_type`
+- `owner_id`
+- `draft_version`
+- `lock_holder_user_id`
+- `lease_expires_at`
+- `conflict_summary`
+- `presence_count`
+- `changed_user_id`
+- `change_kind`
+
 ## 预演 Shared Truth
 
 本轮预演只覆盖项目级 / 集级 preview assembly：
@@ -44,7 +62,7 @@
 
 ## 明确不在本轮范围内
 
-本轮不扩 `asset.proto`、`workflow.proto`，也不扩 admin / creator 的页面状态、hook、路由或 E2E 消费层实现。
+本轮不扩 `asset.proto`、`workflow.proto`，也不扩 admin / creator 的页面状态、hook、路由或 E2E 消费层实现；协同 SSE 消费端留给后续产品线实现。
 
 以下 backlog 明确延后到下一轮 foundation patch：
 
@@ -53,4 +71,4 @@
 
 ## 验证约束
 
-后续产品分支若需要扩协同或预演共享契约，必须先回到 foundation patch 修改上述 proto、SDK client、migration 和 runbook，而不是在单一产品分支里私扩 shared truth。
+后续产品分支若需要扩协同或预演共享契约，必须先回到 foundation patch 修改上述 proto、SDK client、SSE event contract、migration 和 runbook，而不是在单一产品分支里私扩 shared truth。
