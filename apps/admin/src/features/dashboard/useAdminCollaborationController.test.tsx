@@ -23,7 +23,10 @@ function buildSession(ownerId = "shot-live-1") {
       ownerId,
       draftVersion: 4,
       lockHolderUserId: "user-demo-001",
+      leaseExpiresAt: "2026-03-23T08:00:00.000Z",
       conflictSummary: "",
+      createdAt: "2026-03-23T07:55:00.000Z",
+      updatedAt: "2026-03-23T07:59:00.000Z",
     },
     presences: [],
     scope: {
