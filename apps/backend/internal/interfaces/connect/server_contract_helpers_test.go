@@ -266,12 +266,11 @@ func testExecutionAssetReviewBillingRoutes(t *testing.T) {
 		t.Fatalf("expected remaining_budget_cents 380, got %d", got)
 	}
 
-	sseReq, err := http.NewRequest(http.MethodGet, server.URL+"/sse/events?organization_id="+project.OrganizationID+"&project_id="+project.ID, nil)
 	sseCtx, cancelSSE := context.WithTimeout(ctx, 2*time.Second)
 	defer cancelSSE()
-	sseReq, err = http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id="+project.OrganizationID+"&project_id="+project.ID, nil)
+	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id="+project.OrganizationID+"&project_id="+project.ID, nil)
 	if err != nil {
-		t.Fatalf("http.NewRequest returned error: %v", err)
+		t.Fatalf("http.NewRequestWithContext returned error: %v", err)
 	}
 	sseReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(connectTestOrgID, connectTestUserID))
 	sseResp, err := server.Client().Do(sseReq)
@@ -518,31 +517,54 @@ func readEventStreamUntil(t *testing.T, body io.ReadCloser, cancel context.Cance
 
 	reader := bufio.NewReader(body)
 	var stream strings.Builder
-	deadline := time.After(2 * time.Second)
+	done := make(chan struct{})
+	defer close(done)
+
+	lineCh := make(chan string, 1)
+	errCh := make(chan error, 1)
+
+	go func() {
+		for {
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				select {
+				case errCh <- err:
+				case <-done:
+				}
+				return
+			}
+
+			select {
+			case lineCh <- line:
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	deadline := time.NewTimer(2 * time.Second)
+	defer deadline.Stop()
 
 	for {
 		select {
-		case <-deadline:
+		case <-deadline.C:
 			t.Fatalf("timed out waiting for SSE markers %v in stream %q", markers, stream.String())
-		default:
-		}
-
-		line, err := reader.ReadString('\n')
-		if err != nil {
+		case err := <-errCh:
 			t.Fatalf("ReadString returned error before all markers arrived: %v (stream=%q)", err, stream.String())
-		}
-		stream.WriteString(line)
+		case line := <-lineCh:
+			stream.WriteString(line)
 
-		current := stream.String()
-		allFound := true
-		for _, marker := range markers {
-			if !strings.Contains(current, marker) {
-				allFound = false
-				break
+			current := stream.String()
+			allFound := true
+			for _, marker := range markers {
+				if !strings.Contains(current, marker) {
+					allFound = false
+					break
+				}
 			}
-		}
-		if allFound {
-			return current
+			if allFound {
+				return current
+			}
 		}
 	}
 }
