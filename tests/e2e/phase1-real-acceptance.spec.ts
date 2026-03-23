@@ -17,7 +17,9 @@ test("phase1 real acceptance: admin and creator flows are usable against backend
   await adminPage.goto(seed.urls.admin);
   await adminPage.getByRole("button", { name: "进入开发会话" }).click();
   await expect(adminPage.getByRole("heading", { name: "最近变更" })).toBeVisible();
-  await expect(adminPage.getByText(seed.admin.projectId)).toBeVisible();
+  await expect(
+    adminPage.getByRole("complementary").getByRole("heading", { name: seed.admin.projectId }),
+  ).toBeVisible();
   await adminPage.close();
 
   const shotPage = await browser.newPage();

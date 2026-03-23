@@ -181,7 +181,9 @@ export function App() {
     asset.onSelectImportBatch,
     asset.selectedAssetProvenanceId,
     asset.selectedImportBatchId,
-    routeState,
+    routeState.assetId,
+    routeState.importBatchId,
+    routeState.route,
   ]);
 
   useAdminRecentChangesSubscription({

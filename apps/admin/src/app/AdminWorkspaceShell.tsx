@@ -15,7 +15,10 @@ type AdminWorkspaceShellProps = {
   children: ReactNode;
 };
 
-const navItems: Array<{ route: AdminRoute; key: string }> = [
+const navItems: Array<{
+  route: AdminRoute;
+  key: "nav.overview" | "nav.workflow" | "nav.assets" | "nav.governance";
+}> = [
   { route: "overview", key: "nav.overview" },
   { route: "workflow", key: "nav.workflow" },
   { route: "assets", key: "nav.assets" },
@@ -91,7 +94,7 @@ export function AdminWorkspaceShell({
                   cursor: "pointer",
                 }}
               >
-                {t(item.key as never)}
+                {t(item.key)}
               </button>
             );
           })}
