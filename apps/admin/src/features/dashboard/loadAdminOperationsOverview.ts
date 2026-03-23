@@ -21,6 +21,8 @@ type LoadAdminOperationsOverviewOptions = {
   fetchFn?: HualalaFetch;
 };
 
+const MAX_RUNTIME_ALERTS = 3;
+
 function getFailedWorkflowRuns(workflowMonitor: WorkflowMonitorViewModel) {
   return workflowMonitor.runs.filter((run) => run.status === "failed");
 }
@@ -43,20 +45,19 @@ function isBlockedImportBatch(batch: ImportBatchSummaryViewModel) {
 
 function buildReleaseBlockers({
   overview,
-  workflowMonitor,
-  assetMonitor,
+  failedWorkflowRuns,
+  pendingImportBatches,
+  blockedImportBatches,
 }: {
   overview: AdminOverviewViewModel;
-  workflowMonitor: WorkflowMonitorViewModel;
-  assetMonitor: AssetMonitorViewModel;
+  failedWorkflowRuns: WorkflowRunSummaryViewModel[];
+  pendingImportBatches: ImportBatchSummaryViewModel[];
+  blockedImportBatches: ImportBatchSummaryViewModel[];
 }): AdminReleaseBlockerSummary[] {
   const blockers: AdminReleaseBlockerSummary[] = [];
   const latestEvaluation = overview.evaluationRuns[0];
   const latestReviewConclusion =
     overview.shotReviews[0]?.conclusion ?? overview.reviewSummary.latestConclusion;
-  const failedWorkflowRuns = getFailedWorkflowRuns(workflowMonitor);
-  const pendingImportBatches = assetMonitor.importBatches.filter(isPendingImportBatch);
-  const blockedImportBatches = assetMonitor.importBatches.filter(isBlockedImportBatch);
   const primaryAssetBatch = blockedImportBatches[0] ?? pendingImportBatches[0];
 
   if (overview.budgetSnapshot.remainingBudgetCents <= 0) {
@@ -186,7 +187,7 @@ function buildRuntimeAlerts({
     });
   }
 
-  return alerts.slice(0, 3);
+  return alerts.slice(0, MAX_RUNTIME_ALERTS);
 }
 
 export function buildAdminOperationsOverview({
@@ -204,8 +205,9 @@ export function buildAdminOperationsOverview({
   const blockedImportBatches = assetMonitor.importBatches.filter(isBlockedImportBatch);
   const blockers = buildReleaseBlockers({
     overview,
-    workflowMonitor,
-    assetMonitor,
+    failedWorkflowRuns,
+    pendingImportBatches,
+    blockedImportBatches,
   });
 
   return {

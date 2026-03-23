@@ -57,6 +57,23 @@ export function useAdminOverviewController({
   const [errorMessage, setErrorMessage] = useState("");
   const [budgetFeedback, setBudgetFeedback] = useState<ActionFeedback>(null);
 
+  const applyLoadedState = useCallback(
+    ({
+      nextOverview,
+      nextOperationsOverview,
+    }: {
+      nextOverview: AdminOverviewViewModel;
+      nextOperationsOverview: AdminOperationsOverviewViewModel | null;
+    }) => {
+      startTransition(() => {
+        setOverview(nextOverview);
+        setOperationsOverview(nextOperationsOverview);
+        setErrorMessage("");
+      });
+    },
+    [],
+  );
+
   const loadOverviewState = useCallback(async () => {
     const nextOverview = await loadAdminOverview({ projectId, shotExecutionId });
     const nextOperationsOverview = operationsEnabled
@@ -83,12 +100,11 @@ export function useAdminOverviewController({
 
   const refreshOverview = useCallback(async () => {
     const { nextOverview, nextOperationsOverview } = await loadOverviewState();
-    startTransition(() => {
-      setOverview(nextOverview);
-      setOperationsOverview(nextOperationsOverview);
-      setErrorMessage("");
+    applyLoadedState({
+      nextOverview,
+      nextOperationsOverview,
     });
-  }, [loadOverviewState]);
+  }, [applyLoadedState, loadOverviewState]);
 
   const refreshOperationsOverview = useCallback(async () => {
     if (sessionState !== "ready" || !operationsEnabled) {
@@ -135,10 +151,9 @@ export function useAdminOverviewController({
         if (cancelled) {
           return;
         }
-        startTransition(() => {
-          setOverview(nextOverview);
-          setOperationsOverview(nextOperationsOverview);
-          setErrorMessage("");
+        applyLoadedState({
+          nextOverview,
+          nextOperationsOverview,
         });
       })
       .catch((error: unknown) => {
@@ -156,7 +171,7 @@ export function useAdminOverviewController({
     return () => {
       cancelled = true;
     };
-  }, [loadOverviewState, sessionState]);
+  }, [applyLoadedState, loadOverviewState, sessionState]);
 
   const onUpdateBudgetLimit = useCallback(
     async (input: { projectId: string; limitCents: number }) => {
