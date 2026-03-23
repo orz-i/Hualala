@@ -154,8 +154,9 @@ export function CreatorHomePage({
         <section
           style={{
             display: "grid",
-            gridTemplateColumns: "minmax(0, 1.3fr) minmax(280px, 0.9fr)",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
             gap: "20px",
+            alignItems: "start",
           }}
         >
           <article style={{ ...panelStyle, display: "grid", gap: "18px" }}>
