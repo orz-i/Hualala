@@ -52,6 +52,7 @@ export function App() {
         }
       : undefined;
   const homeProjectId = routeState.projectId ?? readRememberedProjectId();
+  const homeRouteProjectId = homeProjectId ?? undefined;
 
   const commitRouteState = useCallback(
     (nextState: CreatorRouteState, mode: "push" | "replace" = "push") => {
@@ -192,7 +193,7 @@ export function App() {
         ...selectCreatorRoute(
           {
             ...routeState,
-            projectId: homeProjectId ?? routeState.projectId,
+            projectId: homeRouteProjectId,
           },
           "shots",
         ),
@@ -200,7 +201,7 @@ export function App() {
       },
       "push",
     );
-  }, [commitRouteState, homeController.shotIdInput, homeProjectId, routeState]);
+  }, [commitRouteState, homeController.shotIdInput, homeRouteProjectId, routeState]);
 
   const handleOpenImportWorkbench = useCallback(
     (importBatchId: string) => {
@@ -214,7 +215,7 @@ export function App() {
           ...selectCreatorRoute(
             {
               ...routeState,
-              projectId: homeProjectId ?? routeState.projectId,
+              projectId: homeRouteProjectId,
             },
             "imports",
           ),
@@ -223,7 +224,7 @@ export function App() {
         "push",
       );
     },
-    [commitRouteState, homeProjectId, routeState],
+    [commitRouteState, homeRouteProjectId, routeState],
   );
 
   const handleStartDevSession = useCallback(async () => {
