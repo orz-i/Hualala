@@ -124,7 +124,7 @@ func TestAudioRoutesExposeProjectScopedTimeline(t *testing.T) {
 				DisplayName:   "旁白",
 				Sequence:      2,
 				Muted:         true,
-				VolumePercent: 70,
+				VolumePercent: 0,
 			},
 			{
 				TrackType:     "bgm",
@@ -143,6 +143,9 @@ func TestAudioRoutesExposeProjectScopedTimeline(t *testing.T) {
 	}
 	if got := updated.Msg.GetTimeline().GetRenderWorkflowRunId(); got != workflowRunID {
 		t.Fatalf("expected render workflow run %q, got %q", workflowRunID, got)
+	}
+	if got := updated.Msg.GetTimeline().GetTracks()[1].GetVolumePercent(); got != 0 {
+		t.Fatalf("expected voiceover volume %d, got %d", 0, got)
 	}
 	if got := updated.Msg.GetTimeline().GetTracks()[0].GetClips()[0].GetAssetId(); got != dialogueAssetID {
 		t.Fatalf("expected audio clip asset %q, got %q", dialogueAssetID, got)

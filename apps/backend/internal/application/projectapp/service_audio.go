@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hualala/apps/backend/internal/domain/project"
+	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
 type AudioWorkbench struct {
@@ -203,6 +204,11 @@ func (s *Service) ensureAudioTimeline(ctx context.Context, projectID string, epi
 		UpdatedAt:    now,
 	}
 	if err := s.repo.SaveAudioTimeline(ctx, record); err != nil {
+		if db.IsUniqueViolation(err) {
+			if existing, ok := s.repo.GetAudioTimeline(projectID, episodeID); ok {
+				return existing, nil
+			}
+		}
 		return project.AudioTimeline{}, err
 	}
 	return record, nil
@@ -262,8 +268,8 @@ func defaultAudioRenderStatus(raw string) string {
 }
 
 func normalizeVolumePercent(raw int) int {
-	if raw <= 0 {
-		return 100
+	if raw < 0 {
+		return 0
 	}
 	return raw
 }

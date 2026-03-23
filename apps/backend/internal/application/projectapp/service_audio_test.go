@@ -11,6 +11,7 @@ import (
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/workflow"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/lib/pq"
 )
 
 func TestAudioWorkbenchLifecycle(t *testing.T) {
@@ -62,7 +63,7 @@ func TestAudioWorkbenchLifecycle(t *testing.T) {
 				DisplayName:   "旁白",
 				Sequence:      1,
 				Muted:         true,
-				VolumePercent: 80,
+				VolumePercent: 0,
 				Clips: []AudioClipInput{
 					{
 						AssetID:     assetIDs["voiceover"],
@@ -109,6 +110,9 @@ func TestAudioWorkbenchLifecycle(t *testing.T) {
 	if got := updated.Tracks[0].TrackType; got != "voiceover" {
 		t.Fatalf("expected first track type %q, got %q", "voiceover", got)
 	}
+	if got := updated.Tracks[0].VolumePercent; got != 0 {
+		t.Fatalf("expected first track volume %d, got %d", 0, got)
+	}
 	if got := updated.Tracks[1].TrackType; got != "dialogue" {
 		t.Fatalf("expected second track type %q, got %q", "dialogue", got)
 	}
@@ -129,8 +133,46 @@ func TestAudioWorkbenchLifecycle(t *testing.T) {
 	if got := readback.Tracks[0].TrackType; got != "voiceover" {
 		t.Fatalf("expected persisted first track %q, got %q", "voiceover", got)
 	}
+	if got := readback.Tracks[0].VolumePercent; got != 0 {
+		t.Fatalf("expected persisted first track volume %d, got %d", 0, got)
+	}
 	if got := readback.Tracks[1].Clips[0].AssetID; got != assetIDs["dialogue"] {
 		t.Fatalf("expected persisted dialogue asset %q, got %q", assetIDs["dialogue"], got)
+	}
+}
+
+func TestGetAudioWorkbenchRecoversFromConcurrentAudioTimelineCreate(t *testing.T) {
+	ctx := context.Background()
+	store := &audioTimelineConflictStore{MemoryStore: db.NewMemoryStore()}
+	projectID, episodeID, _, _ := seedAudioProject(t, ctx, store.MemoryStore)
+	service := NewService(store)
+
+	now := time.Now().UTC()
+	store.conflictProjectID = projectID
+	store.conflictEpisodeID = episodeID
+	store.conflictRecord = project.AudioTimeline{
+		ID:           "audio-timeline-existing",
+		ProjectID:    projectID,
+		EpisodeID:    episodeID,
+		Status:       "draft",
+		RenderStatus: "idle",
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+	store.conflictOnce = true
+
+	workbench, err := service.GetAudioWorkbench(ctx, GetAudioWorkbenchInput{
+		ProjectID: projectID,
+		EpisodeID: episodeID,
+	})
+	if err != nil {
+		t.Fatalf("GetAudioWorkbench returned error after concurrent create conflict: %v", err)
+	}
+	if got := workbench.Timeline.ID; got != store.conflictRecord.ID {
+		t.Fatalf("expected existing timeline %q after conflict recovery, got %q", store.conflictRecord.ID, got)
+	}
+	if got := len(workbench.Tracks); got != 0 {
+		t.Fatalf("expected recovered timeline to have 0 tracks, got %d", got)
 	}
 }
 
@@ -299,4 +341,26 @@ func seedAudioProject(t *testing.T, ctx context.Context, store *db.MemoryStore) 
 	}
 
 	return projectID, episodeID, assetIDs, workflowRunID
+}
+
+type audioTimelineConflictStore struct {
+	*db.MemoryStore
+	conflictOnce      bool
+	conflictProjectID string
+	conflictEpisodeID string
+	conflictRecord    project.AudioTimeline
+}
+
+func (s *audioTimelineConflictStore) SaveAudioTimeline(ctx context.Context, record project.AudioTimeline) error {
+	if s.conflictOnce && record.ProjectID == s.conflictProjectID && record.EpisodeID == s.conflictEpisodeID {
+		s.conflictOnce = false
+		if err := s.MemoryStore.SaveAudioTimeline(ctx, s.conflictRecord); err != nil {
+			return err
+		}
+		return fmt.Errorf("db: upsert audio timeline %s: %w", record.ID, &pq.Error{
+			Code:       "23505",
+			Constraint: "audio_timelines_scope_idx",
+		})
+	}
+	return s.MemoryStore.SaveAudioTimeline(ctx, record)
 }
