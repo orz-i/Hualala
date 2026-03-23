@@ -1,6 +1,28 @@
 import { expect, test } from "@playwright/test";
 import { runBackendSeed } from "./fixtures/runBackendSeed";
 
+test("creator real smoke: home lists import batches and opens the import workbench", async ({
+  page,
+}) => {
+  const seed = await runBackendSeed();
+  const creatorHomeUrl = `http://127.0.0.1:4174/?projectId=${encodeURIComponent(
+    seed.creatorImport.projectId,
+  )}`;
+
+  await page.goto(creatorHomeUrl);
+  await page.getByRole("button", { name: "进入开发会话" }).click();
+
+  await expect(page.getByRole("heading", { name: "Creator 首页" })).toBeVisible();
+  await expect(
+    page.getByText(`当前 projectId：${seed.creatorImport.projectId}`),
+  ).toBeVisible();
+  await expect(page.getByText(seed.creatorImport.importBatchId)).toBeVisible();
+
+  await page.getByRole("button", { name: "进入导入工作台" }).click();
+  await expect(page.getByRole("button", { name: "确认匹配" })).toBeVisible();
+  await expect(page.getByText(seed.creatorImport.importBatchId)).toBeVisible();
+});
+
 test("creator real smoke: shot workbench completes gate checks against backend", async ({
   page,
 }) => {

@@ -1,5 +1,11 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { useLocaleState } from "../i18n";
+import { CreatorHomePage } from "../features/home/CreatorHomePage";
+import {
+  readRememberedProjectId,
+  rememberProjectId,
+} from "../features/home/projectIdMemory";
+import { useCreatorHomeController } from "../features/home/useCreatorHomeController";
 import {
   ImportBatchWorkbenchPage,
 } from "../features/import-batches/ImportBatchWorkbenchPage";
@@ -20,8 +26,9 @@ function getRequestContext() {
   const overrideUserId = searchParams.get("userId") ?? undefined;
 
   return {
+    projectId: searchParams.get("projectId"),
     importBatchId: searchParams.get("importBatchId"),
-    shotId: searchParams.get("shotId") ?? "shot-demo-001",
+    shotId: searchParams.get("shotId"),
     orgId: overrideOrgId,
     userId: overrideUserId,
   };
@@ -29,13 +36,12 @@ function getRequestContext() {
 
 export function App() {
   const { locale, setLocale, t } = useLocaleState();
+  const [requestContext, setRequestContext] = useState(() => getRequestContext());
   const [sessionState, setSessionState] = useState<"loading" | "ready" | "unauthenticated">(
     "loading",
   );
   const [session, setSession] = useState<SessionViewModel | null>(null);
   const [sessionErrorMessage, setSessionErrorMessage] = useState("");
-
-  const requestContext = getRequestContext();
   const identityOverride =
     requestContext.orgId && requestContext.userId
       ? {
@@ -43,6 +49,25 @@ export function App() {
           userId: requestContext.userId,
         }
       : undefined;
+  const homeProjectId = requestContext.projectId ?? readRememberedProjectId();
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setRequestContext(getRequestContext());
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!requestContext.projectId) {
+      return;
+    }
+    rememberProjectId(requestContext.projectId);
+  }, [requestContext.projectId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,12 +126,92 @@ export function App() {
   });
 
   const shotWorkbenchController = useShotWorkbenchController({
-    enabled: sessionState === "ready" && !requestContext.importBatchId,
-    shotId: requestContext.shotId,
+    enabled: sessionState === "ready" && !requestContext.importBatchId && Boolean(requestContext.shotId),
+    shotId: requestContext.shotId ?? "",
     t,
     orgId: identityOverride?.orgId,
     userId: identityOverride?.userId,
   });
+  const homeController = useCreatorHomeController({
+    enabled:
+      sessionState === "ready" &&
+      !requestContext.importBatchId &&
+      !requestContext.shotId,
+    projectId: homeProjectId,
+    orgId: identityOverride?.orgId,
+    userId: identityOverride?.userId,
+  });
+
+  const navigateWithSearch = useCallback(
+    (
+      updates: Partial<
+        Record<"projectId" | "importBatchId" | "shotId" | "orgId" | "userId", string | null>
+      >,
+    ) => {
+      const searchParams = new URLSearchParams(window.location.search);
+
+      for (const [key, value] of Object.entries(updates)) {
+        if (typeof value === "undefined") {
+          continue;
+        }
+
+        const nextValue = value?.trim();
+        if (!nextValue) {
+          searchParams.delete(key);
+          continue;
+        }
+
+        searchParams.set(key, nextValue);
+      }
+
+      const search = searchParams.toString();
+      const nextUrl = `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`;
+      window.history.pushState({}, "", nextUrl);
+      setRequestContext(getRequestContext());
+    },
+    [],
+  );
+
+  const handleSelectProjectId = useCallback(() => {
+    const nextProjectId = homeController.projectIdInput.trim();
+    if (!nextProjectId) {
+      return;
+    }
+
+    rememberProjectId(nextProjectId);
+    navigateWithSearch({
+      projectId: nextProjectId,
+      importBatchId: null,
+      shotId: null,
+    });
+  }, [homeController.projectIdInput, navigateWithSearch]);
+
+  const handleOpenShotWorkbench = useCallback(() => {
+    const nextShotId = homeController.shotIdInput.trim();
+    if (!nextShotId) {
+      return;
+    }
+
+    navigateWithSearch({
+      importBatchId: null,
+      shotId: nextShotId,
+    });
+  }, [homeController.shotIdInput, navigateWithSearch]);
+
+  const handleOpenImportWorkbench = useCallback(
+    (importBatchId: string) => {
+      const nextImportBatchId = importBatchId.trim();
+      if (!nextImportBatchId) {
+        return;
+      }
+
+      navigateWithSearch({
+        importBatchId: nextImportBatchId,
+        shotId: null,
+      });
+    },
+    [navigateWithSearch],
+  );
 
   const handleStartDevSession = useCallback(async () => {
     startTransition(() => {
@@ -187,7 +292,9 @@ export function App() {
 
   const workbenchErrorMessage = requestContext.importBatchId
     ? importWorkbenchController.errorMessage
-    : shotWorkbenchController.errorMessage;
+    : requestContext.shotId
+      ? shotWorkbenchController.errorMessage
+      : "";
   const errorMessage = sessionErrorMessage || workbenchErrorMessage;
 
   if (errorMessage) {
@@ -279,6 +386,30 @@ export function App() {
           onCloseAssetProvenance={shotWorkbenchController.handleCloseAssetProvenance}
           onStartWorkflow={shotWorkbenchController.handleStartWorkflow}
           onRetryWorkflowRun={shotWorkbenchController.handleRetryWorkflowRun}
+        />
+      </>
+    );
+  }
+
+  if (!requestContext.importBatchId && !requestContext.shotId) {
+    return (
+      <>
+        {renderSessionToolbar()}
+        <CreatorHomePage
+          locale={locale}
+          t={t}
+          onLocaleChange={setLocale}
+          projectIdInput={homeController.projectIdInput}
+          activeProjectId={homeProjectId}
+          shotIdInput={homeController.shotIdInput}
+          importBatches={homeController.importBatches}
+          importBatchesPending={homeController.importBatchesPending}
+          errorMessage={homeController.errorMessage || undefined}
+          onProjectIdInputChange={homeController.setProjectIdInput}
+          onSubmitProjectId={handleSelectProjectId}
+          onShotIdInputChange={homeController.setShotIdInput}
+          onSubmitShotId={handleOpenShotWorkbench}
+          onOpenImportBatch={handleOpenImportWorkbench}
         />
       </>
     );
