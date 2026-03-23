@@ -377,6 +377,61 @@ func (s *PostgresStore) SaveWorkflowStep(ctx context.Context, record workflow.Wo
 	return nil
 }
 
+func (s *PostgresStore) SaveJob(ctx context.Context, record workflow.Job) error {
+	payload := strings.TrimSpace(record.Payload)
+	if payload == "" {
+		payload = "{}"
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO jobs (
+			id, organization_id, project_id, resource_type, resource_id, job_type, status, priority,
+			payload, scheduled_at, started_at, completed_at, failed_at, error_code, error_message,
+			created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13, $14, $15, $16, $17)
+		ON CONFLICT (id) DO UPDATE
+		SET organization_id = EXCLUDED.organization_id,
+		    project_id = EXCLUDED.project_id,
+		    resource_type = EXCLUDED.resource_type,
+		    resource_id = EXCLUDED.resource_id,
+		    job_type = EXCLUDED.job_type,
+		    status = EXCLUDED.status,
+		    priority = EXCLUDED.priority,
+		    payload = EXCLUDED.payload,
+		    scheduled_at = EXCLUDED.scheduled_at,
+		    started_at = EXCLUDED.started_at,
+		    completed_at = EXCLUDED.completed_at,
+		    failed_at = EXCLUDED.failed_at,
+		    error_code = EXCLUDED.error_code,
+		    error_message = EXCLUDED.error_message,
+		    updated_at = EXCLUDED.updated_at
+	`, record.ID, record.OrgID, nullableUUID(record.ProjectID), record.ResourceType, nullableUUID(record.ResourceID), record.JobType, defaultString(record.Status, workflow.StatusPending), record.Priority, payload, nullableTime(record.ScheduledAt), nullableTime(record.StartedAt), nullableTime(record.CompletedAt), nullableTime(record.FailedAt), emptyToNil(record.ErrorCode), emptyToNil(record.ErrorMessage), record.CreatedAt, record.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("db: upsert job %s: %w", record.ID, err)
+	}
+	return nil
+}
+
+func (s *PostgresStore) SaveStateTransition(ctx context.Context, record workflow.StateTransition) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO state_transitions (
+			id, organization_id, project_id, resource_type, resource_id, from_state, to_state, transition_reason, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		ON CONFLICT (id) DO UPDATE
+		SET organization_id = EXCLUDED.organization_id,
+		    project_id = EXCLUDED.project_id,
+		    resource_type = EXCLUDED.resource_type,
+		    resource_id = EXCLUDED.resource_id,
+		    from_state = EXCLUDED.from_state,
+		    to_state = EXCLUDED.to_state,
+		    transition_reason = EXCLUDED.transition_reason,
+		    created_at = EXCLUDED.created_at
+	`, record.ID, record.OrgID, nullableUUID(record.ProjectID), record.ResourceType, record.ResourceID, emptyToNil(record.FromState), record.ToState, emptyToNil(record.Reason), record.CreatedAt)
+	if err != nil {
+		return fmt.Errorf("db: upsert state transition %s: %w", record.ID, err)
+	}
+	return nil
+}
+
 func (s *PostgresStore) GetWorkflowRun(workflowRunID string) (workflow.WorkflowRun, bool) {
 	if s == nil || s.db == nil {
 		return workflow.WorkflowRun{}, false
@@ -403,6 +458,41 @@ func (s *PostgresStore) GetWorkflowRun(workflowRunID string) (workflow.WorkflowR
 	record.CreatedAt = record.CreatedAt.UTC()
 	record.UpdatedAt = record.UpdatedAt.UTC()
 	applyWorkflowRunMetadata(&record, metadataText)
+	return record, true
+}
+
+func (s *PostgresStore) GetJob(jobID string) (workflow.Job, bool) {
+	if s == nil || s.db == nil {
+		return workflow.Job{}, false
+	}
+	var (
+		record                           workflow.Job
+		projectID, resourceID, errorCode sql.NullString
+		errorMessage, payload            sql.NullString
+		scheduledAt, startedAt           sql.NullTime
+		completedAt, failedAt            sql.NullTime
+	)
+	err := s.db.QueryRowContext(context.Background(), `
+		SELECT id::text, organization_id::text, project_id::text, resource_type, COALESCE(resource_id::text, ''),
+		       job_type, status, priority, payload::text, scheduled_at, started_at, completed_at, failed_at,
+		       error_code, error_message, created_at, updated_at
+		FROM jobs
+		WHERE id = $1
+	`, strings.TrimSpace(jobID)).Scan(&record.ID, &record.OrgID, &projectID, &record.ResourceType, &resourceID, &record.JobType, &record.Status, &record.Priority, &payload, &scheduledAt, &startedAt, &completedAt, &failedAt, &errorCode, &errorMessage, &record.CreatedAt, &record.UpdatedAt)
+	if err != nil {
+		return workflow.Job{}, false
+	}
+	record.ProjectID = nullStringValue(projectID)
+	record.ResourceID = nullStringValue(resourceID)
+	record.Payload = nullStringValue(payload)
+	record.ScheduledAt = nullTimeValue(scheduledAt)
+	record.StartedAt = nullTimeValue(startedAt)
+	record.CompletedAt = nullTimeValue(completedAt)
+	record.FailedAt = nullTimeValue(failedAt)
+	record.ErrorCode = nullStringValue(errorCode)
+	record.ErrorMessage = nullStringValue(errorMessage)
+	record.CreatedAt = record.CreatedAt.UTC()
+	record.UpdatedAt = record.UpdatedAt.UTC()
 	return record, true
 }
 
@@ -481,6 +571,136 @@ func (s *PostgresStore) ListWorkflowRuns(projectID, resourceID, status, workflow
 		items = append(items, record)
 	}
 	return items
+}
+
+func (s *PostgresStore) ListJobs(resourceType, resourceID, jobType, status string) []workflow.Job {
+	if s == nil || s.db == nil {
+		return nil
+	}
+	rows, err := s.db.QueryContext(context.Background(), `
+		SELECT id::text, organization_id::text, project_id::text, resource_type, COALESCE(resource_id::text, ''),
+		       job_type, status, priority, payload::text, scheduled_at, started_at, completed_at, failed_at,
+		       COALESCE(error_code, ''), COALESCE(error_message, ''), created_at, updated_at
+		FROM jobs
+		WHERE ($1 = '' OR resource_type = $1)
+		  AND ($2 = '' OR resource_id::text = $2)
+		  AND ($3 = '' OR job_type = $3)
+		  AND ($4 = '' OR status = $4)
+		ORDER BY priority DESC, created_at ASC, id ASC
+	`, strings.TrimSpace(resourceType), strings.TrimSpace(resourceID), strings.TrimSpace(jobType), strings.TrimSpace(status))
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	items := make([]workflow.Job, 0)
+	for rows.Next() {
+		var (
+			record                 workflow.Job
+			projectID, payload     sql.NullString
+			resourceValue          sql.NullString
+			scheduledAt, startedAt sql.NullTime
+			completedAt, failedAt  sql.NullTime
+		)
+		if err := rows.Scan(&record.ID, &record.OrgID, &projectID, &record.ResourceType, &resourceValue, &record.JobType, &record.Status, &record.Priority, &payload, &scheduledAt, &startedAt, &completedAt, &failedAt, &record.ErrorCode, &record.ErrorMessage, &record.CreatedAt, &record.UpdatedAt); err != nil {
+			return nil
+		}
+		record.ProjectID = nullStringValue(projectID)
+		record.ResourceID = nullStringValue(resourceValue)
+		record.Payload = nullStringValue(payload)
+		record.ScheduledAt = nullTimeValue(scheduledAt)
+		record.StartedAt = nullTimeValue(startedAt)
+		record.CompletedAt = nullTimeValue(completedAt)
+		record.FailedAt = nullTimeValue(failedAt)
+		record.CreatedAt = record.CreatedAt.UTC()
+		record.UpdatedAt = record.UpdatedAt.UTC()
+		items = append(items, record)
+	}
+	return items
+}
+
+func (s *PostgresStore) ListStateTransitions(resourceType, resourceID string) []workflow.StateTransition {
+	if s == nil || s.db == nil {
+		return nil
+	}
+	rows, err := s.db.QueryContext(context.Background(), `
+		SELECT id::text, organization_id::text, project_id::text, resource_type, resource_id::text,
+		       COALESCE(from_state, ''), to_state, COALESCE(transition_reason, ''), created_at
+		FROM state_transitions
+		WHERE ($1 = '' OR resource_type = $1)
+		  AND ($2 = '' OR resource_id::text = $2)
+		ORDER BY created_at ASC, id ASC
+	`, strings.TrimSpace(resourceType), strings.TrimSpace(resourceID))
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	items := make([]workflow.StateTransition, 0)
+	for rows.Next() {
+		var (
+			record    workflow.StateTransition
+			projectID sql.NullString
+		)
+		if err := rows.Scan(&record.ID, &record.OrgID, &projectID, &record.ResourceType, &record.ResourceID, &record.FromState, &record.ToState, &record.Reason, &record.CreatedAt); err != nil {
+			return nil
+		}
+		record.ProjectID = nullStringValue(projectID)
+		record.CreatedAt = record.CreatedAt.UTC()
+		items = append(items, record)
+	}
+	return items
+}
+
+func (s *PostgresStore) ClaimNextJob(ctx context.Context, jobType string) (workflow.Job, bool, error) {
+	if s == nil || s.db == nil {
+		return workflow.Job{}, false, fmt.Errorf("db: postgres store requires database handle")
+	}
+	var (
+		record                         workflow.Job
+		projectID, resourceID, payload sql.NullString
+		scheduledAt, startedAt         sql.NullTime
+		completedAt, failedAt          sql.NullTime
+		errorCode, errorMessage        sql.NullString
+	)
+	err := s.db.QueryRowContext(ctx, `
+		WITH next_job AS (
+			SELECT id
+			FROM jobs
+			WHERE job_type = $1
+			  AND status = 'pending'
+			  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+			ORDER BY priority DESC, created_at ASC, id ASC
+			FOR UPDATE SKIP LOCKED
+			LIMIT 1
+		)
+		UPDATE jobs
+		SET status = 'running',
+		    started_at = COALESCE(started_at, NOW()),
+		    updated_at = NOW()
+		WHERE id = (SELECT id FROM next_job)
+		RETURNING id::text, organization_id::text, project_id::text, resource_type, COALESCE(resource_id::text, ''),
+		          job_type, status, priority, payload::text, scheduled_at, started_at, completed_at, failed_at,
+		          error_code, error_message, created_at, updated_at
+	`, strings.TrimSpace(jobType)).Scan(&record.ID, &record.OrgID, &projectID, &record.ResourceType, &resourceID, &record.JobType, &record.Status, &record.Priority, &payload, &scheduledAt, &startedAt, &completedAt, &failedAt, &errorCode, &errorMessage, &record.CreatedAt, &record.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return workflow.Job{}, false, nil
+		}
+		return workflow.Job{}, false, fmt.Errorf("db: claim next job %s: %w", strings.TrimSpace(jobType), err)
+	}
+	record.ProjectID = nullStringValue(projectID)
+	record.ResourceID = nullStringValue(resourceID)
+	record.Payload = nullStringValue(payload)
+	record.ScheduledAt = nullTimeValue(scheduledAt)
+	record.StartedAt = nullTimeValue(startedAt)
+	record.CompletedAt = nullTimeValue(completedAt)
+	record.FailedAt = nullTimeValue(failedAt)
+	record.ErrorCode = nullStringValue(errorCode)
+	record.ErrorMessage = nullStringValue(errorMessage)
+	record.CreatedAt = record.CreatedAt.UTC()
+	record.UpdatedAt = record.UpdatedAt.UTC()
+	return record, true, nil
 }
 
 func applyWorkflowRunMetadata(record *workflow.WorkflowRun, metadataText string) {

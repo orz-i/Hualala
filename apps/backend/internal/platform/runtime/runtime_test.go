@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hualala/apps/backend/internal/application/workflowapp"
+	"github.com/hualala/apps/backend/internal/domain/workflow"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
@@ -23,7 +24,7 @@ func TestFactoryAcceptsRuntimeStore(t *testing.T) {
 	}
 }
 
-func TestFactoryWorkflowServiceResolvesKnownProviderWithoutCallerInput(t *testing.T) {
+func TestFactoryWorkflowServiceQueuesKnownProviderWithoutCallerInput(t *testing.T) {
 	ctx := context.Background()
 	store := db.NewMemoryStore()
 	services := NewFactory(store).Services()
@@ -40,7 +41,47 @@ func TestFactoryWorkflowServiceResolvesKnownProviderWithoutCallerInput(t *testin
 	if got := record.Provider; got != "seedance" {
 		t.Fatalf("expected resolved provider seedance, got %q", got)
 	}
+	if got := record.Status; got != workflow.StatusPending {
+		t.Fatalf("expected queued workflow status pending, got %q", got)
+	}
+	if got := record.ExternalRequestID; got != "" {
+		t.Fatalf("expected queued workflow to hide external_request_id before worker, got %q", got)
+	}
+}
+
+func TestFactoryWorkerServicesProcessQueuedWorkflowJobs(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	factory := NewFactory(store)
+
+	queued, err := factory.Services().WorkflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
+		OrganizationID: "org-1",
+		ProjectID:      "project-1",
+		WorkflowType:   "asset.import",
+		ResourceID:     "batch-1",
+	})
+	if err != nil {
+		t.Fatalf("StartWorkflow returned error: %v", err)
+	}
+
+	processed, err := factory.WorkerServices().WorkflowService.ProcessNextWorkflowJob(ctx)
+	if err != nil {
+		t.Fatalf("ProcessNextWorkflowJob returned error: %v", err)
+	}
+	if !processed {
+		t.Fatalf("expected worker services to process queued workflow job")
+	}
+
+	record, err := factory.Services().WorkflowService.GetWorkflowRun(ctx, workflowapp.GetWorkflowRunInput{
+		WorkflowRunID: queued.ID,
+	})
+	if err != nil {
+		t.Fatalf("GetWorkflowRun returned error: %v", err)
+	}
+	if got := record.Status; got != workflow.StatusCompleted {
+		t.Fatalf("expected completed workflow status after worker dispatch, got %q", got)
+	}
 	if record.ExternalRequestID == "" {
-		t.Fatalf("expected runtime workflow to expose external_request_id")
+		t.Fatalf("expected worker services to populate external_request_id")
 	}
 }

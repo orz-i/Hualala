@@ -83,9 +83,9 @@ func (s *Service) EvaluateWorkflowRecoveryAllowed(run workflow.WorkflowRun) erro
 
 func (s *Service) EvaluateWorkflowCancellationAllowed(run workflow.WorkflowRun) error {
 	switch status := strings.TrimSpace(run.Status); status {
-	case workflow.StatusRunning:
+	case workflow.StatusPending, workflow.StatusRunning:
 		return nil
-	case workflow.StatusPending, workflow.StatusFailed, workflow.StatusCompleted, workflow.StatusCancelled:
+	case workflow.StatusFailed, workflow.StatusCompleted, workflow.StatusCancelled:
 		return fmt.Errorf("policyapp: %s workflow run cannot be cancelled", status)
 	default:
 		return errors.New("policyapp: workflow run cannot be cancelled")

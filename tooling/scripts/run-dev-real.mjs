@@ -535,6 +535,11 @@ export async function main() {
     waitForHttp(backendHealthUrl, `等待 backend ${backendHealthUrl}`),
   );
   await startManagedProcess(
+    "backend-worker",
+    "node tooling/scripts/run-backend-worker-dev.mjs",
+    async () => {},
+  );
+  await startManagedProcess(
     "admin",
     "corepack pnpm --filter @hualala/admin exec vite --host 127.0.0.1 --port 4173 --strictPort",
     () => waitForHttp(adminUrl, `等待 admin ${adminUrl}`),
@@ -547,6 +552,7 @@ export async function main() {
 
   console.log("[dev:real] 本地真实联调已就绪");
   console.log(`[dev:real] backend health: ${backendHealthUrl}`);
+  console.log("[dev:real] backend worker: started");
   console.log(`[dev:real] admin: ${adminUrl}`);
   console.log(`[dev:real] creator: ${creatorUrl}`);
   console.log("[dev:real] 如需注入演示数据，请执行: corepack pnpm run dev:real:seed");

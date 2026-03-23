@@ -28,11 +28,11 @@ func TestReliabilityFlow(t *testing.T) {
 	projectService := fixture.Services.ProjectService
 	adapter := gatewayapp.NewFakeAdapter()
 	adapter.SetProviderFailure("seedance", errors.New("provider failed"))
-	policyService, gatewayService, workflowService := fixture.NewWorkflowServices(adapter)
+	policyService, gatewayService, apiWorkflowService, workerWorkflowService := fixture.NewWorkflowServices(adapter)
 	server := fixture.NewHTTPServer(t, func(services *runtime.ServiceSet) {
 		services.PolicyService = policyService
 		services.GatewayService = gatewayService
-		services.WorkflowService = workflowService
+		services.WorkflowService = apiWorkflowService
 	})
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
@@ -46,7 +46,7 @@ func TestReliabilityFlow(t *testing.T) {
 		t.Fatalf("CreateProject returned error: %v", err)
 	}
 
-	failedRun, err := workflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
+	failedQueued, err := apiWorkflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
 		OrganizationID:     project.OrganizationID,
 		ProjectID:          project.ID,
 		WorkflowType:       "asset.import",
@@ -57,42 +57,80 @@ func TestReliabilityFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StartWorkflow returned error: %v", err)
 	}
-	if got := failedRun.Provider; got != "seedance" {
-		t.Fatalf("expected failed workflow provider seedance, got %q", got)
+	if got := failedQueued.Provider; got != "seedance" {
+		t.Fatalf("expected queued workflow provider seedance, got %q", got)
 	}
-	if got := failedRun.Status; got != "failed" {
-		t.Fatalf("expected failed workflow status, got %q", got)
+	if got := failedQueued.Status; got != workflow.StatusPending {
+		t.Fatalf("expected queued workflow status pending, got %q", got)
 	}
 
 	events := fixture.ListProjectEvents(project.OrganizationID, project.ID)
-	if len(events) < 2 {
-		t.Fatalf("expected workflow running and failed events, got %d", len(events))
+	if len(events) < 1 {
+		t.Fatalf("expected pending workflow event, got %d", len(events))
 	}
 	if got := events[0].EventType; got != "workflow.updated" {
 		t.Fatalf("expected first event workflow.updated, got %q", got)
 	}
-	if !strings.Contains(events[0].Payload, `"status":"running"`) {
-		t.Fatalf("expected running payload in first event, got %q", events[0].Payload)
+	if !strings.Contains(events[0].Payload, `"status":"pending"`) {
+		t.Fatalf("expected pending payload in first event, got %q", events[0].Payload)
 	}
-	if !strings.Contains(events[1].Payload, `"status":"failed"`) {
-		t.Fatalf("expected failed payload in second event, got %q", events[1].Payload)
+
+	if processedCount := fixture.DrainWorkflowJobs(t, workerWorkflowService); processedCount != 1 {
+		t.Fatalf("expected 1 workflow job to be drained, got %d", processedCount)
+	}
+
+	failedRun, err := apiWorkflowService.GetWorkflowRun(ctx, workflowapp.GetWorkflowRunInput{
+		WorkflowRunID: failedQueued.ID,
+	})
+	if err != nil {
+		t.Fatalf("GetWorkflowRun returned error: %v", err)
+	}
+	if got := failedRun.Status; got != workflow.StatusFailed {
+		t.Fatalf("expected failed workflow status, got %q", got)
+	}
+
+	events = fixture.ListProjectEvents(project.OrganizationID, project.ID)
+	if len(events) < 3 {
+		t.Fatalf("expected pending/running/failed workflow events, got %d", len(events))
+	}
+	if !strings.Contains(events[1].Payload, `"status":"running"`) {
+		t.Fatalf("expected running payload in second event, got %q", events[1].Payload)
+	}
+	if !strings.Contains(events[2].Payload, `"status":"failed"`) {
+		t.Fatalf("expected failed payload in third event, got %q", events[2].Payload)
 	}
 
 	adapter.ClearProviderFailure("seedance")
-	retried, err := workflowService.RetryWorkflowRun(ctx, workflowapp.RetryWorkflowRunInput{
+	retried, err := apiWorkflowService.RetryWorkflowRun(ctx, workflowapp.RetryWorkflowRunInput{
 		WorkflowRunID: failedRun.ID,
 	})
 	if err != nil {
 		t.Fatalf("RetryWorkflowRun returned error: %v", err)
 	}
-	if got := retried.Status; got != "running" {
-		t.Fatalf("expected running workflow status after retry, got %q", got)
+	if got := retried.Status; got != workflow.StatusPending {
+		t.Fatalf("expected queued retry status pending, got %q", got)
 	}
 	if got := retried.AttemptCount; got != 2 {
 		t.Fatalf("expected attempt_count 2, got %d", got)
 	}
+	if got := retried.ExternalRequestID; got != "" {
+		t.Fatalf("expected retry response to clear external_request_id, got %q", got)
+	}
+	if processedCount := fixture.DrainWorkflowJobs(t, workerWorkflowService); processedCount != 1 {
+		t.Fatalf("expected retried workflow job to be drained once, got %d", processedCount)
+	}
 
-	successRun, err := workflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
+	completedRun, err := apiWorkflowService.GetWorkflowRun(ctx, workflowapp.GetWorkflowRunInput{
+		WorkflowRunID: failedRun.ID,
+	})
+	if err != nil {
+		t.Fatalf("GetWorkflowRun after retry returned error: %v", err)
+	}
+	if got := completedRun.Status; got != workflow.StatusCompleted {
+		t.Fatalf("expected completed workflow status after retry dispatch, got %q", got)
+	}
+
+	successQueued, err := apiWorkflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
 		OrganizationID:     project.OrganizationID,
 		ProjectID:          project.ID,
 		WorkflowType:       "asset.import",
@@ -103,22 +141,45 @@ func TestReliabilityFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StartWorkflow returned error for idempotency case: %v", err)
 	}
+	if processedCount := fixture.DrainWorkflowJobs(t, workerWorkflowService); processedCount != 1 {
+		t.Fatalf("expected successful workflow job to be drained once, got %d", processedCount)
+	}
+
+	successRun, err := apiWorkflowService.GetWorkflowRun(ctx, workflowapp.GetWorkflowRunInput{
+		WorkflowRunID: successQueued.ID,
+	})
+	if err != nil {
+		t.Fatalf("GetWorkflowRun for idempotency case returned error: %v", err)
+	}
 	if successRun.ExternalRequestID == "" {
 		t.Fatalf("expected external_request_id for successful workflow")
 	}
 	fixture.ForceWorkflowRunState(t, successRun.ID, func(record *workflow.WorkflowRun) {
-		record.Status = "failed"
+		record.Status = workflow.StatusFailed
 		record.LastError = "transient provider failure"
 		record.UpdatedAt = time.Now().UTC()
 	})
 
-	replayed, err := workflowService.RetryWorkflowRun(ctx, workflowapp.RetryWorkflowRunInput{
+	replayed, err := apiWorkflowService.RetryWorkflowRun(ctx, workflowapp.RetryWorkflowRunInput{
 		WorkflowRunID: successRun.ID,
 	})
 	if err != nil {
 		t.Fatalf("RetryWorkflowRun returned error for idempotency case: %v", err)
 	}
-	if got := replayed.ExternalRequestID; got != successRun.ExternalRequestID {
+	if got := replayed.ExternalRequestID; got != "" {
+		t.Fatalf("expected queued retry to hide external_request_id, got %q", got)
+	}
+	if processedCount := fixture.DrainWorkflowJobs(t, workerWorkflowService); processedCount != 1 {
+		t.Fatalf("expected replayed workflow job to be drained once, got %d", processedCount)
+	}
+
+	replayedRun, err := apiWorkflowService.GetWorkflowRun(ctx, workflowapp.GetWorkflowRunInput{
+		WorkflowRunID: successRun.ID,
+	})
+	if err != nil {
+		t.Fatalf("GetWorkflowRun after replay returned error: %v", err)
+	}
+	if got := replayedRun.ExternalRequestID; got != successRun.ExternalRequestID {
 		t.Fatalf("expected stable external_request_id %q, got %q", successRun.ExternalRequestID, got)
 	}
 
@@ -128,7 +189,7 @@ func TestReliabilityFlow(t *testing.T) {
 		LimitCents:    100,
 		ReservedCents: 90,
 	})
-	_, err = workflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
+	_, err = apiWorkflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
 		OrganizationID:     project.OrganizationID,
 		ProjectID:          project.ID,
 		WorkflowType:       "asset.import",
@@ -174,7 +235,7 @@ func TestReliabilityFlow(t *testing.T) {
 	}
 
 	allEvents := fixture.ListProjectEvents(project.OrganizationID, project.ID)
-	if len(allEvents) < 4 {
+	if len(allEvents) < 8 {
 		t.Fatalf("expected workflow and upload events, got %d", len(allEvents))
 	}
 	lastEventID := allEvents[0].ID

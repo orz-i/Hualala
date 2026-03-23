@@ -87,7 +87,7 @@ func TestEvaluateWorkflowRecoveryAllowedOnlyAllowsFailed(t *testing.T) {
 	}
 }
 
-func TestEvaluateWorkflowCancellationAllowedOnlyAllowsRunning(t *testing.T) {
+func TestEvaluateWorkflowCancellationAllowedAllowsPendingAndRunning(t *testing.T) {
 	service := NewService(db.NewMemoryStore())
 
 	testCases := []struct {
@@ -95,8 +95,8 @@ func TestEvaluateWorkflowCancellationAllowedOnlyAllowsRunning(t *testing.T) {
 		status    string
 		wantError string
 	}{
+		{name: "pending", status: workflow.StatusPending},
 		{name: "running", status: workflow.StatusRunning},
-		{name: "pending", status: workflow.StatusPending, wantError: "policyapp: pending workflow run cannot be cancelled"},
 		{name: "failed", status: workflow.StatusFailed, wantError: "policyapp: failed workflow run cannot be cancelled"},
 		{name: "completed", status: workflow.StatusCompleted, wantError: "policyapp: completed workflow run cannot be cancelled"},
 		{name: "cancelled", status: workflow.StatusCancelled, wantError: "policyapp: cancelled workflow run cannot be cancelled"},

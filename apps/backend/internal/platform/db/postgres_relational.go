@@ -34,9 +34,13 @@ func extractFallbackSnapshot(snapshot Snapshot) Snapshot {
 	fallback := newEmptySnapshot()
 	fallback.NextWorkflowRunID = snapshot.NextWorkflowRunID
 	fallback.NextWorkflowStepID = snapshot.NextWorkflowStepID
+	fallback.NextJobID = snapshot.NextJobID
+	fallback.NextStateTransitionID = snapshot.NextStateTransitionID
 	fallback.NextGatewayRequestID = snapshot.NextGatewayRequestID
 	fallback.WorkflowRuns = cloneMap(snapshot.WorkflowRuns)
 	fallback.WorkflowSteps = cloneMap(snapshot.WorkflowSteps)
+	fallback.Jobs = cloneMap(snapshot.Jobs)
+	fallback.StateTransitions = cloneMap(snapshot.StateTransitions)
 	fallback.GatewayResults = cloneMap(snapshot.GatewayResults)
 	return fallback
 }
@@ -44,9 +48,13 @@ func extractFallbackSnapshot(snapshot Snapshot) Snapshot {
 func mergeFallbackSnapshot(target *Snapshot, fallback Snapshot) {
 	target.NextWorkflowRunID = fallback.NextWorkflowRunID
 	target.NextWorkflowStepID = fallback.NextWorkflowStepID
+	target.NextJobID = fallback.NextJobID
+	target.NextStateTransitionID = fallback.NextStateTransitionID
 	target.NextGatewayRequestID = fallback.NextGatewayRequestID
 	target.WorkflowRuns = cloneMap(fallback.WorkflowRuns)
 	target.WorkflowSteps = cloneMap(fallback.WorkflowSteps)
+	target.Jobs = cloneMap(fallback.Jobs)
+	target.StateTransitions = cloneMap(fallback.StateTransitions)
 	target.GatewayResults = cloneMap(fallback.GatewayResults)
 }
 

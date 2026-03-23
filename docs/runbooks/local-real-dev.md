@@ -19,7 +19,7 @@
 
 - `DB_DRIVER=postgres` 时，`db.OpenStore(...)` 直接返回 Postgres-backed runtime store
 - workflow / asset / execution / billing / auth 等主域状态不再 materialize 成进程内 `*db.MemoryStore`
-- workflow 启动链默认经由 backend 自己的 runtime adapter 与 direct executor 装配，不再把生产路径直接绑到测试用的 `FakeAdapter` / `InMemoryExecutor`
+- workflow API 入口默认只负责落 `workflow_runs` / `workflow_steps` / `jobs`，真正的 gateway dispatch 由独立 `backend-worker` 进程消费
 - `/sse/events` 的 replay 真相层来自 Postgres durable event path，而不是单纯依赖进程内 publisher
 
 ## 前置依赖
@@ -52,8 +52,9 @@ corepack pnpm run dev:real
 3. `corepack pnpm run db:migrate`
 4. `corepack pnpm run db:bootstrap-dev`
 5. 启动 backend
-6. 启动 admin Vite（4173）
-7. 启动 creator Vite（4174）
+6. 启动 backend-worker
+7. 启动 admin Vite（4173）
+8. 启动 creator Vite（4174）
 
 注意：
 
@@ -84,6 +85,7 @@ corepack pnpm run dev:real:seed
 - backend health：`http://127.0.0.1:8080/healthz`
 - admin：`http://127.0.0.1:4173`
 - creator：`http://127.0.0.1:4174`
+- worker：与 backend 共用同一套 Postgres；可在 `dev:real` 终端看到 `backend-worker` 存活日志
 
 执行 `corepack pnpm run dev:real:seed` 后，admin / creator 应能看到真实数据：
 
@@ -112,6 +114,7 @@ corepack pnpm run dev:real:seed
 
 - 项目、workflow、asset、shot execution 数据仍然存在
 - `/sse/events` 用 `Last-Event-ID` replay 仍能补到重启前写入的事件
+- 从 admin 发起 workflow 后，即使刷新详情页，也能看到非空 `externalRequestId`
 
 如果 backend 重启后数据消失，优先检查：
 
@@ -121,7 +124,7 @@ corepack pnpm run dev:real:seed
 
 ## Backend 容器化基线
 
-当前仓库已经提供最小 backend 容器入口：
+当前仓库已经提供最小 backend/worker 容器入口：
 
 - Dockerfile：`apps/backend/Dockerfile`
 - 构建命令：
@@ -139,9 +142,16 @@ docker run --rm -p 8080:8080 ^
   -e AUTO_MIGRATE=true ^
   -e HTTP_ADDR=:8080 ^
   hualala-backend
+
+docker run --rm ^
+  -e DB_DRIVER=postgres ^
+  -e DATABASE_URL=postgres://hualala:hualala@host.docker.internal:5432/hualala?sslmode=disable ^
+  -e AUTO_MIGRATE=true ^
+  -e WORKER_POLL_INTERVAL_MS=250 ^
+  hualala-backend hualala-backend-worker
 ```
 
-容器 env contract 只收口这 4 个变量：
+容器 env contract 收口这 5 个变量：
 
 - `DB_DRIVER`
   - 默认值：`postgres`
@@ -156,6 +166,9 @@ docker run --rm -p 8080:8080 ^
 - `HTTP_ADDR`
   - 默认：`:8080`
   - 容器侧仍保持 backend 监听 `8080`
+- `WORKER_POLL_INTERVAL_MS`
+  - 默认：`250`
+  - 仅 worker 进程消费，单位毫秒
 
 ## 停止与清理
 
@@ -225,6 +238,20 @@ docker run --rm -p 8080:8080 ^
 - 单独执行 `node tooling/scripts/run-backend-dev.mjs`
 - 查看 `go run ./apps/backend/cmd/api` 的启动错误
 - 确认 `8080` 端口未被其他进程占用
+
+### 3.1 worker 没有消费 workflow job
+
+症状：
+
+- `StartWorkflow` 返回成功，但 workflow 长时间停留在 `pending`
+- admin 详情页刷新后 `externalRequestId` 仍为空
+
+处理：
+
+- 单独执行 `node tooling/scripts/run-backend-worker-dev.mjs`
+- 查看 `go run ./apps/backend/cmd/worker` 的启动错误
+- 确认 worker 和 backend 指向同一个 `DATABASE_URL`
+- 如需降噪排查，显式设置 `WORKER_POLL_INTERVAL_MS=250`
 
 ### 4. `dev:real` 一启动就报端口占用并退出
 

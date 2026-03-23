@@ -74,11 +74,21 @@ func (f Factory) Repositories() RepositorySet {
 }
 
 func (f Factory) Services() ServiceSet {
+	return f.services(nil)
+}
+
+func (f Factory) WorkerServices() ServiceSet {
+	repos := f.Repositories()
+	gatewayService := gatewayapp.NewService(repos.GatewayStore, gatewayapp.NewRuntimeAdapter())
+	return f.services(temporal.NewDirectExecutor(gatewayService))
+}
+
+func (f Factory) services(workflowExecutor temporal.Executor) ServiceSet {
 	repos := f.Repositories()
 	authorizer := authz.NewAuthorizer(repos.AuthOrg)
 	policyService := policyapp.NewService(repos.PolicyReader)
 	gatewayService := gatewayapp.NewService(repos.GatewayStore, gatewayapp.NewRuntimeAdapter())
-	workflowService := workflowapp.NewService(repos.WorkflowRepo, repos.EventPublisher, temporal.NewDirectExecutor(gatewayService), policyService)
+	workflowService := workflowapp.NewService(repos.WorkflowRepo, repos.EventPublisher, workflowExecutor, policyService)
 
 	return ServiceSet{
 		AuthService:      authapp.NewService(repos.AuthOrg, authorizer),
