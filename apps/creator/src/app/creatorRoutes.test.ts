@@ -43,6 +43,15 @@ describe("creatorRoutes", () => {
     ).toBe("/shots?shotId=shot-live-1&orgId=org-live-1&userId=user-live-1");
   });
 
+  it("keeps the collaboration pathname when a shot deep link targets /collab", () => {
+    expect(
+      normalizeLegacyCreatorUrl({
+        pathname: "/collab",
+        search: "?shotId=shot-live-1&orgId=org-live-1&userId=user-live-1",
+      } as Pick<Location, "pathname" | "search">),
+    ).toBe("/collab?shotId=shot-live-1&orgId=org-live-1&userId=user-live-1");
+  });
+
   it("keeps import precedence when both importBatchId and shotId are present", () => {
     expect(
       normalizeLegacyCreatorUrl({

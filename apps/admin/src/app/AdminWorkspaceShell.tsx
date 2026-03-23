@@ -17,11 +17,17 @@ type AdminWorkspaceShellProps = {
 
 const navItems: Array<{
   route: AdminRoute;
-  key: "nav.overview" | "nav.workflow" | "nav.assets" | "nav.governance";
+  key:
+    | "nav.overview"
+    | "nav.workflow"
+    | "nav.assets"
+    | "nav.collaboration"
+    | "nav.governance";
 }> = [
   { route: "overview", key: "nav.overview" },
   { route: "workflow", key: "nav.workflow" },
   { route: "assets", key: "nav.assets" },
+  { route: "collaboration", key: "nav.collaboration" },
   { route: "governance", key: "nav.governance" },
 ];
 

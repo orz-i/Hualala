@@ -1,4 +1,4 @@
-export type AdminRoute = "overview" | "workflow" | "assets" | "governance";
+export type AdminRoute = "overview" | "workflow" | "assets" | "governance" | "collaboration";
 
 export type AdminRouteState = {
   route: AdminRoute;
@@ -9,6 +9,7 @@ export type AdminRouteState = {
   workflowRunId?: string;
   importBatchId?: string;
   assetId?: string;
+  shotId?: string;
 };
 
 const defaultProjectId = "project-demo-001";
@@ -19,6 +20,7 @@ const routePathMap: Record<AdminRoute, string> = {
   workflow: "/workflow",
   assets: "/assets",
   governance: "/governance",
+  collaboration: "/collaboration",
 };
 
 function normalizeAdminRoute(pathname: string): AdminRoute {
@@ -31,6 +33,9 @@ function normalizeAdminRoute(pathname: string): AdminRoute {
   }
   if (normalizedPathname === routePathMap.governance) {
     return "governance";
+  }
+  if (normalizedPathname === routePathMap.collaboration) {
+    return "collaboration";
   }
   return "overview";
 }
@@ -46,6 +51,7 @@ export function parseAdminRouteState(locationLike: Pick<Location, "pathname" | "
     workflowRunId: searchParams.get("workflowRunId") ?? undefined,
     importBatchId: searchParams.get("importBatchId") ?? undefined,
     assetId: searchParams.get("assetId") ?? undefined,
+    shotId: searchParams.get("shotId") ?? undefined,
   } satisfies AdminRouteState;
 }
 
@@ -74,6 +80,10 @@ export function buildAdminRouteUrl(state: AdminRouteState) {
     }
   }
 
+  if (state.route === "collaboration" && state.shotId) {
+    searchParams.set("shotId", state.shotId);
+  }
+
   return `${routePathMap[state.route]}?${searchParams.toString()}`;
 }
 
@@ -84,5 +94,6 @@ export function selectAdminRoute(state: AdminRouteState, route: AdminRoute): Adm
     workflowRunId: undefined,
     importBatchId: undefined,
     assetId: undefined,
+    shotId: route === "collaboration" ? state.shotId : undefined,
   };
 }

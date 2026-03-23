@@ -1,4 +1,6 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
+import { CollabWorkbenchPage } from "../features/collaboration/CollabWorkbenchPage";
+import { useCollabController } from "../features/collaboration/useCollabController";
 import { CreatorHomePage } from "../features/home/CreatorHomePage";
 import {
   readRememberedProjectId,
@@ -51,6 +53,8 @@ export function App() {
           userId: routeState.userId,
         }
       : undefined;
+  const effectiveOrgId = identityOverride?.orgId ?? session?.orgId;
+  const effectiveUserId = identityOverride?.userId ?? session?.userId;
   const homeProjectId = routeState.projectId ?? readRememberedProjectId();
   const homeRouteProjectId = homeProjectId ?? undefined;
 
@@ -157,6 +161,20 @@ export function App() {
     t,
     orgId: identityOverride?.orgId,
     userId: identityOverride?.userId,
+  });
+
+  const collabOwnerType = routeState.shotId ? "shot" : "project";
+  const collabOwnerId = routeState.shotId ?? routeState.projectId ?? "";
+
+  const collabController = useCollabController({
+    enabled:
+      sessionState === "ready" && routeState.route === "collab" && Boolean(collabOwnerId),
+    ownerType: collabOwnerType,
+    ownerId: collabOwnerId,
+    projectId: routeState.projectId,
+    t,
+    orgId: effectiveOrgId,
+    userId: effectiveUserId,
   });
 
   const homeController = useCreatorHomeController({
@@ -270,6 +288,7 @@ export function App() {
       routeState.projectId ??
       readRememberedProjectId() ??
       importWorkbenchController.importWorkbench?.importBatch.projectId ??
+      collabController.collaborationSession?.scope?.projectId ??
       shotWorkbenchController.shotWorkbench?.shotExecution.projectId ??
       undefined;
 
@@ -282,6 +301,7 @@ export function App() {
     );
   }, [
     commitRouteState,
+    collabController.collaborationSession?.scope?.projectId,
     importWorkbenchController.importWorkbench,
     routeState,
     shotWorkbenchController.shotWorkbench,
@@ -298,6 +318,8 @@ export function App() {
     ? importWorkbenchController.errorMessage
     : routeState.route === "shots"
       ? shotWorkbenchController.errorMessage
+      : routeState.route === "collab"
+        ? collabController.errorMessage
       : "";
   const errorMessage = sessionErrorMessage || workbenchErrorMessage;
 
@@ -451,6 +473,53 @@ export function App() {
     );
   }
 
+  if (routeState.route === "collab" && collabController.collaborationSession) {
+    const collaborationSession = collabController.collaborationSession;
+
+    return (
+      <CollabWorkbenchPage
+        collaborationSession={collaborationSession}
+        t={t}
+        feedback={collabController.feedback ?? undefined}
+        shellHeader={
+          <CreatorWorkspaceShell
+            tone="collab"
+            badge={t("collab.badge")}
+            title={collaborationSession.session.ownerId}
+            description={t("collab.header", {
+              ownerType: collaborationSession.session.ownerType,
+              ownerId: collaborationSession.session.ownerId,
+              draftVersion: collaborationSession.session.draftVersion,
+            })}
+            sessionLabel={sessionLabel}
+            locale={locale}
+            t={t}
+            onLocaleChange={setLocale}
+            onClearSession={
+              identityOverride
+                ? undefined
+                : () => {
+                    void handleClearCurrentSession();
+                  }
+            }
+            onBackHome={handleReturnHome}
+            feedback={
+              collabController.feedback ? (
+                <ActionFeedback feedback={collabController.feedback} />
+              ) : undefined
+            }
+          />
+        }
+        claimDraftVersionInput={collabController.claimDraftVersionInput}
+        conflictSummaryInput={collabController.conflictSummaryInput}
+        onClaimDraftVersionInputChange={collabController.setClaimDraftVersionInput}
+        onConflictSummaryInputChange={collabController.setConflictSummaryInput}
+        onClaimLease={collabController.handleClaimLease}
+        onReleaseLease={collabController.handleReleaseLease}
+      />
+    );
+  }
+
   if (routeState.route === "home") {
     return (
       <CreatorHomePage
@@ -494,6 +563,10 @@ export function App() {
 
   if (routeState.route === "imports") {
     return <main style={{ padding: "32px" }}>{t("app.loading.import")}</main>;
+  }
+
+  if (routeState.route === "collab") {
+    return <main style={{ padding: "32px" }}>{t("app.loading.collab")}</main>;
   }
 
   return <main style={{ padding: "32px" }}>{t("app.loading.shot")}</main>;
