@@ -174,6 +174,8 @@ test("admin real smoke: creates and cancels a workflow run through the real back
   await expect(page.getByText("工作流监控")).toBeVisible();
   await page.getByRole("button", { name: /查看工作流详情/ }).click();
   await expect(page.getByRole("dialog", { name: "工作流详情" })).toBeVisible();
+  await expect(page.getByText("供应商：seedance")).toBeVisible();
+  await expect(page.getByText(/外部请求 ID：(?!pending)/)).toBeVisible();
 
   await page.getByRole("button", { name: "取消工作流" }).click();
   await expect(page.getByText("正在取消工作流")).toBeVisible();

@@ -19,6 +19,7 @@
 
 - `DB_DRIVER=postgres` 时，`db.OpenStore(...)` 直接返回 Postgres-backed runtime store
 - workflow / asset / execution / billing / auth 等主域状态不再 materialize 成进程内 `*db.MemoryStore`
+- workflow 启动链默认经由 backend 自己的 runtime adapter 与 direct executor 装配，不再把生产路径直接绑到测试用的 `FakeAdapter` / `InMemoryExecutor`
 - `/sse/events` 的 replay 真相层来自 Postgres durable event path，而不是单纯依赖进程内 publisher
 
 ## 前置依赖

@@ -63,14 +63,17 @@ func TestWorkflowRoutes(t *testing.T) {
 	if got := fetched.Msg.GetWorkflowRun().GetId(); got != runID {
 		t.Fatalf("expected workflow run %q, got %q", runID, got)
 	}
-	if got := fetched.Msg.GetWorkflowRun().GetProvider(); got != "memory-provider" {
-		t.Fatalf("expected provider memory-provider, got %q", got)
+	if got := fetched.Msg.GetWorkflowRun().GetProvider(); got != "seedance" {
+		t.Fatalf("expected provider seedance, got %q", got)
 	}
 	if got := fetched.Msg.GetWorkflowRun().GetCurrentStep(); got != "attempt_1.gateway" {
 		t.Fatalf("expected current_step attempt_1.gateway, got %q", got)
 	}
 	if got := fetched.Msg.GetWorkflowRun().GetAttemptCount(); got != 1 {
 		t.Fatalf("expected attempt_count 1, got %d", got)
+	}
+	if fetched.Msg.GetWorkflowRun().GetExternalRequestId() == "" {
+		t.Fatalf("expected external_request_id to be populated")
 	}
 	if len(fetched.Msg.GetWorkflowSteps()) != 2 {
 		t.Fatalf("expected 2 workflow steps, got %d", len(fetched.Msg.GetWorkflowSteps()))

@@ -51,12 +51,14 @@ func TestReliabilityFlow(t *testing.T) {
 		ProjectID:          project.ID,
 		WorkflowType:       "asset.import",
 		ResourceID:         "batch-1",
-		Provider:           "seedance",
 		IdempotencyKey:     "idem-workflow-failed",
 		EstimatedCostCents: 10,
 	})
 	if err != nil {
 		t.Fatalf("StartWorkflow returned error: %v", err)
+	}
+	if got := failedRun.Provider; got != "seedance" {
+		t.Fatalf("expected failed workflow provider seedance, got %q", got)
 	}
 	if got := failedRun.Status; got != "failed" {
 		t.Fatalf("expected failed workflow status, got %q", got)
@@ -95,7 +97,6 @@ func TestReliabilityFlow(t *testing.T) {
 		ProjectID:          project.ID,
 		WorkflowType:       "asset.import",
 		ResourceID:         "batch-2",
-		Provider:           "seedance",
 		IdempotencyKey:     "idem-workflow-stable",
 		EstimatedCostCents: 10,
 	})

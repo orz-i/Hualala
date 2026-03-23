@@ -25,3 +25,15 @@ func NewInMemoryExecutor(executor gatewayExecutor) *InMemoryExecutor {
 func (e *InMemoryExecutor) Execute(ctx context.Context, request gateway.GatewayRequest) (gateway.GatewayResult, error) {
 	return e.executor.Execute(ctx, request)
 }
+
+type DirectExecutor struct {
+	executor gatewayExecutor
+}
+
+func NewDirectExecutor(executor gatewayExecutor) *DirectExecutor {
+	return &DirectExecutor{executor: executor}
+}
+
+func (e *DirectExecutor) Execute(ctx context.Context, request gateway.GatewayRequest) (gateway.GatewayResult, error) {
+	return e.executor.Execute(ctx, request)
+}

@@ -18,7 +18,7 @@ type Service struct {
 
 func NewService(store db.GatewayResultStore, adapter gateway.ProviderAdapter) *Service {
 	if adapter == nil {
-		adapter = NewFakeAdapter()
+		adapter = NewRuntimeAdapter()
 	}
 	return &Service{
 		store:   store,
@@ -62,6 +62,23 @@ func (s *Service) Execute(ctx context.Context, request gateway.GatewayRequest) (
 		result.Provider = strings.TrimSpace(request.Provider)
 	}
 	return result, s.store.SaveGatewayResult(ctx, idempotencyKey, result)
+}
+
+type RuntimeAdapter struct{}
+
+func NewRuntimeAdapter() *RuntimeAdapter {
+	return &RuntimeAdapter{}
+}
+
+func (*RuntimeAdapter) Execute(_ context.Context, request gateway.GatewayRequest) (gateway.GatewayResult, error) {
+	provider := strings.TrimSpace(request.Provider)
+	if provider == "" {
+		return gateway.GatewayResult{}, errors.New("gatewayapp: provider is required")
+	}
+	return gateway.GatewayResult{
+		Provider:          provider,
+		ExternalRequestID: strings.TrimSpace(request.ExternalRequestID),
+	}, nil
 }
 
 type FakeAdapter struct {
