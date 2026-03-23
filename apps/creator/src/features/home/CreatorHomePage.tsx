@@ -18,6 +18,7 @@ type CreatorHomePageProps = {
   onSubmitProjectId: () => void;
   onShotIdInputChange: (shotId: string) => void;
   onSubmitShotId: () => void;
+  onOpenPreview?: () => void;
   onOpenImportBatch: (importBatchId: string) => void;
 };
 
@@ -80,6 +81,7 @@ export function CreatorHomePage({
   onSubmitProjectId,
   onShotIdInputChange,
   onSubmitShotId,
+  onOpenPreview,
   onOpenImportBatch,
 }: CreatorHomePageProps) {
   const hasProjectId = Boolean(activeProjectId);
@@ -206,6 +208,15 @@ export function CreatorHomePage({
                     ? t("home.projectId.current", { projectId: activeProjectId ?? "" })
                     : t("home.projectId.empty")}
                 </span>
+                {hasProjectId && onOpenPreview ? (
+                  <button
+                    type="button"
+                    onClick={onOpenPreview}
+                    style={secondaryButtonStyle}
+                  >
+                    {t("home.projectId.openPreview")}
+                  </button>
+                ) : null}
               </div>
             </form>
             {importBatchesPending ? (

@@ -4,11 +4,13 @@ import { AdminAssetsPage } from "../features/dashboard/AdminAssetsPage";
 import { AdminCollaborationPage } from "../features/dashboard/AdminCollaborationPage";
 import { AdminGovernancePage } from "../features/dashboard/AdminGovernancePage";
 import { AdminOverviewPage } from "../features/dashboard/AdminOverviewPage";
+import { AdminPreviewPage } from "../features/dashboard/AdminPreviewPage";
 import { AdminWorkflowPage } from "../features/dashboard/AdminWorkflowPage";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
 import { useAdminCollaborationController } from "../features/dashboard/useAdminCollaborationController";
 import { useAdminGovernanceController } from "../features/dashboard/useAdminGovernanceController";
 import { useAdminOverviewController } from "../features/dashboard/useAdminOverviewController";
+import { useAdminPreviewController } from "../features/dashboard/useAdminPreviewController";
 import { useAdminRecentChangesSubscription } from "../features/dashboard/useAdminRecentChangesSubscription";
 import { useAdminWorkflowController } from "../features/dashboard/useAdminWorkflowController";
 import { useAdminSessionGate } from "../features/session/useAdminSessionGate";
@@ -118,6 +120,15 @@ export function App() {
     enabled: routeState.route === "collaboration",
     projectId,
     shotId: routeState.shotId,
+    effectiveOrgId: sessionGate.effectiveOrgId,
+    effectiveUserId: sessionGate.effectiveUserId,
+    t,
+  });
+
+  const preview = useAdminPreviewController({
+    sessionState: sessionGate.sessionState,
+    enabled: routeState.route === "preview",
+    projectId,
     effectiveOrgId: sessionGate.effectiveOrgId,
     effectiveUserId: sessionGate.effectiveUserId,
     t,
@@ -235,10 +246,12 @@ export function App() {
   const routeErrorMessage =
     routeState.route === "overview"
       ? overview.errorMessage
-      : routeState.route === "governance"
+    : routeState.route === "governance"
         ? governance.errorMessage
-        : routeState.route === "collaboration"
+      : routeState.route === "collaboration"
           ? collaboration.errorMessage
+      : routeState.route === "preview"
+          ? preview.errorMessage
         : "";
   const errorMessage = sessionGate.errorMessage || routeErrorMessage;
 
@@ -290,6 +303,10 @@ export function App() {
 
   if (routeState.route === "collaboration" && !collaboration.collaborationSession) {
     return <main style={{ padding: "32px" }}>{t("app.loading.collaboration")}</main>;
+  }
+
+  if (routeState.route === "preview" && !preview.previewWorkbench) {
+    return <main style={{ padding: "32px" }}>{t("app.loading.preview")}</main>;
   }
 
   const sessionLabel = identityOverride
@@ -392,6 +409,20 @@ export function App() {
       <AdminCollaborationPage
         collaborationSession={collaboration.collaborationSession}
         t={t}
+      />
+    );
+  } else if (routeState.route === "preview" && preview.previewWorkbench) {
+    routeContent = (
+      <AdminPreviewPage
+        previewWorkbench={preview.previewWorkbench}
+        assetProvenanceDetail={preview.assetProvenanceDetail}
+        assetProvenancePending={preview.assetProvenancePending}
+        assetProvenanceErrorMessage={preview.assetProvenanceErrorMessage}
+        t={t}
+        onOpenAssetProvenance={(assetId) => {
+          void preview.handleOpenAssetProvenance(assetId);
+        }}
+        onCloseAssetProvenance={preview.handleCloseAssetProvenance}
       />
     );
   } else if (overview.overview) {

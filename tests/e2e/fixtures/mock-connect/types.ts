@@ -1,11 +1,13 @@
 export type AdminMode = "success" | "failure";
 export type CreatorShotMode = "success" | "failure";
 export type CreatorImportMode = "success" | "failure";
+export type PreviewMode = "success";
 
 export type MockConnectScenario = {
   admin?: AdminMode;
   creatorShot?: CreatorShotMode;
   creatorImport?: CreatorImportMode;
+  preview?: PreviewMode;
 };
 
 export type MockSession = {
@@ -186,4 +188,23 @@ export type MockConnectState = {
   creatorShotState: CreatorShotState;
   creatorShotWorkflowRuns: MockWorkflowRun[];
   creatorImportState: CreatorImportState;
+};
+
+export type PreviewAssemblyItemState = {
+  itemId: string;
+  assemblyId: string;
+  shotId: string;
+  primaryAssetId: string;
+  sourceRunId: string;
+  sequence: number;
+};
+
+export type PreviewAssemblyState = {
+  assemblyId: string;
+  projectId: string;
+  episodeId: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  items: PreviewAssemblyItemState[];
 };

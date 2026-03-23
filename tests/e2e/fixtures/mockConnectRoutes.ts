@@ -11,6 +11,12 @@ import {
   syncGovernanceState,
   withRecentChanges,
 } from "./mock-connect/governance.ts";
+import {
+  buildPreviewAssetProvenancePayload,
+  buildPreviewWorkbenchPayload,
+  createPreviewAssemblyState,
+  upsertPreviewAssemblyState,
+} from "./mock-connect/preview.ts";
 import { clone, initializeMockConnectState, loadPhase1DemoScenarios } from "./mock-connect/scenario.ts";
 import type { AdminState, MockConnectScenario } from "./mock-connect/types.ts";
 import {
@@ -41,6 +47,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     creatorShotWorkflowRuns,
     creatorImportState,
   } = initializeMockConnectState({ scenario, phase1DemoScenarios });
+  let previewState = createPreviewAssemblyState(adminState.budgetSnapshot.projectId);
 
   await page.route(/\/sse\/events(?:\?.*)?$/, async (route: Route) => {
     await route.fulfill({
@@ -64,7 +71,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         return;
       }
       const session =
-        scenario.admin || scenario.creatorImport
+        scenario.admin || scenario.creatorImport || scenario.preview
           ? adminState.governance.currentSession
           : buildDefaultDevSession();
       await route.fulfill(jsonResponse(200, { session }));
@@ -74,7 +81,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     if (pathname === "/hualala.auth.v1.AuthService/StartDevSession") {
       devSessionActive = true;
       const session =
-        scenario.admin || scenario.creatorImport
+        scenario.admin || scenario.creatorImport || scenario.preview
           ? adminState.governance.currentSession
           : buildDefaultDevSession();
       await route.fulfill(jsonResponse(200, { session }));
@@ -85,6 +92,50 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       devSessionActive = false;
       await route.fulfill(jsonResponse(200, {}));
       return;
+    }
+
+    if ((scenario.preview || scenario.admin) &&
+      pathname === "/hualala.project.v1.ProjectService/GetPreviewWorkbench") {
+      await route.fulfill(jsonResponse(200, buildPreviewWorkbenchPayload(previewState)));
+      return;
+    }
+
+    if ((scenario.preview || scenario.admin) &&
+      pathname === "/hualala.project.v1.ProjectService/UpsertPreviewAssembly") {
+      await delay(120);
+      const body = route.request().postDataJSON() as {
+        projectId?: string;
+        status?: string;
+        items?: Array<{
+          itemId?: string;
+          assemblyId?: string;
+          shotId?: string;
+          primaryAssetId?: string;
+          sourceRunId?: string;
+          sequence?: number;
+        }>;
+      };
+      previewState = upsertPreviewAssemblyState(previewState, body);
+      await route.fulfill(jsonResponse(200, buildPreviewWorkbenchPayload(previewState)));
+      return;
+    }
+
+    if ((scenario.preview || scenario.admin) &&
+      pathname === "/hualala.asset.v1.AssetService/GetAssetProvenanceSummary") {
+      const body = route.request().postDataJSON() as { assetId?: string };
+      const previewAssetId =
+        body.assetId ?? previewState.items.find((item) => item.primaryAssetId)?.primaryAssetId;
+      if (previewAssetId) {
+        const previewPayload = buildPreviewAssetProvenancePayload(previewState, previewAssetId);
+        if (previewPayload) {
+          await route.fulfill(jsonResponse(200, previewPayload));
+          return;
+        }
+      }
+      if (scenario.preview && !scenario.admin) {
+        await route.fulfill(jsonResponse(404, { error: "asset not found" }));
+        return;
+      }
     }
 
     if (scenario.admin) {

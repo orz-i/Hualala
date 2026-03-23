@@ -29,12 +29,14 @@ import {
   ensureDevSession,
   loadCurrentSession,
 } from "../features/session/sessionBootstrap";
+import { usePreviewWorkbenchController } from "../features/preview/usePreviewWorkbenchController";
 import { loadAssetProvenanceDetails } from "../features/shared/loadAssetProvenanceDetails";
 import { subscribeWorkbenchEvents } from "../features/subscribeWorkbenchEvents";
 import { App } from "./App";
 
-const { useCollabControllerMock } = vi.hoisted(() => ({
+const { useCollabControllerMock, usePreviewWorkbenchControllerMock } = vi.hoisted(() => ({
   useCollabControllerMock: vi.fn(),
+  usePreviewWorkbenchControllerMock: vi.fn(),
 }));
 
 vi.mock("../features/shot-workbench/loadShotWorkbench", () => ({
@@ -85,13 +87,23 @@ vi.mock("../features/subscribeWorkbenchEvents", () => ({
 vi.mock("../features/collaboration/useCollabController", () => ({
   useCollabController: useCollabControllerMock,
 }));
+vi.mock("../features/preview/usePreviewWorkbenchController", () => ({
+  usePreviewWorkbenchController: usePreviewWorkbenchControllerMock,
+}));
 
 let lastCollabWorkbenchPageProps: Record<string, unknown> | null = null;
+let lastPreviewWorkbenchPageProps: Record<string, unknown> | null = null;
 
 vi.mock("../features/collaboration/CollabWorkbenchPage", () => ({
   CollabWorkbenchPage: (props: Record<string, unknown>) => {
     lastCollabWorkbenchPageProps = props;
     return <div data-testid="creator-collab-page">creator-collab-page</div>;
+  },
+}));
+vi.mock("../features/preview/PreviewWorkbenchPage", () => ({
+  PreviewWorkbenchPage: (props: Record<string, unknown>) => {
+    lastPreviewWorkbenchPageProps = props;
+    return <div data-testid="creator-preview-page">creator-preview-page</div>;
   },
 }));
 
@@ -114,6 +126,7 @@ const retryShotWorkflowRunMock = vi.mocked(retryShotWorkflowRun);
 const loadCurrentSessionMock = vi.mocked(loadCurrentSession);
 const ensureDevSessionMock = vi.mocked(ensureDevSession);
 const clearCurrentSessionMock = vi.mocked(clearCurrentSession);
+const usePreviewWorkbenchControllerMocked = vi.mocked(usePreviewWorkbenchController);
 const loadAssetProvenanceDetailsMock = vi.mocked(loadAssetProvenanceDetails);
 const subscribeWorkbenchEventsMock = vi.mocked(subscribeWorkbenchEvents);
 
@@ -148,6 +161,59 @@ function createCollabControllerState() {
     setConflictSummaryInput: vi.fn(),
     handleClaimLease: vi.fn(),
     handleReleaseLease: vi.fn(),
+  };
+}
+
+function createPreviewControllerState() {
+  return {
+    previewWorkbench: {
+      assembly: {
+        assemblyId: "assembly-project-1",
+        projectId: "project-preview-1",
+        episodeId: "",
+        status: "draft",
+        createdAt: "2026-03-23T09:00:00.000Z",
+        updatedAt: "2026-03-23T09:05:00.000Z",
+      },
+      items: [
+        {
+          itemId: "item-1",
+          assemblyId: "assembly-project-1",
+          shotId: "shot-preview-1",
+          primaryAssetId: "asset-preview-1",
+          sourceRunId: "run-preview-1",
+          sequence: 1,
+        },
+      ],
+    },
+    draftItems: [
+      {
+        itemId: "item-1",
+        assemblyId: "assembly-project-1",
+        shotId: "shot-preview-1",
+        primaryAssetId: "asset-preview-1",
+        sourceRunId: "run-preview-1",
+        sequence: 1,
+      },
+    ],
+    feedback: null,
+    errorMessage: "",
+    newShotIdInput: "",
+    newPrimaryAssetIdInput: "",
+    newSourceRunIdInput: "",
+    setNewShotIdInput: vi.fn(),
+    setNewPrimaryAssetIdInput: vi.fn(),
+    setNewSourceRunIdInput: vi.fn(),
+    handleDraftItemFieldChange: vi.fn(),
+    handleAddItem: vi.fn(),
+    handleRemoveItem: vi.fn(),
+    handleMoveItem: vi.fn(),
+    handleSaveAssembly: vi.fn(),
+    assetProvenanceDetail: null,
+    assetProvenancePending: false,
+    assetProvenanceErrorMessage: "",
+    handleOpenAssetProvenance: vi.fn(),
+    handleCloseAssetProvenance: vi.fn(),
   };
 }
 
@@ -419,6 +485,7 @@ describe("App", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     lastCollabWorkbenchPageProps = null;
+    lastPreviewWorkbenchPageProps = null;
     latestWorkbenchSubscription = undefined;
     latestWorkbenchSubscriptionCleanup = vi.fn();
     window.history.replaceState({}, "", "/");
@@ -474,6 +541,7 @@ describe("App", () => {
       return latestWorkbenchSubscriptionCleanup;
     });
     useCollabControllerMock.mockReturnValue(createCollabControllerState());
+    usePreviewWorkbenchControllerMocked.mockReturnValue(createPreviewControllerState());
     loadImportBatchSummariesMock.mockResolvedValue([]);
     loadAssetProvenanceDetailsMock.mockResolvedValue(
       createAssetProvenanceDetail("asset-default"),
@@ -564,6 +632,35 @@ describe("App", () => {
         collaborationSession: expect.objectContaining({
           session: expect.objectContaining({
             ownerId: "shot-collab-1",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("renders the preview route when pathname is /preview", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/preview?projectId=project-preview-1&orgId=org-override-001&userId=user-override-001",
+    );
+
+    render(<App />);
+
+    expect(await screen.findByTestId("creator-preview-page")).toBeInTheDocument();
+    expect(usePreviewWorkbenchControllerMocked).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        projectId: "project-preview-1",
+        orgId: "org-override-001",
+        userId: "user-override-001",
+      }),
+    );
+    expect(lastPreviewWorkbenchPageProps).toEqual(
+      expect.objectContaining({
+        previewWorkbench: expect.objectContaining({
+          assembly: expect.objectContaining({
+            projectId: "project-preview-1",
           }),
         }),
       }),

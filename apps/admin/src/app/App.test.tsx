@@ -5,13 +5,15 @@ import { ADMIN_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
 import { useAdminGovernanceController } from "../features/dashboard/useAdminGovernanceController";
 import { useAdminOverviewController } from "../features/dashboard/useAdminOverviewController";
+import { useAdminPreviewController } from "../features/dashboard/useAdminPreviewController";
 import { useAdminRecentChangesSubscription } from "../features/dashboard/useAdminRecentChangesSubscription";
 import { useAdminWorkflowController } from "../features/dashboard/useAdminWorkflowController";
 import { useAdminSessionGate } from "../features/session/useAdminSessionGate";
 import { App } from "./App";
 
-const { useAdminCollaborationControllerMock } = vi.hoisted(() => ({
+const { useAdminCollaborationControllerMock, useAdminPreviewControllerMock } = vi.hoisted(() => ({
   useAdminCollaborationControllerMock: vi.fn(),
+  useAdminPreviewControllerMock: vi.fn(),
 }));
 
 let lastAdminOverviewPageProps: Record<string, unknown> | null = null;
@@ -19,6 +21,7 @@ let lastAdminWorkflowPageProps: Record<string, unknown> | null = null;
 let lastAdminAssetsPageProps: Record<string, unknown> | null = null;
 let lastAdminGovernancePageProps: Record<string, unknown> | null = null;
 let lastAdminCollaborationPageProps: Record<string, unknown> | null = null;
+let lastAdminPreviewPageProps: Record<string, unknown> | null = null;
 
 vi.mock("../features/dashboard/AdminOverviewPage", () => ({
   AdminOverviewPage: (props: Record<string, unknown>) => {
@@ -114,6 +117,12 @@ vi.mock("../features/dashboard/AdminCollaborationPage", () => ({
     return <div data-testid="admin-collaboration-page">admin-collaboration-page</div>;
   },
 }));
+vi.mock("../features/dashboard/AdminPreviewPage", () => ({
+  AdminPreviewPage: (props: Record<string, unknown>) => {
+    lastAdminPreviewPageProps = props;
+    return <div data-testid="admin-preview-page">admin-preview-page</div>;
+  },
+}));
 vi.mock("../features/session/useAdminSessionGate", () => ({
   useAdminSessionGate: vi.fn(),
 }));
@@ -132,6 +141,9 @@ vi.mock("../features/dashboard/useAdminAssetController", () => ({
 vi.mock("../features/dashboard/useAdminCollaborationController", () => ({
   useAdminCollaborationController: useAdminCollaborationControllerMock,
 }));
+vi.mock("../features/dashboard/useAdminPreviewController", () => ({
+  useAdminPreviewController: useAdminPreviewControllerMock,
+}));
 vi.mock("../features/dashboard/useAdminRecentChangesSubscription", () => ({
   useAdminRecentChangesSubscription: vi.fn(),
 }));
@@ -141,6 +153,7 @@ const useAdminOverviewControllerMock = vi.mocked(useAdminOverviewController);
 const useAdminGovernanceControllerMock = vi.mocked(useAdminGovernanceController);
 const useAdminWorkflowControllerMock = vi.mocked(useAdminWorkflowController);
 const useAdminAssetControllerMock = vi.mocked(useAdminAssetController);
+const useAdminPreviewControllerMocked = vi.mocked(useAdminPreviewController);
 const useAdminRecentChangesSubscriptionMock = vi.mocked(useAdminRecentChangesSubscription);
 
 function createOverview(projectId: string, shotExecutionId: string): AdminOverviewViewModel {
@@ -447,6 +460,42 @@ function buildCollaboration(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function buildPreview(overrides: Record<string, unknown> = {}) {
+  return {
+    previewWorkbench: {
+      assembly: {
+        assemblyId: "assembly-project-1",
+        projectId: "project-live-001",
+        episodeId: "",
+        status: "draft",
+        createdAt: "2026-03-23T09:00:00.000Z",
+        updatedAt: "2026-03-23T09:05:00.000Z",
+      },
+      items: [
+        {
+          itemId: "item-1",
+          assemblyId: "assembly-project-1",
+          shotId: "shot-preview-1",
+          primaryAssetId: "asset-preview-1",
+          sourceRunId: "run-preview-1",
+          sequence: 1,
+        },
+      ],
+      summary: {
+        itemCount: 1,
+        missingPrimaryAssetCount: 0,
+      },
+    },
+    assetProvenanceDetail: null,
+    assetProvenanceErrorMessage: "",
+    errorMessage: "",
+    assetProvenancePending: false,
+    handleOpenAssetProvenance: vi.fn(),
+    handleCloseAssetProvenance: vi.fn(),
+    ...overrides,
+  };
+}
+
 describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -455,6 +504,7 @@ describe("App", () => {
     lastAdminAssetsPageProps = null;
     lastAdminGovernancePageProps = null;
     lastAdminCollaborationPageProps = null;
+    lastAdminPreviewPageProps = null;
     window.localStorage.clear();
     window.localStorage.setItem(ADMIN_UI_LOCALE_STORAGE_KEY, "zh-CN");
     window.history.pushState({}, "", "/");
@@ -465,6 +515,7 @@ describe("App", () => {
     useAdminWorkflowControllerMock.mockReturnValue(buildWorkflow() as never);
     useAdminAssetControllerMock.mockReturnValue(buildAsset() as never);
     useAdminCollaborationControllerMock.mockReturnValue(buildCollaboration());
+    useAdminPreviewControllerMocked.mockReturnValue(buildPreview() as never);
     useAdminRecentChangesSubscriptionMock.mockImplementation(() => undefined);
   });
 
@@ -614,6 +665,35 @@ describe("App", () => {
         collaborationSession: expect.objectContaining({
           session: expect.objectContaining({
             ownerId: "shot-collab-1",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("renders the preview route when pathname is /preview", () => {
+    window.history.pushState(
+      {},
+      "",
+      "/preview?projectId=project-live-001&shotExecutionId=shot-exec-live-001",
+    );
+
+    render(<App />);
+
+    expect(useAdminPreviewControllerMocked).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        projectId: "project-live-001",
+        effectiveOrgId: "org-demo-001",
+        effectiveUserId: "user-demo-001",
+      }),
+    );
+    expect(screen.getByTestId("admin-preview-page")).toHaveTextContent("admin-preview-page");
+    expect(lastAdminPreviewPageProps).toEqual(
+      expect.objectContaining({
+        previewWorkbench: expect.objectContaining({
+          assembly: expect.objectContaining({
+            projectId: "project-live-001",
           }),
         }),
       }),

@@ -52,6 +52,15 @@ describe("creatorRoutes", () => {
     ).toBe("/collab?shotId=shot-live-1&orgId=org-live-1&userId=user-live-1");
   });
 
+  it("keeps the preview pathname when a project deep link targets /preview", () => {
+    expect(
+      normalizeLegacyCreatorUrl({
+        pathname: "/preview",
+        search: "?projectId=project-live-1&orgId=org-live-1&userId=user-live-1",
+      } as Pick<Location, "pathname" | "search">),
+    ).toBe("/preview?projectId=project-live-1&orgId=org-live-1&userId=user-live-1");
+  });
+
   it("keeps import precedence when both importBatchId and shotId are present", () => {
     expect(
       normalizeLegacyCreatorUrl({
@@ -59,6 +68,17 @@ describe("creatorRoutes", () => {
         search: "?importBatchId=batch-live-1&shotId=shot-live-1",
       } as Pick<Location, "pathname" | "search">),
     ).toBe("/imports?importBatchId=batch-live-1");
+  });
+
+  it("builds canonical preview urls with project and identity state", () => {
+    expect(
+      buildCreatorRouteUrl({
+        route: "preview",
+        projectId: "project-preview-1",
+        orgId: "org-live-1",
+        userId: "user-live-1",
+      }),
+    ).toBe("/preview?projectId=project-preview-1&orgId=org-live-1&userId=user-live-1");
   });
 
   it("drops route-local state when navigating back to home", () => {
@@ -77,6 +97,27 @@ describe("creatorRoutes", () => {
     ).toEqual({
       route: "home",
       projectId: "project-home-1",
+      shotId: undefined,
+      importBatchId: undefined,
+      orgId: "org-live-1",
+      userId: "user-live-1",
+    });
+  });
+
+  it("keeps project and identity state when navigating from home to preview", () => {
+    expect(
+      selectCreatorRoute(
+        {
+          route: "home",
+          projectId: "project-preview-1",
+          orgId: "org-live-1",
+          userId: "user-live-1",
+        },
+        "preview",
+      ),
+    ).toEqual({
+      route: "preview",
+      projectId: "project-preview-1",
       shotId: undefined,
       importBatchId: undefined,
       orgId: "org-live-1",
