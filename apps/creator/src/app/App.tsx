@@ -344,15 +344,13 @@ export function App() {
       })
     : t("session.active", { userId: session?.userId ?? "" });
 
-  const workbenchErrorMessage = routeState.route === "imports"
-    ? importWorkbenchController.errorMessage
-    : routeState.route === "shots"
-      ? shotWorkbenchController.errorMessage
-      : routeState.route === "collab"
-        ? collabController.errorMessage
-      : routeState.route === "preview"
-        ? previewWorkbenchController.errorMessage
-      : "";
+  const workbenchErrorMessages: Partial<Record<CreatorRouteState["route"], string>> = {
+    imports: importWorkbenchController.errorMessage,
+    shots: shotWorkbenchController.errorMessage,
+    collab: collabController.errorMessage,
+    preview: previewWorkbenchController.errorMessage,
+  };
+  const workbenchErrorMessage = workbenchErrorMessages[routeState.route] ?? "";
   const errorMessage = sessionErrorMessage || workbenchErrorMessage;
 
   if (errorMessage) {

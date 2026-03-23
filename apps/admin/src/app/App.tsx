@@ -243,16 +243,13 @@ export function App() {
     },
   });
 
-  const routeErrorMessage =
-    routeState.route === "overview"
-      ? overview.errorMessage
-    : routeState.route === "governance"
-        ? governance.errorMessage
-      : routeState.route === "collaboration"
-          ? collaboration.errorMessage
-      : routeState.route === "preview"
-          ? preview.errorMessage
-        : "";
+  const routeErrorMessages: Partial<Record<AdminRouteState["route"], string>> = {
+    overview: overview.errorMessage,
+    governance: governance.errorMessage,
+    collaboration: collaboration.errorMessage,
+    preview: preview.errorMessage,
+  };
+  const routeErrorMessage = routeErrorMessages[routeState.route] ?? "";
   const errorMessage = sessionGate.errorMessage || routeErrorMessage;
 
   if (errorMessage) {
