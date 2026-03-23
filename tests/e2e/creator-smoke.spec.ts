@@ -341,6 +341,54 @@ async function mockCreatorCandidatePoolImportRoutes(page: Page) {
   return requests;
 }
 
+test("creator smoke: home lists import batches and opens the import workbench", async ({
+  page,
+}) => {
+  await mockConnectRoutes(page, {
+    creatorImport: "success",
+  });
+  await page.route("**/hualala.asset.v1.AssetService/ListImportBatches", async (route) => {
+    const body = route.request().postDataJSON() as { projectId?: string };
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        importBatches:
+          body.projectId === "project-live-1"
+            ? [
+                {
+                  id: "batch-live-1",
+                  orgId: "org-live-1",
+                  projectId: "project-live-1",
+                  operatorId: "user-live-1",
+                  sourceType: "upload_session",
+                  status: "matched_pending_confirm",
+                  uploadSessionCount: 1,
+                  itemCount: 2,
+                  confirmedItemCount: 0,
+                  candidateAssetCount: 2,
+                  mediaAssetCount: 2,
+                  updatedAt: "2026-03-23T00:00:00Z",
+                },
+              ]
+            : [],
+      }),
+    });
+  });
+
+  await page.goto("http://127.0.0.1:4174/?projectId=project-live-1");
+  await enterDevSession(page);
+
+  await expect(page.getByRole("heading", { name: "Creator 首页" })).toBeVisible();
+  await expect(page.getByText("当前 projectId：project-live-1")).toBeVisible();
+  await expect(page.getByText("batch-live-1")).toBeVisible();
+  await expect(page.getByText("上传会话：1")).toBeVisible();
+
+  await page.getByRole("button", { name: "进入导入工作台" }).click();
+  await expect(page.getByText("batch-live-1")).toBeVisible();
+  await expect(page.getByRole("button", { name: "确认匹配" })).toBeVisible();
+});
+
 test("creator smoke: shot workbench actions complete with refreshed feedback", async ({
   page,
 }) => {

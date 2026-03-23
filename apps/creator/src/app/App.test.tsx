@@ -1,6 +1,8 @@
 import { StrictMode } from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CREATOR_UI_LOCALE_STORAGE_KEY } from "../i18n";
+import { loadImportBatchSummaries } from "../features/home/loadImportBatchSummaries";
+import { CREATOR_HOME_PROJECT_ID_STORAGE_KEY } from "../features/home/projectIdMemory";
 import { loadImportBatchWorkbench } from "../features/import-batches/loadImportBatchWorkbench";
 import {
   confirmImportBatchItems,
@@ -40,6 +42,9 @@ vi.mock("../features/shot-workbench/loadShotReviewTimeline", () => ({
 vi.mock("../features/shot-workbench/loadShotWorkflowPanel", () => ({
   loadShotWorkflowPanel: vi.fn(),
 }));
+vi.mock("../features/home/loadImportBatchSummaries", () => ({
+  loadImportBatchSummaries: vi.fn(),
+}));
 vi.mock("../features/import-batches/loadImportBatchWorkbench", () => ({
   loadImportBatchWorkbench: vi.fn(),
 }));
@@ -77,6 +82,7 @@ vi.mock("../features/subscribeWorkbenchEvents", () => ({
 const loadShotWorkbenchMock = vi.mocked(loadShotWorkbench);
 const loadShotReviewTimelineMock = vi.mocked(loadShotReviewTimeline);
 const loadShotWorkflowPanelMock = vi.mocked(loadShotWorkflowPanel);
+const loadImportBatchSummariesMock = vi.mocked(loadImportBatchSummaries);
 const loadImportBatchWorkbenchMock = vi.mocked(loadImportBatchWorkbench);
 const confirmImportBatchItemsMock = vi.mocked(confirmImportBatchItems);
 const completeUploadSessionForImportBatchMock = vi.mocked(completeUploadSessionForImportBatch);
@@ -142,6 +148,23 @@ function createImportWorkbench(batchId: string, status = "matched_pending_confir
         primaryAssetId: status === "matched_pending_confirm" ? "" : `asset-${batchId}`,
       },
     ],
+  };
+}
+
+function createImportBatchSummary(batchId: string, projectId = "project-1", status = "matched_pending_confirm") {
+  return {
+    id: batchId,
+    orgId: "org-1",
+    projectId,
+    operatorId: "user-1",
+    sourceType: "upload_session",
+    status,
+    uploadSessionCount: 1,
+    itemCount: 2,
+    confirmedItemCount: status === "confirmed" ? 2 : 0,
+    candidateAssetCount: 2,
+    mediaAssetCount: 2,
+    updatedAt: "2026-03-23T00:00:00Z",
   };
 }
 
@@ -358,6 +381,7 @@ describe("App", () => {
     vi.resetAllMocks();
     latestWorkbenchSubscription = undefined;
     latestWorkbenchSubscriptionCleanup = vi.fn();
+    window.history.replaceState({}, "", "/");
     window.localStorage.clear();
     window.localStorage.setItem(CREATOR_UI_LOCALE_STORAGE_KEY, "zh-CN");
     loadCurrentSessionMock.mockResolvedValue({
@@ -409,6 +433,7 @@ describe("App", () => {
       latestWorkbenchSubscriptionCleanup = vi.fn();
       return latestWorkbenchSubscriptionCleanup;
     });
+    loadImportBatchSummariesMock.mockResolvedValue([]);
     loadAssetProvenanceDetailsMock.mockResolvedValue(
       createAssetProvenanceDetail("asset-default"),
     );
@@ -462,6 +487,136 @@ describe("App", () => {
       expect(clearCurrentSessionMock).toHaveBeenCalledTimes(1);
     });
     expect(await screen.findByText("尚未进入开发会话")).toBeInTheDocument();
+  });
+
+  it("shows creator home when no deep link or remembered project is present", async () => {
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Creator 首页" })).toBeInTheDocument();
+    expect(loadImportBatchSummariesMock).not.toHaveBeenCalled();
+    expect(loadShotWorkbenchMock).not.toHaveBeenCalled();
+    expect(loadImportBatchWorkbenchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "加载批次" })).toBeDisabled();
+  });
+
+  it("loads import batches from the projectId query param and remembers it locally", async () => {
+    window.history.pushState({}, "", "/?projectId=project-query-1");
+    loadImportBatchSummariesMock.mockResolvedValue([
+      createImportBatchSummary("batch-query-1", "project-query-1"),
+    ]);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(loadImportBatchSummariesMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: "project-query-1",
+        }),
+      );
+    });
+    expect(await screen.findByText("batch-query-1")).toBeInTheDocument();
+    expect(window.localStorage.getItem(CREATOR_HOME_PROJECT_ID_STORAGE_KEY)).toBe(
+      "project-query-1",
+    );
+  });
+
+  it("rehydrates the remembered projectId when the homepage opens without a query", async () => {
+    window.localStorage.setItem(CREATOR_HOME_PROJECT_ID_STORAGE_KEY, "project-remembered-1");
+    loadImportBatchSummariesMock.mockResolvedValue([
+      createImportBatchSummary("batch-remembered-1", "project-remembered-1"),
+    ]);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(loadImportBatchSummariesMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: "project-remembered-1",
+        }),
+      );
+    });
+    expect(await screen.findByDisplayValue("project-remembered-1")).toBeInTheDocument();
+    expect(screen.getByText("当前 projectId：project-remembered-1")).toBeInTheDocument();
+  });
+
+  it("submits a projectId from the homepage, updates the URL, and persists it locally", async () => {
+    loadImportBatchSummariesMock.mockResolvedValue([
+      createImportBatchSummary("batch-home-submit", "project-home-submit"),
+    ]);
+
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Creator 首页" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Project ID"), {
+      target: { value: "project-home-submit" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "加载批次" }));
+
+    await waitFor(() => {
+      expect(loadImportBatchSummariesMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: "project-home-submit",
+        }),
+      );
+    });
+    expect(await screen.findByText("batch-home-submit")).toBeInTheDocument();
+    expect(window.location.search).toContain("projectId=project-home-submit");
+    expect(window.localStorage.getItem(CREATOR_HOME_PROJECT_ID_STORAGE_KEY)).toBe(
+      "project-home-submit",
+    );
+  });
+
+  it("opens the shot workbench from the homepage manual shotId entry", async () => {
+    loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-home-1"));
+    loadShotWorkflowPanelMock.mockResolvedValue(
+      createShotWorkflowPanel("running", "workflow-run-home-shot", {
+        resourceId: "shot-exec-shot-home-1",
+      }),
+    );
+
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Creator 首页" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Shot ID"), {
+      target: { value: "shot-home-1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "打开镜头工作台" }));
+
+    await waitFor(() => {
+      expect(loadShotWorkbenchMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          shotId: "shot-home-1",
+        }),
+      );
+    });
+    expect(await screen.findByText("shot-exec-shot-home-1")).toBeInTheDocument();
+    expect(window.location.search).toContain("shotId=shot-home-1");
+  });
+
+  it("opens the import workbench from the homepage batch list action", async () => {
+    window.history.pushState({}, "", "/?projectId=project-home-import");
+    loadImportBatchSummariesMock.mockResolvedValue([
+      createImportBatchSummary("batch-home-import", "project-home-import"),
+    ]);
+    loadImportBatchWorkbenchMock.mockResolvedValue(
+      createImportWorkbench("batch-home-import"),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByText("batch-home-import")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "进入导入工作台" }));
+
+    await waitFor(() => {
+      expect(loadImportBatchWorkbenchMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          importBatchId: "batch-home-import",
+        }),
+      );
+    });
+    expect(await screen.findByRole("button", { name: "确认匹配" })).toBeInTheDocument();
+    expect(window.location.search).toContain("importBatchId=batch-home-import");
   });
 
   it("prefers importBatchId from search params, requires explicit selection, and refreshes the candidate pool actions", async () => {

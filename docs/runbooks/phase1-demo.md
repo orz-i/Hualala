@@ -32,6 +32,8 @@
 
 - Admin：
   - `http://127.0.0.1:4173/?projectId=project-live-1&shotExecutionId=shot-exec-live-1&orgId=org-live-1`
+- Creator Home（推荐入口）：
+  - `http://127.0.0.1:4174/?projectId=project-live-1`
 - Creator Shot：
   - `http://127.0.0.1:4174/?shotId=shot-live-1`
 - Creator Import：
@@ -66,7 +68,9 @@
 
 - `admin.projectId`
 - `admin.shotExecutionId`
+- `creatorShot.projectId`
 - `creatorShot.shotId`
+- `creatorImport.projectId`
 - `creatorImport.importBatchId`
 - `urls.admin`
 - `urls.creatorShot`
@@ -84,7 +88,8 @@
 
 ### 2. Creator Shot Gate 与提审
 
-- 打开 shot workbench，确认存在 shot execution ID
+- 可直接打开 shot workbench，或先通过 Creator Home 输入 `projectId` / `shotId` 进入
+- 确认存在 shot execution ID
 - 点击 `Gate 检查`
 - 确认页面出现：
   - `正在执行 Gate 检查` 或 `Running gate checks`
@@ -94,7 +99,9 @@
 
 ### 3. Creator Import 确认匹配与设主素材
 
-- 打开 import workbench，确认存在 import batch ID
+- 优先打开 Creator Home，确认能看到 import batch ID
+- 点击 `进入导入工作台`
+- 确认进入 import workbench 后存在 import batch ID
 - 点击 `确认匹配`
 - 确认页面出现：
   - `正在确认匹配`
