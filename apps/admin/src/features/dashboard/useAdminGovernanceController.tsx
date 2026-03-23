@@ -1,13 +1,7 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
 import type { AdminTranslator } from "../../i18n";
-import type {
-  AdminOverviewViewModel,
-  RecentChangeSummary,
-} from "./overview";
 import type { AdminGovernanceViewModel } from "./governance";
-import { loadAdminOverview } from "./loadAdminOverview";
 import { loadGovernancePanel } from "./loadGovernancePanel";
-import { updateBudgetPolicy } from "./mutateBudgetPolicy";
 import {
   createRole,
   deleteRole,
@@ -30,57 +24,24 @@ type ActionFeedback = {
   message: string;
 } | null;
 
-function mergeRecentChanges(
-  current: RecentChangeSummary[],
-  nextChange: RecentChangeSummary,
-): RecentChangeSummary[] {
-  const order: Array<RecentChangeSummary["kind"]> = ["billing", "evaluation", "review"];
-  const fallbackIndex = order.indexOf(nextChange.kind);
-  const currentIndex = current.findIndex((change) => change.kind === nextChange.kind);
-  const targetIndex = currentIndex >= 0 ? currentIndex : fallbackIndex;
-  const next = [...current];
-
-  if (targetIndex >= 0 && targetIndex < next.length) {
-    next[targetIndex] = nextChange;
-    return next;
-  }
-
-  next.push(nextChange);
-  return next;
-}
-
-export function useAdminOverviewGovernance({
+export function useAdminGovernanceController({
   sessionState,
-  projectId,
-  shotExecutionId,
   identityOverride,
   effectiveOrgId,
   effectiveUserId,
   t,
 }: {
   sessionState: "loading" | "ready" | "unauthenticated";
-  projectId: string;
-  shotExecutionId: string;
   identityOverride: IdentityOverride;
   effectiveOrgId: string;
   effectiveUserId: string;
   t: AdminTranslator;
 }) {
-  const [overview, setOverview] = useState<AdminOverviewViewModel | null>(null);
   const [governance, setGovernance] = useState<AdminGovernanceViewModel | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
-  const [budgetFeedback, setBudgetFeedback] = useState<ActionFeedback>(null);
   const [governanceActionFeedback, setGovernanceActionFeedback] =
     useState<ActionFeedback>(null);
   const [governanceActionPending, setGovernanceActionPending] = useState(false);
-
-  const refreshOverview = useCallback(async () => {
-    const nextOverview = await loadAdminOverview({ projectId, shotExecutionId });
-    startTransition(() => {
-      setOverview(nextOverview);
-      setErrorMessage("");
-    });
-  }, [projectId, shotExecutionId]);
 
   const refreshGovernance = useCallback(async () => {
     const nextGovernance = await loadGovernancePanel({
@@ -89,6 +50,7 @@ export function useAdminOverviewGovernance({
     });
     startTransition(() => {
       setGovernance(nextGovernance);
+      setErrorMessage("");
     });
   }, [identityOverride?.orgId, identityOverride?.userId]);
 
@@ -146,10 +108,8 @@ export function useAdminOverviewGovernance({
   useEffect(() => {
     if (sessionState !== "ready") {
       startTransition(() => {
-        setOverview(null);
         setGovernance(null);
         setErrorMessage("");
-        setBudgetFeedback(null);
         setGovernanceActionFeedback(null);
         setGovernanceActionPending(false);
       });
@@ -157,27 +117,6 @@ export function useAdminOverviewGovernance({
     }
 
     let cancelled = false;
-
-    loadAdminOverview({ projectId, shotExecutionId })
-      .then((nextOverview) => {
-        if (cancelled) {
-          return;
-        }
-        startTransition(() => {
-          setOverview(nextOverview);
-          setErrorMessage("");
-        });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        const message = error instanceof Error ? error.message : "admin: unknown overview error";
-        startTransition(() => {
-          setErrorMessage(message);
-          setOverview(null);
-        });
-      });
 
     loadGovernancePanel({
       orgId: identityOverride?.orgId,
@@ -189,6 +128,7 @@ export function useAdminOverviewGovernance({
         }
         startTransition(() => {
           setGovernance(nextGovernance);
+          setErrorMessage("");
         });
       })
       .catch((error: unknown) => {
@@ -206,76 +146,14 @@ export function useAdminOverviewGovernance({
     return () => {
       cancelled = true;
     };
-  }, [
-    identityOverride?.orgId,
-    identityOverride?.userId,
-    projectId,
-    sessionState,
-    shotExecutionId,
-  ]);
-
-  const onUpdateBudgetLimit = useCallback(
-    async (input: { projectId: string; limitCents: number }) => {
-      startTransition(() => {
-        setBudgetFeedback({
-          tone: "pending",
-          message: t("budget.feedback.pending"),
-        });
-      });
-
-      try {
-        await waitForFeedbackPaint();
-        await updateBudgetPolicy({
-          orgId: effectiveOrgId,
-          projectId: input.projectId,
-          limitCents: input.limitCents,
-        });
-        await refreshOverview();
-        startTransition(() => {
-          setBudgetFeedback({
-            tone: "success",
-            message: t("budget.feedback.success"),
-          });
-        });
-      } catch (error: unknown) {
-        const message =
-          error instanceof Error ? error.message : "admin: unknown budget update error";
-        startTransition(() => {
-          setBudgetFeedback({
-            tone: "error",
-            message: t("budget.feedback.error", { message }),
-          });
-        });
-      }
-    },
-    [effectiveOrgId, refreshOverview, t],
-  );
-
-  const applyRecentChange = useCallback((change: RecentChangeSummary) => {
-    startTransition(() => {
-      setOverview((current) => {
-        if (!current) {
-          return current;
-        }
-        return {
-          ...current,
-          recentChanges: mergeRecentChanges(current.recentChanges, change),
-        };
-      });
-    });
-  }, []);
+  }, [identityOverride?.orgId, identityOverride?.userId, sessionState]);
 
   return {
-    overview,
     governance,
     errorMessage,
-    budgetFeedback,
     governanceActionFeedback,
     governanceActionPending,
-    refreshOverview,
     refreshGovernance,
-    applyRecentChange,
-    onUpdateBudgetLimit,
     onUpdateUserPreferences: (input: {
       userId: string;
       displayLocale: string;

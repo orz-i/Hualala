@@ -15,6 +15,12 @@ function buildAdminUrl(input: {
   return url.toString();
 }
 
+async function enterAdminSession(page, url: string) {
+  await page.goto(url);
+  await page.getByRole("button", { name: "进入开发会话" }).click();
+  await expect(page.getByRole("navigation", { name: "管理端主导航" })).toBeVisible();
+}
+
 test("admin real smoke: loads overview through vite proxy and updates budget", async ({
   page,
 }) => {
@@ -25,10 +31,11 @@ test("admin real smoke: loads overview through vite proxy and updates budget", a
     await route.continue();
   });
 
-  await page.goto(seed.urls.admin);
-  await page.getByRole("button", { name: "进入开发会话" }).click();
+  await enterAdminSession(page, seed.urls.admin);
 
-  await expect(page.getByText(seed.admin.projectId)).toBeVisible();
+  await expect(
+    page.getByRole("complementary").getByRole("heading", { name: seed.admin.projectId }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "最近变更" })).toBeVisible();
   await expect(page.getByText("最近计费事件")).toBeVisible();
   await expect(page.getByText("最近评估结果")).toBeVisible();
@@ -47,10 +54,10 @@ test("admin real smoke: manages roles and permission edits through the real back
 }) => {
   const seed = await runBackendSeed();
 
-  await page.goto(seed.urls.admin);
-  await page.getByRole("button", { name: "进入开发会话" }).click();
+  await enterAdminSession(page, seed.urls.admin);
+  await page.getByRole("button", { name: "治理" }).click();
 
-  await expect(page.getByText("角色与权限编辑")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "角色与权限编辑" }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "角色使用中，禁止删除" })).toBeDisabled();
 
   const createRoleSection = page.getByRole("heading", { name: "新建角色" }).locator("..");
@@ -102,14 +109,21 @@ test("admin real smoke: opens asset monitor details and completes asset actions 
     }),
   );
   await page.getByRole("button", { name: "进入开发会话" }).click();
+  await expect(page.getByRole("navigation", { name: "管理端主导航" })).toBeVisible();
+  await page.getByRole("button", { name: "资产" }).click();
 
-  await expect(page.getByText("资产监控")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "资产监控" }).first()).toBeVisible();
   await page.getByRole("button", { name: new RegExp(`查看导入批次详情 ${seed.creatorImport.importBatchId}`) }).click();
+  await expect(page).toHaveURL(new RegExp(`importBatchId=${seed.creatorImport.importBatchId}`));
   await expect(page.getByRole("dialog", { name: "导入批次详情" })).toBeVisible();
 
   await page.getByRole("button", { name: /查看资源来源/ }).first().click();
+  await expect(page).toHaveURL(/assetId=/);
+  await expect(page.getByRole("dialog", { name: "资源来源详情" })).toBeVisible();
+  await page.reload();
   await expect(page.getByRole("dialog", { name: "资源来源详情" })).toBeVisible();
   await page.getByRole("button", { name: "关闭资源来源详情" }).click();
+  await expect(page).not.toHaveURL(/assetId=/);
 
   await page.getByRole("checkbox", { name: /选择导入条目/ }).click();
   await page.getByRole("button", { name: "确认已选项" }).click();
@@ -136,8 +150,8 @@ test("admin real smoke: creates and cancels a workflow run through the real back
     await route.continue();
   });
 
-  await page.goto(seed.urls.admin);
-  await page.getByRole("button", { name: "进入开发会话" }).click();
+  await enterAdminSession(page, seed.urls.admin);
+  await page.getByRole("button", { name: "工作流" }).click();
 
   const startWorkflowResponse = await page.evaluate(
     async ({ adminBaseUrl, orgId, projectId, importBatchId }) => {
@@ -171,8 +185,12 @@ test("admin real smoke: creates and cancels a workflow run through the real back
   expect(startWorkflowProtocolVersion).toBe("1");
 
   await page.reload();
-  await expect(page.getByText("工作流监控")).toBeVisible();
+  await page.getByRole("button", { name: "工作流" }).click();
+  await expect(page.getByRole("heading", { name: "工作流监控" }).first()).toBeVisible();
   await page.getByRole("button", { name: /查看工作流详情/ }).click();
+  await expect(page).toHaveURL(/workflowRunId=/);
+  await expect(page.getByRole("dialog", { name: "工作流详情" })).toBeVisible();
+  await page.reload();
   await expect(page.getByRole("dialog", { name: "工作流详情" })).toBeVisible();
   await expect(page.getByText("供应商：seedance")).toBeVisible();
   await expect(page.getByText(/外部请求 ID：(?!pending)/)).toBeVisible();
