@@ -169,7 +169,7 @@ func TestAssetServiceWritesPublishImportBatchProjectEvents(t *testing.T) {
 	ctx := context.Background()
 	store := db.NewMemoryStore()
 	projectService := projectapp.NewService(store)
-	contentService := contentapp.NewService(store)
+	contentService := contentapp.NewService(store, store.Publisher())
 
 	project, err := projectService.CreateProject(ctx, projectapp.CreateProjectInput{
 		OrganizationID:          "org-1",

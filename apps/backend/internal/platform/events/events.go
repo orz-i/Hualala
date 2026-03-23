@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
 )
 
@@ -242,6 +243,52 @@ func PublishShotExecutionUpdated(ctx context.Context, publisher *Publisher, reco
 		ProjectID:      strings.TrimSpace(record.ProjectID),
 		ResourceType:   "shot_execution",
 		ResourceID:     record.ID,
+		Payload:        string(body),
+	})
+}
+
+type PublishCollaborationUpdatedInput struct {
+	OrganizationID string
+	ProjectID      string
+	ChangedUserID  string
+	ChangeKind     string
+	Session        content.CollaborationSession
+	Presences      []content.CollaborationPresence
+}
+
+func PublishCollaborationUpdated(ctx context.Context, publisher *Publisher, input PublishCollaborationUpdatedInput) {
+	if publisher == nil {
+		return
+	}
+
+	leaseExpiresAt := ""
+	if !input.Session.LeaseExpiresAt.IsZero() {
+		leaseExpiresAt = input.Session.LeaseExpiresAt.UTC().Format(time.RFC3339)
+	}
+
+	body, err := json.Marshal(map[string]any{
+		"session_id":          strings.TrimSpace(input.Session.ID),
+		"owner_type":          strings.TrimSpace(input.Session.OwnerType),
+		"owner_id":            strings.TrimSpace(input.Session.OwnerID),
+		"draft_version":       input.Session.DraftVersion,
+		"lock_holder_user_id": strings.TrimSpace(input.Session.LockHolderUserID),
+		"lease_expires_at":    leaseExpiresAt,
+		"conflict_summary":    strings.TrimSpace(input.Session.ConflictSummary),
+		"presence_count":      len(input.Presences),
+		"changed_user_id":     strings.TrimSpace(input.ChangedUserID),
+		"change_kind":         strings.TrimSpace(input.ChangeKind),
+		"updated_at":          input.Session.UpdatedAt.UTC().Format(time.RFC3339),
+	})
+	if err != nil {
+		return
+	}
+
+	publisher.PublishWithContext(ctx, Event{
+		EventType:      "content.collaboration.updated",
+		OrganizationID: strings.TrimSpace(input.OrganizationID),
+		ProjectID:      strings.TrimSpace(input.ProjectID),
+		ResourceType:   "collaboration_session",
+		ResourceID:     strings.TrimSpace(input.Session.ID),
 		Payload:        string(body),
 	})
 }

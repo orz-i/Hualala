@@ -9,10 +9,12 @@ import (
 
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 type Service struct {
-	repo db.ProjectContentRepository
+	repo      db.ProjectContentRepository
+	publisher *events.Publisher
 }
 
 type CreateSceneInput struct {
@@ -90,8 +92,11 @@ type ReleaseCollaborationLeaseInput struct {
 	ConflictSummary string
 }
 
-func NewService(repo db.ProjectContentRepository) *Service {
-	return &Service{repo: repo}
+func NewService(repo db.ProjectContentRepository, publisher *events.Publisher) *Service {
+	return &Service{
+		repo:      repo,
+		publisher: publisher,
+	}
 }
 
 func (s *Service) CreateScene(ctx context.Context, input CreateSceneInput) (content.Scene, error) {
@@ -382,7 +387,9 @@ func (s *Service) UpsertCollaborationLease(ctx context.Context, input UpsertColl
 	if err := s.repo.SaveCollaborationSession(ctx, record); err != nil {
 		return CollaborationSessionState{}, err
 	}
-	return s.buildCollaborationSessionState(record), nil
+	state := s.buildCollaborationSessionState(record)
+	s.publishCollaborationEvent(ctx, record.OwnerType, record.OwnerID, state, actorUserID, "lease_claimed")
+	return state, nil
 }
 
 func (s *Service) ReleaseCollaborationLease(ctx context.Context, input ReleaseCollaborationLeaseInput) (CollaborationSessionState, error) {
@@ -419,7 +426,9 @@ func (s *Service) ReleaseCollaborationLease(ctx context.Context, input ReleaseCo
 	if err := s.upsertPresence(ctx, record.ID, actorUserID, "released", now); err != nil {
 		return CollaborationSessionState{}, err
 	}
-	return s.buildCollaborationSessionState(record), nil
+	state := s.buildCollaborationSessionState(record)
+	s.publishCollaborationEvent(ctx, record.OwnerType, record.OwnerID, state, actorUserID, "lease_released")
+	return state, nil
 }
 
 func (s *Service) normalizeCollaborationOwner(ownerType string, ownerID string) (string, string, error) {
@@ -494,6 +503,71 @@ func (s *Service) buildCollaborationSessionState(record content.CollaborationSes
 	return CollaborationSessionState{
 		Session:   record,
 		Presences: s.repo.ListCollaborationPresences(record.ID),
+	}
+}
+
+func (s *Service) publishCollaborationEvent(ctx context.Context, ownerType string, ownerID string, state CollaborationSessionState, changedUserID string, changeKind string) {
+	if s == nil || s.publisher == nil {
+		return
+	}
+	organizationID, projectID, err := s.resolveCollaborationScope(ownerType, ownerID)
+	if err != nil {
+		return
+	}
+	events.PublishCollaborationUpdated(ctx, s.publisher, events.PublishCollaborationUpdatedInput{
+		OrganizationID: organizationID,
+		ProjectID:      projectID,
+		ChangedUserID:  changedUserID,
+		ChangeKind:     changeKind,
+		Session:        state.Session,
+		Presences:      state.Presences,
+	})
+}
+
+func (s *Service) resolveCollaborationScope(ownerType string, ownerID string) (string, string, error) {
+	switch ownerType {
+	case "project":
+		record, ok := s.repo.GetProject(ownerID)
+		if !ok {
+			return "", "", fmt.Errorf("contentapp: project %q not found", ownerID)
+		}
+		return record.OrganizationID, record.ID, nil
+	case "episode":
+		record, ok := s.repo.GetEpisode(ownerID)
+		if !ok {
+			return "", "", fmt.Errorf("contentapp: episode %q not found", ownerID)
+		}
+		projectRecord, ok := s.repo.GetProject(record.ProjectID)
+		if !ok {
+			return "", "", fmt.Errorf("contentapp: project %q not found", record.ProjectID)
+		}
+		return projectRecord.OrganizationID, projectRecord.ID, nil
+	case "scene":
+		record, ok := s.repo.GetScene(ownerID)
+		if !ok {
+			return "", "", fmt.Errorf("contentapp: scene %q not found", ownerID)
+		}
+		projectRecord, ok := s.repo.GetProject(record.ProjectID)
+		if !ok {
+			return "", "", fmt.Errorf("contentapp: project %q not found", record.ProjectID)
+		}
+		return projectRecord.OrganizationID, projectRecord.ID, nil
+	case "shot":
+		record, ok := s.repo.GetShot(ownerID)
+		if !ok {
+			return "", "", fmt.Errorf("contentapp: shot %q not found", ownerID)
+		}
+		sceneRecord, ok := s.repo.GetScene(record.SceneID)
+		if !ok {
+			return "", "", fmt.Errorf("contentapp: scene %q not found", record.SceneID)
+		}
+		projectRecord, ok := s.repo.GetProject(sceneRecord.ProjectID)
+		if !ok {
+			return "", "", fmt.Errorf("contentapp: project %q not found", sceneRecord.ProjectID)
+		}
+		return projectRecord.OrganizationID, projectRecord.ID, nil
+	default:
+		return "", "", fmt.Errorf("contentapp: owner_type %q is invalid", ownerType)
 	}
 }
 

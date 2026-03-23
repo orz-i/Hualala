@@ -4,13 +4,16 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	connectrpc "connectrpc.com/connect"
 	contentv1 "github.com/hualala/apps/backend/gen/hualala/content/v1"
 	contentv1connect "github.com/hualala/apps/backend/gen/hualala/content/v1/contentv1connect"
 	projectv1 "github.com/hualala/apps/backend/gen/hualala/project/v1"
 	projectv1connect "github.com/hualala/apps/backend/gen/hualala/project/v1/projectv1connect"
+	"github.com/hualala/apps/backend/internal/platform/authsession"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
@@ -181,6 +184,22 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 		t.Fatalf("CreateShot #2 returned error: %v", err)
 	}
 
+	sseCtx, cancelSSE := context.WithTimeout(ctx, 2*time.Second)
+	defer cancelSSE()
+	sseReq, err := http.NewRequestWithContext(sseCtx, http.MethodGet, server.URL+"/sse/events?organization_id=org-1&project_id="+projectID, nil)
+	if err != nil {
+		t.Fatalf("http.NewRequestWithContext returned error: %v", err)
+	}
+	sseReq.Header.Set("Cookie", authsession.BuildRequestCookieHeader(connectTestOrgID, connectTestUserID))
+	sseResp, err := server.Client().Do(sseReq)
+	if err != nil {
+		t.Fatalf("SSE request returned error: %v", err)
+	}
+	defer sseResp.Body.Close()
+	if sseResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected SSE status 200, got %d", sseResp.StatusCode)
+	}
+
 	initialSession, err := contentClient.GetCollaborationSession(ctx, connectrpc.NewRequest(&contentv1.GetCollaborationSessionRequest{
 		OwnerType: "shot",
 		OwnerId:   firstShotResp.Msg.GetShot().GetId(),
@@ -229,6 +248,16 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 	}
 	if got := released.Msg.GetSession().GetLockHolderUserId(); got != "" {
 		t.Fatalf("expected released lock holder to be empty, got %q", got)
+	}
+
+	stream := readEventStreamUntil(t, sseResp.Body, cancelSSE,
+		"event: content.collaboration.updated",
+		`"owner_id":"`+firstShotResp.Msg.GetShot().GetId()+`"`,
+		`"change_kind":"lease_claimed"`,
+		`"change_kind":"lease_released"`,
+	)
+	if strings.Count(stream, "event: content.collaboration.updated") < 2 {
+		t.Fatalf("expected at least 2 collaboration SSE events, got %q", stream)
 	}
 
 	_, err = contentClient.GetCollaborationSession(ctx, connectrpc.NewRequest(&contentv1.GetCollaborationSessionRequest{

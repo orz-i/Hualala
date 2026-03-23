@@ -99,7 +99,7 @@ func (f Factory) services(workflowExecutor temporal.Executor) ServiceSet {
 		ReviewService:    reviewapp.NewService(repos.Executions, repos.ReviewBilling, repos.EventPublisher),
 		BillingService:   billingapp.NewService(repos.ReviewBilling, repos.EventPublisher),
 		ProjectService:   projectapp.NewService(repos.ProjectContent),
-		ContentService:   contentapp.NewService(repos.ProjectContent),
+		ContentService:   contentapp.NewService(repos.ProjectContent, repos.EventPublisher),
 		WorkflowService:  workflowService,
 		GatewayService:   gatewayService,
 		PolicyService:    policyService,

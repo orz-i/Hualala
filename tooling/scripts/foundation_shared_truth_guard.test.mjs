@@ -155,6 +155,8 @@ test("collaboration and preview shared truth stay on foundation proto, sdk, and 
   assert.match(contractFreeze, /proto\/hualala\/project\/v1\/project_service\.proto/);
   assert.match(contractFreeze, /packages\/sdk\/src\/connect\/services\/content\.ts/);
   assert.match(contractFreeze, /packages\/sdk\/src\/connect\/services\/project\.ts/);
+  assert.match(contractFreeze, /content\.collaboration\.updated/);
+  assert.match(contractFreeze, /change_kind/);
   assert.match(contractFreeze, /不扩 `asset\.proto`、`workflow\.proto`/);
   assert.match(contractFreeze, /audio/);
   assert.match(contractFreeze, /reuse/);

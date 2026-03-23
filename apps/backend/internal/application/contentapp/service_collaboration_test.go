@@ -9,13 +9,14 @@ import (
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 func TestCollaborationLeaseLifecycle(t *testing.T) {
 	ctx := context.Background()
 	store := db.NewMemoryStore()
 	shotID := seedCollaborationShot(t, ctx, store)
-	service := NewService(store)
+	service := NewService(store, nil)
 
 	claimed, err := service.UpsertCollaborationLease(ctx, UpsertCollaborationLeaseInput{
 		OwnerType:       "shot",
@@ -106,7 +107,7 @@ func TestCollaborationLeaseLifecycle(t *testing.T) {
 }
 
 func TestGetCollaborationSessionRejectsUnknownOwner(t *testing.T) {
-	service := NewService(db.NewMemoryStore())
+	service := NewService(db.NewMemoryStore(), nil)
 
 	_, err := service.GetCollaborationSession(context.Background(), GetCollaborationSessionInput{
 		OwnerType: "shot",
@@ -117,6 +118,47 @@ func TestGetCollaborationSessionRejectsUnknownOwner(t *testing.T) {
 	}
 	if !strings.Contains(strings.ToLower(err.Error()), "not found") {
 		t.Fatalf("expected not found error, got %v", err)
+	}
+}
+
+func TestCollaborationLeasePublishesUpdatedEvents(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	shotID := seedCollaborationShot(t, ctx, store)
+	publisher := events.NewPublisher()
+	service := NewService(store, publisher)
+
+	if _, err := service.UpsertCollaborationLease(ctx, UpsertCollaborationLeaseInput{
+		OwnerType:       "shot",
+		OwnerID:         shotID,
+		ActorUserID:     "user-1",
+		PresenceStatus:  "editing",
+		DraftVersion:    2,
+		LeaseTTLSeconds: 120,
+	}); err != nil {
+		t.Fatalf("UpsertCollaborationLease returned error: %v", err)
+	}
+
+	if _, err := service.ReleaseCollaborationLease(ctx, ReleaseCollaborationLeaseInput{
+		OwnerType:   "shot",
+		OwnerID:     shotID,
+		ActorUserID: "user-1",
+	}); err != nil {
+		t.Fatalf("ReleaseCollaborationLease returned error: %v", err)
+	}
+
+	items := publisher.List("org-1", "project-1", "")
+	if len(items) != 2 {
+		t.Fatalf("expected 2 collaboration events, got %d", len(items))
+	}
+	if got := items[0].EventType; got != "content.collaboration.updated" {
+		t.Fatalf("expected event type %q, got %q", "content.collaboration.updated", got)
+	}
+	if !strings.Contains(items[0].Payload, `"change_kind":"lease_claimed"`) {
+		t.Fatalf("expected claim payload, got %q", items[0].Payload)
+	}
+	if !strings.Contains(items[1].Payload, `"change_kind":"lease_released"`) {
+		t.Fatalf("expected release payload, got %q", items[1].Payload)
 	}
 }
 
