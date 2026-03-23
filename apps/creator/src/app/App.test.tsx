@@ -1374,9 +1374,12 @@ describe("App", () => {
       });
     });
 
-    expect(await screen.findByRole("dialog", { name: "素材来源详情" })).toBeInTheDocument();
-    expect(screen.getByText("asset-shot-provenance-2")).toBeInTheDocument();
-    expect(screen.getByText("来源运行 ID：source-run-shot-2")).toBeInTheDocument();
+    const provenanceDialog = await screen.findByRole("dialog", { name: "素材来源详情" });
+    expect(provenanceDialog).toBeInTheDocument();
+    expect(await within(provenanceDialog).findByText("asset-shot-provenance-2")).toBeInTheDocument();
+    expect(
+      await within(provenanceDialog).findByText("来源运行 ID：source-run-shot-2"),
+    ).toBeInTheDocument();
     expect(screen.getByText("shot-exec-shot-provenance")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "关闭来源详情" }));
