@@ -1,0 +1,189 @@
+export type AdminMode = "success" | "failure";
+export type CreatorShotMode = "success" | "failure";
+export type CreatorImportMode = "success" | "failure";
+
+export type MockConnectScenario = {
+  admin?: AdminMode;
+  creatorShot?: CreatorShotMode;
+  creatorImport?: CreatorImportMode;
+};
+
+export type MockSession = {
+  sessionId: string;
+  orgId: string;
+  userId: string;
+  locale: string;
+  roleId: string;
+  roleCode: string;
+  permissionCodes: string[];
+  timezone: string;
+};
+
+export type GovernancePermission = {
+  code: string;
+  displayName: string;
+  group: string;
+};
+
+export type GovernanceRole = {
+  roleId: string;
+  orgId: string;
+  code: string;
+  displayName: string;
+  permissionCodes: string[];
+  memberCount: number;
+};
+
+export type GovernanceMember = {
+  memberId: string;
+  orgId: string;
+  userId: string;
+  roleId: string;
+};
+
+export type GovernanceState = {
+  currentSession: MockSession;
+  userPreferences: {
+    userId: string;
+    displayLocale: string;
+    timezone: string;
+  };
+  members: GovernanceMember[];
+  roles: GovernanceRole[];
+  availablePermissions: GovernancePermission[];
+  orgLocaleSettings: {
+    orgId: string;
+    defaultLocale: string;
+    supportedLocales: string[];
+  };
+  capabilities: {
+    canManageRoles: boolean;
+    canManageMembers: boolean;
+    canManageOrgSettings: boolean;
+    canManageUserPreferences: boolean;
+  };
+};
+
+export type AdminState = {
+  budgetSnapshot: {
+    projectId: string;
+    limitCents: number;
+    reservedCents: number;
+    remainingBudgetCents: number;
+  };
+  updatedBudgetSnapshot?: {
+    projectId: string;
+    limitCents: number;
+    reservedCents: number;
+    remainingBudgetCents: number;
+  };
+  usageRecords: Array<{ id: string; meter: string; amountCents: number }>;
+  billingEvents: Array<{ id: string; eventType: string; amountCents: number }>;
+  reviewSummary: { shotExecutionId: string; latestConclusion: string };
+  evaluationRuns: Array<{ id: string; status: string; failedChecks: string[] }>;
+  shotReviews: Array<{ id: string; conclusion: string }>;
+  governance: GovernanceState;
+};
+
+export type AdminScenarioState = Omit<AdminState, "governance"> &
+  Partial<Pick<AdminState, "governance">>;
+
+export type RecentChange = {
+  id: string;
+  kind: string;
+  title: string;
+  detail: string;
+  tone: string;
+};
+
+export type AdminStateWithRecentChanges = AdminState & {
+  recentChanges: RecentChange[];
+};
+
+export type CreatorShotState = {
+  workbench: {
+    shotExecution: {
+      id: string;
+      shotId: string;
+      orgId?: string;
+      projectId?: string;
+      status: string;
+      primaryAssetId: string;
+    };
+    candidateAssets: Array<{ id: string; assetId: string }>;
+    reviewSummary: { latestConclusion: string };
+    latestEvaluationRun?: { id: string; status: string };
+  };
+  afterGate?: {
+    workbench: CreatorShotState["workbench"];
+    gateResult: {
+      passedChecks: string[];
+      failedChecks: string[];
+    };
+  };
+  afterSubmit?: {
+    workbench: CreatorShotState["workbench"];
+  };
+};
+
+export type CreatorImportState = {
+  importBatch: {
+    id: string;
+    status: string;
+    sourceType: string;
+  };
+  uploadSessions: Array<{ id: string; status: string }>;
+  items: Array<{ id: string; status: string; assetId: string }>;
+  candidateAssets: Array<{ id: string; assetId: string }>;
+  shotExecutions: Array<{ id: string; status: string; primaryAssetId: string }>;
+  afterConfirm?: Omit<CreatorImportState, "afterConfirm" | "afterSelect">;
+  afterSelect?: Omit<CreatorImportState, "afterConfirm" | "afterSelect">;
+};
+
+export type MockTimestamp = {
+  seconds: string;
+  nanos: number;
+};
+
+export type MockWorkflowStep = {
+  id: string;
+  workflowRunId: string;
+  stepKey: string;
+  stepOrder: number;
+  status: string;
+  errorCode?: string;
+  errorMessage?: string;
+  startedAt?: MockTimestamp;
+  completedAt?: MockTimestamp;
+  failedAt?: MockTimestamp;
+};
+
+export type MockWorkflowRun = {
+  id: string;
+  workflowType: string;
+  status: string;
+  resourceId: string;
+  projectId: string;
+  provider: string;
+  currentStep: string;
+  attemptCount: number;
+  lastError: string;
+  externalRequestId: string;
+  createdAt: MockTimestamp;
+  updatedAt: MockTimestamp;
+  steps: MockWorkflowStep[];
+};
+
+export type Phase1DemoScenarios = {
+  admin: Record<AdminMode, AdminScenarioState>;
+  creatorShot: Record<CreatorShotMode, CreatorShotState>;
+  creatorImport: Record<CreatorImportMode, CreatorImportState>;
+};
+
+export type MockConnectState = {
+  devSessionActive: boolean;
+  adminState: AdminStateWithRecentChanges;
+  creatorShotState: CreatorShotState;
+  creatorShotWorkflowRuns: MockWorkflowRun[];
+  creatorImportState: CreatorImportState;
+};

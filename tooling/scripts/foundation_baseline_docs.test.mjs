@@ -20,10 +20,16 @@ test("repo exposes a phase2 foundation baseline doc with shared truth sources", 
     "utf8",
   );
 
+  assert.match(foundationDoc, /## 共享入口清单/);
+  assert.match(foundationDoc, /## 变更准入规则/);
+  assert.match(foundationDoc, /## 验证矩阵/);
   assert.match(foundationDoc, /proto\/hualala\/\*\*\/\*\.proto/);
   assert.match(foundationDoc, /apps\/backend\/internal\/interfaces\/connect\/server\.go/);
   assert.match(foundationDoc, /packages\/sdk\/src\/session\/bootstrap\.ts/);
   assert.match(foundationDoc, /tests\/e2e\/fixtures\/mockConnectRoutes\.ts/);
-  assert.match(foundationDoc, /corepack pnpm run proto:gen/);
-  assert.match(foundationDoc, /corepack pnpm run test:e2e:phase1/);
+  assert.match(foundationDoc, /foundation patch/);
+  assert.match(foundationDoc, /backend\/admin\/creator/);
+  assert.match(foundationDoc, /corepack pnpm run test:tooling/);
+  assert.match(foundationDoc, /go test \.\/apps\/backend\/internal\/interfaces\/connect\/\.\.\. -count=1/);
+  assert.match(foundationDoc, /corepack pnpm run test:e2e:phase1:real/);
 });
