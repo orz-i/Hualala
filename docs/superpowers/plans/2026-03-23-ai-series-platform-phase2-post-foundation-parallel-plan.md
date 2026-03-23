@@ -140,6 +140,8 @@
 
 ## Task 3A: 预演工作台线（薄消费层）
 
+> Status: 已于 2026-03-23 合入 `master`，PR `#49`
+
 **Files:**
 - Modify: `apps/creator/src/app/creatorRoutes.ts`
 - Modify: `apps/creator/src/app/App.tsx`
@@ -157,12 +159,12 @@
 - Test: `apps/creator/src/features/preview/*.test.tsx`
 - Test: `tests/e2e/phase2-preview.spec.ts`
 
-- [ ] 为 creator 新增 `/preview?projectId=...` 入口，不与镜头工作台混成一个超大页面。
-- [ ] 当前 3A 只消费已冻结的 `ProjectService.GetPreviewWorkbench / UpsertPreviewAssembly`，不新增 proto、SDK public API 或 preview SSE。
-- [ ] creator 先交付“手动追加 shotId + 删除 + 上移/下移 + 整体保存 + provenance drilldown”最小闭环。
-- [ ] admin 先交付只读预演观测页，确认 assembly 状态、条目数、缺失主素材条目和 provenance 入口。
-- [ ] 新增独立 preview mock fixture 与 `phase2-preview` Playwright 验收，不把 preview 逻辑继续堆回 Phase 1 spec。
-- [ ] 若预演对象需要友好标题、项目级 chooser、导出执行细节或 richer aggregation，拆到 Task 3B / foundation patch。
+- [x] 为 creator 新增 `/preview?projectId=...` 入口，不与镜头工作台混成一个超大页面。
+- [x] 当前 3A 只消费已冻结的 `ProjectService.GetPreviewWorkbench / UpsertPreviewAssembly`，不新增 proto、SDK public API 或 preview SSE。
+- [x] creator 已交付“手动追加 shotId + 删除 + 上移/下移 + 整体保存 + provenance drilldown”最小闭环。
+- [x] admin 已交付只读预演观测页，确认 assembly 状态、条目数、缺失主素材条目和 provenance 入口。
+- [x] 已新增独立 preview mock fixture 与 `phase2-preview` Playwright 验收，不把 preview 逻辑继续堆回 Phase 1 spec。
+- [x] 若预演对象需要友好标题、项目级 chooser、导出执行细节或 richer aggregation，拆到 Task 3B / foundation patch。
 
 **Exit checks:**
 - creator 能从项目级入口打开预演工作台并看到镜头顺序与素材引用。
@@ -175,37 +177,37 @@
 - [ ] 评估是否需要项目级 preview 专用 SSE；若需要，先回 foundation patch，而不是在产品线私扩事件名。
 - [ ] 预演导出、真实播放器、字幕/转场 richer payload、多轨音频联动，都放到 3B 之后与音频线协调推进。
 
-## Task 4: 多轨音频线
+## Task 4A: 多轨音频 foundation patch（项目级时间线）
 
 **Files:**
+- Modify: `proto/hualala/project/v1/project_service.proto`
 - Modify: `proto/hualala/asset/v1/asset.proto`
-- Modify: `proto/hualala/workflow/v1/workflow.proto`
-- Modify: `packages/sdk/src/connect/services/asset.ts`
-- Modify: `packages/sdk/src/connect/services/workflow.ts`
-- Modify: `apps/creator/src/app/creatorRoutes.ts`
-- Modify: `apps/creator/src/app/App.tsx`
-- Create: `apps/creator/src/features/audio/`
-- Create: `apps/creator/src/features/audio/AudioWorkbenchPage.tsx`
-- Create: `apps/creator/src/features/audio/useAudioWorkbenchController.ts`
-- Create: `apps/creator/src/features/audio/audioTimeline.ts`
-- Create: `apps/creator/src/features/audio/waveform.ts`
-- Modify: `apps/backend/internal/interfaces/connect/asset_service.go`
-- Modify: `apps/backend/internal/interfaces/connect/workflow_service.go`
-- Create: `apps/backend/internal/application/assetapp/audio_service.go`
-- Create: `apps/backend/internal/domain/asset/audio.go`
-- Modify: `apps/backend/internal/platform/db/postgres_relational.go`
-- Test: `apps/creator/src/features/audio/*.test.tsx`
-- Test: `apps/backend/internal/interfaces/connect/server_*_test.go`
-- Test: `tests/e2e/phase2-audio.spec.ts`
+- Modify: `packages/sdk/src/connect/services/project.ts`
+- Modify: `packages/sdk/src/index.ts`
+- Create: `infra/migrations/0016_phase2_audio_timeline_shared_truth.sql`
+- Modify: `apps/backend/internal/application/projectapp/`
+- Modify: `apps/backend/internal/domain/project/`
+- Modify: `apps/backend/internal/domain/asset/`
+- Modify: `apps/backend/internal/interfaces/connect/project_service.go`
+- Modify: `apps/backend/internal/interfaces/connect/mapping.go`
+- Modify: `apps/backend/internal/platform/db/`
+- Test: `apps/backend/internal/application/projectapp/service_audio_test.go`
+- Test: `apps/backend/internal/interfaces/connect/project_audio_service_test.go`
 
 - [ ] 先把音频当成 `media_type=audio` 的一等公民，而不是把 BGM/配音塞进图片或视频备注字段。
 - [ ] 定义首批轨道类型：对白、旁白、BGM；每条轨道至少要有片段、时长、音量、静音/solo、来源资产。
-- [ ] 利用设计文档里已有的 `media_asset_variants` 能力，把 `extracted_audio / waveform` 落成真实 variant，而不是 UI 本地假对象。
-- [ ] creator 新增音频工作台或预演内嵌音频面板，但代码组织应独立于预演页面，避免形成单文件巨兽。
-- [ ] backend 需要持久化轨道与片段，提供渲染/混音 workflow 状态，并把失败原因回写到 workflow / asset 观测面。
-- [ ] admin 增补音频相关治理视图时，重点看 rights、consent、provider 健康与渲染失败，而不是重做 creator 操作界面。
-- [ ] 先跑 connect/service tests，再跑 creator 组件测试和 `phase2-audio` mock E2E。
+- [ ] 利用现有 `media_assets.asset_type` 与 `media_asset_variants.duration_ms`，把 asset truth 显式映射到 domain / proto / SDK。
+- [ ] project_service 只新增 `GetAudioWorkbench / UpsertAudioTimeline`，workflow 继续复用通用 run，不扩 `workflow.proto`。
+- [ ] backend 需要持久化轨道与片段，提供 `render_workflow_run_id / render_status`，并保证首次读取自动建空 timeline。
+- [ ] 先跑 `proto:gen`、SDK tests、connect tests、db tests 和 backend 全量回归；产品 UI 与 mock E2E 留给 4B。
 - [ ] 若需要新的 provider 能力路由、成本归因或 callback payload，先回 foundation micro-patch。
+
+## Task 4B: 多轨音频产品线
+
+- [ ] creator 新增音频工作台或预演内嵌音频面板，但代码组织应独立于预演页面，避免形成单文件巨兽。
+- [ ] 利用 foundation patch 暴露的 timeline / media_type / duration_ms，补真实轨道编排、波形、导入与混音状态可视化。
+- [ ] admin 增补音频相关治理视图时，重点看 rights、consent、provider 健康与渲染失败，而不是重做 creator 操作界面。
+- [ ] product 线先跑 creator/admin 组件测试和 `phase2-audio` mock E2E；若需要新 shared truth，再退回新的 foundation patch。
 
 **Exit checks:**
 - 至少一个项目可保存并重新加载多轨音频结构。

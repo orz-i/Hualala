@@ -322,6 +322,7 @@ type MediaAsset struct {
 	ImportBatchId string                 `protobuf:"bytes,5,opt,name=import_batch_id,json=importBatchId,proto3" json:"import_batch_id,omitempty"`
 	Locale        string                 `protobuf:"bytes,6,opt,name=locale,proto3" json:"locale,omitempty"`
 	AiAnnotated   bool                   `protobuf:"varint,7,opt,name=ai_annotated,json=aiAnnotated,proto3" json:"ai_annotated,omitempty"`
+	MediaType     string                 `protobuf:"bytes,8,opt,name=media_type,json=mediaType,proto3" json:"media_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -403,6 +404,13 @@ func (x *MediaAsset) GetAiAnnotated() bool {
 		return x.AiAnnotated
 	}
 	return false
+}
+
+func (x *MediaAsset) GetMediaType() string {
+	if x != nil {
+		return x.MediaType
+	}
+	return ""
 }
 
 type ShotCandidateAsset struct {
@@ -682,6 +690,7 @@ type MediaAssetVariant struct {
 	MimeType      string                 `protobuf:"bytes,5,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
 	Width         uint32                 `protobuf:"varint,6,opt,name=width,proto3" json:"width,omitempty"`
 	Height        uint32                 `protobuf:"varint,7,opt,name=height,proto3" json:"height,omitempty"`
+	DurationMs    uint32                 `protobuf:"varint,8,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -761,6 +770,13 @@ func (x *MediaAssetVariant) GetWidth() uint32 {
 func (x *MediaAssetVariant) GetHeight() uint32 {
 	if x != nil {
 		return x.Height
+	}
+	return 0
+}
+
+func (x *MediaAssetVariant) GetDurationMs() uint32 {
+	if x != nil {
+		return x.DurationMs
 	}
 	return 0
 }
@@ -1800,7 +1816,7 @@ const file_hualala_asset_v1_asset_proto_rawDesc = "" +
 	"\x0fimport_batch_id\x18\x02 \x01(\tR\rimportBatchId\x12\x16\n" +
 	"\x06status\x18\x03 \x01(\tR\x06status\x12&\n" +
 	"\x0fmatched_shot_id\x18\x04 \x01(\tR\rmatchedShotId\x12\x19\n" +
-	"\basset_id\x18\x05 \x01(\tR\aassetId\"\xe4\x01\n" +
+	"\basset_id\x18\x05 \x01(\tR\aassetId\"\x83\x02\n" +
 	"\n" +
 	"MediaAsset\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
@@ -1811,7 +1827,9 @@ const file_hualala_asset_v1_asset_proto_rawDesc = "" +
 	"\rrights_status\x18\x04 \x01(\tR\frightsStatus\x12&\n" +
 	"\x0fimport_batch_id\x18\x05 \x01(\tR\rimportBatchId\x12\x16\n" +
 	"\x06locale\x18\x06 \x01(\tR\x06locale\x12!\n" +
-	"\fai_annotated\x18\a \x01(\bR\vaiAnnotated\"\x8f\x01\n" +
+	"\fai_annotated\x18\a \x01(\bR\vaiAnnotated\x12\x1d\n" +
+	"\n" +
+	"media_type\x18\b \x01(\tR\tmediaType\"\x8f\x01\n" +
 	"\x12ShotCandidateAsset\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x11shot_execution_id\x18\x02 \x01(\tR\x0fshotExecutionId\x12\x19\n" +
@@ -1841,7 +1859,7 @@ const file_hualala_asset_v1_asset_proto_rawDesc = "" +
 	"\tmime_type\x18\x04 \x01(\tR\bmimeType\x12\x1a\n" +
 	"\bchecksum\x18\x05 \x01(\tR\bchecksum\x12\x1d\n" +
 	"\n" +
-	"size_bytes\x18\x06 \x01(\x03R\tsizeBytes\"\xd2\x01\n" +
+	"size_bytes\x18\x06 \x01(\x03R\tsizeBytes\"\xf3\x01\n" +
 	"\x11MediaAssetVariant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\basset_id\x18\x02 \x01(\tR\aassetId\x12$\n" +
@@ -1849,7 +1867,9 @@ const file_hualala_asset_v1_asset_proto_rawDesc = "" +
 	"\fvariant_type\x18\x04 \x01(\tR\vvariantType\x12\x1b\n" +
 	"\tmime_type\x18\x05 \x01(\tR\bmimeType\x12\x14\n" +
 	"\x05width\x18\x06 \x01(\rR\x05width\x12\x16\n" +
-	"\x06height\x18\a \x01(\rR\x06height\"\xab\x01\n" +
+	"\x06height\x18\a \x01(\rR\x06height\x12\x1f\n" +
+	"\vduration_ms\x18\b \x01(\rR\n" +
+	"durationMs\"\xab\x01\n" +
 	"\x18ImportBatchShotExecution\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\ashot_id\x18\x02 \x01(\tR\x06shotId\x12\x16\n" +

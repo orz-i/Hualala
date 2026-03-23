@@ -18,6 +18,7 @@ type MediaAsset struct {
 	OrgID         string
 	ProjectID     string
 	ImportBatchID string
+	MediaType     string
 	SourceType    string
 	Locale        string
 	RightsStatus  string
@@ -79,6 +80,7 @@ type MediaAssetVariant struct {
 	MimeType     string
 	Width        int
 	Height       int
+	DurationMS   int
 	CreatedAt    time.Time
 }
 

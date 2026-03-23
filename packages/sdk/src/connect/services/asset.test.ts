@@ -59,6 +59,7 @@ describe("createAssetClient", () => {
               id: "asset-1",
               projectId: "project-1",
               importBatchId: "batch-1",
+              mediaType: "audio",
               sourceType: "upload_session",
               rightsStatus: "clear",
             },
@@ -91,7 +92,7 @@ describe("createAssetClient", () => {
     await client.listCandidateAssets({
       shotExecutionId: "shot-exec-1",
     });
-    await client.getAssetProvenanceSummary({
+    const provenance = await client.getAssetProvenanceSummary({
       assetId: "asset-1",
     });
     await client.batchConfirmImportBatchItems({
@@ -147,5 +148,6 @@ describe("createAssetClient", () => {
         }),
       }),
     );
+    expect(provenance.asset?.mediaType).toBe("audio");
   });
 });

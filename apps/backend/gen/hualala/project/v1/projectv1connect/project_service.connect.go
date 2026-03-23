@@ -54,6 +54,12 @@ const (
 	// ProjectServiceUpsertPreviewAssemblyProcedure is the fully-qualified name of the ProjectService's
 	// UpsertPreviewAssembly RPC.
 	ProjectServiceUpsertPreviewAssemblyProcedure = "/hualala.project.v1.ProjectService/UpsertPreviewAssembly"
+	// ProjectServiceGetAudioWorkbenchProcedure is the fully-qualified name of the ProjectService's
+	// GetAudioWorkbench RPC.
+	ProjectServiceGetAudioWorkbenchProcedure = "/hualala.project.v1.ProjectService/GetAudioWorkbench"
+	// ProjectServiceUpsertAudioTimelineProcedure is the fully-qualified name of the ProjectService's
+	// UpsertAudioTimeline RPC.
+	ProjectServiceUpsertAudioTimelineProcedure = "/hualala.project.v1.ProjectService/UpsertAudioTimeline"
 )
 
 // ProjectServiceClient is a client for the hualala.project.v1.ProjectService service.
@@ -65,6 +71,8 @@ type ProjectServiceClient interface {
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
 	GetPreviewWorkbench(context.Context, *connect.Request[v1.GetPreviewWorkbenchRequest]) (*connect.Response[v1.GetPreviewWorkbenchResponse], error)
 	UpsertPreviewAssembly(context.Context, *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error)
+	GetAudioWorkbench(context.Context, *connect.Request[v1.GetAudioWorkbenchRequest]) (*connect.Response[v1.GetAudioWorkbenchResponse], error)
+	UpsertAudioTimeline(context.Context, *connect.Request[v1.UpsertAudioTimelineRequest]) (*connect.Response[v1.UpsertAudioTimelineResponse], error)
 }
 
 // NewProjectServiceClient constructs a client for the hualala.project.v1.ProjectService service. By
@@ -120,6 +128,18 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(projectServiceMethods.ByName("UpsertPreviewAssembly")),
 			connect.WithClientOptions(opts...),
 		),
+		getAudioWorkbench: connect.NewClient[v1.GetAudioWorkbenchRequest, v1.GetAudioWorkbenchResponse](
+			httpClient,
+			baseURL+ProjectServiceGetAudioWorkbenchProcedure,
+			connect.WithSchema(projectServiceMethods.ByName("GetAudioWorkbench")),
+			connect.WithClientOptions(opts...),
+		),
+		upsertAudioTimeline: connect.NewClient[v1.UpsertAudioTimelineRequest, v1.UpsertAudioTimelineResponse](
+			httpClient,
+			baseURL+ProjectServiceUpsertAudioTimelineProcedure,
+			connect.WithSchema(projectServiceMethods.ByName("UpsertAudioTimeline")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -132,6 +152,8 @@ type projectServiceClient struct {
 	listEpisodes          *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
 	getPreviewWorkbench   *connect.Client[v1.GetPreviewWorkbenchRequest, v1.GetPreviewWorkbenchResponse]
 	upsertPreviewAssembly *connect.Client[v1.UpsertPreviewAssemblyRequest, v1.UpsertPreviewAssemblyResponse]
+	getAudioWorkbench     *connect.Client[v1.GetAudioWorkbenchRequest, v1.GetAudioWorkbenchResponse]
+	upsertAudioTimeline   *connect.Client[v1.UpsertAudioTimelineRequest, v1.UpsertAudioTimelineResponse]
 }
 
 // CreateProject calls hualala.project.v1.ProjectService.CreateProject.
@@ -169,6 +191,16 @@ func (c *projectServiceClient) UpsertPreviewAssembly(ctx context.Context, req *c
 	return c.upsertPreviewAssembly.CallUnary(ctx, req)
 }
 
+// GetAudioWorkbench calls hualala.project.v1.ProjectService.GetAudioWorkbench.
+func (c *projectServiceClient) GetAudioWorkbench(ctx context.Context, req *connect.Request[v1.GetAudioWorkbenchRequest]) (*connect.Response[v1.GetAudioWorkbenchResponse], error) {
+	return c.getAudioWorkbench.CallUnary(ctx, req)
+}
+
+// UpsertAudioTimeline calls hualala.project.v1.ProjectService.UpsertAudioTimeline.
+func (c *projectServiceClient) UpsertAudioTimeline(ctx context.Context, req *connect.Request[v1.UpsertAudioTimelineRequest]) (*connect.Response[v1.UpsertAudioTimelineResponse], error) {
+	return c.upsertAudioTimeline.CallUnary(ctx, req)
+}
+
 // ProjectServiceHandler is an implementation of the hualala.project.v1.ProjectService service.
 type ProjectServiceHandler interface {
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
@@ -178,6 +210,8 @@ type ProjectServiceHandler interface {
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
 	GetPreviewWorkbench(context.Context, *connect.Request[v1.GetPreviewWorkbenchRequest]) (*connect.Response[v1.GetPreviewWorkbenchResponse], error)
 	UpsertPreviewAssembly(context.Context, *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error)
+	GetAudioWorkbench(context.Context, *connect.Request[v1.GetAudioWorkbenchRequest]) (*connect.Response[v1.GetAudioWorkbenchResponse], error)
+	UpsertAudioTimeline(context.Context, *connect.Request[v1.UpsertAudioTimelineRequest]) (*connect.Response[v1.UpsertAudioTimelineResponse], error)
 }
 
 // NewProjectServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -229,6 +263,18 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		connect.WithSchema(projectServiceMethods.ByName("UpsertPreviewAssembly")),
 		connect.WithHandlerOptions(opts...),
 	)
+	projectServiceGetAudioWorkbenchHandler := connect.NewUnaryHandler(
+		ProjectServiceGetAudioWorkbenchProcedure,
+		svc.GetAudioWorkbench,
+		connect.WithSchema(projectServiceMethods.ByName("GetAudioWorkbench")),
+		connect.WithHandlerOptions(opts...),
+	)
+	projectServiceUpsertAudioTimelineHandler := connect.NewUnaryHandler(
+		ProjectServiceUpsertAudioTimelineProcedure,
+		svc.UpsertAudioTimeline,
+		connect.WithSchema(projectServiceMethods.ByName("UpsertAudioTimeline")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hualala.project.v1.ProjectService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProjectServiceCreateProjectProcedure:
@@ -245,6 +291,10 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 			projectServiceGetPreviewWorkbenchHandler.ServeHTTP(w, r)
 		case ProjectServiceUpsertPreviewAssemblyProcedure:
 			projectServiceUpsertPreviewAssemblyHandler.ServeHTTP(w, r)
+		case ProjectServiceGetAudioWorkbenchProcedure:
+			projectServiceGetAudioWorkbenchHandler.ServeHTTP(w, r)
+		case ProjectServiceUpsertAudioTimelineProcedure:
+			projectServiceUpsertAudioTimelineHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -280,4 +330,12 @@ func (UnimplementedProjectServiceHandler) GetPreviewWorkbench(context.Context, *
 
 func (UnimplementedProjectServiceHandler) UpsertPreviewAssembly(context.Context, *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.UpsertPreviewAssembly is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) GetAudioWorkbench(context.Context, *connect.Request[v1.GetAudioWorkbenchRequest]) (*connect.Response[v1.GetAudioWorkbenchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.GetAudioWorkbench is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) UpsertAudioTimeline(context.Context, *connect.Request[v1.UpsertAudioTimelineRequest]) (*connect.Response[v1.UpsertAudioTimelineResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.UpsertAudioTimeline is not implemented"))
 }

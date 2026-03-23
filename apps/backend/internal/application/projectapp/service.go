@@ -12,7 +12,13 @@ import (
 )
 
 type Service struct {
-	repo db.ProjectContentRepository
+	repo repository
+}
+
+type repository interface {
+	db.ProjectContentRepository
+	db.AssetRepository
+	db.WorkflowRepository
 }
 
 type CreateProjectInput struct {
@@ -67,7 +73,7 @@ type UpsertPreviewAssemblyInput struct {
 	Items     []PreviewAssemblyItemInput
 }
 
-func NewService(repo db.ProjectContentRepository) *Service {
+func NewService(repo repository) *Service {
 	return &Service{repo: repo}
 }
 

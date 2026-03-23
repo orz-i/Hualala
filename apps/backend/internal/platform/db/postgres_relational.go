@@ -173,6 +173,23 @@ func defaultString(value string, fallback string) string {
 	return trimmed
 }
 
+func normalizeAssetMediaType(value string) string {
+	switch strings.TrimSpace(value) {
+	case "image":
+		return "image"
+	case "video":
+		return "video"
+	case "audio":
+		return "audio"
+	case "document":
+		return "document"
+	case "other":
+		return "other"
+	default:
+		return "image"
+	}
+}
+
 func nullableInt(value int) any {
 	if value <= 0 {
 		return nil
@@ -218,6 +235,9 @@ func (p *PostgresPersister) loadRelationalSnapshot(ctx context.Context, snapshot
 		return err
 	}
 	if err := p.loadAssets(ctx, snapshot); err != nil {
+		return err
+	}
+	if err := p.loadAudioTimelines(ctx, snapshot); err != nil {
 		return err
 	}
 	if err := p.loadBillingAndReview(ctx, snapshot, runExecutionMap); err != nil {
@@ -683,7 +703,7 @@ func (p *PostgresPersister) loadAssets(ctx context.Context, snapshot *Snapshot) 
 	assetUploadFiles := make(map[string]string)
 	assetRows, err := p.db.QueryContext(ctx, `
 		SELECT id::text, organization_id::text, project_id::text, COALESCE(import_batch_id::text, ''),
-		       source_type, COALESCE(locale, ''), rights_status, ai_annotated, created_at, updated_at,
+		       asset_type, source_type, COALESCE(locale, ''), rights_status, ai_annotated, created_at, updated_at,
 		       COALESCE(upload_file_id::text, '')
 		FROM media_assets
 	`)
@@ -693,11 +713,11 @@ func (p *PostgresPersister) loadAssets(ctx context.Context, snapshot *Snapshot) 
 	defer assetRows.Close()
 	for assetRows.Next() {
 		var (
-			id, organizationID, projectID, importBatchID, sourceType, locale, rightsStatus, uploadFileID string
-			aiAnnotated                                                                                  bool
-			createdAt, updatedAt                                                                         time.Time
+			id, organizationID, projectID, importBatchID, mediaType, sourceType, locale, rightsStatus, uploadFileID string
+			aiAnnotated                                                                                             bool
+			createdAt, updatedAt                                                                                    time.Time
 		)
-		if err := assetRows.Scan(&id, &organizationID, &projectID, &importBatchID, &sourceType, &locale, &rightsStatus, &aiAnnotated, &createdAt, &updatedAt, &uploadFileID); err != nil {
+		if err := assetRows.Scan(&id, &organizationID, &projectID, &importBatchID, &mediaType, &sourceType, &locale, &rightsStatus, &aiAnnotated, &createdAt, &updatedAt, &uploadFileID); err != nil {
 			return fmt.Errorf("db: scan media asset: %w", err)
 		}
 		snapshot.MediaAssets[id] = asset.MediaAsset{
@@ -705,6 +725,7 @@ func (p *PostgresPersister) loadAssets(ctx context.Context, snapshot *Snapshot) 
 			OrgID:         organizationID,
 			ProjectID:     projectID,
 			ImportBatchID: importBatchID,
+			MediaType:     mediaType,
 			SourceType:    sourceType,
 			Locale:        locale,
 			RightsStatus:  rightsStatus,
@@ -720,7 +741,7 @@ func (p *PostgresPersister) loadAssets(ctx context.Context, snapshot *Snapshot) 
 
 	variantRows, err := p.db.QueryContext(ctx, `
 		SELECT id::text, media_asset_id::text, variant_type, COALESCE(mime_type, ''),
-		       COALESCE(width, 0), COALESCE(height, 0), created_at
+		       COALESCE(width, 0), COALESCE(height, 0), COALESCE(duration_ms, 0), created_at
 		FROM media_asset_variants
 	`)
 	if err != nil {
@@ -730,10 +751,10 @@ func (p *PostgresPersister) loadAssets(ctx context.Context, snapshot *Snapshot) 
 	for variantRows.Next() {
 		var (
 			id, assetID, variantType, mimeType string
-			width, height                      int
+			width, height, durationMS          int
 			createdAt                          time.Time
 		)
-		if err := variantRows.Scan(&id, &assetID, &variantType, &mimeType, &width, &height, &createdAt); err != nil {
+		if err := variantRows.Scan(&id, &assetID, &variantType, &mimeType, &width, &height, &durationMS, &createdAt); err != nil {
 			return fmt.Errorf("db: scan media asset variant: %w", err)
 		}
 		snapshot.MediaAssetVariants[id] = asset.MediaAssetVariant{
@@ -744,6 +765,7 @@ func (p *PostgresPersister) loadAssets(ctx context.Context, snapshot *Snapshot) 
 			MimeType:     mimeType,
 			Width:        width,
 			Height:       height,
+			DurationMS:   durationMS,
 			CreatedAt:    createdAt.UTC(),
 		}
 	}
@@ -1006,6 +1028,9 @@ func (p *PostgresPersister) saveRelationalSnapshot(ctx context.Context, tx *sql.
 	if err != nil {
 		return err
 	}
+	if err := p.saveAudioTimelines(ctx, tx, snapshot); err != nil {
+		return err
+	}
 	if err := p.saveBillingEvents(ctx, tx, snapshot, usageIDsByRun, budgetIDsByProject); err != nil {
 		return err
 	}
@@ -1097,6 +1122,9 @@ func clearMainTables(ctx context.Context, tx *sql.Tx) error {
 	statements := []string{
 		`DELETE FROM billing_events`,
 		`DELETE FROM usage_records`,
+		`DELETE FROM audio_clips`,
+		`DELETE FROM audio_tracks`,
+		`DELETE FROM audio_timelines`,
 		`DELETE FROM preview_assembly_items`,
 		`DELETE FROM preview_assemblies`,
 		`DELETE FROM event_outbox`,
@@ -1305,8 +1333,8 @@ func (p *PostgresPersister) saveExecutionsAssetsReviewBilling(ctx context.Contex
 				id, organization_id, project_id, import_batch_id, upload_file_id, asset_type,
 				source_type, storage_key, ai_disclosure_status, rights_status, consent_status,
 				created_at, updated_at, locale, ai_annotated
-			) VALUES ($1, $2, $3, $4, $5, 'image', $6, $7, $8, $9, 'unknown', $10, $11, $12, $13)
-		`, record.ID, record.OrgID, record.ProjectID, nullableUUID(record.ImportBatchID), nullableUUID(assetUploadFiles[record.ID]), defaultString(record.SourceType, "upload_session"), fmt.Sprintf("media-assets/%s", record.ID), aiDisclosureStatus, defaultString(record.RightsStatus, "unknown"), record.CreatedAt, record.UpdatedAt, emptyToNil(record.Locale), record.AIAnnotated); err != nil {
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'unknown', $11, $12, $13, $14)
+		`, record.ID, record.OrgID, record.ProjectID, nullableUUID(record.ImportBatchID), nullableUUID(assetUploadFiles[record.ID]), normalizeAssetMediaType(record.MediaType), defaultString(record.SourceType, "upload_session"), fmt.Sprintf("media-assets/%s", record.ID), aiDisclosureStatus, defaultString(record.RightsStatus, "unknown"), record.CreatedAt, record.UpdatedAt, emptyToNil(record.Locale), record.AIAnnotated); err != nil {
 			return nil, nil, fmt.Errorf("db: insert media asset %s: %w", record.ID, err)
 		}
 	}
@@ -1329,9 +1357,9 @@ func (p *PostgresPersister) saveExecutionsAssetsReviewBilling(ctx context.Contex
 	for _, record := range snapshot.MediaAssetVariants {
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO media_asset_variants (
-				id, media_asset_id, variant_type, storage_key, mime_type, width, height, created_at, updated_at
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		`, record.ID, record.AssetID, defaultString(record.VariantType, "original"), fmt.Sprintf("media-asset-variants/%s", record.ID), emptyToNil(record.MimeType), nullableInt(record.Width), nullableInt(record.Height), record.CreatedAt, record.CreatedAt); err != nil {
+				id, media_asset_id, variant_type, storage_key, mime_type, width, height, duration_ms, created_at, updated_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		`, record.ID, record.AssetID, defaultString(record.VariantType, "original"), fmt.Sprintf("media-asset-variants/%s", record.ID), emptyToNil(record.MimeType), nullableInt(record.Width), nullableInt(record.Height), nullableInt(record.DurationMS), record.CreatedAt, record.CreatedAt); err != nil {
 			return nil, nil, fmt.Errorf("db: insert media asset variant %s: %w", record.ID, err)
 		}
 	}

@@ -204,6 +204,7 @@ func TestGetAssetProvenanceSummaryIncludesStructuredFields(t *testing.T) {
 		OrgID:         "org-1",
 		ProjectID:     "project-1",
 		ImportBatchID: batch.ID,
+		MediaType:     "audio",
 		SourceType:    "workflow_import",
 		Locale:        "zh-CN",
 		RightsStatus:  "clear",
@@ -237,6 +238,7 @@ func TestGetAssetProvenanceSummaryIncludesStructuredFields(t *testing.T) {
 			MimeType:     "image/png",
 			Width:        1280,
 			Height:       720,
+			DurationMS:   64000,
 			CreatedAt:    time.Date(2026, 3, 21, 8, 2, 30, 0, time.UTC),
 		}); err != nil {
 			t.Fatalf("SaveMediaAssetVariant returned error: %v", err)
@@ -263,6 +265,9 @@ func TestGetAssetProvenanceSummaryIncludesStructuredFields(t *testing.T) {
 	}
 	if got := record.Asset.ID; got != mediaAsset.ID {
 		t.Fatalf("expected asset %q, got %q", mediaAsset.ID, got)
+	}
+	if got := record.Asset.MediaType; got != "audio" {
+		t.Fatalf("expected media_type %q, got %q", "audio", got)
 	}
 	if got := record.ImportBatchID; got != batch.ID {
 		t.Fatalf("expected import_batch_id %q, got %q", batch.ID, got)

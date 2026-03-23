@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetPreviewWorkbenchRequest, GetPreviewWorkbenchResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListProjectsRequest, ListProjectsResponse, UpsertPreviewAssemblyRequest, UpsertPreviewAssemblyResponse } from "./project_service_pb.js";
+import { CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetAudioWorkbenchRequest, GetAudioWorkbenchResponse, GetPreviewWorkbenchRequest, GetPreviewWorkbenchResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListProjectsRequest, ListProjectsResponse, UpsertAudioTimelineRequest, UpsertAudioTimelineResponse, UpsertPreviewAssemblyRequest, UpsertPreviewAssemblyResponse } from "./project_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -73,6 +73,24 @@ export const ProjectService = {
       name: "UpsertPreviewAssembly",
       I: UpsertPreviewAssemblyRequest,
       O: UpsertPreviewAssemblyResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.project.v1.ProjectService.GetAudioWorkbench
+     */
+    getAudioWorkbench: {
+      name: "GetAudioWorkbench",
+      I: GetAudioWorkbenchRequest,
+      O: GetAudioWorkbenchResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.project.v1.ProjectService.UpsertAudioTimeline
+     */
+    upsertAudioTimeline: {
+      name: "UpsertAudioTimeline",
+      I: UpsertAudioTimelineRequest,
+      O: UpsertAudioTimelineResponse,
       kind: MethodKind.Unary,
     },
   }

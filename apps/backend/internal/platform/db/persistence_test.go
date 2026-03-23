@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/domain/auth"
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/org"
@@ -217,5 +218,90 @@ func TestMemoryStorePersistsAndReloadsCollaborationAndPreviewSnapshot(t *testing
 	}
 	if got := len(reloaded.PreviewAssemblyItems); got != 1 {
 		t.Fatalf("expected 1 restored preview assembly item, got %d", got)
+	}
+}
+
+func TestMemoryStorePersistsAndReloadsAudioTimelineSnapshot(t *testing.T) {
+	ctx := context.Background()
+	persister := &fakePersister{}
+
+	store, err := NewPersistentMemoryStore(ctx, persister)
+	if err != nil {
+		t.Fatalf("NewPersistentMemoryStore returned error: %v", err)
+	}
+
+	now := time.Now().UTC().Round(time.Second)
+	timelineID := store.NextAudioTimelineID()
+	trackID := store.NextAudioTrackID()
+	clipID := store.NextAudioClipID()
+	assetID := store.NextMediaAssetID()
+
+	store.MediaAssets[assetID] = asset.MediaAsset{
+		ID:         assetID,
+		OrgID:      DefaultDevOrganizationID,
+		ProjectID:  "project-audio-1",
+		MediaType:  "audio",
+		SourceType: "workflow_import",
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+	store.AudioTimelines[timelineID] = project.AudioTimeline{
+		ID:                  timelineID,
+		ProjectID:           "project-audio-1",
+		EpisodeID:           "episode-audio-1",
+		Status:              "ready",
+		RenderWorkflowRunID: "workflow-run-1",
+		RenderStatus:        "queued",
+		CreatedAt:           now,
+		UpdatedAt:           now,
+	}
+	store.AudioTracks[trackID] = project.AudioTrack{
+		ID:            trackID,
+		TimelineID:    timelineID,
+		TrackType:     "dialogue",
+		DisplayName:   "对白",
+		Sequence:      1,
+		VolumePercent: 100,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	store.AudioClips[clipID] = project.AudioClip{
+		ID:          clipID,
+		TrackID:     trackID,
+		AssetID:     assetID,
+		SourceRunID: "workflow-run-1",
+		Sequence:    1,
+		StartMs:     0,
+		DurationMs:  12000,
+		TrimInMs:    0,
+		TrimOutMs:   120,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+
+	if err := store.Save(ctx); err != nil {
+		t.Fatalf("Save returned error: %v", err)
+	}
+
+	reloaded, err := NewPersistentMemoryStore(ctx, persister)
+	if err != nil {
+		t.Fatalf("NewPersistentMemoryStore reload returned error: %v", err)
+	}
+
+	timeline, ok := reloaded.AudioTimelines[timelineID]
+	if !ok {
+		t.Fatalf("expected audio timeline %q to be restored", timelineID)
+	}
+	if got := timeline.RenderStatus; got != "queued" {
+		t.Fatalf("expected restored render status %q, got %q", "queued", got)
+	}
+	if got := len(reloaded.AudioTracks); got != 1 {
+		t.Fatalf("expected 1 restored audio track, got %d", got)
+	}
+	if got := len(reloaded.AudioClips); got != 1 {
+		t.Fatalf("expected 1 restored audio clip, got %d", got)
+	}
+	if got := reloaded.AudioClips[clipID].DurationMs; got != 12000 {
+		t.Fatalf("expected restored audio duration %d, got %d", 12000, got)
 	}
 }

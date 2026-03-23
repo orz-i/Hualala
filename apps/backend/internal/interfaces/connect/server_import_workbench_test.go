@@ -63,12 +63,11 @@ func TestImportBatchWorkbenchIncludesUploadArtifacts(t *testing.T) {
 
 	completeResp := performConnectUploadJSONRequest(t, server, http.MethodPost, "/upload/sessions/"+sessionID+"/complete", map[string]any{
 		"variant_type":  "original",
-		"mime_type":     "image/png",
+		"mime_type":     "audio/mpeg",
 		"locale":        "zh-CN",
 		"rights_status": "clear",
 		"ai_annotated":  true,
-		"width":         1920,
-		"height":        1080,
+		"duration_ms":   64000,
 	})
 	assetID := completeResp["asset_id"].(string)
 	uploadFileID := completeResp["upload_file_id"].(string)
@@ -101,11 +100,17 @@ func TestImportBatchWorkbenchIncludesUploadArtifacts(t *testing.T) {
 	if got := workbench.Msg.GetMediaAssetVariants()[0].GetId(); got != variantID {
 		t.Fatalf("expected media asset variant %q, got %q", variantID, got)
 	}
+	if got := workbench.Msg.GetMediaAssetVariants()[0].GetDurationMs(); got != 64000 {
+		t.Fatalf("expected media asset variant duration %d, got %d", 64000, got)
+	}
 	if len(workbench.Msg.GetMediaAssets()) != 1 {
 		t.Fatalf("expected 1 media asset, got %d", len(workbench.Msg.GetMediaAssets()))
 	}
 	if got := workbench.Msg.GetMediaAssets()[0].GetId(); got != assetID {
 		t.Fatalf("expected media asset %q, got %q", assetID, got)
+	}
+	if got := workbench.Msg.GetMediaAssets()[0].GetMediaType(); got != "audio" {
+		t.Fatalf("expected media asset media_type %q, got %q", "audio", got)
 	}
 	if len(workbench.Msg.GetItems()) != 1 {
 		t.Fatalf("expected 1 import batch item, got %d", len(workbench.Msg.GetItems()))

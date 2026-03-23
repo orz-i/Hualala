@@ -164,3 +164,52 @@ test("collaboration and preview shared truth stay on foundation proto, sdk, and 
   assert.doesNotMatch(assetProto, /PreviewAssembly|CollaborationSession|GetPreviewWorkbench|GetCollaborationSession/);
   assert.doesNotMatch(workflowProto, /PreviewAssembly|CollaborationSession|GetPreviewWorkbench|GetCollaborationSession/);
 });
+
+test("audio shared truth stays on project and asset foundation entry points", () => {
+  const projectProto = readFileSync(
+    join(repoRoot, "proto", "hualala", "project", "v1", "project_service.proto"),
+    "utf8",
+  );
+  const assetProto = readFileSync(join(repoRoot, "proto", "hualala", "asset", "v1", "asset.proto"), "utf8");
+  const workflowProto = readFileSync(join(repoRoot, "proto", "hualala", "workflow", "v1", "workflow.proto"), "utf8");
+  const sdkIndex = readFileSync(join(repoRoot, "packages", "sdk", "src", "index.ts"), "utf8");
+  const contractFreeze = readFileSync(join(repoRoot, "docs", "runbooks", "phase2-contract-freeze.md"), "utf8");
+  const foundationBaseline = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase2-foundation-baseline.md"),
+    "utf8",
+  );
+  const projectService = readFileSync(
+    join(repoRoot, "packages", "sdk", "src", "connect", "services", "project.ts"),
+    "utf8",
+  );
+
+  const expectedFiles = [
+    "infra/migrations/0016_phase2_audio_timeline_shared_truth.sql",
+  ];
+  for (const relativePath of expectedFiles) {
+    assert.equal(existsSync(join(repoRoot, ...relativePath.split("/"))), true, `${relativePath} should exist`);
+  }
+
+  assert.match(projectProto, /rpc GetAudioWorkbench/);
+  assert.match(projectProto, /rpc UpsertAudioTimeline/);
+  assert.match(projectProto, /message AudioTimeline/);
+  assert.match(projectProto, /message AudioTrack/);
+  assert.match(projectProto, /message AudioClip/);
+
+  assert.match(assetProto, /string media_type =/);
+  assert.match(assetProto, /uint32 duration_ms =/);
+
+  assert.match(projectService, /getAudioWorkbench/);
+  assert.match(projectService, /upsertAudioTimeline/);
+  assert.match(sdkIndex, /export \* from "\.\/gen\/hualala\/project\/v1\/project_service_pb"/);
+  assert.match(sdkIndex, /export \* from "\.\/gen\/hualala\/asset\/v1\/asset_pb"/);
+
+  assert.match(contractFreeze, /audio timeline/i);
+  assert.match(contractFreeze, /media_type/);
+  assert.match(contractFreeze, /duration_ms/);
+  assert.match(foundationBaseline, /project_service\.proto/);
+  assert.match(foundationBaseline, /asset\.proto/);
+  assert.match(foundationBaseline, /0016_phase2_audio_timeline_shared_truth\.sql/);
+
+  assert.doesNotMatch(workflowProto, /AudioTimeline|GetAudioWorkbench|UpsertAudioTimeline/);
+});

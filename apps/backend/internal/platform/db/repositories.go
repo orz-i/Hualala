@@ -97,6 +97,18 @@ type ProjectContentRepository interface {
 	GeneratePreviewAssemblyItemID() string
 	ReplacePreviewAssemblyItems(ctx context.Context, assemblyID string, items []project.PreviewAssemblyItem) error
 	ListPreviewAssemblyItems(assemblyID string) []project.PreviewAssemblyItem
+
+	GenerateAudioTimelineID() string
+	SaveAudioTimeline(ctx context.Context, record project.AudioTimeline) error
+	GetAudioTimeline(projectID string, episodeID string) (project.AudioTimeline, bool)
+
+	GenerateAudioTrackID() string
+	ReplaceAudioTracks(ctx context.Context, timelineID string, tracks []project.AudioTrack) error
+	ListAudioTracks(timelineID string) []project.AudioTrack
+
+	GenerateAudioClipID() string
+	ReplaceAudioClips(ctx context.Context, trackID string, clips []project.AudioClip) error
+	ListAudioClips(trackID string) []project.AudioClip
 }
 
 type ExecutionRepository interface {
@@ -230,6 +242,9 @@ func (s *MemoryStore) GeneratePreviewAssemblyID() string { return s.NextPreviewA
 func (s *MemoryStore) GeneratePreviewAssemblyItemID() string {
 	return s.NextPreviewAssemblyItemID()
 }
+func (s *MemoryStore) GenerateAudioTimelineID() string     { return s.NextAudioTimelineID() }
+func (s *MemoryStore) GenerateAudioTrackID() string        { return s.NextAudioTrackID() }
+func (s *MemoryStore) GenerateAudioClipID() string         { return s.NextAudioClipID() }
 func (s *MemoryStore) GenerateShotExecutionID() string     { return s.NextShotExecutionID() }
 func (s *MemoryStore) GenerateShotExecutionRunID() string  { return s.NextShotExecutionRunID() }
 func (s *MemoryStore) GenerateImportBatchID() string       { return s.NextImportBatchID() }
@@ -577,6 +592,87 @@ func (s *MemoryStore) ListPreviewAssemblyItems(assemblyID string) []project.Prev
 	items := make([]project.PreviewAssemblyItem, 0)
 	for _, record := range s.PreviewAssemblyItems {
 		if record.AssemblyID == assemblyID {
+			items = append(items, record)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Sequence == items[j].Sequence {
+			return items[i].ID < items[j].ID
+		}
+		return items[i].Sequence < items[j].Sequence
+	})
+	return items
+}
+
+func (s *MemoryStore) SaveAudioTimeline(ctx context.Context, record project.AudioTimeline) error {
+	return s.save(ctx, func() { s.AudioTimelines[record.ID] = record })
+}
+
+func (s *MemoryStore) GetAudioTimeline(projectID string, episodeID string) (project.AudioTimeline, bool) {
+	for _, record := range s.AudioTimelines {
+		if record.ProjectID == projectID && record.EpisodeID == episodeID {
+			return record, true
+		}
+	}
+	return project.AudioTimeline{}, false
+}
+
+func (s *MemoryStore) ReplaceAudioTracks(ctx context.Context, timelineID string, tracks []project.AudioTrack) error {
+	return s.save(ctx, func() {
+		trackIDs := make(map[string]struct{})
+		for id, record := range s.AudioTracks {
+			if record.TimelineID != timelineID {
+				continue
+			}
+			trackIDs[id] = struct{}{}
+			delete(s.AudioTracks, id)
+		}
+		for id, record := range s.AudioClips {
+			if _, ok := trackIDs[record.TrackID]; ok {
+				delete(s.AudioClips, id)
+			}
+		}
+		for _, track := range tracks {
+			track.Clips = nil
+			s.AudioTracks[track.ID] = track
+		}
+	})
+}
+
+func (s *MemoryStore) ListAudioTracks(timelineID string) []project.AudioTrack {
+	items := make([]project.AudioTrack, 0)
+	for _, record := range s.AudioTracks {
+		if record.TimelineID == timelineID {
+			record.Clips = nil
+			items = append(items, record)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Sequence == items[j].Sequence {
+			return items[i].ID < items[j].ID
+		}
+		return items[i].Sequence < items[j].Sequence
+	})
+	return items
+}
+
+func (s *MemoryStore) ReplaceAudioClips(ctx context.Context, trackID string, clips []project.AudioClip) error {
+	return s.save(ctx, func() {
+		for id, record := range s.AudioClips {
+			if record.TrackID == trackID {
+				delete(s.AudioClips, id)
+			}
+		}
+		for _, clip := range clips {
+			s.AudioClips[clip.ID] = clip
+		}
+	})
+}
+
+func (s *MemoryStore) ListAudioClips(trackID string) []project.AudioClip {
+	items := make([]project.AudioClip, 0)
+	for _, record := range s.AudioClips {
+		if record.TrackID == trackID {
 			items = append(items, record)
 		}
 	}
