@@ -387,6 +387,7 @@ test("creator smoke: home lists import batches and opens the import workbench", 
   await page.getByRole("button", { name: "进入导入工作台" }).click();
   await expect(page.getByText("batch-live-1")).toBeVisible();
   await expect(page.getByRole("button", { name: "确认匹配" })).toBeVisible();
+  await expect(page).toHaveURL("http://127.0.0.1:4174/imports?importBatchId=batch-live-1");
 });
 
 test("creator smoke: shot workbench actions complete with refreshed feedback", async ({
@@ -398,9 +399,10 @@ test("creator smoke: shot workbench actions complete with refreshed feedback", a
   await mockCreatorCandidatePoolShotRoutes(page);
   await mockCreatorWorkflowObservabilityRoutes(page);
 
-  await page.goto("http://127.0.0.1:4174/?shotId=shot-live-1");
+  await page.goto("http://127.0.0.1:4174/shots?shotId=shot-live-1");
   await enterDevSession(page);
 
+  await expect(page).toHaveURL("http://127.0.0.1:4174/shots?shotId=shot-live-1");
   await expect(page.getByText("shot-exec-live-1")).toBeVisible();
   await expect(page.getByText("2 个候选素材")).toBeVisible();
   await expect(page.getByText("最近一次运行：workflow-run-1")).toBeVisible();
@@ -480,7 +482,7 @@ test("creator smoke: shot workbench keeps content on action failure", async ({ p
     creatorShot: "failure",
   });
 
-  await page.goto("http://127.0.0.1:4174/?shotId=shot-live-1");
+  await page.goto("http://127.0.0.1:4174/shots?shotId=shot-live-1");
   await enterDevSession(page);
 
   await expect(page.getByText("shot-exec-live-1")).toBeVisible();
@@ -497,9 +499,10 @@ test("creator smoke: import workbench actions complete with refreshed feedback",
   });
   const importRequests = await mockCreatorCandidatePoolImportRoutes(page);
 
-  await page.goto("http://127.0.0.1:4174/?importBatchId=batch-live-1");
+  await page.goto("http://127.0.0.1:4174/imports?importBatchId=batch-live-1");
   await enterDevSession(page);
 
+  await expect(page).toHaveURL("http://127.0.0.1:4174/imports?importBatchId=batch-live-1");
   await expect(page.getByText("batch-live-1")).toBeVisible();
   await expect(page.getByText("1 个上传会话")).toBeVisible();
   await expect(page.getByText("2 个批次条目")).toBeVisible();
@@ -548,7 +551,7 @@ test("creator smoke: import workbench keeps content on action failure", async ({
     creatorImport: "failure",
   });
 
-  await page.goto("http://127.0.0.1:4174/?importBatchId=batch-live-1");
+  await page.goto("http://127.0.0.1:4174/imports?importBatchId=batch-live-1");
   await enterDevSession(page);
 
   await expect(page.getByText("batch-live-1")).toBeVisible();
@@ -558,7 +561,7 @@ test("creator smoke: import workbench keeps content on action failure", async ({
   await expect(page.getByText("batch-live-1")).toBeVisible();
 });
 
-test("creator smoke: missing workflow retries return not found from mock routes", async ({
+test("creator smoke: legacy shot deep link normalizes to canonical pathname", async ({
   page,
 }) => {
   await mockConnectRoutes(page, {
@@ -566,6 +569,20 @@ test("creator smoke: missing workflow retries return not found from mock routes"
   });
 
   await page.goto("http://127.0.0.1:4174/?shotId=shot-live-1");
+  await enterDevSession(page);
+
+  await expect(page).toHaveURL("http://127.0.0.1:4174/shots?shotId=shot-live-1");
+  await expect(page.getByText("shot-exec-live-1")).toBeVisible();
+});
+
+test("creator smoke: missing workflow retries return not found from mock routes", async ({
+  page,
+}) => {
+  await mockConnectRoutes(page, {
+    creatorShot: "success",
+  });
+
+  await page.goto("http://127.0.0.1:4174/shots?shotId=shot-live-1");
 
   const missingRetry = await postJson<{ error: string }>(
     page,

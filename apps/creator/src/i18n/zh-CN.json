@@ -38,6 +38,7 @@
   "session.active": "当前开发会话用户：{userId}",
   "session.override.active": "调试身份覆盖已启用：{orgId} / {userId}",
   "session.clear": "清空开发会话",
+  "shell.backHome": "返回首页",
   "asset.provenance.open": "查看来源",
   "asset.provenance.button": "查看来源",
   "asset.provenance.title": "素材来源详情",

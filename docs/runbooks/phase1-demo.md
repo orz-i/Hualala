@@ -35,9 +35,16 @@
 - Creator Home（推荐入口）：
   - `http://127.0.0.1:4174/?projectId=project-live-1`
 - Creator Shot：
-  - `http://127.0.0.1:4174/?shotId=shot-live-1`
+  - `http://127.0.0.1:4174/shots?shotId=shot-live-1`
 - Creator Import：
-  - `http://127.0.0.1:4174/?importBatchId=batch-live-1`
+  - `http://127.0.0.1:4174/imports?importBatchId=batch-live-1`
+
+Creator 仍兼容旧版 query-only 深链：
+
+- `http://127.0.0.1:4174/?shotId=shot-live-1`
+- `http://127.0.0.1:4174/?importBatchId=batch-live-1`
+
+首次加载时，浏览器会自动把这两类 legacy URL 归一化为 `/shots?...` 或 `/imports?...`。
 
 ## 模式二：真实联调
 

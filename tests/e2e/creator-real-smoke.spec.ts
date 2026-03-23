@@ -1,6 +1,20 @@
 import { expect, test } from "@playwright/test";
 import { runBackendSeed } from "./fixtures/runBackendSeed";
 
+function buildCreatorWorkbenchUrl(
+  baseUrl: string,
+  pathname: "/shots" | "/imports",
+  key: "shotId" | "importBatchId",
+  value: string,
+) {
+  const url = new URL(baseUrl);
+  url.pathname = pathname;
+  url.search = new URLSearchParams({
+    [key]: value,
+  }).toString();
+  return url.toString();
+}
+
 test("creator real smoke: home lists import batches and opens the import workbench", async ({
   page,
 }) => {
@@ -21,6 +35,14 @@ test("creator real smoke: home lists import batches and opens the import workben
   await page.getByRole("button", { name: "进入导入工作台" }).click();
   await expect(page.getByRole("button", { name: "确认匹配" })).toBeVisible();
   await expect(page.getByText(seed.creatorImport.importBatchId)).toBeVisible();
+  await expect(page).toHaveURL(
+    buildCreatorWorkbenchUrl(
+      seed.urls.creatorImport,
+      "/imports",
+      "importBatchId",
+      seed.creatorImport.importBatchId,
+    ),
+  );
 });
 
 test("creator real smoke: shot workbench completes gate checks against backend", async ({
@@ -36,9 +58,24 @@ test("creator real smoke: shot workbench completes gate checks against backend",
     },
   );
 
-  await page.goto(seed.urls.creatorShot);
+  await page.goto(
+    buildCreatorWorkbenchUrl(
+      seed.urls.creatorShot,
+      "/shots",
+      "shotId",
+      seed.creatorShot.shotId,
+    ),
+  );
   await page.getByRole("button", { name: "进入开发会话" }).click();
 
+  await expect(page).toHaveURL(
+    buildCreatorWorkbenchUrl(
+      seed.urls.creatorShot,
+      "/shots",
+      "shotId",
+      seed.creatorShot.shotId,
+    ),
+  );
   await expect(page.getByText(seed.creatorShot.shotExecutionId)).toBeVisible();
   await expect(page.getByText("1 个候选素材")).toBeVisible();
   await expect(page.getByRole("heading", { name: "候选清单" })).toBeVisible();
@@ -83,9 +120,24 @@ test("creator real smoke: import workbench confirms matches and selects primary 
     },
   );
 
-  await page.goto(seed.urls.creatorImport);
+  await page.goto(
+    buildCreatorWorkbenchUrl(
+      seed.urls.creatorImport,
+      "/imports",
+      "importBatchId",
+      seed.creatorImport.importBatchId,
+    ),
+  );
   await page.getByRole("button", { name: "进入开发会话" }).click();
 
+  await expect(page).toHaveURL(
+    buildCreatorWorkbenchUrl(
+      seed.urls.creatorImport,
+      "/imports",
+      "importBatchId",
+      seed.creatorImport.importBatchId,
+    ),
+  );
   await expect(page.getByText(seed.creatorImport.importBatchId)).toBeVisible();
   await expect(page.getByText("1 个上传会话")).toBeVisible();
   await expect(page.getByRole("heading", { name: "候选素材池" })).toBeVisible();
@@ -107,4 +159,23 @@ test("creator real smoke: import workbench confirms matches and selects primary 
   await page.getByRole("button", { name: "设为主素材" }).click();
   await expect(page.getByText("主素材选择已完成")).toBeVisible();
   await expect(page.getByText("当前主素材")).toBeVisible();
+});
+
+test("creator real smoke: legacy shot deep link normalizes to canonical pathname", async ({
+  page,
+}) => {
+  const seed = await runBackendSeed();
+
+  await page.goto(seed.urls.creatorShot);
+  await page.getByRole("button", { name: "进入开发会话" }).click();
+
+  await expect(page).toHaveURL(
+    buildCreatorWorkbenchUrl(
+      seed.urls.creatorShot,
+      "/shots",
+      "shotId",
+      seed.creatorShot.shotId,
+    ),
+  );
+  await expect(page.getByText(seed.creatorShot.shotExecutionId)).toBeVisible();
 });
