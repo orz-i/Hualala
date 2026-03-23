@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { CreatorTranslator, LocaleCode } from "../../i18n";
 import { ActionFeedback, type ActionFeedbackModel } from "../shared/ActionFeedback";
 import { AssetProvenanceDialog } from "../shared/AssetProvenanceDialog";
@@ -63,6 +63,8 @@ type ImportBatchWorkbenchPageProps = {
   locale: LocaleCode;
   t: CreatorTranslator;
   onLocaleChange: (locale: LocaleCode) => void;
+  showHeader?: boolean;
+  shellHeader?: ReactNode;
   selectedUploadFile?: SelectedUploadFileViewModel | null;
   onChooseUploadFile?: (file: File | null) => void;
   onRegisterSelectedUpload?: () => void;
@@ -100,6 +102,8 @@ export function ImportBatchWorkbenchPage({
   locale,
   t,
   onLocaleChange,
+  showHeader = true,
+  shellHeader,
   selectedUploadFile,
   onChooseUploadFile,
   onRegisterSelectedUpload,
@@ -146,59 +150,62 @@ export function ImportBatchWorkbenchPage({
           gap: "20px",
         }}
       >
-        <header style={panelStyle}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: "16px",
-              flexWrap: "wrap",
-            }}
-          >
-            <p
+        {shellHeader}
+        {showHeader ? (
+          <header style={panelStyle}>
+            <div
               style={{
-                margin: 0,
-                fontSize: "0.8rem",
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color: "#1d4ed8",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "16px",
+                flexWrap: "wrap",
               }}
             >
-              {t("import.badge")}
-            </p>
-            <label style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}>
-              <span>{t("locale.label")}</span>
-              <select
-                data-testid="ui-locale-select"
-                value={locale}
-                onChange={(event) => {
-                  onLocaleChange(event.target.value as LocaleCode);
-                }}
+              <p
                 style={{
-                  borderRadius: "12px",
-                  border: "1px solid rgba(148, 163, 184, 0.45)",
-                  padding: "8px 10px",
-                  font: "inherit",
-                  background: "#ffffff",
+                  margin: 0,
+                  fontSize: "0.8rem",
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: "#1d4ed8",
                 }}
               >
-                <option value="zh-CN">{t("locale.option.zh-CN")}</option>
-                <option value="en-US">{t("locale.option.en-US")}</option>
-              </select>
-            </label>
-          </div>
-          <h1 style={{ margin: "12px 0 8px", fontSize: "2rem" }}>
-            {workbench.importBatch.id}
-          </h1>
-          <p style={{ margin: 0, color: "#334155" }}>
-            {t("import.header", {
-              status: workbench.importBatch.status,
-              sourceType: workbench.importBatch.sourceType,
-            })}
-          </p>
-          {feedback ? <ActionFeedback feedback={feedback} /> : null}
-        </header>
+                {t("import.badge")}
+              </p>
+              <label style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}>
+                <span>{t("locale.label")}</span>
+                <select
+                  data-testid="ui-locale-select"
+                  value={locale}
+                  onChange={(event) => {
+                    onLocaleChange(event.target.value as LocaleCode);
+                  }}
+                  style={{
+                    borderRadius: "12px",
+                    border: "1px solid rgba(148, 163, 184, 0.45)",
+                    padding: "8px 10px",
+                    font: "inherit",
+                    background: "#ffffff",
+                  }}
+                >
+                  <option value="zh-CN">{t("locale.option.zh-CN")}</option>
+                  <option value="en-US">{t("locale.option.en-US")}</option>
+                </select>
+              </label>
+            </div>
+            <h1 style={{ margin: "12px 0 8px", fontSize: "2rem" }}>
+              {workbench.importBatch.id}
+            </h1>
+            <p style={{ margin: 0, color: "#334155" }}>
+              {t("import.header", {
+                status: workbench.importBatch.status,
+                sourceType: workbench.importBatch.sourceType,
+              })}
+            </p>
+            {feedback ? <ActionFeedback feedback={feedback} /> : null}
+          </header>
+        ) : null}
 
         <section
           style={{

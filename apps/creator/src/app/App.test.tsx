@@ -560,6 +560,7 @@ describe("App", () => {
       );
     });
     expect(await screen.findByText("batch-home-submit")).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/");
     expect(window.location.search).toContain("projectId=project-home-submit");
     expect(window.localStorage.getItem(CREATOR_HOME_PROJECT_ID_STORAGE_KEY)).toBe(
       "project-home-submit",
@@ -590,7 +591,9 @@ describe("App", () => {
       );
     });
     expect(await screen.findByText("shot-exec-shot-home-1")).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/shots");
     expect(window.location.search).toContain("shotId=shot-home-1");
+    expect(screen.getByRole("button", { name: "返回首页" })).toBeInTheDocument();
   });
 
   it("opens the import workbench from the homepage batch list action", async () => {
@@ -616,7 +619,9 @@ describe("App", () => {
       );
     });
     expect(await screen.findByRole("button", { name: "确认匹配" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/imports");
     expect(window.location.search).toContain("importBatchId=batch-home-import");
+    expect(screen.getByRole("button", { name: "返回首页" })).toBeInTheDocument();
   });
 
   it("prefers importBatchId from search params, requires explicit selection, and refreshes the candidate pool actions", async () => {
@@ -661,6 +666,9 @@ describe("App", () => {
 
     expect(loadShotWorkbenchMock).not.toHaveBeenCalled();
     expect(await screen.findByText("batch-live-1")).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/imports");
+    expect(window.location.search).toContain("importBatchId=batch-live-1");
+    expect(window.location.search).not.toContain("shotId=shot-live-1");
     expect(screen.getByText("candidate_ready")).toBeInTheDocument();
     const confirmMatchesButton = screen.getByRole("button", { name: "确认匹配" });
     expect(confirmMatchesButton).toBeDisabled();
@@ -701,6 +709,41 @@ describe("App", () => {
     });
     expect(screen.getByText("主素材选择已完成")).toBeInTheDocument();
     expect(screen.getByText("当前主素材：asset-batch-live-1-2")).toBeInTheDocument();
+  });
+
+  it("normalizes a legacy shot deep link to the canonical pathname after load", async () => {
+    window.history.pushState({}, "", "/?shotId=shot-legacy-1");
+    loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-legacy-1"));
+    loadShotReviewTimelineMock.mockResolvedValue(createShotReviewTimeline("shot-legacy-1"));
+    loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-shot-legacy-1")).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/shots");
+    expect(window.location.search).toContain("shotId=shot-legacy-1");
+  });
+
+  it("returns to the home route from the shot workbench while keeping the remembered project", async () => {
+    window.localStorage.setItem(CREATOR_HOME_PROJECT_ID_STORAGE_KEY, "project-home-remembered");
+    window.history.pushState({}, "", "/shots?shotId=shot-back-home");
+    loadShotWorkbenchMock.mockResolvedValue(createShotWorkbench("shot-back-home"));
+    loadShotReviewTimelineMock.mockResolvedValue(createShotReviewTimeline("shot-back-home"));
+    loadShotWorkflowPanelMock.mockResolvedValue(createShotWorkflowPanel());
+    loadImportBatchSummariesMock.mockResolvedValue([
+      createImportBatchSummary("batch-home-remembered", "project-home-remembered"),
+    ]);
+
+    render(<App />);
+
+    expect(await screen.findByText("shot-exec-shot-back-home")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
+
+    expect(await screen.findByRole("heading", { name: "Creator 首页" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/");
+    expect(window.location.search).toContain("projectId=project-home-remembered");
+    expect(screen.getByText("当前 projectId：project-home-remembered")).toBeInTheDocument();
   });
 
   it("keeps the current import workbench visible and surfaces an action error when confirm matches fails", async () => {

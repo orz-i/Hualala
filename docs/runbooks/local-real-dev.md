@@ -90,9 +90,16 @@ corepack pnpm run dev:real:seed
 - Admin：
   - `http://127.0.0.1:4173/?projectId=...&shotExecutionId=...&orgId=...`
 - Creator Shot：
-  - `http://127.0.0.1:4174/?shotId=...`
+  - `http://127.0.0.1:4174/shots?shotId=...`
 - Creator Import：
-  - `http://127.0.0.1:4174/?importBatchId=...`
+  - `http://127.0.0.1:4174/imports?importBatchId=...`
+
+兼容说明：
+
+- legacy `http://127.0.0.1:4174/?shotId=...`
+- legacy `http://127.0.0.1:4174/?importBatchId=...`
+
+首次打开 legacy 深链时，creator 会自动 `replaceState` 到 canonical pathname。
 
 如果要确认当前 backend 真的是“真实持久化运行时”，而不是旧的 snapshot-backed memory，可以额外做这组验证：
 

@@ -1,5 +1,4 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
-import { useLocaleState } from "../i18n";
 import { CreatorHomePage } from "../features/home/CreatorHomePage";
 import {
   readRememberedProjectId,
@@ -10,6 +9,7 @@ import {
   ImportBatchWorkbenchPage,
 } from "../features/import-batches/ImportBatchWorkbenchPage";
 import { useImportWorkbenchController } from "../features/import-batches/useImportWorkbenchController";
+import { ActionFeedback } from "../features/shared/ActionFeedback";
 import { ShotWorkbenchPage } from "../features/shot-workbench/ShotWorkbenchPage";
 import { useShotWorkbenchController } from "../features/shot-workbench/useShotWorkbenchController";
 import {
@@ -19,41 +19,67 @@ import {
   loadCurrentSession,
   type SessionViewModel,
 } from "../features/session/sessionBootstrap";
+import { useLocaleState } from "../i18n";
+import { CreatorWorkspaceShell } from "./CreatorWorkspaceShell";
+import {
+  buildCreatorRouteUrl,
+  normalizeLegacyCreatorUrl,
+  parseCreatorRouteState,
+  selectCreatorRoute,
+  type CreatorRouteState,
+} from "./creatorRoutes";
 
-function getRequestContext() {
-  const searchParams = new URLSearchParams(window.location.search);
-  const overrideOrgId = searchParams.get("orgId") ?? undefined;
-  const overrideUserId = searchParams.get("userId") ?? undefined;
-
-  return {
-    projectId: searchParams.get("projectId"),
-    importBatchId: searchParams.get("importBatchId"),
-    shotId: searchParams.get("shotId"),
-    orgId: overrideOrgId,
-    userId: overrideUserId,
-  };
+function getCurrentCreatorUrl() {
+  return `${window.location.pathname}${window.location.search}`;
 }
 
 export function App() {
   const { locale, setLocale, t } = useLocaleState();
-  const [requestContext, setRequestContext] = useState(() => getRequestContext());
+  const [routeState, setRouteState] = useState<CreatorRouteState>(() =>
+    parseCreatorRouteState(window.location),
+  );
   const [sessionState, setSessionState] = useState<"loading" | "ready" | "unauthenticated">(
     "loading",
   );
   const [session, setSession] = useState<SessionViewModel | null>(null);
   const [sessionErrorMessage, setSessionErrorMessage] = useState("");
+
   const identityOverride =
-    requestContext.orgId && requestContext.userId
+    routeState.orgId && routeState.userId
       ? {
-          orgId: requestContext.orgId,
-          userId: requestContext.userId,
+          orgId: routeState.orgId,
+          userId: routeState.userId,
         }
       : undefined;
-  const homeProjectId = requestContext.projectId ?? readRememberedProjectId();
+  const homeProjectId = routeState.projectId ?? readRememberedProjectId();
+  const homeRouteProjectId = homeProjectId ?? undefined;
+
+  const commitRouteState = useCallback(
+    (nextState: CreatorRouteState, mode: "push" | "replace" = "push") => {
+      const nextUrl = buildCreatorRouteUrl(nextState);
+      if (nextUrl !== getCurrentCreatorUrl()) {
+        const historyMethod =
+          mode === "replace" ? window.history.replaceState : window.history.pushState;
+        historyMethod.call(window.history, {}, "", `${nextUrl}${window.location.hash}`);
+      }
+      setRouteState(nextState);
+    },
+    [],
+  );
 
   useEffect(() => {
+    const normalizedUrl = normalizeLegacyCreatorUrl(window.location);
+    if (normalizedUrl !== getCurrentCreatorUrl()) {
+      window.history.replaceState({}, "", `${normalizedUrl}${window.location.hash}`);
+    }
+
     const handlePopState = () => {
-      setRequestContext(getRequestContext());
+      const nextState = parseCreatorRouteState(window.location);
+      const nextUrl = normalizeLegacyCreatorUrl(window.location);
+      if (nextUrl !== getCurrentCreatorUrl()) {
+        window.history.replaceState({}, "", `${nextUrl}${window.location.hash}`);
+      }
+      setRouteState(nextState);
     };
 
     window.addEventListener("popstate", handlePopState);
@@ -63,11 +89,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!requestContext.projectId) {
+    if (!routeState.projectId) {
       return;
     }
-    rememberProjectId(requestContext.projectId);
-  }, [requestContext.projectId]);
+    rememberProjectId(routeState.projectId);
+  }, [routeState.projectId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,8 +143,8 @@ export function App() {
   }, [identityOverride?.orgId, identityOverride?.userId]);
 
   const importWorkbenchController = useImportWorkbenchController({
-    enabled: sessionState === "ready" && Boolean(requestContext.importBatchId),
-    importBatchId: requestContext.importBatchId,
+    enabled: sessionState === "ready" && routeState.route === "imports" && Boolean(routeState.importBatchId),
+    importBatchId: routeState.importBatchId ?? null,
     locale,
     t,
     orgId: identityOverride?.orgId,
@@ -126,51 +152,19 @@ export function App() {
   });
 
   const shotWorkbenchController = useShotWorkbenchController({
-    enabled: sessionState === "ready" && !requestContext.importBatchId && Boolean(requestContext.shotId),
-    shotId: requestContext.shotId ?? "",
+    enabled: sessionState === "ready" && routeState.route === "shots" && Boolean(routeState.shotId),
+    shotId: routeState.shotId ?? "",
     t,
     orgId: identityOverride?.orgId,
     userId: identityOverride?.userId,
   });
+
   const homeController = useCreatorHomeController({
-    enabled:
-      sessionState === "ready" &&
-      !requestContext.importBatchId &&
-      !requestContext.shotId,
+    enabled: sessionState === "ready" && routeState.route === "home",
     projectId: homeProjectId,
     orgId: identityOverride?.orgId,
     userId: identityOverride?.userId,
   });
-
-  const navigateWithSearch = useCallback(
-    (
-      updates: Partial<
-        Record<"projectId" | "importBatchId" | "shotId" | "orgId" | "userId", string | null>
-      >,
-    ) => {
-      const searchParams = new URLSearchParams(window.location.search);
-
-      for (const [key, value] of Object.entries(updates)) {
-        if (typeof value === "undefined") {
-          continue;
-        }
-
-        const nextValue = value?.trim();
-        if (!nextValue) {
-          searchParams.delete(key);
-          continue;
-        }
-
-        searchParams.set(key, nextValue);
-      }
-
-      const search = searchParams.toString();
-      const nextUrl = `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`;
-      window.history.pushState({}, "", nextUrl);
-      setRequestContext(getRequestContext());
-    },
-    [],
-  );
 
   const handleSelectProjectId = useCallback(() => {
     const nextProjectId = homeController.projectIdInput.trim();
@@ -179,12 +173,14 @@ export function App() {
     }
 
     rememberProjectId(nextProjectId);
-    navigateWithSearch({
-      projectId: nextProjectId,
-      importBatchId: null,
-      shotId: null,
-    });
-  }, [homeController.projectIdInput, navigateWithSearch]);
+    commitRouteState(
+      {
+        ...selectCreatorRoute(routeState, "home"),
+        projectId: nextProjectId,
+      },
+      "push",
+    );
+  }, [commitRouteState, homeController.projectIdInput, routeState]);
 
   const handleOpenShotWorkbench = useCallback(() => {
     const nextShotId = homeController.shotIdInput.trim();
@@ -192,11 +188,20 @@ export function App() {
       return;
     }
 
-    navigateWithSearch({
-      importBatchId: null,
-      shotId: nextShotId,
-    });
-  }, [homeController.shotIdInput, navigateWithSearch]);
+    commitRouteState(
+      {
+        ...selectCreatorRoute(
+          {
+            ...routeState,
+            projectId: homeRouteProjectId,
+          },
+          "shots",
+        ),
+        shotId: nextShotId,
+      },
+      "push",
+    );
+  }, [commitRouteState, homeController.shotIdInput, homeRouteProjectId, routeState]);
 
   const handleOpenImportWorkbench = useCallback(
     (importBatchId: string) => {
@@ -205,12 +210,21 @@ export function App() {
         return;
       }
 
-      navigateWithSearch({
-        importBatchId: nextImportBatchId,
-        shotId: null,
-      });
+      commitRouteState(
+        {
+          ...selectCreatorRoute(
+            {
+              ...routeState,
+              projectId: homeRouteProjectId,
+            },
+            "imports",
+          ),
+          importBatchId: nextImportBatchId,
+        },
+        "push",
+      );
     },
-    [navigateWithSearch],
+    [commitRouteState, homeRouteProjectId, routeState],
   );
 
   const handleStartDevSession = useCallback(async () => {
@@ -251,48 +265,38 @@ export function App() {
     }
   }, []);
 
-  const renderSessionToolbar = () => (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: "12px",
-        padding: "16px 24px 0",
-      }}
-    >
-      <p style={{ margin: 0, color: "#334155" }}>
-        {identityOverride
-          ? t("session.override.active", {
-              orgId: identityOverride.orgId,
-              userId: identityOverride.userId,
-            })
-          : t("session.active", { userId: session?.userId ?? "" })}
-      </p>
-      {!identityOverride ? (
-        <button
-          type="button"
-          onClick={() => {
-            void handleClearCurrentSession();
-          }}
-          style={{
-            border: 0,
-            borderRadius: "999px",
-            padding: "8px 14px",
-            background: "#cbd5e1",
-            color: "#0f172a",
-            cursor: "pointer",
-          }}
-        >
-          {t("session.clear")}
-        </button>
-      ) : null}
-    </div>
-  );
+  const handleReturnHome = useCallback(() => {
+    const nextProjectId =
+      routeState.projectId ??
+      readRememberedProjectId() ??
+      importWorkbenchController.importWorkbench?.importBatch.projectId ??
+      shotWorkbenchController.shotWorkbench?.shotExecution.projectId ??
+      undefined;
 
-  const workbenchErrorMessage = requestContext.importBatchId
+    commitRouteState(
+      {
+        ...selectCreatorRoute(routeState, "home"),
+        projectId: nextProjectId,
+      },
+      "push",
+    );
+  }, [
+    commitRouteState,
+    importWorkbenchController.importWorkbench,
+    routeState,
+    shotWorkbenchController.shotWorkbench,
+  ]);
+
+  const sessionLabel = identityOverride
+    ? t("session.override.active", {
+        orgId: identityOverride.orgId,
+        userId: identityOverride.userId,
+      })
+    : t("session.active", { userId: session?.userId ?? "" });
+
+  const workbenchErrorMessage = routeState.route === "imports"
     ? importWorkbenchController.errorMessage
-    : requestContext.shotId
+    : routeState.route === "shots"
       ? shotWorkbenchController.errorMessage
       : "";
   const errorMessage = sessionErrorMessage || workbenchErrorMessage;
@@ -336,86 +340,159 @@ export function App() {
   }
 
   if (importWorkbenchController.importWorkbench) {
+    const importWorkbench = importWorkbenchController.importWorkbench;
+
     return (
-      <>
-        {renderSessionToolbar()}
-        <ImportBatchWorkbenchPage
-          workbench={importWorkbenchController.importWorkbench}
-          locale={locale}
-          t={t}
-          onLocaleChange={setLocale}
-          selectedUploadFile={importWorkbenchController.selectedUploadFile}
-          feedback={importWorkbenchController.feedback ?? undefined}
-          assetProvenanceDetail={importWorkbenchController.assetProvenanceDetail}
-          assetProvenancePending={importWorkbenchController.assetProvenancePending}
-          assetProvenanceErrorMessage={
-            importWorkbenchController.assetProvenanceErrorMessage || undefined
-          }
-          onChooseUploadFile={importWorkbenchController.handleChooseUploadFile}
-          onRegisterSelectedUpload={importWorkbenchController.handleRegisterSelectedUpload}
-          onRetryUploadSession={importWorkbenchController.handleRetryUploadSession}
-          onConfirmMatches={importWorkbenchController.handleConfirmMatches}
-          onSelectPrimaryAsset={importWorkbenchController.handleSelectPrimaryAsset}
-          onOpenAssetProvenance={importWorkbenchController.handleOpenAssetProvenance}
-          onCloseAssetProvenance={importWorkbenchController.handleCloseAssetProvenance}
-        />
-      </>
+      <ImportBatchWorkbenchPage
+        workbench={importWorkbench}
+        locale={locale}
+        t={t}
+        onLocaleChange={setLocale}
+        showHeader={false}
+        shellHeader={
+          <CreatorWorkspaceShell
+            tone="imports"
+            badge={t("import.badge")}
+            title={importWorkbench.importBatch.id}
+            description={t("import.header", {
+              status: importWorkbench.importBatch.status,
+              sourceType: importWorkbench.importBatch.sourceType,
+            })}
+            sessionLabel={sessionLabel}
+            locale={locale}
+            t={t}
+            onLocaleChange={setLocale}
+            onClearSession={
+              identityOverride
+                ? undefined
+                : () => {
+                    void handleClearCurrentSession();
+                  }
+            }
+            onBackHome={handleReturnHome}
+            feedback={
+              importWorkbenchController.feedback ? (
+                <ActionFeedback feedback={importWorkbenchController.feedback} />
+              ) : undefined
+            }
+          />
+        }
+        selectedUploadFile={importWorkbenchController.selectedUploadFile}
+        feedback={importWorkbenchController.feedback ?? undefined}
+        assetProvenanceDetail={importWorkbenchController.assetProvenanceDetail}
+        assetProvenancePending={importWorkbenchController.assetProvenancePending}
+        assetProvenanceErrorMessage={
+          importWorkbenchController.assetProvenanceErrorMessage || undefined
+        }
+        onChooseUploadFile={importWorkbenchController.handleChooseUploadFile}
+        onRegisterSelectedUpload={importWorkbenchController.handleRegisterSelectedUpload}
+        onRetryUploadSession={importWorkbenchController.handleRetryUploadSession}
+        onConfirmMatches={importWorkbenchController.handleConfirmMatches}
+        onSelectPrimaryAsset={importWorkbenchController.handleSelectPrimaryAsset}
+        onOpenAssetProvenance={importWorkbenchController.handleOpenAssetProvenance}
+        onCloseAssetProvenance={importWorkbenchController.handleCloseAssetProvenance}
+      />
     );
   }
 
   if (shotWorkbenchController.shotWorkbench) {
+    const shotWorkbench = shotWorkbenchController.shotWorkbench;
+
     return (
-      <>
-        {renderSessionToolbar()}
-        <ShotWorkbenchPage
-          workbench={shotWorkbenchController.shotWorkbench}
-          workflowPanel={shotWorkbenchController.shotWorkflowPanel ?? undefined}
-          locale={locale}
-          t={t}
-          onLocaleChange={setLocale}
-          feedback={shotWorkbenchController.feedback ?? undefined}
-          assetProvenanceDetail={shotWorkbenchController.assetProvenanceDetail}
-          assetProvenancePending={shotWorkbenchController.assetProvenancePending}
-          assetProvenanceErrorMessage={
-            shotWorkbenchController.assetProvenanceErrorMessage || undefined
-          }
-          onRunSubmissionGateChecks={shotWorkbenchController.handleRunSubmissionGateChecks}
-          onSubmitShotForReview={shotWorkbenchController.handleSubmitShotForReview}
-          onSelectPrimaryAsset={shotWorkbenchController.handleSelectPrimaryAsset}
-          onOpenAssetProvenance={shotWorkbenchController.handleOpenAssetProvenance}
-          onCloseAssetProvenance={shotWorkbenchController.handleCloseAssetProvenance}
-          onStartWorkflow={shotWorkbenchController.handleStartWorkflow}
-          onRetryWorkflowRun={shotWorkbenchController.handleRetryWorkflowRun}
-        />
-      </>
+      <ShotWorkbenchPage
+        workbench={shotWorkbench}
+        workflowPanel={shotWorkbenchController.shotWorkflowPanel ?? undefined}
+        locale={locale}
+        t={t}
+        onLocaleChange={setLocale}
+        showHeader={false}
+        shellHeader={
+          <CreatorWorkspaceShell
+            tone="shots"
+            badge={t("shot.badge")}
+            title={shotWorkbench.shotExecution.id}
+            description={t("shot.header", {
+              shotId: shotWorkbench.shotExecution.shotId,
+              status: shotWorkbench.shotExecution.status,
+            })}
+            sessionLabel={sessionLabel}
+            locale={locale}
+            t={t}
+            onLocaleChange={setLocale}
+            onClearSession={
+              identityOverride
+                ? undefined
+                : () => {
+                    void handleClearCurrentSession();
+                  }
+            }
+            onBackHome={handleReturnHome}
+            feedback={
+              shotWorkbenchController.feedback ? (
+                <ActionFeedback feedback={shotWorkbenchController.feedback} />
+              ) : undefined
+            }
+          />
+        }
+        feedback={shotWorkbenchController.feedback ?? undefined}
+        assetProvenanceDetail={shotWorkbenchController.assetProvenanceDetail}
+        assetProvenancePending={shotWorkbenchController.assetProvenancePending}
+        assetProvenanceErrorMessage={
+          shotWorkbenchController.assetProvenanceErrorMessage || undefined
+        }
+        onRunSubmissionGateChecks={shotWorkbenchController.handleRunSubmissionGateChecks}
+        onSubmitShotForReview={shotWorkbenchController.handleSubmitShotForReview}
+        onSelectPrimaryAsset={shotWorkbenchController.handleSelectPrimaryAsset}
+        onOpenAssetProvenance={shotWorkbenchController.handleOpenAssetProvenance}
+        onCloseAssetProvenance={shotWorkbenchController.handleCloseAssetProvenance}
+        onStartWorkflow={shotWorkbenchController.handleStartWorkflow}
+        onRetryWorkflowRun={shotWorkbenchController.handleRetryWorkflowRun}
+      />
     );
   }
 
-  if (!requestContext.importBatchId && !requestContext.shotId) {
+  if (routeState.route === "home") {
     return (
-      <>
-        {renderSessionToolbar()}
-        <CreatorHomePage
-          locale={locale}
-          t={t}
-          onLocaleChange={setLocale}
-          projectIdInput={homeController.projectIdInput}
-          activeProjectId={homeProjectId}
-          shotIdInput={homeController.shotIdInput}
-          importBatches={homeController.importBatches}
-          importBatchesPending={homeController.importBatchesPending}
-          errorMessage={homeController.errorMessage || undefined}
-          onProjectIdInputChange={homeController.setProjectIdInput}
-          onSubmitProjectId={handleSelectProjectId}
-          onShotIdInputChange={homeController.setShotIdInput}
-          onSubmitShotId={handleOpenShotWorkbench}
-          onOpenImportBatch={handleOpenImportWorkbench}
-        />
-      </>
+      <CreatorHomePage
+        locale={locale}
+        t={t}
+        onLocaleChange={setLocale}
+        showHeader={false}
+        shellHeader={
+          <CreatorWorkspaceShell
+            tone="home"
+            badge={t("home.badge")}
+            title={t("home.title")}
+            description={t("home.description")}
+            sessionLabel={sessionLabel}
+            locale={locale}
+            t={t}
+            onLocaleChange={setLocale}
+            onClearSession={
+              identityOverride
+                ? undefined
+                : () => {
+                    void handleClearCurrentSession();
+                  }
+            }
+          />
+        }
+        projectIdInput={homeController.projectIdInput}
+        activeProjectId={homeProjectId}
+        shotIdInput={homeController.shotIdInput}
+        importBatches={homeController.importBatches}
+        importBatchesPending={homeController.importBatchesPending}
+        errorMessage={homeController.errorMessage || undefined}
+        onProjectIdInputChange={homeController.setProjectIdInput}
+        onSubmitProjectId={handleSelectProjectId}
+        onShotIdInputChange={homeController.setShotIdInput}
+        onSubmitShotId={handleOpenShotWorkbench}
+        onOpenImportBatch={handleOpenImportWorkbench}
+      />
     );
   }
 
-  if (requestContext.importBatchId) {
+  if (routeState.route === "imports") {
     return <main style={{ padding: "32px" }}>{t("app.loading.import")}</main>;
   }
 

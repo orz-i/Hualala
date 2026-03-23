@@ -38,6 +38,7 @@
   "session.active": "Current dev session user: {userId}",
   "session.override.active": "Debug identity override enabled: {orgId} / {userId}",
   "session.clear": "Clear dev session",
+  "shell.backHome": "Back to Home",
   "asset.provenance.open": "View provenance",
   "asset.provenance.button": "View provenance",
   "asset.provenance.title": "Asset provenance",

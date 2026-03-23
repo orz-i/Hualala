@@ -1,4 +1,4 @@
-import type { CSSProperties, FormEvent } from "react";
+import type { CSSProperties, FormEvent, ReactNode } from "react";
 import type { CreatorTranslator, LocaleCode } from "../../i18n";
 import type { ImportBatchSummaryViewModel } from "./loadImportBatchSummaries";
 
@@ -6,6 +6,8 @@ type CreatorHomePageProps = {
   locale: LocaleCode;
   t: CreatorTranslator;
   onLocaleChange: (locale: LocaleCode) => void;
+  showHeader?: boolean;
+  shellHeader?: ReactNode;
   projectIdInput: string;
   activeProjectId: string | null;
   shotIdInput: string;
@@ -66,6 +68,8 @@ export function CreatorHomePage({
   locale,
   t,
   onLocaleChange,
+  showHeader = true,
+  shellHeader,
   projectIdInput,
   activeProjectId,
   shotIdInput,
@@ -99,57 +103,60 @@ export function CreatorHomePage({
           gap: "20px",
         }}
       >
-        <header style={panelStyle}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: "16px",
-              flexWrap: "wrap",
-            }}
-          >
-            <div style={{ display: "grid", gap: "12px" }}>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "0.8rem",
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color: "#0f766e",
-                }}
-              >
-                {t("home.badge")}
-              </p>
-              <div style={{ display: "grid", gap: "8px" }}>
-                <h1 style={{ margin: 0, fontSize: "2rem" }}>{t("home.title")}</h1>
-                <p style={{ margin: 0, color: "#334155", maxWidth: "680px" }}>
-                  {t("home.description")}
+        {shellHeader}
+        {showHeader ? (
+          <header style={panelStyle}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "16px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ display: "grid", gap: "12px" }}>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "0.8rem",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "#0f766e",
+                  }}
+                >
+                  {t("home.badge")}
                 </p>
+                <div style={{ display: "grid", gap: "8px" }}>
+                  <h1 style={{ margin: 0, fontSize: "2rem" }}>{t("home.title")}</h1>
+                  <p style={{ margin: 0, color: "#334155", maxWidth: "680px" }}>
+                    {t("home.description")}
+                  </p>
+                </div>
               </div>
+              <label style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}>
+                <span>{t("locale.label")}</span>
+                <select
+                  data-testid="ui-locale-select"
+                  value={locale}
+                  onChange={(event) => {
+                    onLocaleChange(event.target.value as LocaleCode);
+                  }}
+                  style={{
+                    borderRadius: "12px",
+                    border: "1px solid rgba(148, 163, 184, 0.45)",
+                    padding: "8px 10px",
+                    font: "inherit",
+                    background: "#ffffff",
+                  }}
+                >
+                  <option value="zh-CN">{t("locale.option.zh-CN")}</option>
+                  <option value="en-US">{t("locale.option.en-US")}</option>
+                </select>
+              </label>
             </div>
-            <label style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}>
-              <span>{t("locale.label")}</span>
-              <select
-                data-testid="ui-locale-select"
-                value={locale}
-                onChange={(event) => {
-                  onLocaleChange(event.target.value as LocaleCode);
-                }}
-                style={{
-                  borderRadius: "12px",
-                  border: "1px solid rgba(148, 163, 184, 0.45)",
-                  padding: "8px 10px",
-                  font: "inherit",
-                  background: "#ffffff",
-                }}
-              >
-                <option value="zh-CN">{t("locale.option.zh-CN")}</option>
-                <option value="en-US">{t("locale.option.en-US")}</option>
-              </select>
-            </label>
-          </div>
-        </header>
+          </header>
+        ) : null}
 
         <section
           style={{
