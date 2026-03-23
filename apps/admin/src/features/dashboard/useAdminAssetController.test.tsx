@@ -65,6 +65,8 @@ describe("useAdminAssetController", () => {
 
     expect(result.current.importBatchDetail).toBeNull();
     expect(result.current.assetProvenanceDetail).toBeNull();
+    expect(result.current.selectedImportBatchId).toBeNull();
+    expect(result.current.selectedAssetProvenanceId).toBeNull();
     expect(result.current.selectedImportItemIds).toEqual([]);
     expect(result.current.assetActionFeedback).toBeNull();
     expect(result.current.assetActionPending).toBe(false);
@@ -116,6 +118,7 @@ describe("useAdminAssetController", () => {
     await waitFor(() => {
       expect(result.current.importBatchDetail?.batch.id).toBe("import-batch-1");
     });
+    expect(result.current.selectedImportBatchId).toBe("import-batch-1");
 
     act(() => {
       result.current.onSelectAssetProvenance("media-asset-1");
@@ -124,6 +127,7 @@ describe("useAdminAssetController", () => {
     await waitFor(() => {
       expect(result.current.assetProvenanceDetail?.asset.id).toBe("media-asset-1");
     });
+    expect(result.current.selectedAssetProvenanceId).toBe("media-asset-1");
 
     act(() => {
       result.current.onToggleImportBatchItemSelection({ itemId: "import-item-1", checked: true });

@@ -1,44 +1,28 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { AdminOverviewViewModel, RecentChangeSummary } from "./overview";
-import type { AdminGovernanceViewModel } from "./governance";
 import { createTranslator } from "../../i18n";
 import { loadAdminOverview } from "./loadAdminOverview";
-import { loadGovernancePanel } from "./loadGovernancePanel";
 import { updateBudgetPolicy } from "./mutateBudgetPolicy";
-import { updateUserPreferences } from "./mutateGovernance";
-import { useAdminOverviewGovernance } from "./useAdminOverviewGovernance";
+import { useAdminOverviewController } from "./useAdminOverviewController";
 
 vi.mock("./loadAdminOverview", () => ({
   loadAdminOverview: vi.fn(),
 }));
-vi.mock("./loadGovernancePanel", () => ({
-  loadGovernancePanel: vi.fn(),
-}));
 vi.mock("./mutateBudgetPolicy", () => ({
   updateBudgetPolicy: vi.fn(),
 }));
-vi.mock("./mutateGovernance", async () => {
-  const actual = await vi.importActual<typeof import("./mutateGovernance")>("./mutateGovernance");
-  return {
-    ...actual,
-    updateUserPreferences: vi.fn(),
-    updateMemberRole: vi.fn(),
-    updateOrgLocaleSettings: vi.fn(),
-    createRole: vi.fn(),
-    updateRole: vi.fn(),
-    deleteRole: vi.fn(),
-  };
-});
 vi.mock("./waitForFeedbackPaint", () => ({
   waitForFeedbackPaint: vi.fn().mockResolvedValue(undefined),
 }));
 
 const loadAdminOverviewMock = vi.mocked(loadAdminOverview);
-const loadGovernancePanelMock = vi.mocked(loadGovernancePanel);
 const updateBudgetPolicyMock = vi.mocked(updateBudgetPolicy);
-const updateUserPreferencesMock = vi.mocked(updateUserPreferences);
 
-function createOverview(projectId: string, shotExecutionId: string, limitCents = 120000): AdminOverviewViewModel {
+function createOverview(
+  projectId: string,
+  shotExecutionId: string,
+  limitCents = 120000,
+): AdminOverviewViewModel {
   return {
     budgetSnapshot: {
       projectId,
@@ -79,55 +63,6 @@ function createOverview(projectId: string, shotExecutionId: string, limitCents =
   };
 }
 
-function createGovernance(orgId: string, userId: string): AdminGovernanceViewModel {
-  return {
-    currentSession: {
-      sessionId: `dev:${orgId}:${userId}`,
-      orgId,
-      userId,
-      locale: "zh-CN",
-      roleId: "role-admin",
-      roleCode: "admin",
-      permissionCodes: ["session.read", "org.roles.read", "org.roles.write"],
-      timezone: "Asia/Shanghai",
-    },
-    userPreferences: {
-      userId,
-      displayLocale: "zh-CN",
-      timezone: "Asia/Shanghai",
-    },
-    members: [{ memberId: "member-1", orgId, userId, roleId: "role-admin" }],
-    roles: [
-      {
-        roleId: "role-admin",
-        orgId,
-        code: "admin",
-        displayName: "Administrator",
-        permissionCodes: ["session.read", "org.roles.read", "org.roles.write"],
-        memberCount: 1,
-      },
-    ],
-    availablePermissions: [
-      {
-        code: "org.roles.write",
-        displayName: "Manage roles",
-        group: "governance",
-      },
-    ],
-    orgLocaleSettings: {
-      orgId,
-      defaultLocale: "zh-CN",
-      supportedLocales: ["zh-CN", "en-US"],
-    },
-    capabilities: {
-      canManageRoles: true,
-      canManageMembers: true,
-      canManageOrgSettings: true,
-      canManageUserPreferences: true,
-    },
-  };
-}
-
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
   let reject!: (reason?: unknown) => void;
@@ -138,48 +73,40 @@ function createDeferred<T>() {
   return { promise, resolve, reject };
 }
 
-describe("useAdminOverviewGovernance", () => {
+describe("useAdminOverviewController", () => {
   const t = createTranslator("zh-CN");
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("loads overview and governance in parallel once the session is ready", async () => {
+  it("loads overview once the session is ready", async () => {
     const overviewDeferred = createDeferred<AdminOverviewViewModel>();
-    const governanceDeferred = createDeferred<AdminGovernanceViewModel>();
     loadAdminOverviewMock.mockReturnValueOnce(overviewDeferred.promise);
-    loadGovernancePanelMock.mockReturnValueOnce(governanceDeferred.promise);
 
     const { result } = renderHook(() =>
-      useAdminOverviewGovernance({
+      useAdminOverviewController({
         sessionState: "ready",
         projectId: "project-live-001",
         shotExecutionId: "shot-exec-live-001",
-        identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
-        effectiveUserId: "user-demo-001",
         t,
       }),
     );
 
     await waitFor(() => {
       expect(loadAdminOverviewMock).toHaveBeenCalledTimes(1);
-      expect(loadGovernancePanelMock).toHaveBeenCalledTimes(1);
     });
 
     expect(result.current.overview).toBeNull();
-    expect(result.current.governance).toBeNull();
 
     await act(async () => {
       overviewDeferred.resolve(createOverview("project-live-001", "shot-exec-live-001"));
-      governanceDeferred.resolve(createGovernance("org-demo-001", "user-demo-001"));
-      await Promise.all([overviewDeferred.promise, governanceDeferred.promise]);
+      await overviewDeferred.promise;
     });
 
     await waitFor(() => {
       expect(result.current.overview?.budgetSnapshot.projectId).toBe("project-live-001");
-      expect(result.current.governance?.currentSession.orgId).toBe("org-demo-001");
     });
   });
 
@@ -187,7 +114,6 @@ describe("useAdminOverviewGovernance", () => {
     loadAdminOverviewMock
       .mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001"))
       .mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001", 240000));
-    loadGovernancePanelMock.mockResolvedValueOnce(createGovernance("org-demo-001", "user-demo-001"));
     updateBudgetPolicyMock.mockResolvedValueOnce({
       id: "policy-1",
       orgId: "org-demo-001",
@@ -197,20 +123,17 @@ describe("useAdminOverviewGovernance", () => {
     });
 
     const { result } = renderHook(() =>
-      useAdminOverviewGovernance({
+      useAdminOverviewController({
         sessionState: "ready",
         projectId: "project-live-001",
         shotExecutionId: "shot-exec-live-001",
-        identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
-        effectiveUserId: "user-demo-001",
         t,
       }),
     );
 
     await waitFor(() => {
       expect(result.current.overview?.budgetSnapshot.limitCents).toBe(120000);
-      expect(result.current.governance).not.toBeNull();
     });
 
     await act(async () => {
@@ -244,17 +167,14 @@ describe("useAdminOverviewGovernance", () => {
     loadAdminOverviewMock
       .mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001"))
       .mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001", 240000));
-    loadGovernancePanelMock.mockResolvedValueOnce(createGovernance("org-demo-001", "user-demo-001"));
     updateBudgetPolicyMock.mockReturnValueOnce(budgetUpdateDeferred.promise);
 
     const { result } = renderHook(() =>
-      useAdminOverviewGovernance({
+      useAdminOverviewController({
         sessionState: "ready",
         projectId: "project-live-001",
         shotExecutionId: "shot-exec-live-001",
-        identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
-        effectiveUserId: "user-demo-001",
         t,
       }),
     );
@@ -291,56 +211,15 @@ describe("useAdminOverviewGovernance", () => {
     });
   });
 
-  it("keeps governance data visible and surfaces an error when governance actions fail", async () => {
-    const governance = createGovernance("org-demo-001", "user-demo-001");
-    loadAdminOverviewMock.mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001"));
-    loadGovernancePanelMock.mockResolvedValueOnce(governance);
-    updateUserPreferencesMock.mockRejectedValueOnce(new Error("governance exploded"));
-
-    const { result } = renderHook(() =>
-      useAdminOverviewGovernance({
-        sessionState: "ready",
-        projectId: "project-live-001",
-        shotExecutionId: "shot-exec-live-001",
-        identityOverride: undefined,
-        effectiveOrgId: "org-demo-001",
-        effectiveUserId: "user-demo-001",
-        t,
-      }),
-    );
-
-    await waitFor(() => {
-      expect(result.current.governance?.currentSession.orgId).toBe("org-demo-001");
-    });
-
-    act(() => {
-      result.current.onUpdateUserPreferences({
-        userId: "user-demo-001",
-        displayLocale: "en-US",
-        timezone: "UTC",
-      });
-    });
-
-    await waitFor(() => {
-      expect(result.current.governanceActionFeedback?.tone).toBe("error");
-    });
-
-    expect(result.current.governance).toEqual(governance);
-    expect(result.current.governanceActionFeedback?.message).toContain("governance exploded");
-  });
-
   it("merges recent changes without reloading the whole overview", async () => {
     loadAdminOverviewMock.mockResolvedValueOnce(createOverview("project-live-001", "shot-exec-live-001"));
-    loadGovernancePanelMock.mockResolvedValueOnce(createGovernance("org-demo-001", "user-demo-001"));
 
     const { result } = renderHook(() =>
-      useAdminOverviewGovernance({
+      useAdminOverviewController({
         sessionState: "ready",
         projectId: "project-live-001",
         shotExecutionId: "shot-exec-live-001",
-        identityOverride: undefined,
         effectiveOrgId: "org-demo-001",
-        effectiveUserId: "user-demo-001",
         t,
       }),
     );

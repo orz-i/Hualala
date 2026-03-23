@@ -54,6 +54,8 @@ export function useAdminAssetController({
     assetMonitor: monitorState.assetMonitor,
     importBatchDetail: detailState.importBatchDetail,
     assetProvenanceDetail: detailState.assetProvenanceDetail,
+    selectedImportBatchId: detailState.selectedImportBatchId,
+    selectedAssetProvenanceId: detailState.selectedAssetProvenanceId,
     selectedImportItemIds: detailState.selectedImportItemIds,
     assetActionFeedback: assetActions.assetActionFeedback,
     assetActionPending: assetActions.assetActionPending,

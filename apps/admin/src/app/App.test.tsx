@@ -2,13 +2,17 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { AdminOverviewViewModel } from "../features/dashboard/overview";
 import { ADMIN_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
-import { useAdminOverviewGovernance } from "../features/dashboard/useAdminOverviewGovernance";
+import { useAdminGovernanceController } from "../features/dashboard/useAdminGovernanceController";
+import { useAdminOverviewController } from "../features/dashboard/useAdminOverviewController";
 import { useAdminRecentChangesSubscription } from "../features/dashboard/useAdminRecentChangesSubscription";
 import { useAdminWorkflowController } from "../features/dashboard/useAdminWorkflowController";
 import { useAdminSessionGate } from "../features/session/useAdminSessionGate";
 import { App } from "./App";
 
 let lastAdminOverviewPageProps: Record<string, unknown> | null = null;
+let lastAdminWorkflowPageProps: Record<string, unknown> | null = null;
+let lastAdminAssetsPageProps: Record<string, unknown> | null = null;
+let lastAdminGovernancePageProps: Record<string, unknown> | null = null;
 
 vi.mock("../features/dashboard/AdminOverviewPage", () => ({
   AdminOverviewPage: (props: Record<string, unknown>) => {
@@ -17,11 +21,61 @@ vi.mock("../features/dashboard/AdminOverviewPage", () => ({
     return <div data-testid="admin-overview-page">{overview.budgetSnapshot.projectId}</div>;
   },
 }));
+vi.mock("../features/dashboard/AdminWorkflowPage", () => ({
+  AdminWorkflowPage: (props: Record<string, unknown>) => {
+    lastAdminWorkflowPageProps = props;
+    const workflowMonitor = props.workflowMonitor as { runs: Array<{ id: string }> };
+    return (
+      <div data-testid="admin-workflow-page">
+        {workflowMonitor.runs.map((run) => run.id).join(",")}
+        <button type="button" onClick={() => (props.onSelectWorkflowRun as ((id: string) => void) | undefined)?.("workflow-run-1")}>
+          open-workflow-detail
+        </button>
+        <button type="button" onClick={() => (props.onCloseWorkflowDetail as (() => void) | undefined)?.()}>
+          close-workflow-detail
+        </button>
+      </div>
+    );
+  },
+}));
+vi.mock("../features/dashboard/AdminAssetsPage", () => ({
+  AdminAssetsPage: (props: Record<string, unknown>) => {
+    lastAdminAssetsPageProps = props;
+    const assetMonitor = props.assetMonitor as { importBatches: Array<{ id: string }> };
+    return (
+      <div data-testid="admin-assets-page">
+        {assetMonitor.importBatches.map((batch) => batch.id).join(",")}
+        <button type="button" onClick={() => (props.onSelectImportBatch as ((id: string) => void) | undefined)?.("batch-live-1")}>
+          open-import-batch
+        </button>
+        <button type="button" onClick={() => (props.onSelectAssetProvenance as ((id: string) => void) | undefined)?.("asset-live-1")}>
+          open-asset-provenance
+        </button>
+        <button type="button" onClick={() => (props.onCloseAssetProvenance as (() => void) | undefined)?.()}>
+          close-asset-provenance
+        </button>
+        <button type="button" onClick={() => (props.onCloseImportBatchDetail as (() => void) | undefined)?.()}>
+          close-import-batch
+        </button>
+      </div>
+    );
+  },
+}));
+vi.mock("../features/dashboard/AdminGovernancePage", () => ({
+  AdminGovernancePage: (props: Record<string, unknown>) => {
+    lastAdminGovernancePageProps = props;
+    const governance = props.governance as { currentSession: { orgId: string } };
+    return <div data-testid="admin-governance-page">{governance.currentSession.orgId}</div>;
+  },
+}));
 vi.mock("../features/session/useAdminSessionGate", () => ({
   useAdminSessionGate: vi.fn(),
 }));
-vi.mock("../features/dashboard/useAdminOverviewGovernance", () => ({
-  useAdminOverviewGovernance: vi.fn(),
+vi.mock("../features/dashboard/useAdminOverviewController", () => ({
+  useAdminOverviewController: vi.fn(),
+}));
+vi.mock("../features/dashboard/useAdminGovernanceController", () => ({
+  useAdminGovernanceController: vi.fn(),
 }));
 vi.mock("../features/dashboard/useAdminWorkflowController", () => ({
   useAdminWorkflowController: vi.fn(),
@@ -34,7 +88,8 @@ vi.mock("../features/dashboard/useAdminRecentChangesSubscription", () => ({
 }));
 
 const useAdminSessionGateMock = vi.mocked(useAdminSessionGate);
-const useAdminOverviewGovernanceMock = vi.mocked(useAdminOverviewGovernance);
+const useAdminOverviewControllerMock = vi.mocked(useAdminOverviewController);
+const useAdminGovernanceControllerMock = vi.mocked(useAdminGovernanceController);
 const useAdminWorkflowControllerMock = vi.mocked(useAdminWorkflowController);
 const useAdminAssetControllerMock = vi.mocked(useAdminAssetController);
 const useAdminRecentChangesSubscriptionMock = vi.mocked(useAdminRecentChangesSubscription);
@@ -152,18 +207,25 @@ function buildSessionGate(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function buildOverviewGovernance(overrides: Record<string, unknown> = {}) {
+function buildOverviewController(overrides: Record<string, unknown> = {}) {
   return {
     overview: createOverview("project-live-001", "shot-exec-live-001"),
-    governance: createGovernance("org-demo-001", "user-demo-001"),
     errorMessage: "",
     budgetFeedback: null,
-    governanceActionFeedback: null,
-    governanceActionPending: false,
     refreshOverview: vi.fn(),
-    refreshGovernance: vi.fn(),
     applyRecentChange: vi.fn(),
     onUpdateBudgetLimit: vi.fn(),
+    ...overrides,
+  };
+}
+
+function buildGovernanceController(overrides: Record<string, unknown> = {}) {
+  return {
+    governance: createGovernance("org-demo-001", "user-demo-001"),
+    errorMessage: "",
+    governanceActionFeedback: null,
+    governanceActionPending: false,
+    refreshGovernance: vi.fn(),
     onUpdateUserPreferences: vi.fn(),
     onUpdateMemberRole: vi.fn(),
     onUpdateOrgLocaleSettings: vi.fn(),
@@ -181,7 +243,22 @@ function buildWorkflow(overrides: Record<string, unknown> = {}) {
         status: "",
         workflowType: "",
       },
-      runs: [],
+      runs: [
+        {
+          id: "workflow-run-1",
+          projectId: "project-live-001",
+          resourceId: "shot-exec-live-001",
+          workflowType: "shot_pipeline",
+          status: "running",
+          provider: "seedance",
+          currentStep: "attempt_1.gateway",
+          attemptCount: 1,
+          lastError: "",
+          externalRequestId: "request-1",
+          createdAt: "2024-03-09T16:00:00.000Z",
+          updatedAt: "2024-03-09T16:05:00.000Z",
+        },
+      ],
     },
     workflowRunDetail: null,
     selectedWorkflowRunId: null,
@@ -205,10 +282,27 @@ function buildAsset(overrides: Record<string, unknown> = {}) {
         status: "",
         sourceType: "",
       },
-      importBatches: [],
+      importBatches: [
+        {
+          id: "batch-live-1",
+          orgId: "org-demo-001",
+          projectId: "project-live-001",
+          operatorId: "user-demo-001",
+          sourceType: "upload_session",
+          status: "pending_review",
+          uploadSessionCount: 1,
+          itemCount: 2,
+          confirmedItemCount: 1,
+          candidateAssetCount: 2,
+          mediaAssetCount: 2,
+          updatedAt: "2024-03-09T16:05:00.000Z",
+        },
+      ],
     },
     importBatchDetail: null,
     assetProvenanceDetail: null,
+    selectedImportBatchId: null,
+    selectedAssetProvenanceId: null,
     selectedImportItemIds: [],
     assetActionFeedback: null,
     assetActionPending: false,
@@ -232,12 +326,16 @@ describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     lastAdminOverviewPageProps = null;
+    lastAdminWorkflowPageProps = null;
+    lastAdminAssetsPageProps = null;
+    lastAdminGovernancePageProps = null;
     window.localStorage.clear();
     window.localStorage.setItem(ADMIN_UI_LOCALE_STORAGE_KEY, "zh-CN");
     window.history.pushState({}, "", "/");
 
     useAdminSessionGateMock.mockReturnValue(buildSessionGate() as never);
-    useAdminOverviewGovernanceMock.mockReturnValue(buildOverviewGovernance() as never);
+    useAdminOverviewControllerMock.mockReturnValue(buildOverviewController() as never);
+    useAdminGovernanceControllerMock.mockReturnValue(buildGovernanceController() as never);
     useAdminWorkflowControllerMock.mockReturnValue(buildWorkflow() as never);
     useAdminAssetControllerMock.mockReturnValue(buildAsset() as never);
     useAdminRecentChangesSubscriptionMock.mockImplementation(() => undefined);
@@ -256,13 +354,19 @@ describe("App", () => {
         subscriptionOrgId: "org-override-001",
       }) as never,
     );
-    useAdminOverviewGovernanceMock.mockReturnValue(
-      buildOverviewGovernance({
+    useAdminOverviewControllerMock.mockReturnValue(
+      buildOverviewController({
         overview: createOverview("project-query-1", "shot-query-1"),
       }) as never,
     );
 
     render(<App />);
+
+    expect(window.location.pathname).toBe("/overview");
+    expect(window.location.search).toContain("projectId=project-query-1");
+    expect(window.location.search).toContain("shotExecutionId=shot-query-1");
+    expect(window.location.search).toContain("orgId=org-override-001");
+    expect(window.location.search).toContain("userId=user-override-001");
 
     expect(useAdminSessionGateMock).toHaveBeenCalledWith({
       identityOverride: {
@@ -270,10 +374,15 @@ describe("App", () => {
         userId: "user-override-001",
       },
     });
-    expect(useAdminOverviewGovernanceMock).toHaveBeenCalledWith(
+    expect(useAdminOverviewControllerMock).toHaveBeenCalledWith(
       expect.objectContaining({
         projectId: "project-query-1",
         shotExecutionId: "shot-query-1",
+        effectiveOrgId: "org-override-001",
+      }),
+    );
+    expect(useAdminGovernanceControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
         identityOverride: {
           orgId: "org-override-001",
           userId: "user-override-001",
@@ -311,6 +420,33 @@ describe("App", () => {
     expect(screen.getByTestId("admin-overview-page")).toHaveTextContent("project-query-1");
   });
 
+  it("renders the workflow route when pathname is /workflow", () => {
+    window.history.pushState({}, "", "/workflow?projectId=project-live-001");
+
+    render(<App />);
+
+    expect(screen.getByTestId("admin-workflow-page")).toHaveTextContent("workflow-run-1");
+    expect(screen.queryByTestId("admin-overview-page")).not.toBeInTheDocument();
+  });
+
+  it("renders the assets route when pathname is /assets", () => {
+    window.history.pushState({}, "", "/assets?projectId=project-live-001");
+
+    render(<App />);
+
+    expect(screen.getByTestId("admin-assets-page")).toHaveTextContent("batch-live-1");
+    expect(screen.queryByTestId("admin-overview-page")).not.toBeInTheDocument();
+  });
+
+  it("renders the governance route when pathname is /governance", () => {
+    window.history.pushState({}, "", "/governance?projectId=project-live-001");
+
+    render(<App />);
+
+    expect(screen.getByTestId("admin-governance-page")).toHaveTextContent("org-demo-001");
+    expect(screen.queryByTestId("admin-overview-page")).not.toBeInTheDocument();
+  });
+
   it("renders the loading gate while the session is bootstrapping", () => {
     useAdminSessionGateMock.mockReturnValue(
       buildSessionGate({
@@ -344,42 +480,152 @@ describe("App", () => {
   });
 
   it("surfaces top-level errors before rendering the overview page", () => {
-    useAdminOverviewGovernanceMock.mockReturnValue(
-      buildOverviewGovernance({
+    useAdminOverviewControllerMock.mockReturnValue(
+      buildOverviewController({
+        errorMessage: "overview exploded",
+      }) as never,
+    );
+
+    render(<App />);
+
+    expect(screen.getByText("管理概览加载失败：overview exploded")).toBeInTheDocument();
+    expect(screen.queryByTestId("admin-overview-page")).not.toBeInTheDocument();
+  });
+
+  it("does not let governance errors block the overview route", () => {
+    useAdminGovernanceControllerMock.mockReturnValue(
+      buildGovernanceController({
         errorMessage: "governance exploded",
       }) as never,
     );
 
     render(<App />);
 
-    expect(screen.getByText("管理概览加载失败：governance exploded")).toBeInTheDocument();
-    expect(screen.queryByTestId("admin-overview-page")).not.toBeInTheDocument();
+    expect(screen.getByTestId("admin-overview-page")).toHaveTextContent("project-live-001");
+    expect(screen.queryByText("管理概览加载失败：governance exploded")).not.toBeInTheDocument();
   });
 
-  it("renders the active session banner, clear action, and forwards controller props to the page", () => {
+  it("does not let overview errors block the workflow route", () => {
+    window.history.pushState({}, "", "/workflow?projectId=project-live-001");
+    useAdminOverviewControllerMock.mockReturnValue(
+      buildOverviewController({
+        errorMessage: "overview exploded",
+      }) as never,
+    );
+
+    render(<App />);
+
+    expect(screen.getByTestId("admin-workflow-page")).toHaveTextContent("workflow-run-1");
+    expect(screen.queryByText("管理概览加载失败：overview exploded")).not.toBeInTheDocument();
+  });
+
+  it("renders the active session banner, shell actions, and overview route content", () => {
     const handleClearCurrentSession = vi.fn();
-    const workflow = buildWorkflow({
-      workflowActionPending: true,
-    });
-    const asset = buildAsset({
-      selectedImportItemIds: ["import-item-1"],
-    });
     useAdminSessionGateMock.mockReturnValue(
       buildSessionGate({
         handleClearCurrentSession,
       }) as never,
     );
-    useAdminWorkflowControllerMock.mockReturnValue(workflow as never);
-    useAdminAssetControllerMock.mockReturnValue(asset as never);
 
     render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: "清空开发会话" }));
 
     expect(screen.getByText("当前开发会话用户：user-demo-001")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "管理端主导航" })).toBeInTheDocument();
+    expect(screen.getByTestId("ui-locale-select")).toHaveValue("zh-CN");
     expect(handleClearCurrentSession).toHaveBeenCalledTimes(1);
-    expect(lastAdminOverviewPageProps?.workflowActionPending).toBe(true);
-    expect(lastAdminOverviewPageProps?.selectedImportItemIds).toEqual(["import-item-1"]);
+    expect(lastAdminOverviewPageProps?.overview).toEqual(
+      expect.objectContaining({
+        budgetSnapshot: expect.objectContaining({
+          projectId: "project-live-001",
+        }),
+      }),
+    );
+  });
+
+  it("navigates between routes from the shell and preserves common query params", () => {
+    window.history.pushState(
+      {},
+      "",
+      "/overview?projectId=project-live-001&shotExecutionId=shot-exec-live-001&workflowRunId=workflow-run-1",
+    );
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "工作流" }));
+
+    expect(window.location.pathname).toBe("/workflow");
+    expect(window.location.search).toContain("projectId=project-live-001");
+    expect(window.location.search).toContain("shotExecutionId=shot-exec-live-001");
+    expect(window.location.search).not.toContain("workflowRunId=");
+    expect(screen.getByTestId("admin-workflow-page")).toHaveTextContent("workflow-run-1");
+  });
+
+  it("restores workflow detail selection from workflowRunId query and syncs close/open actions back to the url", () => {
+    const workflow = buildWorkflow({
+      onSelectWorkflowRun: vi.fn(),
+      onCloseWorkflowDetail: vi.fn(),
+    });
+    useAdminWorkflowControllerMock.mockReturnValue(workflow as never);
+    window.history.pushState(
+      {},
+      "",
+      "/workflow?projectId=project-live-001&shotExecutionId=shot-exec-live-001&workflowRunId=workflow-run-2",
+    );
+
+    render(<App />);
+
+    expect(workflow.onSelectWorkflowRun).toHaveBeenCalledWith("workflow-run-2");
+
+    fireEvent.click(screen.getByRole("button", { name: "close-workflow-detail" }));
+    expect(window.location.search).not.toContain("workflowRunId=");
+
+    fireEvent.click(screen.getByRole("button", { name: "open-workflow-detail" }));
+    expect(window.location.search).toContain("workflowRunId=workflow-run-1");
+  });
+
+  it("restores asset batch and provenance selection from query params and keeps them in sync", () => {
+    const asset = buildAsset({
+      onSelectImportBatch: vi.fn(),
+      onSelectAssetProvenance: vi.fn(),
+      onCloseImportBatchDetail: vi.fn(),
+      onCloseAssetProvenance: vi.fn(),
+    });
+    useAdminAssetControllerMock.mockReturnValue(asset as never);
+    window.history.pushState(
+      {},
+      "",
+      "/assets?projectId=project-live-001&shotExecutionId=shot-exec-live-001&importBatchId=batch-live-1&assetId=asset-live-1",
+    );
+
+    render(<App />);
+
+    expect(asset.onSelectImportBatch).toHaveBeenCalledWith("batch-live-1");
+    expect(asset.onSelectAssetProvenance).toHaveBeenCalledWith("asset-live-1");
+
+    fireEvent.click(screen.getByRole("button", { name: "close-asset-provenance" }));
+    expect(window.location.search).toContain("importBatchId=batch-live-1");
+    expect(window.location.search).not.toContain("assetId=");
+
+    fireEvent.click(screen.getByRole("button", { name: "close-import-batch" }));
+    expect(window.location.search).not.toContain("importBatchId=");
+
+    fireEvent.click(screen.getByRole("button", { name: "open-import-batch" }));
+    expect(window.location.search).toContain("importBatchId=batch-live-1");
+
+    fireEvent.click(screen.getByRole("button", { name: "open-asset-provenance" }));
+    expect(window.location.search).toContain("assetId=asset-live-1");
+  });
+
+  it("reacts to popstate updates and switches the rendered route", () => {
+    render(<App />);
+
+    window.history.pushState({}, "", "/assets?projectId=project-live-001");
+    fireEvent.popState(window);
+
+    expect(screen.getByTestId("admin-assets-page")).toHaveTextContent("batch-live-1");
+    expect(screen.queryByTestId("admin-overview-page")).not.toBeInTheDocument();
   });
 
   it("shows the override banner and hides the clear button when identity override is active", () => {

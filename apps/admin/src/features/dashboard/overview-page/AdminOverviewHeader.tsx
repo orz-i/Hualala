@@ -6,58 +6,24 @@ export function AdminOverviewHeader({
   overview,
   locale,
   t,
-  onLocaleChange,
 }: {
   overview: AdminOverviewViewModel;
   locale: LocaleCode;
   t: AdminTranslator;
-  onLocaleChange: (locale: LocaleCode) => void;
 }) {
   return (
     <header style={panelStyle}>
-      <div
+      <p
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: "16px",
-          flexWrap: "wrap",
+          margin: 0,
+          fontSize: "0.8rem",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "#0f766e",
         }}
       >
-        <p
-          style={{
-            margin: 0,
-            fontSize: "0.8rem",
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            color: "#0f766e",
-          }}
-        >
-          {t("app.badge")}
-        </p>
-        <label
-          style={{ display: "grid", gap: "6px", fontSize: "0.9rem", color: "#334155" }}
-        >
-          <span>{t("locale.label")}</span>
-          <select
-            data-testid="ui-locale-select"
-            value={locale}
-            onChange={(event) => {
-              onLocaleChange(event.target.value as LocaleCode);
-            }}
-            style={{
-              borderRadius: "12px",
-              border: "1px solid rgba(148, 163, 184, 0.45)",
-              padding: "8px 10px",
-              font: "inherit",
-              background: "#ffffff",
-            }}
-          >
-            <option value="zh-CN">{t("locale.option.zh-CN")}</option>
-            <option value="en-US">{t("locale.option.en-US")}</option>
-          </select>
-        </label>
-      </div>
+        {t("nav.overview")}
+      </p>
       <h1 style={{ margin: "12px 0 8px", fontSize: "2rem" }}>
         {overview.budgetSnapshot.projectId}
       </h1>
@@ -66,6 +32,9 @@ export function AdminOverviewHeader({
           shotExecutionId: overview.reviewSummary.shotExecutionId,
           latestConclusion: overview.reviewSummary.latestConclusion,
         })}
+      </p>
+      <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: "0.9rem" }}>
+        {t("governance.session.locale", { locale })}
       </p>
     </header>
   );

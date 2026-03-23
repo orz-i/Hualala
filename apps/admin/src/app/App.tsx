@@ -1,19 +1,65 @@
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useLocaleState } from "../i18n";
+import { AdminAssetsPage } from "../features/dashboard/AdminAssetsPage";
+import { AdminGovernancePage } from "../features/dashboard/AdminGovernancePage";
 import { AdminOverviewPage } from "../features/dashboard/AdminOverviewPage";
+import { AdminWorkflowPage } from "../features/dashboard/AdminWorkflowPage";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
-import { useAdminOverviewGovernance } from "../features/dashboard/useAdminOverviewGovernance";
+import { useAdminGovernanceController } from "../features/dashboard/useAdminGovernanceController";
+import { useAdminOverviewController } from "../features/dashboard/useAdminOverviewController";
 import { useAdminRecentChangesSubscription } from "../features/dashboard/useAdminRecentChangesSubscription";
 import { useAdminWorkflowController } from "../features/dashboard/useAdminWorkflowController";
 import { useAdminSessionGate } from "../features/session/useAdminSessionGate";
+import { AdminWorkspaceShell } from "./AdminWorkspaceShell";
+import {
+  type AdminRouteState,
+  buildAdminRouteUrl,
+  parseAdminRouteState,
+  selectAdminRoute,
+} from "./adminRoutes";
 
 export function App() {
   const { locale, setLocale, t } = useLocaleState();
+  const [routeState, setRouteState] = useState<AdminRouteState>(() =>
+    parseAdminRouteState(window.location),
+  );
 
-  const searchParams = new URLSearchParams(window.location.search);
-  const projectId = searchParams.get("projectId") ?? "project-demo-001";
-  const shotExecutionId = searchParams.get("shotExecutionId") ?? "shot-exec-demo-001";
-  const overrideOrgId = searchParams.get("orgId") ?? undefined;
-  const overrideUserId = searchParams.get("userId") ?? undefined;
+  const applyRouteState = useCallback(
+    (nextRouteState: AdminRouteState, mode: "push" | "replace" = "push") => {
+      const nextUrl = buildAdminRouteUrl(nextRouteState);
+      if (mode === "replace") {
+        window.history.replaceState({}, "", nextUrl);
+      } else {
+        window.history.pushState({}, "", nextUrl);
+      }
+      setRouteState(nextRouteState);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const initialRouteState = parseAdminRouteState(window.location);
+    const normalizedUrl = buildAdminRouteUrl(initialRouteState);
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+    if (normalizedUrl !== currentUrl) {
+      window.history.replaceState({}, "", normalizedUrl);
+    }
+    setRouteState(initialRouteState);
+
+    const handlePopState = () => {
+      setRouteState(parseAdminRouteState(window.location));
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  const projectId = routeState.projectId;
+  const shotExecutionId = routeState.shotExecutionId;
+  const overrideOrgId = routeState.orgId;
+  const overrideUserId = routeState.userId;
   const identityOverride =
     overrideOrgId && overrideUserId
       ? {
@@ -26,10 +72,16 @@ export function App() {
     identityOverride,
   });
 
-  const overviewGovernance = useAdminOverviewGovernance({
+  const overview = useAdminOverviewController({
     sessionState: sessionGate.sessionState,
     projectId,
     shotExecutionId,
+    effectiveOrgId: sessionGate.effectiveOrgId,
+    t,
+  });
+
+  const governance = useAdminGovernanceController({
+    sessionState: sessionGate.sessionState,
     identityOverride,
     effectiveOrgId: sessionGate.effectiveOrgId,
     effectiveUserId: sessionGate.effectiveUserId,
@@ -54,12 +106,90 @@ export function App() {
     t,
   });
 
+  useEffect(() => {
+    if (routeState.route !== "workflow") {
+      if (workflow.selectedWorkflowRunId) {
+        workflow.onCloseWorkflowDetail();
+      }
+      return;
+    }
+
+    if (routeState.workflowRunId) {
+      if (workflow.selectedWorkflowRunId !== routeState.workflowRunId) {
+        workflow.onSelectWorkflowRun(routeState.workflowRunId);
+      }
+      return;
+    }
+
+    if (workflow.selectedWorkflowRunId) {
+      workflow.onCloseWorkflowDetail();
+    }
+  }, [
+    routeState.route,
+    routeState.workflowRunId,
+    workflow.onCloseWorkflowDetail,
+    workflow.onSelectWorkflowRun,
+    workflow.selectedWorkflowRunId,
+  ]);
+
+  useEffect(() => {
+    if (routeState.route !== "assets") {
+      if (asset.selectedAssetProvenanceId) {
+        asset.onCloseAssetProvenance();
+      }
+      if (asset.selectedImportBatchId) {
+        asset.onCloseImportBatchDetail();
+      }
+      return;
+    }
+
+    if (!routeState.importBatchId && routeState.assetId) {
+      applyRouteState(
+        {
+          ...routeState,
+          assetId: undefined,
+        },
+        "replace",
+      );
+      return;
+    }
+
+    if (routeState.importBatchId) {
+      if (asset.selectedImportBatchId !== routeState.importBatchId) {
+        asset.onSelectImportBatch(routeState.importBatchId);
+      }
+    } else if (asset.selectedImportBatchId) {
+      asset.onCloseImportBatchDetail();
+      return;
+    }
+
+    if (routeState.assetId) {
+      if (asset.selectedAssetProvenanceId !== routeState.assetId) {
+        asset.onSelectAssetProvenance(routeState.assetId);
+      }
+      return;
+    }
+
+    if (asset.selectedAssetProvenanceId) {
+      asset.onCloseAssetProvenance();
+    }
+  }, [
+    applyRouteState,
+    asset.onCloseAssetProvenance,
+    asset.onCloseImportBatchDetail,
+    asset.onSelectAssetProvenance,
+    asset.onSelectImportBatch,
+    asset.selectedAssetProvenanceId,
+    asset.selectedImportBatchId,
+    routeState,
+  ]);
+
   useAdminRecentChangesSubscription({
     sessionState: sessionGate.sessionState,
-    hasOverview: Boolean(overviewGovernance.overview),
+    hasOverview: Boolean(overview.overview),
     subscriptionOrgId: sessionGate.subscriptionOrgId,
     projectId,
-    onRecentChange: overviewGovernance.applyRecentChange,
+    onRecentChange: overview.applyRecentChange,
     onWorkflowUpdated: () => {
       void workflow.refreshWorkflowSilently();
     },
@@ -71,7 +201,13 @@ export function App() {
     },
   });
 
-  const errorMessage = sessionGate.errorMessage || overviewGovernance.errorMessage;
+  const routeErrorMessage =
+    routeState.route === "overview"
+      ? overview.errorMessage
+      : routeState.route === "governance"
+        ? governance.errorMessage
+        : "";
+  const errorMessage = sessionGate.errorMessage || routeErrorMessage;
 
   if (errorMessage) {
     return (
@@ -111,92 +247,138 @@ export function App() {
     );
   }
 
-  if (!overviewGovernance.overview || !overviewGovernance.governance) {
+  if (routeState.route === "overview" && !overview.overview) {
     return <main style={{ padding: "32px" }}>{t("app.loading")}</main>;
   }
 
-  return (
-    <>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "12px",
-          padding: "16px 24px 0",
-        }}
-      >
-        <p style={{ margin: 0, color: "#334155" }}>
-          {identityOverride
-            ? t("session.override.active", {
-                orgId: identityOverride.orgId,
-                userId: identityOverride.userId,
-              })
-            : t("session.active", { userId: sessionGate.session?.userId ?? "" })}
-        </p>
-        {!identityOverride ? (
-          <button
-            type="button"
-            onClick={() => {
-              void sessionGate.handleClearCurrentSession();
-            }}
-            style={{
-              border: 0,
-              borderRadius: "999px",
-              padding: "8px 14px",
-              background: "#cbd5e1",
-              color: "#0f172a",
-              cursor: "pointer",
-            }}
-          >
-            {t("session.clear")}
-          </button>
-        ) : null}
-      </div>
-      <AdminOverviewPage
-        overview={overviewGovernance.overview}
-        governance={overviewGovernance.governance}
+  if (routeState.route === "governance" && !governance.governance) {
+    return <main style={{ padding: "32px" }}>{t("app.loading")}</main>;
+  }
+
+  const sessionLabel = identityOverride
+    ? t("session.override.active", {
+        orgId: identityOverride.orgId,
+        userId: identityOverride.userId,
+      })
+    : t("session.active", { userId: sessionGate.session?.userId ?? "" });
+
+  let routeContent: ReactNode = null;
+
+  if (routeState.route === "workflow") {
+    routeContent = (
+      <AdminWorkflowPage
         workflowMonitor={workflow.workflowMonitor}
-        assetMonitor={asset.assetMonitor}
         workflowRunDetail={workflow.workflowRunDetail}
-        importBatchDetail={asset.importBatchDetail}
-        assetProvenanceDetail={asset.assetProvenanceDetail}
-        locale={locale}
-        t={t}
-        onLocaleChange={setLocale}
-        budgetFeedback={overviewGovernance.budgetFeedback ?? undefined}
-        governanceActionFeedback={overviewGovernance.governanceActionFeedback ?? undefined}
-        governanceActionPending={overviewGovernance.governanceActionPending}
         workflowActionFeedback={workflow.workflowActionFeedback ?? undefined}
         workflowActionPending={workflow.workflowActionPending}
-        assetActionFeedback={asset.assetActionFeedback ?? undefined}
-        assetActionPending={asset.assetActionPending}
-        onUpdateBudgetLimit={overviewGovernance.onUpdateBudgetLimit}
-        onUpdateUserPreferences={overviewGovernance.onUpdateUserPreferences}
-        onUpdateMemberRole={overviewGovernance.onUpdateMemberRole}
-        onUpdateOrgLocaleSettings={overviewGovernance.onUpdateOrgLocaleSettings}
-        onCreateRole={overviewGovernance.onCreateRole}
-        onUpdateRole={overviewGovernance.onUpdateRole}
-        onDeleteRole={overviewGovernance.onDeleteRole}
+        t={t}
         onWorkflowStatusFilterChange={workflow.onWorkflowStatusFilterChange}
         onWorkflowTypeFilterChange={workflow.onWorkflowTypeFilterChange}
-        onSelectWorkflowRun={workflow.onSelectWorkflowRun}
-        onCloseWorkflowDetail={workflow.onCloseWorkflowDetail}
+        onSelectWorkflowRun={(workflowRunId) => {
+          applyRouteState({
+            ...routeState,
+            workflowRunId,
+          });
+        }}
+        onCloseWorkflowDetail={() => {
+          applyRouteState({
+            ...routeState,
+            workflowRunId: undefined,
+          });
+        }}
         onRetryWorkflowRun={workflow.onRetryWorkflowRun}
         onCancelWorkflowRun={workflow.onCancelWorkflowRun}
+      />
+    );
+  } else if (routeState.route === "assets") {
+    routeContent = (
+      <AdminAssetsPage
+        assetMonitor={asset.assetMonitor}
+        importBatchDetail={asset.importBatchDetail}
+        assetProvenanceDetail={asset.assetProvenanceDetail}
+        selectedImportItemIds={asset.selectedImportItemIds}
+        assetActionFeedback={asset.assetActionFeedback ?? undefined}
+        assetActionPending={asset.assetActionPending}
+        t={t}
         onAssetStatusFilterChange={asset.onAssetStatusFilterChange}
         onAssetSourceTypeFilterChange={asset.onAssetSourceTypeFilterChange}
-        onSelectImportBatch={asset.onSelectImportBatch}
-        onCloseImportBatchDetail={asset.onCloseImportBatchDetail}
-        selectedImportItemIds={asset.selectedImportItemIds}
+        onSelectImportBatch={(importBatchId) => {
+          applyRouteState({
+            ...routeState,
+            importBatchId,
+            assetId: undefined,
+          });
+        }}
+        onCloseImportBatchDetail={() => {
+          applyRouteState({
+            ...routeState,
+            importBatchId: undefined,
+            assetId: undefined,
+          });
+        }}
         onToggleImportBatchItemSelection={asset.onToggleImportBatchItemSelection}
         onConfirmImportBatchItem={asset.onConfirmImportBatchItem}
         onConfirmSelectedImportBatchItems={asset.onConfirmSelectedImportBatchItems}
         onConfirmAllImportBatchItems={asset.onConfirmAllImportBatchItems}
         onSelectPrimaryAsset={asset.onSelectPrimaryAsset}
-        onSelectAssetProvenance={asset.onSelectAssetProvenance}
-        onCloseAssetProvenance={asset.onCloseAssetProvenance}
+        onSelectAssetProvenance={(assetId) => {
+          applyRouteState({
+            ...routeState,
+            assetId,
+          });
+        }}
+        onCloseAssetProvenance={() => {
+          applyRouteState({
+            ...routeState,
+            assetId: undefined,
+          });
+        }}
       />
-    </>
+    );
+  } else if (routeState.route === "governance" && governance.governance) {
+    routeContent = (
+      <AdminGovernancePage
+        governance={governance.governance}
+        governanceActionFeedback={governance.governanceActionFeedback ?? undefined}
+        governanceActionPending={governance.governanceActionPending}
+        t={t}
+        onUpdateUserPreferences={governance.onUpdateUserPreferences}
+        onUpdateMemberRole={governance.onUpdateMemberRole}
+        onUpdateOrgLocaleSettings={governance.onUpdateOrgLocaleSettings}
+        onCreateRole={governance.onCreateRole}
+        onUpdateRole={governance.onUpdateRole}
+        onDeleteRole={governance.onDeleteRole}
+      />
+    );
+  } else if (overview.overview) {
+    routeContent = (
+      <AdminOverviewPage
+        overview={overview.overview}
+        locale={locale}
+        t={t}
+        budgetFeedback={overview.budgetFeedback ?? undefined}
+        onUpdateBudgetLimit={overview.onUpdateBudgetLimit}
+      />
+    );
+  }
+
+  return (
+    <AdminWorkspaceShell
+      route={routeState.route}
+      projectId={projectId}
+      locale={locale}
+      sessionLabel={sessionLabel}
+      showClearSession={!identityOverride}
+      t={t}
+      onLocaleChange={setLocale}
+      onNavigateRoute={(route) => {
+        applyRouteState(selectAdminRoute(routeState, route));
+      }}
+      onClearSession={() => {
+        void sessionGate.handleClearCurrentSession();
+      }}
+    >
+      {routeContent}
+    </AdminWorkspaceShell>
   );
 }

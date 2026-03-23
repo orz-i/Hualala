@@ -4,6 +4,12 @@ import { mockConnectRoutes } from "./fixtures/mockConnectRoutes";
 const MOCK_ADMIN_URL =
   "http://127.0.0.1:4173/?projectId=project-live-1&shotExecutionId=shot-exec-live-1&orgId=org-live-1";
 
+async function enterAdminSession(page) {
+  await page.goto(MOCK_ADMIN_URL);
+  await page.getByRole("button", { name: "进入开发会话" }).click();
+  await expect(page.getByRole("navigation", { name: "管理端主导航" })).toBeVisible();
+}
+
 async function postJson<TResponse>(
   page,
   path: string,
@@ -39,10 +45,11 @@ test("admin smoke: renders overview and updates budget", async ({ page }) => {
     await route.fallback();
   });
 
-  await page.goto(MOCK_ADMIN_URL);
-  await page.getByRole("button", { name: "进入开发会话" }).click();
+  await enterAdminSession(page);
 
-  await expect(page.getByText("project-live-1")).toBeVisible();
+  await expect(
+    page.getByRole("complementary").getByRole("heading", { name: "project-live-1" }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "最近变更" })).toBeVisible();
   await expect(page.getByText("最近计费事件")).toBeVisible();
   await expect(page.getByText("最近评估结果")).toBeVisible();
@@ -66,15 +73,18 @@ test("admin smoke: keeps overview visible on budget update failure", async ({ pa
     admin: "failure",
   });
 
-  await page.goto(MOCK_ADMIN_URL);
-  await page.getByRole("button", { name: "进入开发会话" }).click();
+  await enterAdminSession(page);
 
-  await expect(page.getByText("project-live-1")).toBeVisible();
+  await expect(
+    page.getByRole("complementary").getByRole("heading", { name: "project-live-1" }),
+  ).toBeVisible();
   await page.getByLabel("预算上限（元）").fill("1500");
   await page.getByRole("button", { name: "更新预算" }).click();
 
   await expect(page.getByText("预算策略更新失败")).toBeVisible();
-  await expect(page.getByText("project-live-1")).toBeVisible();
+  await expect(
+    page.getByRole("complementary").getByRole("heading", { name: "project-live-1" }),
+  ).toBeVisible();
 });
 
 test("admin smoke: manages custom roles and permission edits", async ({ page }) => {
@@ -82,10 +92,10 @@ test("admin smoke: manages custom roles and permission edits", async ({ page }) 
     admin: "success",
   });
 
-  await page.goto(MOCK_ADMIN_URL);
-  await page.getByRole("button", { name: "进入开发会话" }).click();
+  await enterAdminSession(page);
+  await page.getByRole("button", { name: "治理" }).click();
 
-  await expect(page.getByText("角色与权限编辑")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "角色与权限编辑" }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "角色使用中，禁止删除" })).toBeDisabled();
 
   const createRoleSection = page.getByRole("heading", { name: "新建角色" }).locator("..");
@@ -180,11 +190,14 @@ test("admin smoke: retries a failed workflow run from the workflow monitor", asy
     admin: "success",
   });
 
-  await page.goto(MOCK_ADMIN_URL);
-  await page.getByRole("button", { name: "进入开发会话" }).click();
+  await enterAdminSession(page);
+  await page.getByRole("button", { name: "工作流" }).click();
 
-  await expect(page.getByText("工作流监控")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "工作流监控" }).first()).toBeVisible();
   await page.getByRole("button", { name: "查看工作流详情 workflow-run-1" }).click();
+  await expect(page).toHaveURL(/workflowRunId=workflow-run-1/);
+  await expect(page.getByRole("dialog", { name: "工作流详情" })).toBeVisible();
+  await page.reload();
   await expect(page.getByRole("dialog", { name: "工作流详情" })).toBeVisible();
 
   await page.getByRole("button", { name: "重试工作流" }).click();
@@ -198,16 +211,21 @@ test("admin smoke: confirms asset matches and selects a primary asset from asset
     admin: "success",
   });
 
-  await page.goto(MOCK_ADMIN_URL);
-  await page.getByRole("button", { name: "进入开发会话" }).click();
+  await enterAdminSession(page);
+  await page.getByRole("button", { name: "资产" }).click();
 
-  await expect(page.getByText("资产监控")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "资产监控" }).first()).toBeVisible();
   await page.getByRole("button", { name: /查看导入批次详情/ }).click();
+  await expect(page).toHaveURL(/importBatchId=batch-live-1/);
   await expect(page.getByRole("dialog", { name: "导入批次详情" })).toBeVisible();
 
   await page.getByRole("button", { name: /查看资源来源/ }).first().click();
+  await expect(page).toHaveURL(/assetId=asset-live-1/);
+  await expect(page.getByRole("dialog", { name: "资源来源详情" })).toBeVisible();
+  await page.reload();
   await expect(page.getByRole("dialog", { name: "资源来源详情" })).toBeVisible();
   await page.getByRole("button", { name: "关闭资源来源详情" }).click();
+  await expect(page).not.toHaveURL(/assetId=/);
 
   await page.getByRole("checkbox", { name: /选择导入条目/ }).click();
   await page.getByRole("button", { name: "确认已选项" }).click();
