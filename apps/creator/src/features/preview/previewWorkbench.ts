@@ -135,6 +135,9 @@ export function hydratePreviewDraftItemsFromLocale({
     draftItems.map((item) => {
       const localizedItemFromItemId = localizedItemByItemId.get(item.itemId) ?? null;
       const localizedItemFromShotId = firstLocalizedItemByShotId.get(item.shotId) ?? null;
+      // locale 切换后的 hydration 先尽量保留“同 item + 同 shot”的精确命中；
+      // 如果保存后服务端重编了 itemId，则退回到按 shotId 重刷水合；
+      // 只有在没有更好命中的情况下，才保留按旧 itemId 找到的摘要。
       const localizedItem =
         localizedItemFromItemId?.shotId === item.shotId
           ? localizedItemFromItemId

@@ -42,27 +42,27 @@ type PreviewShotCatalogEntry = {
   };
 };
 
+const previewShotTitles: Record<string, { "en-US": string; "zh-CN": string }> = {
+  "shot-preview-1": {
+    "en-US": "First Shot",
+    "zh-CN": "第一镜",
+  },
+  "shot-preview-2": {
+    "en-US": "Second Shot",
+    "zh-CN": "第二镜",
+  },
+};
+
 function localizeSceneTitle(displayLocale: string) {
   return displayLocale === "en-US" ? "Opening" : "开场";
 }
 
 function localizeShotTitle(shotId: string, displayLocale: string) {
-  if (displayLocale === "en-US") {
-    if (shotId === "shot-preview-1") {
-      return "First Shot";
-    }
-    if (shotId === "shot-preview-2") {
-      return "Second Shot";
-    }
+  const titles = previewShotTitles[shotId];
+  if (!titles) {
+    return "";
   }
-
-  if (shotId === "shot-preview-1") {
-    return "第一镜";
-  }
-  if (shotId === "shot-preview-2") {
-    return "第二镜";
-  }
-  return "";
+  return displayLocale === "en-US" ? titles["en-US"] : titles["zh-CN"];
 }
 
 function buildPreviewShotOptionCatalog(
