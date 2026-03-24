@@ -115,6 +115,19 @@ function getTrackDisplayName(trackType: string) {
   }
 }
 
+function summarizeTracksByType(tracks: AdminAudioTrackViewModel[]) {
+  const countsByType = new Map<string, number>();
+
+  tracks.forEach((track) => {
+    countsByType.set(track.trackType, (countsByType.get(track.trackType) ?? 0) + track.clips.length);
+  });
+
+  return [...countsByType.entries()].map(([trackType, count]) => ({
+    trackType,
+    count,
+  }));
+}
+
 export function normalizeAdminAudioWorkbench(
   timeline: AudioTimelinePayload | undefined,
   errorMessage: string,
@@ -189,10 +202,7 @@ export function normalizeAdminAudioWorkbench(
           ).length,
         0,
       ),
-      tracksByType: normalizedTracks.map((track) => ({
-        trackType: track.trackType,
-        count: track.clips.length,
-      })),
+      tracksByType: summarizeTracksByType(normalizedTracks),
     },
   };
 }

@@ -69,15 +69,18 @@ export async function loadAudioAssetPool({
 
   const items: AudioAssetPoolItemViewModel[] = [];
 
-  for (const importBatch of listPayload.importBatches ?? []) {
-    if (!importBatch.id) {
-      continue;
-    }
-    const importBatchId = importBatch.id;
+  const importBatchPayloads = await Promise.all(
+    (listPayload.importBatches ?? [])
+      .filter((importBatch): importBatch is { id: string } => Boolean(importBatch.id))
+      .map(async (importBatch) => ({
+        importBatchId: importBatch.id,
+        payload: (await client.getImportBatchWorkbench({
+          importBatchId: importBatch.id,
+        })) as ImportBatchWorkbenchResponse,
+      })),
+  );
 
-    const payload = (await client.getImportBatchWorkbench({
-      importBatchId,
-    })) as ImportBatchWorkbenchResponse;
+  for (const { importBatchId, payload } of importBatchPayloads) {
 
     const uploadFileById = new Map(
       (payload.uploadFiles ?? [])

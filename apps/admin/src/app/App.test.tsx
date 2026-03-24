@@ -12,10 +12,14 @@ import { useAdminWorkflowController } from "../features/dashboard/useAdminWorkfl
 import { useAdminSessionGate } from "../features/session/useAdminSessionGate";
 import { App } from "./App";
 
-const { useAdminAudioControllerMock, useAdminCollaborationControllerMock, useAdminPreviewControllerMock } = vi.hoisted(() => ({
-  useAdminAudioControllerMock: vi.fn(),
-  useAdminCollaborationControllerMock: vi.fn(),
-  useAdminPreviewControllerMock: vi.fn(),
+const {
+  mockUseAdminAudioController,
+  mockUseAdminCollaborationController,
+  mockUseAdminPreviewController,
+} = vi.hoisted(() => ({
+  mockUseAdminAudioController: vi.fn(),
+  mockUseAdminCollaborationController: vi.fn(),
+  mockUseAdminPreviewController: vi.fn(),
 }));
 
 let lastAdminOverviewPageProps: Record<string, unknown> | null = null;
@@ -148,13 +152,13 @@ vi.mock("../features/dashboard/useAdminAssetController", () => ({
   useAdminAssetController: vi.fn(),
 }));
 vi.mock("../features/dashboard/useAdminAudioController", () => ({
-  useAdminAudioController: useAdminAudioControllerMock,
+  useAdminAudioController: mockUseAdminAudioController,
 }));
 vi.mock("../features/dashboard/useAdminCollaborationController", () => ({
-  useAdminCollaborationController: useAdminCollaborationControllerMock,
+  useAdminCollaborationController: mockUseAdminCollaborationController,
 }));
 vi.mock("../features/dashboard/useAdminPreviewController", () => ({
-  useAdminPreviewController: useAdminPreviewControllerMock,
+  useAdminPreviewController: mockUseAdminPreviewController,
 }));
 vi.mock("../features/dashboard/useAdminRecentChangesSubscription", () => ({
   useAdminRecentChangesSubscription: vi.fn(),
@@ -165,8 +169,8 @@ const useAdminOverviewControllerMock = vi.mocked(useAdminOverviewController);
 const useAdminGovernanceControllerMock = vi.mocked(useAdminGovernanceController);
 const useAdminWorkflowControllerMock = vi.mocked(useAdminWorkflowController);
 const useAdminAssetControllerMock = vi.mocked(useAdminAssetController);
-const useAdminAudioControllerMocked = vi.mocked(useAdminAudioController);
-const useAdminPreviewControllerMocked = vi.mocked(useAdminPreviewController);
+const useAdminAudioControllerMock = vi.mocked(useAdminAudioController);
+const useAdminPreviewControllerMock = vi.mocked(useAdminPreviewController);
 const useAdminRecentChangesSubscriptionMock = vi.mocked(useAdminRecentChangesSubscription);
 
 function createOverview(projectId: string, shotExecutionId: string): AdminOverviewViewModel {
@@ -560,9 +564,9 @@ describe("App", () => {
     useAdminGovernanceControllerMock.mockReturnValue(buildGovernanceController() as never);
     useAdminWorkflowControllerMock.mockReturnValue(buildWorkflow() as never);
     useAdminAssetControllerMock.mockReturnValue(buildAsset() as never);
-    useAdminAudioControllerMocked.mockReturnValue(buildAudio() as never);
-    useAdminCollaborationControllerMock.mockReturnValue(buildCollaboration());
-    useAdminPreviewControllerMocked.mockReturnValue(buildPreview() as never);
+    useAdminAudioControllerMock.mockReturnValue(buildAudio() as never);
+    mockUseAdminCollaborationController.mockReturnValue(buildCollaboration());
+    useAdminPreviewControllerMock.mockReturnValue(buildPreview() as never);
     useAdminRecentChangesSubscriptionMock.mockImplementation(() => undefined);
   });
 
@@ -695,7 +699,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(useAdminCollaborationControllerMock).toHaveBeenCalledWith(
+    expect(mockUseAdminCollaborationController).toHaveBeenCalledWith(
       expect.objectContaining({
         enabled: true,
         projectId: "project-live-001",
@@ -727,7 +731,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(useAdminPreviewControllerMocked).toHaveBeenCalledWith(
+    expect(useAdminPreviewControllerMock).toHaveBeenCalledWith(
       expect.objectContaining({
         enabled: true,
         projectId: "project-live-001",
@@ -756,7 +760,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(useAdminAudioControllerMocked).toHaveBeenCalledWith(
+    expect(useAdminAudioControllerMock).toHaveBeenCalledWith(
       expect.objectContaining({
         enabled: true,
         projectId: "project-live-001",
