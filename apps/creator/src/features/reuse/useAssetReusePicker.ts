@@ -124,20 +124,6 @@ export function useAssetReusePicker({
           setFeedback(null);
           setErrorMessage(nextErrorMessage);
         });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        startTransition(() => {
-          setShotWorkbench(null);
-          setReusableAssets([]);
-          setLoading(false);
-          setFeedback(null);
-          setErrorMessage(
-            formatReuseError(error, "creator: unknown cross-project asset reuse error"),
-          );
-        });
       });
 
     return () => {

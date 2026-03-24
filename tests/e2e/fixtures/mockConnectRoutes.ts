@@ -69,6 +69,19 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
   let audioState = createAudioTimelineState(adminState.budgetSnapshot.projectId);
   let reuseState = createAssetReuseState("project-live-1");
 
+  async function handleReuseSelectPrimaryAsset(route: Route) {
+    await delay(120);
+    const body = route.request().postDataJSON() as { assetId?: string };
+    const assetId = body.assetId ?? "";
+    if (!canApplyReuseAsset(reuseState, assetId)) {
+      await route.fulfill(jsonResponse(412, { error: "asset reuse blocked" }));
+      return true;
+    }
+    reuseState = applyReusePrimaryAsset(reuseState, assetId);
+    await route.fulfill(jsonResponse(200, {}));
+    return true;
+  }
+
   await page.route(/\/sse\/events(?:\?.*)?$/, async (route: Route) => {
     await route.fulfill({
       status: 200,
@@ -252,18 +265,11 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       }
 
       if (pathname === "/hualala.execution.v1.ExecutionService/SelectPrimaryAsset") {
-        await delay(120);
         if (scenario.reuse) {
-          const body = route.request().postDataJSON() as { assetId?: string };
-          const assetId = body.assetId ?? "";
-          if (!canApplyReuseAsset(reuseState, assetId)) {
-            await route.fulfill(jsonResponse(412, { error: "asset reuse blocked" }));
-            return;
-          }
-          reuseState = applyReusePrimaryAsset(reuseState, assetId);
-          await route.fulfill(jsonResponse(200, {}));
+          await handleReuseSelectPrimaryAsset(route);
           return;
         }
+        await delay(120);
         creatorImportState = {
           ...clone(creatorImportState),
           ...clone(creatorImportState.afterSelect ?? creatorImportState),
@@ -675,15 +681,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       }
 
       if (pathname === "/hualala.execution.v1.ExecutionService/SelectPrimaryAsset") {
-        await delay(120);
-        const body = route.request().postDataJSON() as { assetId?: string };
-        const assetId = body.assetId ?? "";
-        if (!canApplyReuseAsset(reuseState, assetId)) {
-          await route.fulfill(jsonResponse(412, { error: "asset reuse blocked" }));
-          return;
-        }
-        reuseState = applyReusePrimaryAsset(reuseState, assetId);
-        await route.fulfill(jsonResponse(200, {}));
+        await handleReuseSelectPrimaryAsset(route);
         return;
       }
     }
