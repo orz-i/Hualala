@@ -664,11 +664,12 @@ export function App() {
     const audioWorkbench = audioWorkbenchController.audioWorkbench;
 
     return (
-      <AudioWorkbenchPage
-        audioWorkbench={audioWorkbench}
-        draftTracks={audioWorkbenchController.draftTracks}
-        audioAssetPool={audioWorkbenchController.audioAssetPool}
-        assetProvenanceDetail={audioWorkbenchController.assetProvenanceDetail}
+        <AudioWorkbenchPage
+          audioWorkbench={audioWorkbench}
+          draftTracks={audioWorkbenchController.draftTracks}
+          audioAssetPool={audioWorkbenchController.audioAssetPool}
+          audioAssetPoolErrorMessage={audioWorkbenchController.audioAssetPoolErrorMessage}
+          assetProvenanceDetail={audioWorkbenchController.assetProvenanceDetail}
         assetProvenancePending={audioWorkbenchController.assetProvenancePending}
         assetProvenanceErrorMessage={audioWorkbenchController.assetProvenanceErrorMessage}
         t={t}

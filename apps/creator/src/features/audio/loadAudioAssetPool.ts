@@ -47,6 +47,21 @@ type ImportBatchWorkbenchResponse = {
   }>;
 };
 
+function isPreferredAudioVariant(
+  candidate: AudioAssetPoolItemViewModel,
+  current: AudioAssetPoolItemViewModel,
+) {
+  const candidateIsMaster = candidate.variantType === "master";
+  const currentIsMaster = current.variantType === "master";
+  if (candidateIsMaster !== currentIsMaster) {
+    return candidateIsMaster;
+  }
+  if (candidate.durationMs !== current.durationMs) {
+    return candidate.durationMs > current.durationMs;
+  }
+  return candidate.variantId.localeCompare(current.variantId) < 0;
+}
+
 export async function loadAudioAssetPool({
   projectId,
   orgId,
@@ -67,7 +82,7 @@ export async function loadAudioAssetPool({
     projectId,
   })) as ListImportBatchesResponse;
 
-  const items: AudioAssetPoolItemViewModel[] = [];
+  const itemsByAssetId = new Map<string, AudioAssetPoolItemViewModel>();
 
   const importBatchPayloads = await Promise.all(
     (listPayload.importBatches ?? [])
@@ -121,7 +136,7 @@ export async function loadAudioAssetPool({
 
       const uploadFile = variant.uploadFileId ? uploadFileById.get(variant.uploadFileId) : undefined;
 
-      items.push({
+      const nextItem: AudioAssetPoolItemViewModel = {
         assetId: asset.id ?? "",
         importBatchId: asset.importBatchId ?? payload.importBatch?.id ?? importBatchId,
         durationMs,
@@ -134,11 +149,16 @@ export async function loadAudioAssetPool({
         variantId: variant.id,
         variantType: variant.variantType ?? "",
         mimeType: variant.mimeType ?? uploadFile?.mimeType ?? "",
-      });
+      };
+
+      const currentItem = itemsByAssetId.get(nextItem.assetId);
+      if (!currentItem || isPreferredAudioVariant(nextItem, currentItem)) {
+        itemsByAssetId.set(nextItem.assetId, nextItem);
+      }
     });
   }
 
-  return items.sort((left, right) => {
+  return [...itemsByAssetId.values()].sort((left, right) => {
     const fileNameCompare = left.fileName.localeCompare(right.fileName);
     if (fileNameCompare !== 0) {
       return fileNameCompare;

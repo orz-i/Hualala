@@ -158,4 +158,92 @@ describe("loadAudioAssetPool", () => {
       },
     ]);
   });
+
+  it("deduplicates multiple audio variants of the same asset into one selectable pool item", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            importBatches: [{ id: "batch-1" }],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            importBatch: {
+              id: "batch-1",
+              sourceType: "upload_session",
+            },
+            uploadFiles: [
+              {
+                id: "upload-file-1",
+                fileName: "dialogue-master.wav",
+                mimeType: "audio/wav",
+              },
+              {
+                id: "upload-file-2",
+                fileName: "dialogue-preview.mp3",
+                mimeType: "audio/mpeg",
+              },
+            ],
+            mediaAssets: [
+              {
+                id: "asset-audio-1",
+                importBatchId: "batch-1",
+                mediaType: "audio",
+                sourceType: "upload_session",
+                rightsStatus: "clear",
+                locale: "zh-CN",
+              },
+            ],
+            mediaAssetVariants: [
+              {
+                id: "variant-audio-master",
+                assetId: "asset-audio-1",
+                uploadFileId: "upload-file-1",
+                variantType: "master",
+                mimeType: "audio/wav",
+                durationMs: 12000,
+              },
+              {
+                id: "variant-audio-preview",
+                assetId: "asset-audio-1",
+                uploadFileId: "upload-file-2",
+                variantType: "preview",
+                mimeType: "audio/mpeg",
+                durationMs: 9000,
+              },
+            ],
+            candidateAssets: [
+              {
+                assetId: "asset-audio-1",
+                sourceRunId: "run-audio-1",
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      );
+
+    const items = await loadAudioAssetPool({
+      projectId: "project-1",
+      orgId: "org-1",
+      userId: "user-1",
+      baseUrl: "http://127.0.0.1:8080",
+      fetchFn,
+    });
+
+    expect(items).toEqual([
+      expect.objectContaining({
+        assetId: "asset-audio-1",
+        variantId: "variant-audio-master",
+        variantType: "master",
+        mimeType: "audio/wav",
+        durationMs: 12000,
+      }),
+    ]);
+  });
 });

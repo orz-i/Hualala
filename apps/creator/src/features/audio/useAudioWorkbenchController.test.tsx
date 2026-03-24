@@ -216,4 +216,51 @@ describe("useAudioWorkbenchController", () => {
     expect(result.current.audioWorkbench?.tracks[0]?.volumePercent).toBe(0);
     expect(result.current.audioWorkbench?.tracks[0]?.clips[0]?.assetId).toBe("asset-audio-1");
   });
+
+  it("keeps the audio workbench editable when the asset pool load fails", async () => {
+    loadAudioWorkbenchMock.mockResolvedValueOnce({
+      ...buildAudioWorkbench(),
+      tracks: [
+        {
+          trackId: "track-dialogue",
+          timelineId: "timeline-project-1",
+          trackType: "dialogue",
+          displayName: "对白",
+          sequence: 1,
+          muted: false,
+          solo: false,
+          volumePercent: 100,
+          clips: [],
+        },
+      ],
+      summary: {
+        trackCount: 1,
+        clipCount: 0,
+        missingDurationClipCount: 0,
+      },
+    });
+    loadAudioAssetPoolMock.mockRejectedValueOnce(new Error("creator: asset pool temporarily unavailable"));
+
+    const { result } = renderHook(() =>
+      useAudioWorkbenchController({
+        enabled: true,
+        projectId: "project-1",
+        t,
+        orgId: "org-1",
+        userId: "user-1",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.audioWorkbench?.timeline.audioTimelineId).toBe("timeline-project-1");
+    });
+
+    expect(result.current.errorMessage).toBe("");
+    expect(result.current.audioAssetPool).toEqual([]);
+    expect(result.current.draftTracks.map((track) => track.trackType)).toEqual([
+      "dialogue",
+      "voiceover",
+      "bgm",
+    ]);
+  });
 });

@@ -49,6 +49,7 @@ export function useAudioWorkbenchController({
   const [audioWorkbench, setAudioWorkbench] = useState<AudioWorkbenchViewModel | null>(null);
   const [draftTracks, setDraftTracks] = useState<AudioTrackViewModel[]>([]);
   const [audioAssetPool, setAudioAssetPool] = useState<AudioAssetPoolItemViewModel[]>([]);
+  const [audioAssetPoolErrorMessage, setAudioAssetPoolErrorMessage] = useState("");
   const [feedback, setFeedback] = useState<ActionFeedbackModel | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const draftClipIdRef = useRef(1);
@@ -72,6 +73,7 @@ export function useAudioWorkbenchController({
         setAudioWorkbench(null);
         setDraftTracks([]);
         setAudioAssetPool([]);
+        setAudioAssetPoolErrorMessage("");
         setFeedback(null);
         setErrorMessage("");
       });
@@ -81,7 +83,7 @@ export function useAudioWorkbenchController({
     let cancelled = false;
     resetAssetProvenance();
 
-    Promise.all([
+    Promise.allSettled([
       loadAudioWorkbench({
         projectId,
         orgId,
@@ -93,30 +95,44 @@ export function useAudioWorkbenchController({
         userId,
       }),
     ])
-      .then(([nextWorkbench, nextAudioAssetPool]) => {
+      .then(([audioWorkbenchResult, audioAssetPoolResult]) => {
         if (cancelled) {
           return;
         }
+
+        if (audioWorkbenchResult.status === "rejected") {
+          const message = formatActionError(
+            audioWorkbenchResult.reason,
+            "creator: unknown audio workbench error",
+          );
+          startTransition(() => {
+            setAudioWorkbench(null);
+            setDraftTracks([]);
+            setAudioAssetPool([]);
+            setAudioAssetPoolErrorMessage("");
+            setFeedback(null);
+            setErrorMessage(message);
+          });
+          return;
+        }
+
+        const nextAudioAssetPool =
+          audioAssetPoolResult.status === "fulfilled" ? audioAssetPoolResult.value : [];
+        const nextAudioAssetPoolErrorMessage =
+          audioAssetPoolResult.status === "rejected"
+            ? formatActionError(
+                audioAssetPoolResult.reason,
+                "creator: unknown audio asset pool error",
+              )
+            : "";
+
         startTransition(() => {
-          setAudioWorkbench(nextWorkbench);
-          setDraftTracks(seedDraftTracks(nextWorkbench));
+          setAudioWorkbench(audioWorkbenchResult.value);
+          setDraftTracks(seedDraftTracks(audioWorkbenchResult.value));
           setAudioAssetPool(nextAudioAssetPool);
+          setAudioAssetPoolErrorMessage(nextAudioAssetPoolErrorMessage);
           setFeedback(null);
           setErrorMessage("");
-        });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        const message =
-          error instanceof Error ? error.message : "creator: unknown audio workbench error";
-        startTransition(() => {
-          setAudioWorkbench(null);
-          setDraftTracks([]);
-          setAudioAssetPool([]);
-          setFeedback(null);
-          setErrorMessage(message);
         });
       });
 
@@ -315,6 +331,7 @@ export function useAudioWorkbenchController({
     audioWorkbench,
     draftTracks,
     audioAssetPool,
+    audioAssetPoolErrorMessage,
     feedback,
     errorMessage,
     assetProvenanceDetail,

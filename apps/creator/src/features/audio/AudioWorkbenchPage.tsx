@@ -47,6 +47,7 @@ type AudioWorkbenchPageProps = {
   audioWorkbench: AudioWorkbenchViewModel;
   draftTracks: AudioTrackViewModel[];
   audioAssetPool: AudioAssetPoolItemViewModel[];
+  audioAssetPoolErrorMessage: string;
   assetProvenanceDetail: AssetProvenanceDetailViewModel | null;
   assetProvenancePending: boolean;
   assetProvenanceErrorMessage: string;
@@ -73,6 +74,7 @@ export function AudioWorkbenchPage({
   audioWorkbench,
   draftTracks,
   audioAssetPool,
+  audioAssetPoolErrorMessage,
   assetProvenanceDetail,
   assetProvenancePending,
   assetProvenanceErrorMessage,
@@ -135,13 +137,16 @@ export function AudioWorkbenchPage({
           <h2 style={{ margin: 0 }}>{t("audio.pool.title")}</h2>
           <p style={{ margin: 0, color: "#475569" }}>{t("audio.pool.description")}</p>
         </div>
+        {audioAssetPoolErrorMessage ? (
+          <p style={{ margin: 0, color: "#991b1b" }}>{audioAssetPoolErrorMessage}</p>
+        ) : null}
         {audioAssetPool.length === 0 ? (
           <p style={{ margin: 0, color: "#64748b" }}>{t("audio.pool.empty")}</p>
         ) : (
           <div style={{ display: "grid", gap: "10px" }}>
             {audioAssetPool.map((item) => (
               <article
-                key={item.variantId}
+                key={item.assetId}
                 style={{
                   borderRadius: "14px",
                   background: "rgba(241, 245, 249, 0.9)",
@@ -258,7 +263,7 @@ export function AudioWorkbenchPage({
                   >
                     <option value="">{t("audio.pool.selectPlaceholder")}</option>
                     {audioAssetPool.map((item) => (
-                      <option key={item.variantId} value={item.assetId}>
+                      <option key={item.assetId} value={item.assetId}>
                         {item.fileName || item.assetId}
                       </option>
                     ))}

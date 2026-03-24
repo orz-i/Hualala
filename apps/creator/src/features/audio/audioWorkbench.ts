@@ -204,22 +204,36 @@ export function createDefaultAudioTrack(
 export function seedDraftTracks(
   audioWorkbench: AudioWorkbenchViewModel,
 ): AudioTrackViewModel[] {
-  const trackByType = new Map(audioWorkbench.tracks.map((track) => [track.trackType, track]));
+  const orderedExistingTracks = [...audioWorkbench.tracks].sort((left, right) => left.sequence - right.sequence);
+  const builtInTracksByType = new Map<string, AudioTrackViewModel[]>();
+  const customTracks: AudioTrackViewModel[] = [];
+
+  orderedExistingTracks.forEach((track) => {
+    if (AUDIO_TRACK_TYPE_ORDER.includes(track.trackType as never)) {
+      const group = builtInTracksByType.get(track.trackType) ?? [];
+      group.push(track);
+      builtInTracksByType.set(track.trackType, group);
+      return;
+    }
+    customTracks.push(track);
+  });
+
   const orderedTracks: AudioTrackViewModel[] = [];
 
   AUDIO_TRACK_TYPE_ORDER.forEach((trackType) => {
+    const existingTracks = builtInTracksByType.get(trackType) ?? [];
+    if (existingTracks.length > 0) {
+      orderedTracks.push(...existingTracks);
+      return;
+    }
     orderedTracks.push(
-      trackByType.get(trackType) ??
-        createDefaultAudioTrack(audioWorkbench.timeline.audioTimelineId, trackType, orderedTracks.length + 1),
+      createDefaultAudioTrack(audioWorkbench.timeline.audioTimelineId, trackType, orderedTracks.length + 1),
     );
   });
 
-  audioWorkbench.tracks
-    .filter((track) => !AUDIO_TRACK_TYPE_ORDER.includes(track.trackType as never))
-    .sort((left, right) => left.sequence - right.sequence)
-    .forEach((track) => {
-      orderedTracks.push(track);
-    });
+  customTracks.forEach((track) => {
+    orderedTracks.push(track);
+  });
 
   return resequenceAudioTracks(orderedTracks);
 }
