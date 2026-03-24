@@ -50,12 +50,12 @@ export function AdminAssetReusePage({
           </p>
           <p style={{ margin: 0, color: "#475569" }}>
             {t("reuse.summary.sourceProjectId", {
-              projectId: audit.summary.sourceProjectId || t("asset.provenance.none"),
+              projectId: audit.summary.sourceProjectId || "none",
             })}
           </p>
           <p style={{ margin: 0, color: "#475569" }}>
             {t("reuse.summary.primaryAssetId", {
-              assetId: audit.shotExecution.primaryAssetId || t("asset.provenance.none"),
+              assetId: audit.shotExecution.primaryAssetId || "none",
             })}
           </p>
           <p style={{ margin: 0, color: "#475569" }}>
@@ -92,7 +92,7 @@ export function AdminAssetReusePage({
           </p>
           <p style={{ margin: 0 }}>
             {t("reuse.audit.provenanceSummary", {
-              summary: audit.assetProvenanceDetail?.provenanceSummary || t("asset.provenance.none"),
+              summary: audit.assetProvenanceDetail?.provenanceSummary || "none",
             })}
           </p>
         </div>
