@@ -1,5 +1,5 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
-import type { AdminTranslator } from "../../i18n";
+import type { AdminTranslator, LocaleCode } from "../../i18n";
 import type { AssetProvenanceDetailViewModel } from "./assetMonitor";
 import type { AdminPreviewWorkbenchViewModel } from "./adminPreview";
 import { loadAdminPreviewWorkbench } from "./loadAdminPreviewWorkbench";
@@ -9,6 +9,7 @@ export function useAdminPreviewController({
   sessionState,
   enabled,
   projectId,
+  locale,
   effectiveOrgId,
   effectiveUserId,
   t,
@@ -16,6 +17,7 @@ export function useAdminPreviewController({
   sessionState: "loading" | "ready" | "unauthenticated";
   enabled: boolean;
   projectId: string;
+  locale: LocaleCode;
   effectiveOrgId: string;
   effectiveUserId: string;
   t: AdminTranslator;
@@ -44,6 +46,7 @@ export function useAdminPreviewController({
 
     loadAdminPreviewWorkbench({
       projectId,
+      displayLocale: locale,
       orgId: effectiveOrgId,
       userId: effectiveUserId,
     })
@@ -71,7 +74,7 @@ export function useAdminPreviewController({
     return () => {
       cancelled = true;
     };
-  }, [effectiveOrgId, effectiveUserId, enabled, projectId, sessionState, t]);
+  }, [effectiveOrgId, effectiveUserId, enabled, locale, projectId, sessionState, t]);
 
   const handleOpenAssetProvenance = useCallback(
     async (assetId: string) => {

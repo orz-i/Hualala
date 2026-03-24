@@ -200,6 +200,7 @@ export function App() {
       routeState.route === "preview" &&
       Boolean(routeState.projectId),
     projectId: routeState.projectId ?? "",
+    locale,
     t,
     orgId: effectiveOrgId,
     userId: effectiveUserId,

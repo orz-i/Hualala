@@ -82,6 +82,7 @@ describe("loadPreviewWorkbench", () => {
 
     const result = await loadPreviewWorkbench({
       projectId: "project-1",
+      displayLocale: "en-US",
       orgId: "org-1",
       userId: "user-1",
       baseUrl: "http://127.0.0.1:8080",
@@ -99,6 +100,7 @@ describe("loadPreviewWorkbench", () => {
     );
     expect(getPreviewWorkbenchMock).toHaveBeenCalledWith({
       projectId: "project-1",
+      displayLocale: "en-US",
     });
     expect(result.assembly.assemblyId).toBe("assembly-project-1");
     expect(result.items.map((item) => item.shotId)).toEqual(["shot-1", "shot-2"]);

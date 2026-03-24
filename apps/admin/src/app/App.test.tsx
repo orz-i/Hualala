@@ -813,6 +813,7 @@ describe("App", () => {
       expect.objectContaining({
         enabled: true,
         projectId: "project-live-001",
+        locale: "zh-CN",
         effectiveOrgId: "org-demo-001",
         effectiveUserId: "user-demo-001",
       }),

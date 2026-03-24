@@ -112,6 +112,7 @@ describe("useAdminPreviewController", () => {
         useAdminPreviewController({
           ...props,
           projectId: "project-1",
+          locale: "zh-CN",
           effectiveOrgId: "org-1",
           effectiveUserId: "user-1",
           t,
@@ -143,6 +144,7 @@ describe("useAdminPreviewController", () => {
         sessionState: "ready",
         enabled: true,
         projectId: "project-1",
+        locale: "zh-CN",
         effectiveOrgId: "org-1",
         effectiveUserId: "user-1",
         t,
@@ -163,5 +165,57 @@ describe("useAdminPreviewController", () => {
       userId: "user-1",
     });
     expect(result.current.assetProvenanceDetail?.asset.id).toBe("asset-2");
+  });
+
+  it("reloads preview metadata when the app locale changes", async () => {
+    loadAdminPreviewWorkbenchMock
+      .mockResolvedValueOnce(buildPreviewWorkbench())
+      .mockResolvedValueOnce({
+        ...buildPreviewWorkbench(),
+        items: [
+          {
+            ...buildPreviewWorkbench().items[0],
+            shotSummary: {
+              ...buildPreviewWorkbench().items[0].shotSummary,
+              sceneTitle: "Opening",
+              shotTitle: "First Shot",
+            },
+          },
+          {
+            ...buildPreviewWorkbench().items[1],
+            shotSummary: {
+              ...buildPreviewWorkbench().items[1].shotSummary,
+              sceneTitle: "Opening",
+              shotTitle: "Second Shot",
+            },
+          },
+        ],
+      });
+
+    const { result, rerender } = renderHook(
+      (props: { locale: "zh-CN" | "en-US" }) =>
+        useAdminPreviewController({
+          sessionState: "ready",
+          enabled: true,
+          projectId: "project-1",
+          locale: props.locale,
+          effectiveOrgId: "org-1",
+          effectiveUserId: "user-1",
+          t,
+        }),
+      {
+        initialProps: { locale: "zh-CN" },
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.previewWorkbench?.items[0]?.shotSummary?.shotTitle).toBe("第一镜");
+    });
+
+    rerender({ locale: "en-US" });
+
+    await waitFor(() => {
+      expect(result.current.previewWorkbench?.items[0]?.shotSummary?.shotTitle).toBe("First Shot");
+    });
   });
 });

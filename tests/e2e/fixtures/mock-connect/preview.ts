@@ -42,7 +42,33 @@ type PreviewShotCatalogEntry = {
   };
 };
 
-function buildPreviewShotOptionCatalog(projectId: string): PreviewShotCatalogEntry[] {
+function localizeSceneTitle(displayLocale: string) {
+  return displayLocale === "en-US" ? "Opening" : "开场";
+}
+
+function localizeShotTitle(shotId: string, displayLocale: string) {
+  if (displayLocale === "en-US") {
+    if (shotId === "shot-preview-1") {
+      return "First Shot";
+    }
+    if (shotId === "shot-preview-2") {
+      return "Second Shot";
+    }
+  }
+
+  if (shotId === "shot-preview-1") {
+    return "第一镜";
+  }
+  if (shotId === "shot-preview-2") {
+    return "第二镜";
+  }
+  return "";
+}
+
+function buildPreviewShotOptionCatalog(
+  projectId: string,
+  displayLocale = "zh-CN",
+): PreviewShotCatalogEntry[] {
   return [
     {
       shotId: "shot-preview-1",
@@ -53,10 +79,10 @@ function buildPreviewShotOptionCatalog(projectId: string): PreviewShotCatalogEnt
         episodeTitle: "第一集",
         sceneId: "scene-live-1",
         sceneCode: "SCENE-001",
-        sceneTitle: "开场",
+        sceneTitle: localizeSceneTitle(displayLocale),
         shotId: "shot-preview-1",
         shotCode: "SHOT-001",
-        shotTitle: "第一镜",
+        shotTitle: localizeShotTitle("shot-preview-1", displayLocale),
       },
       shotExecutionId: "shot-exec-preview-1",
       shotExecutionStatus: "ready",
@@ -70,10 +96,10 @@ function buildPreviewShotOptionCatalog(projectId: string): PreviewShotCatalogEnt
         episodeTitle: "第一集",
         sceneId: "scene-live-1",
         sceneCode: "SCENE-001",
-        sceneTitle: "开场",
+        sceneTitle: localizeSceneTitle(displayLocale),
         shotId: "shot-preview-2",
         shotCode: "SHOT-002",
-        shotTitle: "第二镜",
+        shotTitle: localizeShotTitle("shot-preview-2", displayLocale),
       },
       shotExecutionId: "shot-exec-preview-2",
       shotExecutionStatus: "ready",
@@ -92,15 +118,16 @@ function buildPreviewShotOptionCatalog(projectId: string): PreviewShotCatalogEnt
   ];
 }
 
-function findShotCatalogEntry(projectId: string, shotId: string) {
-  return buildPreviewShotOptionCatalog(projectId).find((entry) => entry.shotId === shotId);
+function findShotCatalogEntry(projectId: string, shotId: string, displayLocale = "zh-CN") {
+  return buildPreviewShotOptionCatalog(projectId, displayLocale).find((entry) => entry.shotId === shotId);
 }
 
 function buildPreviewItemMetadata(
   previewState: PreviewAssemblyState,
   item: PreviewAssemblyState["items"][number],
+  displayLocale = "zh-CN",
 ) {
-  const catalogEntry = findShotCatalogEntry(previewState.projectId, item.shotId);
+  const catalogEntry = findShotCatalogEntry(previewState.projectId, item.shotId, displayLocale);
   if (!catalogEntry) {
     return {
       shot: null,
@@ -145,7 +172,10 @@ export function createPreviewAssemblyState(projectId: string): PreviewAssemblySt
   };
 }
 
-export function buildPreviewWorkbenchPayload(previewState: PreviewAssemblyState) {
+export function buildPreviewWorkbenchPayload(
+  previewState: PreviewAssemblyState,
+  displayLocale = "zh-CN",
+) {
   return {
     assembly: {
       assemblyId: previewState.assemblyId,
@@ -155,7 +185,7 @@ export function buildPreviewWorkbenchPayload(previewState: PreviewAssemblyState)
       createdAt: previewState.createdAt,
       updatedAt: previewState.updatedAt,
       items: previewState.items.map((item) => {
-        const metadata = buildPreviewItemMetadata(previewState, item);
+        const metadata = buildPreviewItemMetadata(previewState, item, displayLocale);
         return {
           itemId: item.itemId,
           assemblyId: item.assemblyId,
@@ -172,9 +202,12 @@ export function buildPreviewWorkbenchPayload(previewState: PreviewAssemblyState)
   };
 }
 
-export function buildPreviewShotOptionsPayload(previewState: PreviewAssemblyState) {
+export function buildPreviewShotOptionsPayload(
+  previewState: PreviewAssemblyState,
+  displayLocale = "zh-CN",
+) {
   return {
-    options: buildPreviewShotOptionCatalog(previewState.projectId).map((entry) => ({
+    options: buildPreviewShotOptionCatalog(previewState.projectId, displayLocale).map((entry) => ({
       shot: entry.shot,
       shotExecutionId: entry.shotExecutionId,
       shotExecutionStatus: entry.shotExecutionStatus,
