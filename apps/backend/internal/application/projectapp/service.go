@@ -121,6 +121,8 @@ type ListPreviewShotOptionsInput struct {
 	DisplayLocale string
 }
 
+const previewNoDisplayLocale = ""
+
 type PreviewShotOption struct {
 	Shot                PreviewShotSummary
 	ShotExecutionID     string
@@ -325,7 +327,7 @@ func (s *Service) UpsertPreviewAssembly(ctx context.Context, input UpsertPreview
 	if err := s.repo.ReplacePreviewAssemblyItems(ctx, record.ID, items); err != nil {
 		return PreviewWorkbench{}, err
 	}
-	return s.buildPreviewWorkbench(record, ""), nil
+	return s.buildPreviewWorkbench(record, previewNoDisplayLocale), nil
 }
 
 func (s *Service) normalizePreviewScope(projectID string, episodeID string) (string, string, error) {

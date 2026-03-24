@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/hualala/apps/backend/internal/application/titlelocalization"
 	"github.com/hualala/apps/backend/internal/domain/content"
 )
 
@@ -45,7 +46,7 @@ func (s *Service) resolveSceneTitles(records []content.Scene, displayLocale stri
 	for _, record := range records {
 		sceneIDs = append(sceneIDs, record.ID)
 	}
-	titlesBySceneID := localizedTitleByOwnerID(s.repo.ListSnapshotsByOwners("scene", sceneIDs), normalizedLocale)
+	titlesBySceneID := titlelocalization.TitlesByOwnerID(s.repo.ListSnapshotsByOwners("scene", sceneIDs), normalizedLocale)
 	items := append([]content.Scene(nil), records...)
 	for index := range items {
 		if localizedTitle, ok := titlesBySceneID[items[index].ID]; ok {
@@ -72,7 +73,7 @@ func (s *Service) resolveShotTitles(records []content.Shot, displayLocale string
 	for _, record := range records {
 		shotIDs = append(shotIDs, record.ID)
 	}
-	titlesByShotID := localizedTitleByOwnerID(s.repo.ListSnapshotsByOwners("shot", shotIDs), normalizedLocale)
+	titlesByShotID := titlelocalization.TitlesByOwnerID(s.repo.ListSnapshotsByOwners("shot", shotIDs), normalizedLocale)
 	items := append([]content.Shot(nil), records...)
 	for index := range items {
 		if localizedTitle, ok := titlesByShotID[items[index].ID]; ok {
@@ -88,37 +89,4 @@ func (s *Service) resolveShotTitle(record content.Shot, displayLocale string) co
 		return record
 	}
 	return items[0]
-}
-
-func localizedTitleByOwnerID(snapshots []content.Snapshot, displayLocale string) map[string]string {
-	normalizedLocale := strings.TrimSpace(displayLocale)
-	if normalizedLocale == "" || len(snapshots) == 0 {
-		return map[string]string{}
-	}
-	selectedByOwnerID := make(map[string]content.Snapshot)
-	titlesByOwnerID := make(map[string]string)
-	for _, snapshot := range snapshots {
-		if strings.TrimSpace(snapshot.SnapshotKind) != content.SnapshotKindTitle {
-			continue
-		}
-		if strings.TrimSpace(snapshot.Locale) != normalizedLocale {
-			continue
-		}
-		title := strings.TrimSpace(snapshot.Body)
-		if title == "" {
-			continue
-		}
-		existing, ok := selectedByOwnerID[snapshot.OwnerID]
-		if ok {
-			switch {
-			case snapshot.UpdatedAt.Before(existing.UpdatedAt):
-				continue
-			case snapshot.UpdatedAt.Equal(existing.UpdatedAt) && snapshot.ID <= existing.ID:
-				continue
-			}
-		}
-		selectedByOwnerID[snapshot.OwnerID] = snapshot
-		titlesByOwnerID[snapshot.OwnerID] = title
-	}
-	return titlesByOwnerID
 }

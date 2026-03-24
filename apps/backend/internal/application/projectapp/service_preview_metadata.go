@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hualala/apps/backend/internal/application/titlelocalization"
 	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
@@ -184,8 +185,8 @@ func (s *Service) buildPreviewMetadataLookups(
 	for _, runRecord := range s.repo.ListShotExecutionRunsByExecutionIDs(uniqueNonEmptyStrings(executionIDs)) {
 		lookups.runsByExecutionID[runRecord.ShotExecutionID] = append(lookups.runsByExecutionID[runRecord.ShotExecutionID], runRecord)
 	}
-	lookups.sceneTitleByID = localizedPreviewTitlesByOwnerID(s.repo.ListSnapshotsByOwners("scene", collectSceneIDsFromShotsMap(lookups.shotByID)), displayLocale)
-	lookups.shotTitleByID = localizedPreviewTitlesByOwnerID(s.repo.ListSnapshotsByOwners("shot", collectShotIDsFromMap(lookups.shotByID)), displayLocale)
+	lookups.sceneTitleByID = titlelocalization.TitlesByOwnerID(s.repo.ListSnapshotsByOwners("scene", collectSceneIDsFromShotsMap(lookups.shotByID)), displayLocale)
+	lookups.shotTitleByID = titlelocalization.TitlesByOwnerID(s.repo.ListSnapshotsByOwners("shot", collectShotIDsFromMap(lookups.shotByID)), displayLocale)
 	return lookups
 }
 
@@ -199,10 +200,10 @@ func (s *Service) buildPreviewShotSummary(
 		ProjectTitle: lookups.projectRecord.Title,
 		SceneID:      sceneRecord.ID,
 		SceneCode:    sceneRecord.Code,
-		SceneTitle:   defaultLocalizedPreviewTitle(lookups.sceneTitleByID, sceneRecord.ID, sceneRecord.Title),
+		SceneTitle:   titlelocalization.ResolveTitle(lookups.sceneTitleByID, sceneRecord.ID, sceneRecord.Title),
 		ShotID:       shotRecord.ID,
 		ShotCode:     shotRecord.Code,
-		ShotTitle:    defaultLocalizedPreviewTitle(lookups.shotTitleByID, shotRecord.ID, shotRecord.Title),
+		ShotTitle:    titlelocalization.ResolveTitle(lookups.shotTitleByID, shotRecord.ID, shotRecord.Title),
 	}
 	if episodeRecord, ok := lookups.episodeByID[sceneRecord.EpisodeID]; ok {
 		summary.EpisodeID = episodeRecord.ID
@@ -326,44 +327,4 @@ func uniqueNonEmptyStrings(values []string) []string {
 	}
 	sort.Strings(items)
 	return items
-}
-
-func localizedPreviewTitlesByOwnerID(snapshots []content.Snapshot, displayLocale string) map[string]string {
-	normalizedLocale := strings.TrimSpace(displayLocale)
-	if normalizedLocale == "" || len(snapshots) == 0 {
-		return map[string]string{}
-	}
-	selectedByOwnerID := make(map[string]content.Snapshot)
-	titlesByOwnerID := make(map[string]string)
-	for _, snapshot := range snapshots {
-		if strings.TrimSpace(snapshot.SnapshotKind) != content.SnapshotKindTitle {
-			continue
-		}
-		if strings.TrimSpace(snapshot.Locale) != normalizedLocale {
-			continue
-		}
-		title := strings.TrimSpace(snapshot.Body)
-		if title == "" {
-			continue
-		}
-		existing, ok := selectedByOwnerID[snapshot.OwnerID]
-		if ok {
-			switch {
-			case snapshot.UpdatedAt.Before(existing.UpdatedAt):
-				continue
-			case snapshot.UpdatedAt.Equal(existing.UpdatedAt) && snapshot.ID <= existing.ID:
-				continue
-			}
-		}
-		selectedByOwnerID[snapshot.OwnerID] = snapshot
-		titlesByOwnerID[snapshot.OwnerID] = title
-	}
-	return titlesByOwnerID
-}
-
-func defaultLocalizedPreviewTitle(titlesByOwnerID map[string]string, ownerID string, fallback string) string {
-	if title, ok := titlesByOwnerID[strings.TrimSpace(ownerID)]; ok {
-		return title
-	}
-	return strings.TrimSpace(fallback)
 }
