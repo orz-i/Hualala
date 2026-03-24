@@ -13,6 +13,116 @@ type UpsertPreviewAssemblyBody = {
   }>;
 };
 
+type PreviewShotCatalogEntry = {
+  shotId: string;
+  shot: {
+    projectId: string;
+    projectTitle: string;
+    episodeId: string;
+    episodeTitle: string;
+    sceneId: string;
+    sceneCode: string;
+    sceneTitle: string;
+    shotId: string;
+    shotCode: string;
+    shotTitle: string;
+  };
+  shotExecutionId: string;
+  shotExecutionStatus: string;
+  currentPrimaryAsset?: {
+    assetId: string;
+    mediaType: string;
+    rightsStatus: string;
+    aiAnnotated: boolean;
+  };
+  latestRun?: {
+    runId: string;
+    status: string;
+    triggerType: string;
+  };
+};
+
+function buildPreviewShotOptionCatalog(projectId: string): PreviewShotCatalogEntry[] {
+  return [
+    {
+      shotId: "shot-preview-1",
+      shot: {
+        projectId,
+        projectTitle: "项目直播一",
+        episodeId: "episode-live-1",
+        episodeTitle: "第一集",
+        sceneId: "scene-live-1",
+        sceneCode: "SCENE-001",
+        sceneTitle: "开场",
+        shotId: "shot-preview-1",
+        shotCode: "SHOT-001",
+        shotTitle: "第一镜",
+      },
+      shotExecutionId: "shot-exec-preview-1",
+      shotExecutionStatus: "ready",
+    },
+    {
+      shotId: "shot-preview-2",
+      shot: {
+        projectId,
+        projectTitle: "项目直播一",
+        episodeId: "episode-live-1",
+        episodeTitle: "第一集",
+        sceneId: "scene-live-1",
+        sceneCode: "SCENE-001",
+        sceneTitle: "开场",
+        shotId: "shot-preview-2",
+        shotCode: "SHOT-002",
+        shotTitle: "第二镜",
+      },
+      shotExecutionId: "shot-exec-preview-2",
+      shotExecutionStatus: "ready",
+      currentPrimaryAsset: {
+        assetId: "asset-preview-2",
+        mediaType: "image",
+        rightsStatus: "cleared",
+        aiAnnotated: true,
+      },
+      latestRun: {
+        runId: "run-preview-2",
+        status: "completed",
+        triggerType: "manual",
+      },
+    },
+  ];
+}
+
+function findShotCatalogEntry(projectId: string, shotId: string) {
+  return buildPreviewShotOptionCatalog(projectId).find((entry) => entry.shotId === shotId);
+}
+
+function buildPreviewItemMetadata(
+  previewState: PreviewAssemblyState,
+  item: PreviewAssemblyState["items"][number],
+) {
+  const catalogEntry = findShotCatalogEntry(previewState.projectId, item.shotId);
+  if (!catalogEntry) {
+    return {
+      shot: null,
+      primaryAsset: null,
+      sourceRun: null,
+    };
+  }
+
+  const primaryAsset =
+    item.primaryAssetId && catalogEntry.currentPrimaryAsset?.assetId === item.primaryAssetId
+      ? catalogEntry.currentPrimaryAsset
+      : null;
+  const sourceRun =
+    item.sourceRunId && catalogEntry.latestRun?.runId === item.sourceRunId ? catalogEntry.latestRun : null;
+
+  return {
+    shot: catalogEntry.shot,
+    primaryAsset,
+    sourceRun,
+  };
+}
+
 export function createPreviewAssemblyState(projectId: string): PreviewAssemblyState {
   const assemblyId = `assembly-${projectId}`;
   return {
@@ -44,15 +154,33 @@ export function buildPreviewWorkbenchPayload(previewState: PreviewAssemblyState)
       status: previewState.status,
       createdAt: previewState.createdAt,
       updatedAt: previewState.updatedAt,
-      items: previewState.items.map((item) => ({
-        itemId: item.itemId,
-        assemblyId: item.assemblyId,
-        shotId: item.shotId,
-        primaryAssetId: item.primaryAssetId,
-        sourceRunId: item.sourceRunId,
-        sequence: item.sequence,
-      })),
+      items: previewState.items.map((item) => {
+        const metadata = buildPreviewItemMetadata(previewState, item);
+        return {
+          itemId: item.itemId,
+          assemblyId: item.assemblyId,
+          shotId: item.shotId,
+          primaryAssetId: item.primaryAssetId,
+          sourceRunId: item.sourceRunId,
+          sequence: item.sequence,
+          shot: metadata.shot ?? undefined,
+          primaryAsset: metadata.primaryAsset ?? undefined,
+          sourceRun: metadata.sourceRun ?? undefined,
+        };
+      }),
     },
+  };
+}
+
+export function buildPreviewShotOptionsPayload(previewState: PreviewAssemblyState) {
+  return {
+    options: buildPreviewShotOptionCatalog(previewState.projectId).map((entry) => ({
+      shot: entry.shot,
+      shotExecutionId: entry.shotExecutionId,
+      shotExecutionStatus: entry.shotExecutionStatus,
+      currentPrimaryAsset: entry.currentPrimaryAsset,
+      latestRun: entry.latestRun,
+    })),
   };
 }
 

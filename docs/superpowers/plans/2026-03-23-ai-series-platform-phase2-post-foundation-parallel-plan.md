@@ -173,7 +173,11 @@
 
 ## Task 3B: 预演 richer aggregation backlog
 
-- [ ] 补 shot / scene 友好标题、项目级 shot chooser 和更多非 ID 化摘要，避免 creator 长期停留在 raw ID 心智。
+> Status: Phase 3 当前执行线，直接消费 `phase3-preview-contract-freeze.md` 冻结的 metadata / chooser contract
+
+- [ ] creator `/preview` 消费 `PreviewShotSummary / PreviewAssetSummary / PreviewRunSummary`，把 raw ID 装配页升级成 metadata-first 工作台。
+- [ ] creator `/preview` 引入项目级 shot chooser，默认通过 `ListPreviewShotOptions` 追加条目，不再把手输 `shotId` 当成主路径。
+- [ ] admin `/preview` 升级为 metadata-first 只读审计页，补齐缺失主素材/来源运行摘要的统计和 provenance 入口。
 - [ ] 评估是否需要项目级 preview 专用 SSE；若需要，先回 foundation patch，而不是在产品线私扩事件名。
 - [ ] 预演导出、真实播放器、字幕/转场 richer payload、多轨音频联动，都放到 3B 之后与音频线协调推进。
 
@@ -254,7 +258,7 @@
 
 ## Task 6: Phase 2 验收、runbook 与质量门
 
-> Status: 当前执行线，负责收口 Phase 2 acceptance / CI / runbook / closeout
+> Status: 已于 2026-03-24 完成，Phase 2 已进入 closeout
 
 **Files:**
 - Create: `tests/e2e/phase2-collaboration.spec.ts`

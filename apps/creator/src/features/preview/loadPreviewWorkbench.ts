@@ -24,6 +24,29 @@ type GetPreviewWorkbenchResponse = {
       primaryAssetId?: string;
       sourceRunId?: string;
       sequence?: number;
+      shot?: {
+        projectId?: string;
+        projectTitle?: string;
+        episodeId?: string;
+        episodeTitle?: string;
+        sceneId?: string;
+        sceneCode?: string;
+        sceneTitle?: string;
+        shotId?: string;
+        shotCode?: string;
+        shotTitle?: string;
+      };
+      primaryAsset?: {
+        assetId?: string;
+        mediaType?: string;
+        rightsStatus?: string;
+        aiAnnotated?: boolean;
+      };
+      sourceRun?: {
+        runId?: string;
+        status?: string;
+        triggerType?: string;
+      };
     }>;
   };
 };

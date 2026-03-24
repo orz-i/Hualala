@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { AdminTranslator } from "../../i18n";
 import type { AssetProvenanceDetailViewModel } from "./assetMonitor";
-import type { AdminPreviewWorkbenchViewModel } from "./adminPreview";
+import type { AdminPreviewItemViewModel, AdminPreviewWorkbenchViewModel } from "./adminPreview";
 import { AssetProvenanceDialog } from "./overview-page/AssetProvenanceDialog";
 
 type AdminPreviewPageProps = {
@@ -33,6 +33,46 @@ const buttonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
+function formatShotIdentity(item: AdminPreviewItemViewModel, t: AdminTranslator) {
+  if (!item.shotSummary) {
+    return item.shotId || t("preview.item.metadataUnavailable");
+  }
+
+  const sceneSegment = item.shotSummary.sceneCode || item.shotSummary.sceneId || item.shotId;
+  const shotSegment = item.shotSummary.shotCode || item.shotSummary.shotId || item.shotId;
+  return `${sceneSegment} / ${shotSegment}`;
+}
+
+function formatShotTitle(item: AdminPreviewItemViewModel, t: AdminTranslator) {
+  if (!item.shotSummary) {
+    return t("preview.item.metadataUnavailable");
+  }
+
+  const sceneTitle = item.shotSummary.sceneTitle || item.shotSummary.sceneCode || item.shotSummary.sceneId;
+  const shotTitle = item.shotSummary.shotTitle || item.shotSummary.shotCode || item.shotSummary.shotId;
+  return `${sceneTitle} / ${shotTitle}`;
+}
+
+function formatPrimaryAssetSummary(item: AdminPreviewItemViewModel, t: AdminTranslator) {
+  if (item.primaryAssetSummary) {
+    return `${item.primaryAssetSummary.mediaType || "asset"} · ${item.primaryAssetSummary.rightsStatus || "unknown"} · ${item.primaryAssetSummary.aiAnnotated ? "AI annotated" : "Human curated"}`;
+  }
+  if (item.primaryAssetId) {
+    return t("preview.item.primaryAssetId", { primaryAssetId: item.primaryAssetId });
+  }
+  return t("preview.item.primaryAssetMissing");
+}
+
+function formatSourceRunSummary(item: AdminPreviewItemViewModel, t: AdminTranslator) {
+  if (item.sourceRunSummary) {
+    return `${item.sourceRunSummary.status || "unknown"} · ${item.sourceRunSummary.triggerType || "unknown"}`;
+  }
+  if (item.sourceRunId) {
+    return t("preview.item.sourceRunId", { sourceRunId: item.sourceRunId });
+  }
+  return t("preview.item.metadataUnavailable");
+}
+
 export function AdminPreviewPage({
   previewWorkbench,
   assetProvenanceDetail,
@@ -58,6 +98,11 @@ export function AdminPreviewPage({
               count: previewWorkbench.summary.missingPrimaryAssetCount,
             })}
           </p>
+          <p style={{ margin: 0, color: "#475569" }}>
+            {t("preview.summary.missingSourceRunCount", {
+              count: previewWorkbench.summary.missingSourceRunCount,
+            })}
+          </p>
         </div>
         {assetProvenancePending ? (
           <p style={{ margin: 0, color: "#475569" }}>{t("asset.provenance.open")}</p>
@@ -79,6 +124,7 @@ export function AdminPreviewPage({
             {previewWorkbench.items.map((item) => (
               <article
                 key={item.itemId}
+                data-testid={`admin-preview-item-${item.itemId}`}
                 style={{
                   borderRadius: "14px",
                   background: "rgba(241, 245, 249, 0.9)",
@@ -88,17 +134,10 @@ export function AdminPreviewPage({
                 }}
               >
                 <strong>{t("preview.item.sequence", { sequence: item.sequence })}</strong>
-                <span style={{ color: "#475569" }}>
-                  {t("preview.item.shotId", { shotId: item.shotId || "none" })}
-                </span>
-                <span style={{ color: "#475569" }}>
-                  {t("preview.item.primaryAssetId", {
-                    primaryAssetId: item.primaryAssetId || "none",
-                  })}
-                </span>
-                <span style={{ color: "#475569" }}>
-                  {t("preview.item.sourceRunId", { sourceRunId: item.sourceRunId || "none" })}
-                </span>
+                <span style={{ color: "#475569" }}>{formatShotIdentity(item, t)}</span>
+                <span style={{ color: "#475569" }}>{formatShotTitle(item, t)}</span>
+                <span style={{ color: "#475569" }}>{formatPrimaryAssetSummary(item, t)}</span>
+                <span style={{ color: "#475569" }}>{formatSourceRunSummary(item, t)}</span>
                 <div>
                   <button
                     type="button"

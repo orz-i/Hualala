@@ -238,6 +238,19 @@ function createCollabControllerState() {
 }
 
 function createPreviewControllerState() {
+  const buildShotSummary = (shotId: string, shotCode: string, shotTitle: string) => ({
+    projectId: "project-preview-1",
+    projectTitle: "项目预演",
+    episodeId: "episode-preview-1",
+    episodeTitle: "第一集",
+    sceneId: "scene-preview-1",
+    sceneCode: "SCENE-001",
+    sceneTitle: "开场",
+    shotId,
+    shotCode,
+    shotTitle,
+  });
+
   return {
     previewWorkbench: {
       assembly: {
@@ -256,6 +269,18 @@ function createPreviewControllerState() {
           primaryAssetId: "asset-preview-1",
           sourceRunId: "run-preview-1",
           sequence: 1,
+          shotSummary: buildShotSummary("shot-preview-1", "SHOT-001", "第一镜"),
+          primaryAssetSummary: {
+            assetId: "asset-preview-1",
+            mediaType: "image",
+            rightsStatus: "cleared",
+            aiAnnotated: true,
+          },
+          sourceRunSummary: {
+            runId: "run-preview-1",
+            status: "completed",
+            triggerType: "manual",
+          },
         },
       ],
     },
@@ -267,6 +292,18 @@ function createPreviewControllerState() {
         primaryAssetId: "asset-preview-1",
         sourceRunId: "run-preview-1",
         sequence: 1,
+        shotSummary: buildShotSummary("shot-preview-1", "SHOT-001", "第一镜"),
+        primaryAssetSummary: {
+          assetId: "asset-preview-1",
+          mediaType: "image",
+          rightsStatus: "cleared",
+          aiAnnotated: true,
+        },
+        sourceRunSummary: {
+          runId: "run-preview-1",
+          status: "completed",
+          triggerType: "manual",
+        },
       },
     ],
     feedback: null,
@@ -278,14 +315,24 @@ function createPreviewControllerState() {
       missingAssetCount: 1,
     },
     audioSummaryErrorMessage: "",
-    newShotIdInput: "",
-    newPrimaryAssetIdInput: "",
-    newSourceRunIdInput: "",
-    setNewShotIdInput: vi.fn(),
-    setNewPrimaryAssetIdInput: vi.fn(),
-    setNewSourceRunIdInput: vi.fn(),
-    handleDraftItemFieldChange: vi.fn(),
-    handleAddItem: vi.fn(),
+    shotOptions: [
+      {
+        shotId: "shot-preview-2",
+        label: "SCENE-001 / SHOT-002",
+        shotExecutionId: "shot-exec-preview-2",
+        shotExecutionStatus: "ready",
+        shotSummary: buildShotSummary("shot-preview-2", "SHOT-002", "第二镜"),
+        currentPrimaryAssetSummary: null,
+        latestRunSummary: null,
+      },
+    ],
+    shotOptionsErrorMessage: "",
+    selectedShotOptionId: "shot-preview-2",
+    setSelectedShotOptionId: vi.fn(),
+    manualShotIdInput: "",
+    setManualShotIdInput: vi.fn(),
+    handleAddItemFromChooser: vi.fn(),
+    handleAddManualItem: vi.fn(),
     handleRemoveItem: vi.fn(),
     handleMoveItem: vi.fn(),
     handleSaveAssembly: vi.fn(),
