@@ -4,6 +4,7 @@ export type CreatorImportMode = "success" | "failure";
 export type PreviewMode = "success";
 export type AudioMode = "success";
 export type ReuseMode = "success";
+export type CollaborationMode = "success";
 
 export type MockConnectScenario = {
   admin?: AdminMode;
@@ -12,6 +13,7 @@ export type MockConnectScenario = {
   preview?: PreviewMode;
   audio?: AudioMode;
   reuse?: ReuseMode;
+  collaboration?: CollaborationMode;
 };
 
 export type MockSession = {
@@ -247,4 +249,31 @@ export type AudioTimelineState = {
   createdAt: string;
   updatedAt: string;
   tracks: AudioTrackState[];
+};
+
+export type CollaborationPresenceState = {
+  presenceId: string;
+  sessionId: string;
+  userId: string;
+  status: string;
+  lastSeenAt: string;
+  leaseExpiresAt: string;
+};
+
+export type CollaborationSessionState = {
+  sessionId: string;
+  ownerType: "project" | "shot";
+  ownerId: string;
+  draftVersion: number;
+  lockHolderUserId: string;
+  leaseExpiresAt: string;
+  conflictSummary: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CollaborationState = {
+  projectId: string;
+  session: CollaborationSessionState;
+  presences: CollaborationPresenceState[];
 };

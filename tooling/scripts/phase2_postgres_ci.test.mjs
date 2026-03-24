@@ -15,6 +15,7 @@ test("ci workflow runs backend and real acceptance against postgres", () => {
   assert.match(workflow, /go run \.\/apps\/backend\/cmd\/migrate/);
   assert.match(workflow, /corepack pnpm run db:migrate/);
   assert.match(workflow, /corepack pnpm run test:e2e:phase1:real/);
+  assert.match(workflow, /corepack pnpm run test:e2e:phase2:real/);
 });
 
 test("repo exposes postgres developer scripts", () => {

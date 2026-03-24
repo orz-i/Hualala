@@ -52,7 +52,16 @@ describe("createProjectClient", () => {
               status: "draft",
               renderWorkflowRunId: "",
               renderStatus: "idle",
-              tracks: [],
+              tracks: [
+                {
+                  trackId: "track-zero",
+                  timelineId: "audio-timeline-1",
+                  trackType: "dialogue",
+                  displayName: "对白",
+                  sequence: 1,
+                  clips: [],
+                },
+              ],
             },
           }),
           { status: 200 },
@@ -228,6 +237,7 @@ describe("createProjectClient", () => {
       }),
     );
     expect(audioWorkbench.timeline?.audioTimelineId).toBe("audio-timeline-1");
+    expect(audioWorkbench.timeline?.tracks[0]?.volumePercent).toBe(0);
     expect(audioTimeline.timeline?.tracks[0]?.clips[0]?.durationMs).toBe(12000);
   });
 });

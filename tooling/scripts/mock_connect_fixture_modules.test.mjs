@@ -280,6 +280,47 @@ test("audio helpers preserve timeline order and audio asset scope", async () => 
   assert.equal(provenance?.sourceRunId, "run-audio-dialogue-1");
 });
 
+test("collaboration helpers preserve lease state and presence scope", async () => {
+  const {
+    createCollaborationState,
+    buildCollaborationSessionPayload,
+    upsertCollaborationLeaseState,
+    releaseCollaborationLeaseState,
+  } = await import("../../tests/e2e/fixtures/mock-connect/collaboration.ts");
+
+  const initial = createCollaborationState("project-1");
+  assert.equal(initial.projectId, "project-1");
+  assert.equal(initial.session.ownerId, "shot-collab-1");
+  assert.equal(initial.presences.length, 2);
+
+  const claimed = upsertCollaborationLeaseState(initial, {
+    ownerType: "shot",
+    ownerId: "shot-collab-1",
+    actorUserId: "user-live-1",
+    presenceStatus: "editing",
+    draftVersion: 11,
+    leaseTtlSeconds: 120,
+  });
+  assert.equal(claimed.session.lockHolderUserId, "user-live-1");
+  assert.equal(claimed.session.draftVersion, 11);
+  assert.equal(
+    claimed.presences.find((presence) => presence.userId === "user-live-1")?.status,
+    "editing",
+  );
+
+  const released = releaseCollaborationLeaseState(claimed, {
+    ownerType: "shot",
+    ownerId: "shot-collab-1",
+    actorUserId: "user-live-1",
+    conflictSummary: "manual release",
+  });
+  const payload = buildCollaborationSessionPayload(released);
+  assert.equal(payload.session?.lockHolderUserId, "");
+  assert.equal(payload.session?.conflictSummary, "manual release");
+  assert.equal(payload.session?.ownerId, "shot-collab-1");
+  assert.equal(payload.session?.presences?.length, 2);
+});
+
 test("reuse helpers preserve cross-project scope, blocked eligibility, and selection state", async () => {
   const {
     createAssetReuseState,
@@ -323,4 +364,18 @@ test("reuse helpers preserve cross-project scope, blocked eligibility, and selec
   const shotWorkbench = buildReuseShotWorkbenchPayload(updated);
   assert.equal(shotWorkbench.workbench.shotExecution.primaryAssetId, "asset-external-1");
   assert.equal(shotWorkbench.workbench.shotExecution.projectId, "project-live-1");
+});
+
+test("mock connect routes wire all phase2 fixture modules", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(
+    new URL("../../tests/e2e/fixtures/mockConnectRoutes.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /mock-connect\/collaboration\.ts/);
+  assert.match(source, /scenario\.collaboration/);
+  assert.match(source, /GetCollaborationSession/);
+  assert.match(source, /UpsertCollaborationLease/);
+  assert.match(source, /ReleaseCollaborationLease/);
 });

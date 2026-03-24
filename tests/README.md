@@ -31,11 +31,21 @@
 - `corepack pnpm run test:e2e:admin`
 - `corepack pnpm run test:e2e:creator`
 - `corepack pnpm run test:e2e:phase1`：mock acceptance
+- `corepack pnpm run test:e2e:phase2:collaboration`
+- `corepack pnpm run test:e2e:phase2:preview`
+- `corepack pnpm run test:e2e:phase2:audio`
+- `corepack pnpm run test:e2e:phase2:asset-reuse`
+- `corepack pnpm run test:e2e:phase2`：CI 级 Phase 2 mock acceptance 聚合入口
 - `corepack pnpm run test:e2e:admin:real`
 - `corepack pnpm run test:e2e:creator:real`
 - `corepack pnpm run test:e2e:phase1:real`：CI 级真实 backend acceptance
+- `corepack pnpm run test:e2e:phase2:preview:real`
+- `corepack pnpm run test:e2e:phase2:audio:real`
+- `corepack pnpm run test:e2e:phase2:real`：CI 级 Phase 2 真实 smoke 聚合入口
 
 其中：
 
 - `test:e2e:phase1` 是 CI 中的 mock acceptance 门
 - `test:e2e:phase1:real` 是 CI 中的真实 backend acceptance 门
+- `test:e2e:phase2` 是 CI 中的 Phase 2 mock acceptance 门
+- `test:e2e:phase2:real` 是 CI 中的 Phase 2 真实 smoke 门

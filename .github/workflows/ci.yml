@@ -126,6 +126,9 @@ jobs:
       - name: Phase1 acceptance
         run: corepack pnpm run test:e2e:phase1
 
+      - name: Phase2 acceptance
+        run: corepack pnpm run test:e2e:phase2
+
   e2e_real:
     runs-on: ubuntu-latest
     services:
@@ -169,3 +172,6 @@ jobs:
 
       - name: Phase1 real acceptance
         run: corepack pnpm run test:e2e:phase1:real
+
+      - name: Phase2 real acceptance
+        run: corepack pnpm run test:e2e:phase2:real

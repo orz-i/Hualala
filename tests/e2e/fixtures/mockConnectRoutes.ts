@@ -20,6 +20,12 @@ import {
   withRecentChanges,
 } from "./mock-connect/governance.ts";
 import {
+  buildCollaborationSessionPayload,
+  createCollaborationState,
+  releaseCollaborationLeaseState,
+  upsertCollaborationLeaseState,
+} from "./mock-connect/collaboration.ts";
+import {
   buildPreviewAssetProvenancePayload,
   buildPreviewWorkbenchPayload,
   createPreviewAssemblyState,
@@ -56,6 +62,17 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function shouldUseAdminSession(scenario: MockConnectScenario) {
+  return Boolean(
+    scenario.admin ||
+      scenario.creatorImport ||
+      scenario.preview ||
+      scenario.audio ||
+      scenario.reuse ||
+      scenario.collaboration,
+  );
+}
+
 export async function mockConnectRoutes(page: Page, scenario: MockConnectScenario) {
   const phase1DemoScenarios = await loadPhase1DemoScenarios();
   let {
@@ -67,6 +84,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
   } = initializeMockConnectState({ scenario, phase1DemoScenarios });
   let previewState = createPreviewAssemblyState(adminState.budgetSnapshot.projectId);
   let audioState = createAudioTimelineState(adminState.budgetSnapshot.projectId);
+  let collaborationState = createCollaborationState(adminState.budgetSnapshot.projectId);
   let reuseState = createAssetReuseState("project-live-1");
 
   async function handleReuseSelectPrimaryAsset(route: Route) {
@@ -103,20 +121,18 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         await route.fulfill(jsonResponse(401, { error: "unauthenticated" }));
         return;
       }
-      const session =
-        scenario.admin || scenario.creatorImport || scenario.preview || scenario.audio || scenario.reuse
-          ? adminState.governance.currentSession
-          : buildDefaultDevSession();
+      const session = shouldUseAdminSession(scenario)
+        ? adminState.governance.currentSession
+        : buildDefaultDevSession();
       await route.fulfill(jsonResponse(200, { session }));
       return;
     }
 
     if (pathname === "/hualala.auth.v1.AuthService/StartDevSession") {
       devSessionActive = true;
-      const session =
-        scenario.admin || scenario.creatorImport || scenario.preview || scenario.audio || scenario.reuse
-          ? adminState.governance.currentSession
-          : buildDefaultDevSession();
+      const session = shouldUseAdminSession(scenario)
+        ? adminState.governance.currentSession
+        : buildDefaultDevSession();
       await route.fulfill(jsonResponse(200, { session }));
       return;
     }
@@ -124,6 +140,52 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     if (pathname === "/hualala.auth.v1.AuthService/ClearCurrentSession") {
       devSessionActive = false;
       await route.fulfill(jsonResponse(200, {}));
+      return;
+    }
+
+    if (
+      scenario.collaboration &&
+      pathname === "/hualala.content.v1.ContentService/GetCollaborationSession"
+    ) {
+      await route.fulfill(jsonResponse(200, buildCollaborationSessionPayload(collaborationState)));
+      return;
+    }
+
+    if (
+      scenario.collaboration &&
+      pathname === "/hualala.content.v1.ContentService/UpsertCollaborationLease"
+    ) {
+      await delay(120);
+      collaborationState = upsertCollaborationLeaseState(
+        collaborationState,
+        route.request().postDataJSON() as {
+          ownerType?: string;
+          ownerId?: string;
+          actorUserId?: string;
+          presenceStatus?: string;
+          draftVersion?: number;
+          leaseTtlSeconds?: number;
+        },
+      );
+      await route.fulfill(jsonResponse(200, buildCollaborationSessionPayload(collaborationState)));
+      return;
+    }
+
+    if (
+      scenario.collaboration &&
+      pathname === "/hualala.content.v1.ContentService/ReleaseCollaborationLease"
+    ) {
+      await delay(120);
+      collaborationState = releaseCollaborationLeaseState(
+        collaborationState,
+        route.request().postDataJSON() as {
+          ownerType?: string;
+          ownerId?: string;
+          actorUserId?: string;
+          conflictSummary?: string;
+        },
+      );
+      await route.fulfill(jsonResponse(200, buildCollaborationSessionPayload(collaborationState)));
       return;
     }
 
