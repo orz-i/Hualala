@@ -213,3 +213,59 @@ test("audio shared truth stays on project and asset foundation entry points", ()
 
   assert.doesNotMatch(workflowProto, /AudioTimeline|GetAudioWorkbench|UpsertAudioTimeline/);
 });
+
+test("phase3 preview metadata shared truth stays on project proto and sdk entry points", () => {
+  const projectProto = readFileSync(
+    join(repoRoot, "proto", "hualala", "project", "v1", "project_service.proto"),
+    "utf8",
+  );
+  const assetProto = readFileSync(join(repoRoot, "proto", "hualala", "asset", "v1", "asset.proto"), "utf8");
+  const workflowProto = readFileSync(join(repoRoot, "proto", "hualala", "workflow", "v1", "workflow.proto"), "utf8");
+  const projectService = readFileSync(
+    join(repoRoot, "packages", "sdk", "src", "connect", "services", "project.ts"),
+    "utf8",
+  );
+  const previewAggregation = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "application", "projectapp", "service_preview_metadata.go"),
+    "utf8",
+  );
+  const contractFreeze = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase3-preview-contract-freeze.md"),
+    "utf8",
+  );
+
+  const expectedFiles = [
+    "docs/runbooks/phase3-preview-contract-freeze.md",
+    "proto/hualala/project/v1/project_service.proto",
+    "packages/sdk/src/connect/services/project.ts",
+    "apps/backend/internal/application/projectapp/service_preview_metadata.go",
+  ];
+  for (const relativePath of expectedFiles) {
+    assert.equal(existsSync(join(repoRoot, ...relativePath.split("/"))), true, `${relativePath} should exist`);
+  }
+
+  assert.match(projectProto, /rpc ListPreviewShotOptions/);
+  assert.match(projectProto, /message PreviewShotSummary/);
+  assert.match(projectProto, /message PreviewAssetSummary/);
+  assert.match(projectProto, /message PreviewRunSummary/);
+  assert.match(projectProto, /message PreviewShotOption/);
+  assert.doesNotMatch(projectProto, /display_locale/);
+  assert.match(projectProto, /PreviewShotSummary shot = 7;/);
+  assert.match(projectProto, /PreviewAssetSummary primary_asset = 8;/);
+  assert.match(projectProto, /PreviewRunSummary source_run = 9;/);
+
+  assert.doesNotMatch(projectService, /displayLocale/);
+  assert.match(projectService, /listPreviewShotOptions/);
+  assert.match(previewAggregation, /ListPreviewShotOptions/);
+  assert.match(previewAggregation, /buildPreviewWorkbench/);
+  assert.match(previewAggregation, /listPreviewScopedScenes/);
+
+  assert.match(contractFreeze, /ProjectService/);
+  assert.match(contractFreeze, /本轮不冻结 `display_locale`/);
+  assert.match(contractFreeze, /ListPreviewShotOptions/);
+  assert.match(contractFreeze, /PreviewShotSummary/);
+  assert.match(contractFreeze, /scene \/ shot 标题暂时仍返回当前存储标题/);
+
+  assert.doesNotMatch(assetProto, /PreviewShotSummary|PreviewShotOption|ListPreviewShotOptions/);
+  assert.doesNotMatch(workflowProto, /PreviewShotSummary|PreviewShotOption|ListPreviewShotOptions/);
+});

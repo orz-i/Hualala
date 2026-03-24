@@ -13,6 +13,7 @@ service ProjectService {
   rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
   rpc ListEpisodes(ListEpisodesRequest) returns (ListEpisodesResponse);
   rpc GetPreviewWorkbench(GetPreviewWorkbenchRequest) returns (GetPreviewWorkbenchResponse);
+  rpc ListPreviewShotOptions(ListPreviewShotOptionsRequest) returns (ListPreviewShotOptionsResponse);
   rpc UpsertPreviewAssembly(UpsertPreviewAssemblyRequest) returns (UpsertPreviewAssemblyResponse);
   rpc GetAudioWorkbench(GetAudioWorkbenchRequest) returns (GetAudioWorkbenchResponse);
   rpc UpsertAudioTimeline(UpsertAudioTimelineRequest) returns (UpsertAudioTimelineResponse);
@@ -39,6 +40,9 @@ message PreviewAssemblyItem {
   string primary_asset_id = 4;
   string source_run_id = 5;
   uint32 sequence = 6;
+  PreviewShotSummary shot = 7;
+  PreviewAssetSummary primary_asset = 8;
+  PreviewRunSummary source_run = 9;
 }
 
 message PreviewAssembly {
@@ -49,6 +53,40 @@ message PreviewAssembly {
   repeated PreviewAssemblyItem items = 5;
   google.protobuf.Timestamp created_at = 6;
   google.protobuf.Timestamp updated_at = 7;
+}
+
+message PreviewShotSummary {
+  string project_id = 1;
+  string project_title = 2;
+  string episode_id = 3;
+  string episode_title = 4;
+  string scene_id = 5;
+  string scene_code = 6;
+  string scene_title = 7;
+  string shot_id = 8;
+  string shot_code = 9;
+  string shot_title = 10;
+}
+
+message PreviewAssetSummary {
+  string asset_id = 1;
+  string media_type = 2;
+  string rights_status = 3;
+  bool ai_annotated = 4;
+}
+
+message PreviewRunSummary {
+  string run_id = 1;
+  string status = 2;
+  string trigger_type = 3;
+}
+
+message PreviewShotOption {
+  PreviewShotSummary shot = 1;
+  string shot_execution_id = 2;
+  string shot_execution_status = 3;
+  PreviewAssetSummary current_primary_asset = 4;
+  PreviewRunSummary latest_run = 5;
 }
 
 message AudioClip {
@@ -138,6 +176,15 @@ message GetPreviewWorkbenchRequest {
 
 message GetPreviewWorkbenchResponse {
   PreviewAssembly assembly = 1;
+}
+
+message ListPreviewShotOptionsRequest {
+  string project_id = 1;
+  string episode_id = 2;
+}
+
+message ListPreviewShotOptionsResponse {
+  repeated PreviewShotOption options = 1;
 }
 
 message UpsertPreviewAssemblyRequest {

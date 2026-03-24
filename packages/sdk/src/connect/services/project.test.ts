@@ -13,7 +13,39 @@ describe("createProjectClient", () => {
               projectId: "project-1",
               episodeId: "episode-1",
               status: "draft",
-              items: [],
+              items: [
+                {
+                  itemId: "item-1",
+                  assemblyId: "assembly-1",
+                  shotId: "shot-1",
+                  primaryAssetId: "asset-1",
+                  sourceRunId: "run-1",
+                  sequence: 1,
+                  shot: {
+                    projectId: "project-1",
+                    projectTitle: "项目一",
+                    episodeId: "episode-1",
+                    episodeTitle: "第一集",
+                    sceneId: "scene-1",
+                    sceneCode: "SCENE-001",
+                    sceneTitle: "开场",
+                    shotId: "shot-1",
+                    shotCode: "SCENE-001-SHOT-001",
+                    shotTitle: "第一镜",
+                  },
+                  primaryAsset: {
+                    assetId: "asset-1",
+                    mediaType: "image",
+                    rightsStatus: "cleared",
+                    aiAnnotated: true,
+                  },
+                  sourceRun: {
+                    runId: "run-1",
+                    status: "completed",
+                    triggerType: "manual",
+                  },
+                },
+              ],
             },
           }),
           { status: 200 },
@@ -38,6 +70,42 @@ describe("createProjectClient", () => {
                 },
               ],
             },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            options: [
+              {
+                shot: {
+                  projectId: "project-1",
+                  projectTitle: "项目一",
+                  episodeId: "episode-1",
+                  episodeTitle: "第一集",
+                  sceneId: "scene-1",
+                  sceneCode: "SCENE-001",
+                  sceneTitle: "开场",
+                  shotId: "shot-1",
+                  shotCode: "SCENE-001-SHOT-001",
+                  shotTitle: "第一镜",
+                },
+                shotExecutionId: "shot-exec-1",
+                shotExecutionStatus: "ready",
+                currentPrimaryAsset: {
+                  assetId: "asset-1",
+                  mediaType: "image",
+                  rightsStatus: "cleared",
+                  aiAnnotated: true,
+                },
+                latestRun: {
+                  runId: "run-1",
+                  status: "completed",
+                  triggerType: "manual",
+                },
+              },
+            ],
           }),
           { status: 200 },
         ),
@@ -131,6 +199,10 @@ describe("createProjectClient", () => {
         },
       ],
     });
+    const previewOptions = await client.listPreviewShotOptions({
+      projectId: "project-1",
+      episodeId: "episode-1",
+    });
     const audioWorkbench = await client.getAudioWorkbench({
       projectId: "project-1",
       episodeId: "episode-1",
@@ -196,7 +268,7 @@ describe("createProjectClient", () => {
     );
     expect(fetchFn).toHaveBeenNthCalledWith(
       3,
-      "http://127.0.0.1:8080/hualala.project.v1.ProjectService/GetAudioWorkbench",
+      "http://127.0.0.1:8080/hualala.project.v1.ProjectService/ListPreviewShotOptions",
       expect.objectContaining({
         body: JSON.stringify({
           projectId: "project-1",
@@ -206,6 +278,16 @@ describe("createProjectClient", () => {
     );
     expect(fetchFn).toHaveBeenNthCalledWith(
       4,
+      "http://127.0.0.1:8080/hualala.project.v1.ProjectService/GetAudioWorkbench",
+      expect.objectContaining({
+        body: JSON.stringify({
+          projectId: "project-1",
+          episodeId: "episode-1",
+        }),
+      }),
+    );
+    expect(fetchFn).toHaveBeenNthCalledWith(
+      5,
       "http://127.0.0.1:8080/hualala.project.v1.ProjectService/UpsertAudioTimeline",
       expect.objectContaining({
         body: JSON.stringify({
@@ -236,6 +318,8 @@ describe("createProjectClient", () => {
         }),
       }),
     );
+    expect(previewOptions.options[0]?.shot?.projectTitle).toBe("项目一");
+    expect(previewOptions.options[0]?.latestRun?.runId).toBe("run-1");
     expect(audioWorkbench.timeline?.audioTimelineId).toBe("audio-timeline-1");
     expect(audioWorkbench.timeline?.tracks[0]?.volumePercent).toBe(0);
     expect(audioTimeline.timeline?.tracks[0]?.clips[0]?.durationMs).toBe(12000);

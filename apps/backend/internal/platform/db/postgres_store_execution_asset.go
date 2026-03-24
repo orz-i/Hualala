@@ -91,6 +91,35 @@ func (s *PostgresStore) FindShotExecutionByShotID(shotID string) (execution.Shot
 	return record, true
 }
 
+func (s *PostgresStore) ListShotExecutionsByShotIDs(shotIDs []string) []execution.ShotExecution {
+	if s == nil || s.db == nil || len(shotIDs) == 0 {
+		return nil
+	}
+	rows, err := s.db.QueryContext(context.Background(), `
+		SELECT id::text, organization_id::text, project_id::text, shot_id::text, status,
+		       COALESCE(primary_asset_id::text, ''), COALESCE(current_run_id::text, ''), created_at, updated_at
+		FROM shot_executions
+		WHERE shot_id = ANY($1::uuid[])
+		ORDER BY shot_id ASC, id ASC
+	`, pqStringUUIDArray(shotIDs))
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	items := make([]execution.ShotExecution, 0)
+	for rows.Next() {
+		var record execution.ShotExecution
+		if err := rows.Scan(&record.ID, &record.OrgID, &record.ProjectID, &record.ShotID, &record.Status, &record.PrimaryAssetID, &record.CurrentRunID, &record.CreatedAt, &record.UpdatedAt); err != nil {
+			return nil
+		}
+		record.CreatedAt = record.CreatedAt.UTC()
+		record.UpdatedAt = record.UpdatedAt.UTC()
+		items = append(items, record)
+	}
+	return items
+}
+
 func (s *PostgresStore) ListShotExecutionsByIDs(ids []string) []execution.ShotExecution {
 	if s == nil || s.db == nil || len(ids) == 0 {
 		return nil
@@ -152,6 +181,35 @@ func (s *PostgresStore) ListShotExecutionRuns(shotExecutionID string) []executio
 		WHERE shot_execution_id = $1
 		ORDER BY run_number ASC, id ASC
 	`, strings.TrimSpace(shotExecutionID))
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	items := make([]execution.ShotExecutionRun, 0)
+	for rows.Next() {
+		var record execution.ShotExecutionRun
+		if err := rows.Scan(&record.ID, &record.ShotExecutionID, &record.RunNumber, &record.Status, &record.TriggerType, &record.OperatorID, &record.CreatedAt, &record.UpdatedAt); err != nil {
+			return nil
+		}
+		record.CreatedAt = record.CreatedAt.UTC()
+		record.UpdatedAt = record.UpdatedAt.UTC()
+		items = append(items, record)
+	}
+	return items
+}
+
+func (s *PostgresStore) ListShotExecutionRunsByExecutionIDs(shotExecutionIDs []string) []execution.ShotExecutionRun {
+	if s == nil || s.db == nil || len(shotExecutionIDs) == 0 {
+		return nil
+	}
+	rows, err := s.db.QueryContext(context.Background(), `
+		SELECT id::text, shot_execution_id::text, run_number, status, trigger_source,
+		       COALESCE(created_by_user_id::text, ''), created_at, updated_at
+		FROM shot_execution_runs
+		WHERE shot_execution_id = ANY($1::uuid[])
+		ORDER BY shot_execution_id ASC, run_number ASC, id ASC
+	`, pqStringUUIDArray(shotExecutionIDs))
 	if err != nil {
 		return nil
 	}
@@ -586,6 +644,35 @@ func (s *PostgresStore) GetMediaAsset(assetID string) (asset.MediaAsset, bool) {
 	record.CreatedAt = record.CreatedAt.UTC()
 	record.UpdatedAt = record.UpdatedAt.UTC()
 	return record, true
+}
+
+func (s *PostgresStore) ListMediaAssetsByIDs(assetIDs []string) []asset.MediaAsset {
+	if s == nil || s.db == nil || len(assetIDs) == 0 {
+		return nil
+	}
+	rows, err := s.db.QueryContext(context.Background(), `
+		SELECT id::text, organization_id::text, project_id::text, COALESCE(import_batch_id::text, ''),
+		       asset_type, source_type, COALESCE(locale, ''), rights_status, ai_annotated, created_at, updated_at
+		FROM media_assets
+		WHERE id = ANY($1::uuid[])
+		ORDER BY id ASC
+	`, pqStringUUIDArray(assetIDs))
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	items := make([]asset.MediaAsset, 0)
+	for rows.Next() {
+		var record asset.MediaAsset
+		if err := rows.Scan(&record.ID, &record.OrgID, &record.ProjectID, &record.ImportBatchID, &record.MediaType, &record.SourceType, &record.Locale, &record.RightsStatus, &record.AIAnnotated, &record.CreatedAt, &record.UpdatedAt); err != nil {
+			return nil
+		}
+		record.CreatedAt = record.CreatedAt.UTC()
+		record.UpdatedAt = record.UpdatedAt.UTC()
+		items = append(items, record)
+	}
+	return items
 }
 
 func (s *PostgresStore) ListMediaAssetsByImportBatch(importBatchID string) []asset.MediaAsset {

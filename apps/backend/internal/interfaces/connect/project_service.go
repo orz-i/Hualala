@@ -99,6 +99,23 @@ func (h *projectHandler) GetPreviewWorkbench(ctx context.Context, req *connectrp
 	}), nil
 }
 
+func (h *projectHandler) ListPreviewShotOptions(ctx context.Context, req *connectrpc.Request[projectv1.ListPreviewShotOptionsRequest]) (*connectrpc.Response[projectv1.ListPreviewShotOptionsResponse], error) {
+	records, err := h.service.ListPreviewShotOptions(ctx, projectapp.ListPreviewShotOptionsInput{
+		ProjectID: req.Msg.GetProjectId(),
+		EpisodeID: req.Msg.GetEpisodeId(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	options := make([]*projectv1.PreviewShotOption, 0, len(records))
+	for _, record := range records {
+		options = append(options, mapPreviewShotOption(record))
+	}
+	return connectrpc.NewResponse(&projectv1.ListPreviewShotOptionsResponse{
+		Options: options,
+	}), nil
+}
+
 func (h *projectHandler) UpsertPreviewAssembly(ctx context.Context, req *connectrpc.Request[projectv1.UpsertPreviewAssemblyRequest]) (*connectrpc.Response[projectv1.UpsertPreviewAssemblyResponse], error) {
 	items := make([]projectapp.PreviewAssemblyItemInput, 0, len(req.Msg.GetItems()))
 	for _, item := range req.Msg.GetItems() {

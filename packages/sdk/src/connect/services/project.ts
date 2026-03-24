@@ -3,12 +3,14 @@ import { createHualalaClient, type HualalaClientOptions } from "../transport";
 import type {
   GetAudioWorkbenchResponse,
   GetPreviewWorkbenchResponse,
+  ListPreviewShotOptionsResponse,
   UpsertAudioTimelineResponse,
   UpsertPreviewAssemblyResponse,
 } from "../../gen/hualala/project/v1/project_service_pb";
 import {
   GetAudioWorkbenchResponseSchema,
   GetPreviewWorkbenchResponseSchema,
+  ListPreviewShotOptionsResponseSchema,
   UpsertAudioTimelineResponseSchema,
   UpsertPreviewAssemblyResponseSchema,
 } from "../../gen/hualala/project/v1/project_service_pb";
@@ -39,6 +41,17 @@ export function createProjectClient(options: HualalaClientOptions = {}) {
         "/hualala.project.v1.ProjectService/GetPreviewWorkbench",
         body,
         "sdk: failed to get preview workbench",
+      );
+    },
+    listPreviewShotOptions(body: {
+      projectId: string;
+      episodeId?: string;
+    }): Promise<ListPreviewShotOptionsResponse> {
+      return unaryWithSchema<ListPreviewShotOptionsResponse>(
+        ListPreviewShotOptionsResponseSchema,
+        "/hualala.project.v1.ProjectService/ListPreviewShotOptions",
+        body,
+        "sdk: failed to list preview shot options",
       );
     },
     upsertPreviewAssembly(body: {
@@ -114,6 +127,7 @@ export type ProjectClient = ReturnType<typeof createProjectClient>;
 
 export type ProjectUnaryResponses = {
   getPreviewWorkbench: GetPreviewWorkbenchResponse;
+  listPreviewShotOptions: ListPreviewShotOptionsResponse;
   upsertPreviewAssembly: UpsertPreviewAssemblyResponse;
   getAudioWorkbench: GetAudioWorkbenchResponse;
   upsertAudioTimeline: UpsertAudioTimelineResponse;
