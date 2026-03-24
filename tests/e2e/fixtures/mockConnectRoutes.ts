@@ -27,9 +27,12 @@ import {
 } from "./mock-connect/collaboration.ts";
 import {
   buildPreviewAssetProvenancePayload,
+  buildPreviewRuntimePayload,
   buildPreviewShotOptionsPayload,
   buildPreviewWorkbenchPayload,
   createPreviewAssemblyState,
+  createPreviewRuntimeState,
+  requestPreviewRenderState,
   upsertPreviewAssemblyState,
 } from "./mock-connect/preview.ts";
 import {
@@ -89,9 +92,45 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     creatorImportState,
   } = initializeMockConnectState({ scenario, phase1DemoScenarios });
   let previewState = createPreviewAssemblyState(adminState.budgetSnapshot.projectId);
+  let previewRuntimeState = createPreviewRuntimeState(previewState);
   let audioState = createAudioTimelineState(adminState.budgetSnapshot.projectId);
   let collaborationState = createCollaborationState(adminState.budgetSnapshot.projectId);
   let reuseState = createAssetReuseState("project-live-1");
+  let previewRuntimeAttempt = 0;
+  const pendingSseEvents: Array<{
+    id: string;
+    eventType: string;
+    data: unknown;
+  }> = [];
+
+  async function readPendingSseEvents(timeoutMs = 1500) {
+    const deadline = Date.now() + timeoutMs;
+    while (pendingSseEvents.length === 0 && Date.now() < deadline) {
+      await delay(50);
+    }
+    if (pendingSseEvents.length > 0) {
+      await delay(250);
+    }
+    return pendingSseEvents.splice(0, pendingSseEvents.length);
+  }
+
+  function encodeSseEvents(
+    events: Array<{
+      id: string;
+      eventType: string;
+      data: unknown;
+    }>,
+  ) {
+    if (events.length === 0) {
+      return ": keep-alive\n\n";
+    }
+    return events
+      .map(
+        (event) =>
+          `id: ${event.id}\nevent: ${event.eventType}\ndata: ${JSON.stringify(event.data)}\n\n`,
+      )
+      .join("");
+  }
 
   async function handleReuseSelectPrimaryAsset(route: Route) {
     await delay(120);
@@ -114,7 +153,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
       },
-      body: ": keep-alive\n\n",
+      body: encodeSseEvents(await readPendingSseEvents()),
     });
   });
 
@@ -212,6 +251,41 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     }
 
     if ((scenario.preview || scenario.audio || scenario.admin) &&
+      pathname === "/hualala.project.v1.ProjectService/GetPreviewRuntime") {
+      await route.fulfill(jsonResponse(200, buildPreviewRuntimePayload(previewRuntimeState)));
+      return;
+    }
+
+    if ((scenario.preview || scenario.audio || scenario.admin) &&
+      pathname === "/hualala.project.v1.ProjectService/RequestPreviewRender") {
+      await delay(120);
+      previewRuntimeAttempt += 1;
+      const body = route.request().postDataJSON() as {
+        projectId?: string;
+        episodeId?: string;
+        requestedLocale?: string;
+      };
+      if (previewState.items.length === 0) {
+        await route.fulfill(jsonResponse(412, { error: "preview assembly is empty" }));
+        return;
+      }
+      const { queuedRuntime, settledRuntime, eventPayload } = requestPreviewRenderState(
+        previewRuntimeState,
+        previewState,
+        body,
+        previewRuntimeAttempt,
+      );
+      previewRuntimeState = settledRuntime;
+      pendingSseEvents.push({
+        id: `preview-runtime-${previewRuntimeAttempt}`,
+        eventType: "project.preview.runtime.updated",
+        data: eventPayload,
+      });
+      await route.fulfill(jsonResponse(200, buildPreviewRuntimePayload(queuedRuntime)));
+      return;
+    }
+
+    if ((scenario.preview || scenario.audio || scenario.admin) &&
       pathname === "/hualala.project.v1.ProjectService/GetAudioWorkbench") {
       await route.fulfill(jsonResponse(200, buildAudioWorkbenchPayload(audioState)));
       return;
@@ -268,6 +342,12 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         }>;
       };
       previewState = upsertPreviewAssemblyState(previewState, body);
+      previewRuntimeState = {
+        ...previewRuntimeState,
+        assemblyId: previewState.assemblyId,
+        projectId: previewState.projectId,
+        episodeId: previewState.episodeId,
+      };
       await route.fulfill(
         jsonResponse(200, buildPreviewWorkbenchPayload(previewState, readDisplayLocale(route))),
       );

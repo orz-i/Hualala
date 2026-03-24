@@ -446,6 +446,8 @@ export function App() {
     routeContent = (
       <AdminPreviewPage
         previewWorkbench={preview.previewWorkbench}
+        previewRuntime={preview.previewRuntime}
+        runtimeErrorMessage={preview.runtimeErrorMessage}
         assetProvenanceDetail={preview.assetProvenanceDetail}
         assetProvenancePending={preview.assetProvenancePending}
         assetProvenanceErrorMessage={preview.assetProvenanceErrorMessage}

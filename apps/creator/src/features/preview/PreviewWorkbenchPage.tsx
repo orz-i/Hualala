@@ -8,6 +8,7 @@ import type {
   PreviewShotOptionViewModel,
   PreviewWorkbenchViewModel,
 } from "./previewWorkbench";
+import type { PreviewRuntimeViewModel } from "./previewRuntime";
 
 type PreviewWorkbenchPageProps = {
   previewWorkbench: PreviewWorkbenchViewModel;
@@ -15,6 +16,10 @@ type PreviewWorkbenchPageProps = {
   shotOptions: PreviewShotOptionViewModel[];
   selectedShotOptionId: string;
   shotOptionsErrorMessage: string;
+  previewRuntime: PreviewRuntimeViewModel | null;
+  runtimeErrorMessage: string;
+  requestRenderDisabledReason: string;
+  requestRenderPending: boolean;
   manualShotIdInput: string;
   assetProvenanceDetail: AssetProvenanceDetailViewModel | null;
   assetProvenancePending: boolean;
@@ -27,6 +32,7 @@ type PreviewWorkbenchPageProps = {
   onAddItemFromChooser: () => void;
   onManualShotIdInputChange: (value: string) => void;
   onAddManualItem: () => void;
+  onRequestPreviewRender: () => void;
   onRemoveItem: (itemId: string) => void;
   onMoveItem: (itemId: string, direction: "up" | "down") => void;
   onSaveAssembly: () => void;
@@ -134,12 +140,20 @@ function formatChooserRun(option: PreviewShotOptionViewModel | null, t: CreatorT
   return `${option.latestRunSummary.status || "unknown"} · ${option.latestRunSummary.triggerType || "unknown"}`;
 }
 
+function formatRuntimeField(value: string, fallback: string) {
+  return value || fallback;
+}
+
 export function PreviewWorkbenchPage({
   previewWorkbench,
   draftItems,
   shotOptions,
   selectedShotOptionId,
   shotOptionsErrorMessage,
+  previewRuntime,
+  runtimeErrorMessage,
+  requestRenderDisabledReason,
+  requestRenderPending,
   manualShotIdInput,
   assetProvenanceDetail,
   assetProvenancePending,
@@ -152,6 +166,7 @@ export function PreviewWorkbenchPage({
   onAddItemFromChooser,
   onManualShotIdInputChange,
   onAddManualItem,
+  onRequestPreviewRender,
   onRemoveItem,
   onMoveItem,
   onSaveAssembly,
@@ -258,6 +273,97 @@ export function PreviewWorkbenchPage({
               </button>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section style={panelStyle}>
+        <div style={{ display: "grid", gap: "8px" }}>
+          <h2 style={{ margin: 0 }}>{t("preview.runtime.title")}</h2>
+          <p style={{ margin: 0, color: "#475569" }}>{t("preview.runtime.description")}</p>
+        </div>
+        {previewRuntime ? (
+          <div style={{ display: "grid", gap: "6px", color: "#475569" }}>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.status", {
+                status: formatRuntimeField(
+                  previewRuntime.status,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.renderStatus", {
+                status: formatRuntimeField(
+                  previewRuntime.renderStatus,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.workflowRunId", {
+                workflowRunId: formatRuntimeField(
+                  previewRuntime.renderWorkflowRunId,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.resolvedLocale", {
+                locale: formatRuntimeField(
+                  previewRuntime.resolvedLocale,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.playbackAssetId", {
+                assetId: formatRuntimeField(
+                  previewRuntime.playbackAssetId,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.exportAssetId", {
+                assetId: formatRuntimeField(
+                  previewRuntime.exportAssetId,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.updatedAt", {
+                updatedAt: formatRuntimeField(
+                  previewRuntime.updatedAt,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+          </div>
+        ) : (
+          <p style={{ margin: 0, color: "#64748b" }}>{t("preview.runtime.empty")}</p>
+        )}
+        {runtimeErrorMessage ? (
+          <p style={{ margin: 0, color: "#991b1b" }}>{runtimeErrorMessage}</p>
+        ) : null}
+        {requestRenderDisabledReason ? (
+          <p style={{ margin: 0, color: "#475569" }}>{requestRenderDisabledReason}</p>
+        ) : null}
+        <div>
+          <button
+            type="button"
+            onClick={onRequestPreviewRender}
+            disabled={Boolean(requestRenderDisabledReason)}
+            style={{
+              ...secondaryButtonStyle,
+              opacity: requestRenderDisabledReason ? 0.45 : 1,
+              cursor: requestRenderDisabledReason ? "not-allowed" : "pointer",
+            }}
+          >
+            {requestRenderPending
+              ? t("preview.actions.requestRenderPending")
+              : t("preview.actions.requestRender")}
+          </button>
         </div>
       </section>
 

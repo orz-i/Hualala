@@ -1,4 +1,4 @@
-import type { PreviewAssemblyState } from "./types.ts";
+import type { PreviewAssemblyState, PreviewRuntimeState } from "./types.ts";
 
 type UpsertPreviewAssemblyBody = {
   projectId?: string;
@@ -11,6 +11,12 @@ type UpsertPreviewAssemblyBody = {
     sourceRunId?: string;
     sequence?: number;
   }>;
+};
+
+type RequestPreviewRenderBody = {
+  projectId?: string;
+  episodeId?: string;
+  requestedLocale?: string;
 };
 
 type PreviewShotCatalogEntry = {
@@ -172,6 +178,35 @@ export function createPreviewAssemblyState(projectId: string): PreviewAssemblySt
   };
 }
 
+function buildPreviewRuntimeId(projectId: string, episodeId: string) {
+  return episodeId ? `runtime-${projectId}-${episodeId}` : `runtime-${projectId}`;
+}
+
+function buildPreviewPlaybackAssetId(projectId: string) {
+  return `asset-preview-playback-${projectId}`;
+}
+
+function buildPreviewExportAssetId(projectId: string) {
+  return `asset-preview-export-${projectId}`;
+}
+
+export function createPreviewRuntimeState(previewState: PreviewAssemblyState): PreviewRuntimeState {
+  return {
+    previewRuntimeId: buildPreviewRuntimeId(previewState.projectId, previewState.episodeId),
+    projectId: previewState.projectId,
+    episodeId: previewState.episodeId,
+    assemblyId: previewState.assemblyId,
+    status: "draft",
+    renderWorkflowRunId: "",
+    renderStatus: "idle",
+    playbackAssetId: "",
+    exportAssetId: "",
+    resolvedLocale: "",
+    createdAt: "2026-03-24T09:10:00.000Z",
+    updatedAt: "2026-03-24T09:10:00.000Z",
+  };
+}
+
 export function buildPreviewWorkbenchPayload(
   previewState: PreviewAssemblyState,
   displayLocale = "zh-CN",
@@ -202,6 +237,25 @@ export function buildPreviewWorkbenchPayload(
   };
 }
 
+export function buildPreviewRuntimePayload(previewRuntimeState: PreviewRuntimeState) {
+  return {
+    runtime: {
+      previewRuntimeId: previewRuntimeState.previewRuntimeId,
+      projectId: previewRuntimeState.projectId,
+      episodeId: previewRuntimeState.episodeId,
+      assemblyId: previewRuntimeState.assemblyId,
+      status: previewRuntimeState.status,
+      renderWorkflowRunId: previewRuntimeState.renderWorkflowRunId,
+      renderStatus: previewRuntimeState.renderStatus,
+      playbackAssetId: previewRuntimeState.playbackAssetId,
+      exportAssetId: previewRuntimeState.exportAssetId,
+      resolvedLocale: previewRuntimeState.resolvedLocale,
+      createdAt: previewRuntimeState.createdAt,
+      updatedAt: previewRuntimeState.updatedAt,
+    },
+  };
+}
+
 export function buildPreviewShotOptionsPayload(
   previewState: PreviewAssemblyState,
   displayLocale = "zh-CN",
@@ -214,6 +268,47 @@ export function buildPreviewShotOptionsPayload(
       currentPrimaryAsset: entry.currentPrimaryAsset,
       latestRun: entry.latestRun,
     })),
+  };
+}
+
+export function requestPreviewRenderState(
+  previewRuntimeState: PreviewRuntimeState,
+  previewState: PreviewAssemblyState,
+  body: RequestPreviewRenderBody,
+  attempt: number,
+) {
+  const requestedLocale = body.requestedLocale ?? previewRuntimeState.resolvedLocale ?? "zh-CN";
+  const queuedRuntime: PreviewRuntimeState = {
+    ...previewRuntimeState,
+    status: "queued",
+    renderWorkflowRunId: `workflow-preview-${attempt}`,
+    renderStatus: "queued",
+    resolvedLocale: requestedLocale,
+    updatedAt: "2026-03-24T09:11:00.000Z",
+  };
+  const settledRuntime: PreviewRuntimeState = {
+    ...queuedRuntime,
+    status: "ready",
+    renderStatus: "succeeded",
+    playbackAssetId: buildPreviewPlaybackAssetId(previewState.projectId),
+    exportAssetId: buildPreviewExportAssetId(previewState.projectId),
+    updatedAt: "2026-03-24T09:12:00.000Z",
+  };
+
+  return {
+    queuedRuntime,
+    settledRuntime,
+    eventPayload: {
+      project_id: settledRuntime.projectId,
+      episode_id: settledRuntime.episodeId,
+      preview_runtime_id: settledRuntime.previewRuntimeId,
+      render_status: settledRuntime.renderStatus,
+      render_workflow_run_id: settledRuntime.renderWorkflowRunId,
+      resolved_locale: settledRuntime.resolvedLocale,
+      playback_asset_id: settledRuntime.playbackAssetId,
+      export_asset_id: settledRuntime.exportAssetId,
+      occurred_at: settledRuntime.updatedAt,
+    },
   };
 }
 

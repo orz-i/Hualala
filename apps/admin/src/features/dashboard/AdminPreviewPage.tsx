@@ -2,10 +2,13 @@ import type { CSSProperties } from "react";
 import type { AdminTranslator } from "../../i18n";
 import type { AssetProvenanceDetailViewModel } from "./assetMonitor";
 import type { AdminPreviewItemViewModel, AdminPreviewWorkbenchViewModel } from "./adminPreview";
+import type { AdminPreviewRuntimeViewModel } from "./adminPreviewRuntime";
 import { AssetProvenanceDialog } from "./overview-page/AssetProvenanceDialog";
 
 type AdminPreviewPageProps = {
   previewWorkbench: AdminPreviewWorkbenchViewModel;
+  previewRuntime: AdminPreviewRuntimeViewModel | null;
+  runtimeErrorMessage: string;
   assetProvenanceDetail: AssetProvenanceDetailViewModel | null;
   assetProvenancePending: boolean;
   assetProvenanceErrorMessage: string;
@@ -75,6 +78,8 @@ function formatSourceRunSummary(item: AdminPreviewItemViewModel, t: AdminTransla
 
 export function AdminPreviewPage({
   previewWorkbench,
+  previewRuntime,
+  runtimeErrorMessage,
   assetProvenanceDetail,
   assetProvenancePending,
   assetProvenanceErrorMessage,
@@ -109,6 +114,58 @@ export function AdminPreviewPage({
         ) : null}
         {assetProvenanceErrorMessage ? (
           <p style={{ margin: 0, color: "#991b1b" }}>{assetProvenanceErrorMessage}</p>
+        ) : null}
+      </article>
+
+      <article style={panelStyle}>
+        <div style={{ display: "grid", gap: "8px" }}>
+          <h2 style={{ margin: 0 }}>{t("preview.runtime.title")}</h2>
+          <p style={{ margin: 0, color: "#475569" }}>{t("preview.runtime.description")}</p>
+        </div>
+        {previewRuntime ? (
+          <div style={{ display: "grid", gap: "6px", color: "#475569" }}>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.status", {
+                status: previewRuntime.status || t("preview.runtime.emptyValue"),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.renderStatus", {
+                status: previewRuntime.renderStatus || t("preview.runtime.emptyValue"),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.workflowRunId", {
+                workflowRunId:
+                  previewRuntime.renderWorkflowRunId || t("preview.runtime.emptyValue"),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.resolvedLocale", {
+                locale: previewRuntime.resolvedLocale || t("preview.runtime.emptyValue"),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.playbackAssetId", {
+                assetId: previewRuntime.playbackAssetId || t("preview.runtime.emptyValue"),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.exportAssetId", {
+                assetId: previewRuntime.exportAssetId || t("preview.runtime.emptyValue"),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.updatedAt", {
+                updatedAt: previewRuntime.updatedAt || t("preview.runtime.emptyValue"),
+              })}
+            </p>
+          </div>
+        ) : (
+          <p style={{ margin: 0, color: "#64748b" }}>{t("preview.runtime.empty")}</p>
+        )}
+        {runtimeErrorMessage ? (
+          <p style={{ margin: 0, color: "#991b1b" }}>{runtimeErrorMessage}</p>
         ) : null}
       </article>
 

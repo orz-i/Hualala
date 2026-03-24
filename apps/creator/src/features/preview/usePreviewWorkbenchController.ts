@@ -3,9 +3,11 @@ import type { CreatorTranslator, LocaleCode } from "../../i18n";
 import { buildPreviewAudioSummary, type PreviewAudioSummaryViewModel } from "../audio/audioWorkbench";
 import { loadAudioWorkbench } from "../audio/loadAudioWorkbench";
 import type { ActionFeedbackModel } from "../shared/ActionFeedback";
+import { useQueuedSilentRefresh } from "../shared/useQueuedSilentRefresh";
 import { useAssetProvenanceState } from "../shared/useAssetProvenanceState";
 import { waitForFeedbackPaint } from "../shared/waitForFeedbackPaint";
 import { loadPreviewShotOptions } from "./loadPreviewShotOptions";
+import { loadPreviewRuntime } from "./loadPreviewRuntime";
 import { loadPreviewWorkbench } from "./loadPreviewWorkbench";
 import { savePreviewWorkbench } from "./mutatePreviewWorkbench";
 import type {
@@ -14,6 +16,9 @@ import type {
   PreviewWorkbenchViewModel,
 } from "./previewWorkbench";
 import { hydratePreviewDraftItemsFromLocale } from "./previewWorkbench";
+import type { PreviewRuntimeViewModel } from "./previewRuntime";
+import { requestPreviewRender } from "./requestPreviewRender";
+import { subscribePreviewRuntime } from "./subscribePreviewRuntime";
 
 type UsePreviewWorkbenchControllerOptions = {
   enabled: boolean;
@@ -57,12 +62,16 @@ export function usePreviewWorkbenchController({
   const [audioSummaryErrorMessage, setAudioSummaryErrorMessage] = useState("");
   const [shotOptions, setShotOptions] = useState<PreviewShotOptionViewModel[]>([]);
   const [shotOptionsErrorMessage, setShotOptionsErrorMessage] = useState("");
+  const [previewRuntime, setPreviewRuntime] = useState<PreviewRuntimeViewModel | null>(null);
+  const [runtimeErrorMessage, setRuntimeErrorMessage] = useState("");
+  const [requestRenderPending, setRequestRenderPending] = useState(false);
   const [selectedShotOptionId, setSelectedShotOptionId] = useState("");
   const [manualShotIdInput, setManualShotIdInput] = useState("");
   const draftIdRef = useRef(1);
   const draftItemsRef = useRef<PreviewItemViewModel[]>([]);
   const previewWorkbenchRef = useRef<PreviewWorkbenchViewModel | null>(null);
   const shotOptionsRef = useRef<PreviewShotOptionViewModel[]>([]);
+  const previewRuntimeRef = useRef<PreviewRuntimeViewModel | null>(null);
   const hydratedScopeKeyRef = useRef<string | null>(null);
   const {
     assetProvenanceDetail,
@@ -90,6 +99,12 @@ export function usePreviewWorkbenchController({
   }, [shotOptions]);
 
   useEffect(() => {
+    previewRuntimeRef.current = previewRuntime;
+  }, [previewRuntime]);
+
+  const previewEpisodeId = previewWorkbench?.assembly.episodeId ?? "";
+
+  useEffect(() => {
     if (!enabled) {
       resetAssetProvenance();
       hydratedScopeKeyRef.current = null;
@@ -102,6 +117,9 @@ export function usePreviewWorkbenchController({
         setAudioSummaryErrorMessage("");
         setShotOptions([]);
         setShotOptionsErrorMessage("");
+        setPreviewRuntime(null);
+        setRuntimeErrorMessage("");
+        setRequestRenderPending(false);
         setSelectedShotOptionId("");
         setManualShotIdInput("");
       });
@@ -223,6 +241,118 @@ export function usePreviewWorkbenchController({
       cancelled = true;
     };
   }, [enabled, locale, orgId, projectId, resetAssetProvenance, t, userId]);
+
+  const refreshPreviewRuntime = useCallback(async () => {
+    try {
+      const nextRuntime = await loadPreviewRuntime({
+        projectId,
+        episodeId: previewWorkbenchRef.current?.assembly.episodeId || undefined,
+        orgId,
+        userId,
+      });
+      startTransition(() => {
+        setPreviewRuntime(nextRuntime);
+        setRuntimeErrorMessage("");
+      });
+      return nextRuntime;
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "creator: unknown preview runtime error";
+      startTransition(() => {
+        setRuntimeErrorMessage(message);
+        if (!previewRuntimeRef.current) {
+          setPreviewRuntime(null);
+        }
+      });
+      throw error;
+    }
+  }, [orgId, projectId, userId]);
+
+  const scheduleSilentPreviewRuntimeRefresh = useQueuedSilentRefresh(
+    "preview-runtime",
+    refreshPreviewRuntime,
+  );
+
+  useEffect(() => {
+    if (!enabled) {
+      startTransition(() => {
+        setPreviewRuntime(null);
+        setRuntimeErrorMessage("");
+        setRequestRenderPending(false);
+      });
+      return;
+    }
+
+    let cancelled = false;
+
+    loadPreviewRuntime({
+      projectId,
+      episodeId: previewEpisodeId || undefined,
+      orgId,
+      userId,
+    })
+      .then((nextRuntime) => {
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setPreviewRuntime(nextRuntime);
+          setRuntimeErrorMessage("");
+        });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        const message =
+          error instanceof Error ? error.message : "creator: unknown preview runtime error";
+        startTransition(() => {
+          setRuntimeErrorMessage(message);
+          if (!previewRuntimeRef.current) {
+            setPreviewRuntime(null);
+          }
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, orgId, previewEpisodeId, projectId, userId]);
+
+  useEffect(() => {
+    if (!enabled || !orgId || !projectId) {
+      return;
+    }
+
+    return subscribePreviewRuntime({
+      organizationId: orgId,
+      projectId,
+      episodeId: previewEpisodeId,
+      orgId,
+      userId,
+      onRefreshNeeded: scheduleSilentPreviewRuntimeRefresh,
+      onError: (error) => {
+        startTransition(() => {
+          setRuntimeErrorMessage(error.message);
+        });
+      },
+    });
+  }, [
+    enabled,
+    orgId,
+    previewEpisodeId,
+    projectId,
+    scheduleSilentPreviewRuntimeRefresh,
+    userId,
+  ]);
+
+  const requestRenderDisabledReason = !draftItems.length
+    ? t("preview.runtime.disabled.emptyAssembly")
+    : requestRenderPending
+      ? t("preview.runtime.disabled.pending")
+      : previewRuntime?.renderStatus === "queued" || previewRuntime?.renderStatus === "running"
+        ? t("preview.runtime.disabled.active")
+        : "";
 
   const handleAddItemFromChooser = useCallback(() => {
     if (!previewWorkbench || !selectedShotOptionId) {
@@ -351,6 +481,46 @@ export function usePreviewWorkbenchController({
     }
   }, [draftItems, orgId, previewWorkbench, projectId, t, userId]);
 
+  const handleRequestPreviewRender = useCallback(async () => {
+    if (!previewWorkbench || requestRenderDisabledReason) {
+      return;
+    }
+
+    startTransition(() => {
+      setRequestRenderPending(true);
+      setRuntimeErrorMessage("");
+    });
+
+    try {
+      const nextRuntime = await requestPreviewRender({
+        projectId,
+        episodeId: previewEpisodeId || undefined,
+        requestedLocale: locale,
+        orgId,
+        userId,
+      });
+      startTransition(() => {
+        setPreviewRuntime(nextRuntime);
+        setRuntimeErrorMessage("");
+        setRequestRenderPending(false);
+      });
+    } catch (error: unknown) {
+      const message = formatActionError(error, "creator: unknown preview render error");
+      startTransition(() => {
+        setRuntimeErrorMessage(message);
+        setRequestRenderPending(false);
+      });
+    }
+  }, [
+    locale,
+    orgId,
+    previewWorkbench,
+    previewEpisodeId,
+    projectId,
+    requestRenderDisabledReason,
+    userId,
+  ]);
+
   return {
     previewWorkbench,
     draftItems,
@@ -360,6 +530,10 @@ export function usePreviewWorkbenchController({
     audioSummaryErrorMessage,
     shotOptions,
     shotOptionsErrorMessage,
+    previewRuntime,
+    runtimeErrorMessage,
+    requestRenderDisabledReason,
+    requestRenderPending,
     selectedShotOptionId,
     setSelectedShotOptionId,
     manualShotIdInput,
@@ -369,6 +543,7 @@ export function usePreviewWorkbenchController({
     handleRemoveItem,
     handleMoveItem,
     handleSaveAssembly,
+    handleRequestPreviewRender,
     assetProvenanceDetail,
     assetProvenancePending,
     assetProvenanceErrorMessage,

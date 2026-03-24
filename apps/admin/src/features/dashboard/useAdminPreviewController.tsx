@@ -1,9 +1,12 @@
-import { startTransition, useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import type { AdminTranslator, LocaleCode } from "../../i18n";
 import type { AssetProvenanceDetailViewModel } from "./assetMonitor";
 import type { AdminPreviewWorkbenchViewModel } from "./adminPreview";
+import type { AdminPreviewRuntimeViewModel } from "./adminPreviewRuntime";
+import { loadAdminPreviewRuntime } from "./loadAdminPreviewRuntime";
 import { loadAdminPreviewWorkbench } from "./loadAdminPreviewWorkbench";
 import { loadAssetProvenanceDetails } from "./loadAssetProvenanceDetails";
+import { subscribeAdminPreviewRuntime } from "./subscribeAdminPreviewRuntime";
 
 export function useAdminPreviewController({
   sessionState,
@@ -24,20 +27,31 @@ export function useAdminPreviewController({
 }) {
   const [previewWorkbench, setPreviewWorkbench] =
     useState<AdminPreviewWorkbenchViewModel | null>(null);
+  const [previewRuntime, setPreviewRuntime] =
+    useState<AdminPreviewRuntimeViewModel | null>(null);
   const [assetProvenanceDetail, setAssetProvenanceDetail] =
     useState<AssetProvenanceDetailViewModel | null>(null);
   const [assetProvenancePending, setAssetProvenancePending] = useState(false);
   const [assetProvenanceErrorMessage, setAssetProvenanceErrorMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [runtimeErrorMessage, setRuntimeErrorMessage] = useState("");
+  const previewRuntimeRef = useRef<AdminPreviewRuntimeViewModel | null>(null);
+  const previewEpisodeId = previewWorkbench?.assembly.episodeId ?? "";
+
+  useEffect(() => {
+    previewRuntimeRef.current = previewRuntime;
+  }, [previewRuntime]);
 
   useEffect(() => {
     if (!enabled || sessionState !== "ready") {
       startTransition(() => {
         setPreviewWorkbench(null);
+        setPreviewRuntime(null);
         setAssetProvenanceDetail(null);
         setAssetProvenancePending(false);
         setAssetProvenanceErrorMessage("");
         setErrorMessage("");
+        setRuntimeErrorMessage("");
       });
       return;
     }
@@ -75,6 +89,123 @@ export function useAdminPreviewController({
       cancelled = true;
     };
   }, [effectiveOrgId, effectiveUserId, enabled, locale, projectId, sessionState, t]);
+
+  const refreshPreviewRuntime = useCallback(async () => {
+    try {
+      const nextRuntime = await loadAdminPreviewRuntime({
+        projectId,
+        episodeId: previewEpisodeId || undefined,
+        orgId: effectiveOrgId,
+        userId: effectiveUserId,
+      });
+      startTransition(() => {
+        setPreviewRuntime(nextRuntime);
+        setRuntimeErrorMessage("");
+      });
+      return nextRuntime;
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "admin: unknown preview runtime error";
+      startTransition(() => {
+        setRuntimeErrorMessage(message);
+        if (!previewRuntimeRef.current) {
+          setPreviewRuntime(null);
+        }
+      });
+      throw error;
+    }
+  }, [effectiveOrgId, effectiveUserId, previewEpisodeId, projectId]);
+
+  useEffect(() => {
+    if (!enabled || sessionState !== "ready") {
+      startTransition(() => {
+        setPreviewRuntime(null);
+        setRuntimeErrorMessage("");
+      });
+      return;
+    }
+
+    let cancelled = false;
+
+    refreshPreviewRuntime()
+      .then((nextRuntime) => {
+        if (cancelled) {
+          return;
+        }
+        startTransition(() => {
+          setPreviewRuntime(nextRuntime);
+          setRuntimeErrorMessage("");
+        });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        const message =
+          error instanceof Error ? error.message : "admin: unknown preview runtime error";
+        startTransition(() => {
+          setRuntimeErrorMessage(message);
+          if (!previewRuntimeRef.current) {
+            setPreviewRuntime(null);
+          }
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    enabled,
+    refreshPreviewRuntime,
+    sessionState,
+  ]);
+
+  useEffect(() => {
+    if (
+      !enabled ||
+      sessionState !== "ready" ||
+      !effectiveOrgId ||
+      !projectId
+    ) {
+      return;
+    }
+
+    return subscribeAdminPreviewRuntime({
+      organizationId: effectiveOrgId,
+      projectId,
+      episodeId: previewEpisodeId,
+      orgId: effectiveOrgId,
+      userId: effectiveUserId,
+      onRefreshNeeded: () => {
+        void refreshPreviewRuntime()
+          .then((nextRuntime) => {
+            startTransition(() => {
+              setPreviewRuntime(nextRuntime);
+              setRuntimeErrorMessage("");
+            });
+          })
+          .catch((error: unknown) => {
+            const message =
+              error instanceof Error ? error.message : "admin: unknown preview runtime error";
+            startTransition(() => {
+              setRuntimeErrorMessage(message);
+            });
+          });
+      },
+      onError: (error) => {
+        startTransition(() => {
+          setRuntimeErrorMessage(error.message);
+        });
+      },
+    });
+  }, [
+    effectiveOrgId,
+    enabled,
+    previewEpisodeId,
+    projectId,
+    refreshPreviewRuntime,
+    sessionState,
+  ]);
 
   const handleOpenAssetProvenance = useCallback(
     async (assetId: string) => {
@@ -122,6 +253,8 @@ export function useAdminPreviewController({
 
   return {
     previewWorkbench,
+    previewRuntime,
+    runtimeErrorMessage,
     assetProvenanceDetail,
     assetProvenancePending,
     assetProvenanceErrorMessage,
