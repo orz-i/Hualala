@@ -73,9 +73,10 @@ export async function loadAudioAssetPool({
     if (!importBatch.id) {
       continue;
     }
+    const importBatchId = importBatch.id;
 
     const payload = (await client.getImportBatchWorkbench({
-      importBatchId: importBatch.id,
+      importBatchId,
     })) as ImportBatchWorkbenchResponse;
 
     const uploadFileById = new Map(
@@ -119,7 +120,7 @@ export async function loadAudioAssetPool({
 
       items.push({
         assetId: asset.id ?? "",
-        importBatchId: asset.importBatchId ?? payload.importBatch?.id ?? importBatch.id,
+        importBatchId: asset.importBatchId ?? payload.importBatch?.id ?? importBatchId,
         durationMs,
         sourceRunId: sourceRunIdByAssetId.get(variant.assetId) ?? "",
         fileName: uploadFile?.fileName ?? "",

@@ -479,6 +479,10 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     if ((scenario.preview || scenario.audio || scenario.admin || scenario.creatorImport) &&
       pathname === "/hualala.asset.v1.AssetService/GetAssetProvenanceSummary") {
       const body = route.request().postDataJSON() as { assetId?: string };
+      if (body.assetId !== undefined && body.assetId.trim() === "") {
+        await route.fulfill(jsonResponse(404, { error: "asset not found" }));
+        return;
+      }
       const requestedAssetId = body.assetId ?? "";
       const previewAssetId =
         requestedAssetId || previewState.items.find((item) => item.primaryAssetId)?.primaryAssetId;
