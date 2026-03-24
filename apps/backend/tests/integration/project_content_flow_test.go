@@ -60,6 +60,7 @@ func TestProjectContentFlow(t *testing.T) {
 		OwnerType:     "shot",
 		OwnerID:       shot.ID,
 		ContentLocale: "zh-CN",
+		SnapshotKind:  "content",
 		Body:          "主角走入画面，镜头缓慢推进。",
 	})
 	if err != nil {
@@ -69,15 +70,59 @@ func TestProjectContentFlow(t *testing.T) {
 	localizedSnapshot, err := contentService.CreateLocalizedSnapshot(ctx, contentapp.CreateLocalizedSnapshotInput{
 		SourceSnapshotID: sourceSnapshot.ID,
 		ContentLocale:    "en-US",
+		SnapshotKind:     "content",
 		Body:             "The lead enters frame while the camera slowly pushes in.",
 	})
 	if err != nil {
 		t.Fatalf("CreateLocalizedSnapshot returned error: %v", err)
 	}
 
+	sceneTitleSnapshot, err := contentService.CreateContentSnapshot(ctx, contentapp.CreateContentSnapshotInput{
+		OwnerType:     "scene",
+		OwnerID:       scene.ID,
+		ContentLocale: "zh-CN",
+		SnapshotKind:  "title",
+		Body:          "开场",
+	})
+	if err != nil {
+		t.Fatalf("CreateContentSnapshot(scene title) returned error: %v", err)
+	}
+
+	_, err = contentService.CreateLocalizedSnapshot(ctx, contentapp.CreateLocalizedSnapshotInput{
+		SourceSnapshotID: sceneTitleSnapshot.ID,
+		ContentLocale:    "en-US",
+		SnapshotKind:     "title",
+		Body:             "Opening",
+	})
+	if err != nil {
+		t.Fatalf("CreateLocalizedSnapshot(scene title) returned error: %v", err)
+	}
+
+	shotTitleSnapshot, err := contentService.CreateContentSnapshot(ctx, contentapp.CreateContentSnapshotInput{
+		OwnerType:     "shot",
+		OwnerID:       shot.ID,
+		ContentLocale: "zh-CN",
+		SnapshotKind:  "title",
+		Body:          "主角入场",
+	})
+	if err != nil {
+		t.Fatalf("CreateContentSnapshot(shot title) returned error: %v", err)
+	}
+
+	_, err = contentService.CreateLocalizedSnapshot(ctx, contentapp.CreateLocalizedSnapshotInput{
+		SourceSnapshotID: shotTitleSnapshot.ID,
+		ContentLocale:    "en-US",
+		SnapshotKind:     "title",
+		Body:             "Hero enters",
+	})
+	if err != nil {
+		t.Fatalf("CreateLocalizedSnapshot(shot title) returned error: %v", err)
+	}
+
 	scenes, err := contentService.ListScenes(ctx, contentapp.ListScenesInput{
-		ProjectID: project.ID,
-		EpisodeID: episode.ID,
+		ProjectID:     project.ID,
+		EpisodeID:     episode.ID,
+		DisplayLocale: "en-US",
 	})
 	if err != nil {
 		t.Fatalf("ListScenes returned error: %v", err)
@@ -85,9 +130,13 @@ func TestProjectContentFlow(t *testing.T) {
 	if len(scenes) != 1 {
 		t.Fatalf("expected 1 scene, got %d", len(scenes))
 	}
+	if got := scenes[0].Title; got != "Opening" {
+		t.Fatalf("expected localized scene title %q, got %q", "Opening", got)
+	}
 
 	shots, err := contentService.ListSceneShots(ctx, contentapp.ListSceneShotsInput{
-		SceneID: scene.ID,
+		SceneID:       scene.ID,
+		DisplayLocale: "en-US",
 	})
 	if err != nil {
 		t.Fatalf("ListSceneShots returned error: %v", err)
@@ -95,9 +144,13 @@ func TestProjectContentFlow(t *testing.T) {
 	if len(shots) != 1 {
 		t.Fatalf("expected 1 shot, got %d", len(shots))
 	}
+	if got := shots[0].Title; got != "Hero enters" {
+		t.Fatalf("expected localized shot title %q, got %q", "Hero enters", got)
+	}
 
 	gotShot, err := contentService.GetShot(ctx, contentapp.GetShotInput{
-		ShotID: shot.ID,
+		ShotID:        shot.ID,
+		DisplayLocale: "fr-FR",
 	})
 	if err != nil {
 		t.Fatalf("GetShot returned error: %v", err)
@@ -106,8 +159,14 @@ func TestProjectContentFlow(t *testing.T) {
 		t.Fatalf("expected shot title %q, got %q", "主角入场", gotShot.Title)
 	}
 
+	if sourceSnapshot.SnapshotKind != "content" {
+		t.Fatalf("expected source snapshot kind %q, got %q", "content", sourceSnapshot.SnapshotKind)
+	}
 	if sourceSnapshot.TranslationStatus != "source" {
 		t.Fatalf("expected source snapshot translation status %q, got %q", "source", sourceSnapshot.TranslationStatus)
+	}
+	if shotTitleSnapshot.SnapshotKind != "title" {
+		t.Fatalf("expected shot title snapshot kind %q, got %q", "title", shotTitleSnapshot.SnapshotKind)
 	}
 	if localizedSnapshot.SourceSnapshotID != sourceSnapshot.ID {
 		t.Fatalf("expected localized snapshot source id %q, got %q", sourceSnapshot.ID, localizedSnapshot.SourceSnapshotID)

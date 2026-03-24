@@ -20,6 +20,8 @@ type previewMetadataLookups struct {
 	assetByID         map[string]asset.MediaAsset
 	executionByShotID map[string]execution.ShotExecution
 	runsByExecutionID map[string][]execution.ShotExecutionRun
+	sceneTitleByID    map[string]string
+	shotTitleByID     map[string]string
 }
 
 func (s *Service) ListPreviewShotOptions(_ context.Context, input ListPreviewShotOptionsInput) ([]PreviewShotOption, error) {
@@ -41,7 +43,7 @@ func (s *Service) ListPreviewShotOptions(_ context.Context, input ListPreviewSho
 		orderedShots = append(orderedShots, shots...)
 	}
 
-	lookups := s.buildPreviewMetadataLookups(projectRecord, sceneRecords, orderedShots, collectShotIDs(orderedShots), nil)
+	lookups := s.buildPreviewMetadataLookups(projectRecord, sceneRecords, orderedShots, collectShotIDs(orderedShots), nil, input.DisplayLocale)
 	options := make([]PreviewShotOption, 0, len(orderedShots))
 	for _, shotRecord := range orderedShots {
 		sceneRecord, ok := lookups.sceneByID[shotRecord.SceneID]
@@ -63,7 +65,7 @@ func (s *Service) ListPreviewShotOptions(_ context.Context, input ListPreviewSho
 	return options, nil
 }
 
-func (s *Service) buildPreviewWorkbench(record project.PreviewAssembly) PreviewWorkbench {
+func (s *Service) buildPreviewWorkbench(record project.PreviewAssembly, displayLocale string) PreviewWorkbench {
 	projectRecord, _ := s.repo.GetProject(record.ProjectID)
 	items := s.repo.ListPreviewAssemblyItems(record.ID)
 	lookups := s.buildPreviewMetadataLookups(
@@ -72,6 +74,7 @@ func (s *Service) buildPreviewWorkbench(record project.PreviewAssembly) PreviewW
 		nil,
 		collectPreviewItemShotIDs(items),
 		collectPreviewItemAssetIDs(items),
+		displayLocale,
 	)
 
 	aggregatedItems := make([]PreviewAssemblyItemState, 0, len(items))
@@ -128,6 +131,7 @@ func (s *Service) buildPreviewMetadataLookups(
 	shotRecords []content.Shot,
 	shotIDs []string,
 	assetIDs []string,
+	displayLocale string,
 ) previewMetadataLookups {
 	lookups := previewMetadataLookups{
 		projectRecord:     projectRecord,
@@ -137,6 +141,8 @@ func (s *Service) buildPreviewMetadataLookups(
 		assetByID:         make(map[string]asset.MediaAsset),
 		executionByShotID: make(map[string]execution.ShotExecution),
 		runsByExecutionID: make(map[string][]execution.ShotExecutionRun),
+		sceneTitleByID:    make(map[string]string),
+		shotTitleByID:     make(map[string]string),
 	}
 
 	if len(shotRecords) == 0 && len(shotIDs) > 0 {
@@ -178,6 +184,8 @@ func (s *Service) buildPreviewMetadataLookups(
 	for _, runRecord := range s.repo.ListShotExecutionRunsByExecutionIDs(uniqueNonEmptyStrings(executionIDs)) {
 		lookups.runsByExecutionID[runRecord.ShotExecutionID] = append(lookups.runsByExecutionID[runRecord.ShotExecutionID], runRecord)
 	}
+	lookups.sceneTitleByID = localizedPreviewTitlesByOwnerID(s.repo.ListSnapshotsByOwners("scene", collectSceneIDsFromShotsMap(lookups.shotByID)), displayLocale)
+	lookups.shotTitleByID = localizedPreviewTitlesByOwnerID(s.repo.ListSnapshotsByOwners("shot", collectShotIDsFromMap(lookups.shotByID)), displayLocale)
 	return lookups
 }
 
@@ -191,10 +199,10 @@ func (s *Service) buildPreviewShotSummary(
 		ProjectTitle: lookups.projectRecord.Title,
 		SceneID:      sceneRecord.ID,
 		SceneCode:    sceneRecord.Code,
-		SceneTitle:   strings.TrimSpace(sceneRecord.Title),
+		SceneTitle:   defaultLocalizedPreviewTitle(lookups.sceneTitleByID, sceneRecord.ID, sceneRecord.Title),
 		ShotID:       shotRecord.ID,
 		ShotCode:     shotRecord.Code,
-		ShotTitle:    strings.TrimSpace(shotRecord.Title),
+		ShotTitle:    defaultLocalizedPreviewTitle(lookups.shotTitleByID, shotRecord.ID, shotRecord.Title),
 	}
 	if episodeRecord, ok := lookups.episodeByID[sceneRecord.EpisodeID]; ok {
 		summary.EpisodeID = episodeRecord.ID
@@ -318,4 +326,44 @@ func uniqueNonEmptyStrings(values []string) []string {
 	}
 	sort.Strings(items)
 	return items
+}
+
+func localizedPreviewTitlesByOwnerID(snapshots []content.Snapshot, displayLocale string) map[string]string {
+	normalizedLocale := strings.TrimSpace(displayLocale)
+	if normalizedLocale == "" || len(snapshots) == 0 {
+		return map[string]string{}
+	}
+	selectedByOwnerID := make(map[string]content.Snapshot)
+	titlesByOwnerID := make(map[string]string)
+	for _, snapshot := range snapshots {
+		if strings.TrimSpace(snapshot.SnapshotKind) != content.SnapshotKindTitle {
+			continue
+		}
+		if strings.TrimSpace(snapshot.Locale) != normalizedLocale {
+			continue
+		}
+		title := strings.TrimSpace(snapshot.Body)
+		if title == "" {
+			continue
+		}
+		existing, ok := selectedByOwnerID[snapshot.OwnerID]
+		if ok {
+			switch {
+			case snapshot.UpdatedAt.Before(existing.UpdatedAt):
+				continue
+			case snapshot.UpdatedAt.Equal(existing.UpdatedAt) && snapshot.ID <= existing.ID:
+				continue
+			}
+		}
+		selectedByOwnerID[snapshot.OwnerID] = snapshot
+		titlesByOwnerID[snapshot.OwnerID] = title
+	}
+	return titlesByOwnerID
+}
+
+func defaultLocalizedPreviewTitle(titlesByOwnerID map[string]string, ownerID string, fallback string) string {
+	if title, ok := titlesByOwnerID[strings.TrimSpace(ownerID)]; ok {
+		return title
+	}
+	return strings.TrimSpace(fallback)
 }

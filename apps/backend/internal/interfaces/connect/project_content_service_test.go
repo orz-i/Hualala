@@ -84,14 +84,60 @@ func TestProjectAndContentRoutes(t *testing.T) {
 		t.Fatalf("expected shot id")
 	}
 
-	_, err = contentClient.CreateContentSnapshot(ctx, connectrpc.NewRequest(&contentv1.CreateContentSnapshotRequest{
+	sceneTitleSnapshot, err := contentClient.CreateContentSnapshot(ctx, connectrpc.NewRequest(&contentv1.CreateContentSnapshotRequest{
+		OwnerType:     "scene",
+		OwnerId:       sceneID,
+		ContentLocale: "zh-CN",
+		SnapshotKind:  "title",
+		Body:          "开场",
+	}))
+	if err != nil {
+		t.Fatalf("CreateContentSnapshot(scene title) returned error: %v", err)
+	}
+
+	_, err = contentClient.CreateLocalizedSnapshot(ctx, connectrpc.NewRequest(&contentv1.CreateLocalizedSnapshotRequest{
+		SourceSnapshotId: sceneTitleSnapshot.Msg.GetSnapshot().GetId(),
+		ContentLocale:    "en-US",
+		SnapshotKind:     "title",
+		Body:             "Opening",
+	}))
+	if err != nil {
+		t.Fatalf("CreateLocalizedSnapshot(scene title) returned error: %v", err)
+	}
+
+	shotTitleSnapshot, err := contentClient.CreateContentSnapshot(ctx, connectrpc.NewRequest(&contentv1.CreateContentSnapshotRequest{
 		OwnerType:     "shot",
 		OwnerId:       shotID,
 		ContentLocale: "zh-CN",
+		SnapshotKind:  "title",
+		Body:          "主角入场",
+	}))
+	if err != nil {
+		t.Fatalf("CreateContentSnapshot(shot title) returned error: %v", err)
+	}
+
+	_, err = contentClient.CreateLocalizedSnapshot(ctx, connectrpc.NewRequest(&contentv1.CreateLocalizedSnapshotRequest{
+		SourceSnapshotId: shotTitleSnapshot.Msg.GetSnapshot().GetId(),
+		ContentLocale:    "en-US",
+		SnapshotKind:     "title",
+		Body:             "Hero enters",
+	}))
+	if err != nil {
+		t.Fatalf("CreateLocalizedSnapshot(shot title) returned error: %v", err)
+	}
+
+	sourceContentSnapshot, err := contentClient.CreateContentSnapshot(ctx, connectrpc.NewRequest(&contentv1.CreateContentSnapshotRequest{
+		OwnerType:     "shot",
+		OwnerId:       shotID,
+		ContentLocale: "zh-CN",
+		SnapshotKind:  "content",
 		Body:          "主角推门进入客厅。",
 	}))
 	if err != nil {
 		t.Fatalf("CreateContentSnapshot returned error: %v", err)
+	}
+	if got := sourceContentSnapshot.Msg.GetSnapshot().GetSnapshotKind(); got != "content" {
+		t.Fatalf("expected source content snapshot kind %q, got %q", "content", got)
 	}
 
 	listEpisodesResp, err := projectClient.ListEpisodes(ctx, connectrpc.NewRequest(&projectv1.ListEpisodesRequest{
@@ -105,8 +151,9 @@ func TestProjectAndContentRoutes(t *testing.T) {
 	}
 
 	listScenesResp, err := contentClient.ListScenes(ctx, connectrpc.NewRequest(&contentv1.ListScenesRequest{
-		ProjectId: projectID,
-		EpisodeId: episodeID,
+		ProjectId:     projectID,
+		EpisodeId:     episodeID,
+		DisplayLocale: "en-US",
 	}))
 	if err != nil {
 		t.Fatalf("ListScenes returned error: %v", err)
@@ -114,15 +161,35 @@ func TestProjectAndContentRoutes(t *testing.T) {
 	if len(listScenesResp.Msg.GetScenes()) != 1 {
 		t.Fatalf("expected 1 scene, got %d", len(listScenesResp.Msg.GetScenes()))
 	}
+	if got := listScenesResp.Msg.GetScenes()[0].GetTitle(); got != "Opening" {
+		t.Fatalf("expected localized scene title %q, got %q", "Opening", got)
+	}
 
 	getShotResp, err := contentClient.GetShot(ctx, connectrpc.NewRequest(&contentv1.GetShotRequest{
-		ShotId: shotID,
+		ShotId:        shotID,
+		DisplayLocale: "en-US",
 	}))
 	if err != nil {
 		t.Fatalf("GetShot returned error: %v", err)
 	}
 	if got := getShotResp.Msg.GetShot().GetId(); got != shotID {
 		t.Fatalf("expected shot %q, got %q", shotID, got)
+	}
+	if got := getShotResp.Msg.GetShot().GetTitle(); got != "Hero enters" {
+		t.Fatalf("expected localized shot title %q, got %q", "Hero enters", got)
+	}
+
+	_, err = contentClient.CreateLocalizedSnapshot(ctx, connectrpc.NewRequest(&contentv1.CreateLocalizedSnapshotRequest{
+		SourceSnapshotId: sourceContentSnapshot.Msg.GetSnapshot().GetId(),
+		ContentLocale:    "en-US",
+		SnapshotKind:     "title",
+		Body:             "Hero enters living room.",
+	}))
+	if err == nil {
+		t.Fatalf("expected CreateLocalizedSnapshot to reject mismatched snapshot kind")
+	}
+	if connectrpc.CodeOf(err) != connectrpc.CodeFailedPrecondition {
+		t.Fatalf("expected failed precondition, got %v", connectrpc.CodeOf(err))
 	}
 }
 
@@ -184,6 +251,44 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 	}))
 	if err != nil {
 		t.Fatalf("CreateShot #2 returned error: %v", err)
+	}
+
+	sceneTitleSnapshot, err := contentClient.CreateContentSnapshot(ctx, connectrpc.NewRequest(&contentv1.CreateContentSnapshotRequest{
+		OwnerType:     "scene",
+		OwnerId:       sceneID,
+		ContentLocale: "zh-CN",
+		SnapshotKind:  "title",
+		Body:          "开场",
+	}))
+	if err != nil {
+		t.Fatalf("CreateContentSnapshot(scene title) returned error: %v", err)
+	}
+	if _, err := contentClient.CreateLocalizedSnapshot(ctx, connectrpc.NewRequest(&contentv1.CreateLocalizedSnapshotRequest{
+		SourceSnapshotId: sceneTitleSnapshot.Msg.GetSnapshot().GetId(),
+		ContentLocale:    "en-US",
+		SnapshotKind:     "title",
+		Body:             "Opening",
+	})); err != nil {
+		t.Fatalf("CreateLocalizedSnapshot(scene title) returned error: %v", err)
+	}
+
+	shotTitleSnapshot, err := contentClient.CreateContentSnapshot(ctx, connectrpc.NewRequest(&contentv1.CreateContentSnapshotRequest{
+		OwnerType:     "shot",
+		OwnerId:       firstShotResp.Msg.GetShot().GetId(),
+		ContentLocale: "zh-CN",
+		SnapshotKind:  "title",
+		Body:          "第一镜",
+	}))
+	if err != nil {
+		t.Fatalf("CreateContentSnapshot(shot title) returned error: %v", err)
+	}
+	if _, err := contentClient.CreateLocalizedSnapshot(ctx, connectrpc.NewRequest(&contentv1.CreateLocalizedSnapshotRequest{
+		SourceSnapshotId: shotTitleSnapshot.Msg.GetSnapshot().GetId(),
+		ContentLocale:    "en-US",
+		SnapshotKind:     "title",
+		Body:             "First shot localized",
+	})); err != nil {
+		t.Fatalf("CreateLocalizedSnapshot(shot title) returned error: %v", err)
 	}
 
 	sseCtx, cancelSSE := context.WithTimeout(ctx, 2*time.Second)
@@ -273,8 +378,9 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 	}
 
 	workbench, err := projectClient.GetPreviewWorkbench(ctx, connectrpc.NewRequest(&projectv1.GetPreviewWorkbenchRequest{
-		ProjectId: projectID,
-		EpisodeId: episodeID,
+		ProjectId:     projectID,
+		EpisodeId:     episodeID,
+		DisplayLocale: "en-US",
 	}))
 	if err != nil {
 		t.Fatalf("GetPreviewWorkbench returned error: %v", err)
@@ -385,9 +491,25 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 		t.Fatalf("expected missing run summary to stay nil")
 	}
 
+	localizedWorkbench, err := projectClient.GetPreviewWorkbench(ctx, connectrpc.NewRequest(&projectv1.GetPreviewWorkbenchRequest{
+		ProjectId:     projectID,
+		EpisodeId:     episodeID,
+		DisplayLocale: "en-US",
+	}))
+	if err != nil {
+		t.Fatalf("localized GetPreviewWorkbench returned error: %v", err)
+	}
+	if got := localizedWorkbench.Msg.GetAssembly().GetItems()[0].GetShot().GetSceneTitle(); got != "Opening" {
+		t.Fatalf("expected localized scene title %q, got %q", "Opening", got)
+	}
+	if got := localizedWorkbench.Msg.GetAssembly().GetItems()[0].GetShot().GetShotTitle(); got != "First shot localized" {
+		t.Fatalf("expected localized shot title %q, got %q", "First shot localized", got)
+	}
+
 	shotOptions, err := projectClient.ListPreviewShotOptions(ctx, connectrpc.NewRequest(&projectv1.ListPreviewShotOptionsRequest{
-		ProjectId: projectID,
-		EpisodeId: episodeID,
+		ProjectId:     projectID,
+		EpisodeId:     episodeID,
+		DisplayLocale: "en-US",
 	}))
 	if err != nil {
 		t.Fatalf("ListPreviewShotOptions returned error: %v", err)
@@ -397,6 +519,12 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 	}
 	if got := shotOptions.Msg.GetOptions()[0].GetShotExecutionId(); got != shotExecutionID {
 		t.Fatalf("expected shot execution id %q, got %q", shotExecutionID, got)
+	}
+	if got := shotOptions.Msg.GetOptions()[0].GetShot().GetSceneTitle(); got != "Opening" {
+		t.Fatalf("expected localized scene title %q, got %q", "Opening", got)
+	}
+	if got := shotOptions.Msg.GetOptions()[0].GetShot().GetShotTitle(); got != "First shot localized" {
+		t.Fatalf("expected localized shot title %q, got %q", "First shot localized", got)
 	}
 	if got := shotOptions.Msg.GetOptions()[0].GetCurrentPrimaryAsset().GetAssetId(); got != assetID {
 		t.Fatalf("expected current primary asset %q, got %q", assetID, got)
@@ -409,7 +537,8 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 	}
 
 	projectScopedOptions, err := projectClient.ListPreviewShotOptions(ctx, connectrpc.NewRequest(&projectv1.ListPreviewShotOptionsRequest{
-		ProjectId: projectID,
+		ProjectId:     projectID,
+		DisplayLocale: "en-US",
 	}))
 	if err != nil {
 		t.Fatalf("project-scoped ListPreviewShotOptions returned error: %v", err)

@@ -45,8 +45,9 @@ func (h *contentHandler) CreateShot(ctx context.Context, req *connectrpc.Request
 
 func (h *contentHandler) ListScenes(ctx context.Context, req *connectrpc.Request[contentv1.ListScenesRequest]) (*connectrpc.Response[contentv1.ListScenesResponse], error) {
 	records, err := h.service.ListScenes(ctx, contentapp.ListScenesInput{
-		ProjectID: req.Msg.GetProjectId(),
-		EpisodeID: req.Msg.GetEpisodeId(),
+		ProjectID:     req.Msg.GetProjectId(),
+		EpisodeID:     req.Msg.GetEpisodeId(),
+		DisplayLocale: req.Msg.GetDisplayLocale(),
 	})
 	if err != nil {
 		return nil, asConnectError(err)
@@ -62,7 +63,8 @@ func (h *contentHandler) ListScenes(ctx context.Context, req *connectrpc.Request
 
 func (h *contentHandler) GetScene(ctx context.Context, req *connectrpc.Request[contentv1.GetSceneRequest]) (*connectrpc.Response[contentv1.GetSceneResponse], error) {
 	record, err := h.service.GetScene(ctx, contentapp.GetSceneInput{
-		SceneID: req.Msg.GetSceneId(),
+		SceneID:       req.Msg.GetSceneId(),
+		DisplayLocale: req.Msg.GetDisplayLocale(),
 	})
 	if err != nil {
 		return nil, asConnectError(err)
@@ -74,7 +76,8 @@ func (h *contentHandler) GetScene(ctx context.Context, req *connectrpc.Request[c
 
 func (h *contentHandler) ListSceneShots(ctx context.Context, req *connectrpc.Request[contentv1.ListSceneShotsRequest]) (*connectrpc.Response[contentv1.ListSceneShotsResponse], error) {
 	records, err := h.service.ListSceneShots(ctx, contentapp.ListSceneShotsInput{
-		SceneID: req.Msg.GetSceneId(),
+		SceneID:       req.Msg.GetSceneId(),
+		DisplayLocale: req.Msg.GetDisplayLocale(),
 	})
 	if err != nil {
 		return nil, asConnectError(err)
@@ -90,7 +93,8 @@ func (h *contentHandler) ListSceneShots(ctx context.Context, req *connectrpc.Req
 
 func (h *contentHandler) GetShot(ctx context.Context, req *connectrpc.Request[contentv1.GetShotRequest]) (*connectrpc.Response[contentv1.GetShotResponse], error) {
 	record, err := h.service.GetShot(ctx, contentapp.GetShotInput{
-		ShotID: req.Msg.GetShotId(),
+		ShotID:        req.Msg.GetShotId(),
+		DisplayLocale: req.Msg.GetDisplayLocale(),
 	})
 	if err != nil {
 		return nil, asConnectError(err)
@@ -119,6 +123,7 @@ func (h *contentHandler) CreateContentSnapshot(ctx context.Context, req *connect
 		OwnerType:     req.Msg.GetOwnerType(),
 		OwnerID:       req.Msg.GetOwnerId(),
 		ContentLocale: req.Msg.GetContentLocale(),
+		SnapshotKind:  req.Msg.GetSnapshotKind(),
 		Body:          req.Msg.GetBody(),
 	})
 	if err != nil {
@@ -133,6 +138,7 @@ func (h *contentHandler) CreateLocalizedSnapshot(ctx context.Context, req *conne
 	record, err := h.service.CreateLocalizedSnapshot(ctx, contentapp.CreateLocalizedSnapshotInput{
 		SourceSnapshotID: req.Msg.GetSourceSnapshotId(),
 		ContentLocale:    req.Msg.GetContentLocale(),
+		SnapshotKind:     req.Msg.GetSnapshotKind(),
 		Body:             req.Msg.GetBody(),
 	})
 	if err != nil {

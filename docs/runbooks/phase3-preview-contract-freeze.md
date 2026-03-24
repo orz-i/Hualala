@@ -64,14 +64,24 @@ chooser 目录固定返回：
 
 ## Locale 规则
 
-本轮不冻结 `display_locale`。原因是当前 repo 里还没有 scene / shot 标题的多语言持久化真相，把 locale hint 暴露进 preview contract 只会形成 no-op wire shape。
+preview metadata 的 locale 规则现在由 [`phase3-preview-title-localization-freeze.md`](./phase3-preview-title-localization-freeze.md) 负责。
 
-因此当前行为固定为：
+当前固定行为：
 
-- scene / shot 标题暂时仍返回当前存储标题
-- project / episode 标题继续返回当前存储值
+- `GetPreviewWorkbenchRequest.display_locale`
+- `ListPreviewShotOptionsRequest.display_locale`
 
-后续如果要让 preview metadata 真正按 locale 切换标题，必须先补新的 title localization shared truth foundation patch，而不是在产品分支里私扩 fallback 逻辑。
+只影响：
+
+- `PreviewShotSummary.scene_title`
+- `PreviewShotSummary.shot_title`
+
+继续不影响：
+
+- `project_title`
+- `episode_title`
+
+这两个字段仍返回当前存储值，不进入本轮 localization shared truth。
 
 ## Fail-Closed 规则
 

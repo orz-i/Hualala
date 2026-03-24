@@ -249,23 +249,100 @@ test("phase3 preview metadata shared truth stays on project proto and sdk entry 
   assert.match(projectProto, /message PreviewAssetSummary/);
   assert.match(projectProto, /message PreviewRunSummary/);
   assert.match(projectProto, /message PreviewShotOption/);
-  assert.doesNotMatch(projectProto, /display_locale/);
+  assert.match(projectProto, /display_locale/);
   assert.match(projectProto, /PreviewShotSummary shot = 7;/);
   assert.match(projectProto, /PreviewAssetSummary primary_asset = 8;/);
   assert.match(projectProto, /PreviewRunSummary source_run = 9;/);
 
-  assert.doesNotMatch(projectService, /displayLocale/);
+  assert.match(projectService, /displayLocale/);
   assert.match(projectService, /listPreviewShotOptions/);
   assert.match(previewAggregation, /ListPreviewShotOptions/);
   assert.match(previewAggregation, /buildPreviewWorkbench/);
   assert.match(previewAggregation, /listPreviewScopedScenes/);
 
   assert.match(contractFreeze, /ProjectService/);
-  assert.match(contractFreeze, /本轮不冻结 `display_locale`/);
+  assert.match(contractFreeze, /phase3-preview-title-localization-freeze\.md/);
   assert.match(contractFreeze, /ListPreviewShotOptions/);
   assert.match(contractFreeze, /PreviewShotSummary/);
-  assert.match(contractFreeze, /scene \/ shot 标题暂时仍返回当前存储标题/);
+  assert.match(contractFreeze, /scene_title/);
+  assert.match(contractFreeze, /shot_title/);
 
   assert.doesNotMatch(assetProto, /PreviewShotSummary|PreviewShotOption|ListPreviewShotOptions/);
   assert.doesNotMatch(workflowProto, /PreviewShotSummary|PreviewShotOption|ListPreviewShotOptions/);
+});
+
+test("phase3 preview title localization shared truth stays on content and project foundation entry points", () => {
+  const contentProto = readFileSync(join(repoRoot, "proto", "hualala", "content", "v1", "content.proto"), "utf8");
+  const projectProto = readFileSync(
+    join(repoRoot, "proto", "hualala", "project", "v1", "project_service.proto"),
+    "utf8",
+  );
+  const contentService = readFileSync(
+    join(repoRoot, "packages", "sdk", "src", "connect", "services", "content.ts"),
+    "utf8",
+  );
+  const projectService = readFileSync(
+    join(repoRoot, "packages", "sdk", "src", "connect", "services", "project.ts"),
+    "utf8",
+  );
+  const contentApp = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "application", "contentapp", "service.go"),
+    "utf8",
+  );
+  const titleLocalization = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "application", "contentapp", "service_title_localization.go"),
+    "utf8",
+  );
+  const previewAggregation = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "application", "projectapp", "service_preview_metadata.go"),
+    "utf8",
+  );
+  const freezeDoc = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase3-preview-title-localization-freeze.md"),
+    "utf8",
+  );
+
+  const expectedFiles = [
+    "docs/runbooks/phase3-preview-title-localization-freeze.md",
+    "proto/hualala/content/v1/content.proto",
+    "proto/hualala/project/v1/project_service.proto",
+    "packages/sdk/src/connect/services/content.ts",
+    "packages/sdk/src/connect/services/project.ts",
+    "apps/backend/internal/application/contentapp/service.go",
+    "apps/backend/internal/application/contentapp/service_title_localization.go",
+    "apps/backend/internal/application/projectapp/service_preview_metadata.go",
+  ];
+  for (const relativePath of expectedFiles) {
+    assert.equal(existsSync(join(repoRoot, ...relativePath.split("/"))), true, `${relativePath} should exist`);
+  }
+
+  assert.match(contentProto, /string snapshot_kind =/);
+  assert.match(contentProto, /CreateContentSnapshotRequest/);
+  assert.match(contentProto, /CreateLocalizedSnapshotRequest/);
+  assert.match(contentProto, /display_locale/);
+
+  assert.match(projectProto, /GetPreviewWorkbenchRequest/);
+  assert.match(projectProto, /ListPreviewShotOptionsRequest/);
+  assert.match(projectProto, /display_locale/);
+
+  assert.match(contentService, /listScenes/);
+  assert.match(contentService, /getScene/);
+  assert.match(contentService, /listSceneShots/);
+  assert.match(contentService, /getShot/);
+  assert.match(contentService, /createContentSnapshot/);
+  assert.match(contentService, /createLocalizedSnapshot/);
+  assert.match(contentService, /snapshotKind/);
+
+  assert.match(projectService, /displayLocale/);
+  assert.match(contentApp, /SnapshotKind/);
+  assert.match(titleLocalization, /SnapshotKindTitle/);
+  assert.match(titleLocalization, /displayLocale/);
+  assert.match(previewAggregation, /displayLocale/);
+  assert.match(previewAggregation, /ListSnapshotsByOwners/);
+
+  assert.match(freezeDoc, /snapshot_kind=title/);
+  assert.match(freezeDoc, /scene \/ shot/);
+  assert.match(freezeDoc, /display_locale/);
+  assert.match(freezeDoc, /project_title/);
+  assert.match(freezeDoc, /episode_title/);
 });

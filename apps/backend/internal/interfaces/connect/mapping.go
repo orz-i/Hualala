@@ -254,6 +254,7 @@ func mapContentSnapshot(record content.Snapshot) *contentv1.ContentSnapshot {
 		Id:                 record.ID,
 		OwnerType:          record.OwnerType,
 		OwnerId:            record.OwnerID,
+		SnapshotKind:       record.SnapshotKind,
 		Locale:             record.Locale,
 		SourceSnapshotId:   record.SourceSnapshotID,
 		TranslationGroupId: record.TranslationGroupID,

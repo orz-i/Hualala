@@ -185,6 +185,7 @@ describe("createProjectClient", () => {
     await client.getPreviewWorkbench({
       projectId: "project-1",
       episodeId: "episode-1",
+      displayLocale: "en-US",
     });
     await client.upsertPreviewAssembly({
       projectId: "project-1",
@@ -202,6 +203,7 @@ describe("createProjectClient", () => {
     const previewOptions = await client.listPreviewShotOptions({
       projectId: "project-1",
       episodeId: "episode-1",
+      displayLocale: "en-US",
     });
     const audioWorkbench = await client.getAudioWorkbench({
       projectId: "project-1",
@@ -244,6 +246,7 @@ describe("createProjectClient", () => {
         body: JSON.stringify({
           projectId: "project-1",
           episodeId: "episode-1",
+          displayLocale: "en-US",
         }),
       }),
     );
@@ -273,6 +276,7 @@ describe("createProjectClient", () => {
         body: JSON.stringify({
           projectId: "project-1",
           episodeId: "episode-1",
+          displayLocale: "en-US",
         }),
       }),
     );

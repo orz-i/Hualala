@@ -88,8 +88,9 @@ func (h *projectHandler) ListEpisodes(ctx context.Context, req *connectrpc.Reque
 
 func (h *projectHandler) GetPreviewWorkbench(ctx context.Context, req *connectrpc.Request[projectv1.GetPreviewWorkbenchRequest]) (*connectrpc.Response[projectv1.GetPreviewWorkbenchResponse], error) {
 	record, err := h.service.GetPreviewWorkbench(ctx, projectapp.GetPreviewWorkbenchInput{
-		ProjectID: req.Msg.GetProjectId(),
-		EpisodeID: req.Msg.GetEpisodeId(),
+		ProjectID:     req.Msg.GetProjectId(),
+		EpisodeID:     req.Msg.GetEpisodeId(),
+		DisplayLocale: req.Msg.GetDisplayLocale(),
 	})
 	if err != nil {
 		return nil, asConnectError(err)
@@ -101,8 +102,9 @@ func (h *projectHandler) GetPreviewWorkbench(ctx context.Context, req *connectrp
 
 func (h *projectHandler) ListPreviewShotOptions(ctx context.Context, req *connectrpc.Request[projectv1.ListPreviewShotOptionsRequest]) (*connectrpc.Response[projectv1.ListPreviewShotOptionsResponse], error) {
 	records, err := h.service.ListPreviewShotOptions(ctx, projectapp.ListPreviewShotOptionsInput{
-		ProjectID: req.Msg.GetProjectId(),
-		EpisodeID: req.Msg.GetEpisodeId(),
+		ProjectID:     req.Msg.GetProjectId(),
+		EpisodeID:     req.Msg.GetEpisodeId(),
+		DisplayLocale: req.Msg.GetDisplayLocale(),
 	})
 	if err != nil {
 		return nil, asConnectError(err)
