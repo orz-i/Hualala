@@ -35,7 +35,6 @@ export function createProjectClient(options: HualalaClientOptions = {}) {
     getPreviewWorkbench(body: {
       projectId: string;
       episodeId?: string;
-      displayLocale?: string;
     }): Promise<GetPreviewWorkbenchResponse> {
       return unaryWithSchema<GetPreviewWorkbenchResponse>(
         GetPreviewWorkbenchResponseSchema,
@@ -47,7 +46,6 @@ export function createProjectClient(options: HualalaClientOptions = {}) {
     listPreviewShotOptions(body: {
       projectId: string;
       episodeId?: string;
-      displayLocale?: string;
     }): Promise<ListPreviewShotOptionsResponse> {
       return unaryWithSchema<ListPreviewShotOptionsResponse>(
         ListPreviewShotOptionsResponseSchema,

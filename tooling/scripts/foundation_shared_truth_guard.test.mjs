@@ -249,18 +249,19 @@ test("phase3 preview metadata shared truth stays on project proto and sdk entry 
   assert.match(projectProto, /message PreviewAssetSummary/);
   assert.match(projectProto, /message PreviewRunSummary/);
   assert.match(projectProto, /message PreviewShotOption/);
-  assert.match(projectProto, /string display_locale = 3;/);
+  assert.doesNotMatch(projectProto, /display_locale/);
   assert.match(projectProto, /PreviewShotSummary shot = 7;/);
   assert.match(projectProto, /PreviewAssetSummary primary_asset = 8;/);
   assert.match(projectProto, /PreviewRunSummary source_run = 9;/);
 
-  assert.match(projectService, /displayLocale/);
+  assert.doesNotMatch(projectService, /displayLocale/);
   assert.match(projectService, /listPreviewShotOptions/);
   assert.match(previewAggregation, /ListPreviewShotOptions/);
   assert.match(previewAggregation, /buildPreviewWorkbench/);
+  assert.match(previewAggregation, /listPreviewScopedScenes/);
 
   assert.match(contractFreeze, /ProjectService/);
-  assert.match(contractFreeze, /display_locale/);
+  assert.match(contractFreeze, /本轮不冻结 `display_locale`/);
   assert.match(contractFreeze, /ListPreviewShotOptions/);
   assert.match(contractFreeze, /PreviewShotSummary/);
   assert.match(contractFreeze, /scene \/ shot 标题暂时仍返回当前存储标题/);

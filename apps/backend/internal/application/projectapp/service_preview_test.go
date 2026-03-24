@@ -132,9 +132,8 @@ func TestPreviewWorkbenchLifecycle(t *testing.T) {
 	}
 
 	readback, err := service.GetPreviewWorkbench(ctx, GetPreviewWorkbenchInput{
-		ProjectID:     fixture.ProjectID,
-		EpisodeID:     fixture.EpisodeID,
-		DisplayLocale: "en-US",
+		ProjectID: fixture.ProjectID,
+		EpisodeID: fixture.EpisodeID,
 	})
 	if err != nil {
 		t.Fatalf("GetPreviewWorkbench readback returned error: %v", err)
@@ -157,9 +156,8 @@ func TestListPreviewShotOptionsReturnsScopedMetadata(t *testing.T) {
 	service := NewService(store)
 
 	options, err := service.ListPreviewShotOptions(ctx, ListPreviewShotOptionsInput{
-		ProjectID:     fixture.ProjectID,
-		EpisodeID:     fixture.EpisodeID,
-		DisplayLocale: "en-US",
+		ProjectID: fixture.ProjectID,
+		EpisodeID: fixture.EpisodeID,
 	})
 	if err != nil {
 		t.Fatalf("ListPreviewShotOptions returned error: %v", err)
@@ -202,6 +200,26 @@ func TestListPreviewShotOptionsReturnsScopedMetadata(t *testing.T) {
 	}
 	if options[2].LatestRun != nil {
 		t.Fatalf("expected missing latest run summary for shot without execution")
+	}
+}
+
+func TestListPreviewShotOptionsReturnsProjectScopedShotsWhenEpisodeIsEmpty(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	fixture := seedPreviewProject(t, ctx, store)
+	service := NewService(store)
+
+	options, err := service.ListPreviewShotOptions(ctx, ListPreviewShotOptionsInput{
+		ProjectID: fixture.ProjectID,
+	})
+	if err != nil {
+		t.Fatalf("ListPreviewShotOptions returned error: %v", err)
+	}
+	if got := len(options); got != 3 {
+		t.Fatalf("expected 3 project-scoped shot options, got %d", got)
+	}
+	if got := options[0].Shot.EpisodeID; got != fixture.EpisodeID {
+		t.Fatalf("expected project-scoped first option episode %q, got %q", fixture.EpisodeID, got)
 	}
 }
 

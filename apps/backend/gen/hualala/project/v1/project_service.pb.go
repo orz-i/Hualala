@@ -1478,7 +1478,6 @@ type GetPreviewWorkbenchRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	EpisodeId     string                 `protobuf:"bytes,2,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
-	DisplayLocale string                 `protobuf:"bytes,3,opt,name=display_locale,json=displayLocale,proto3" json:"display_locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1523,13 +1522,6 @@ func (x *GetPreviewWorkbenchRequest) GetProjectId() string {
 func (x *GetPreviewWorkbenchRequest) GetEpisodeId() string {
 	if x != nil {
 		return x.EpisodeId
-	}
-	return ""
-}
-
-func (x *GetPreviewWorkbenchRequest) GetDisplayLocale() string {
-	if x != nil {
-		return x.DisplayLocale
 	}
 	return ""
 }
@@ -1582,7 +1574,6 @@ type ListPreviewShotOptionsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	EpisodeId     string                 `protobuf:"bytes,2,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
-	DisplayLocale string                 `protobuf:"bytes,3,opt,name=display_locale,json=displayLocale,proto3" json:"display_locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1627,13 +1618,6 @@ func (x *ListPreviewShotOptionsRequest) GetProjectId() string {
 func (x *ListPreviewShotOptionsRequest) GetEpisodeId() string {
 	if x != nil {
 		return x.EpisodeId
-	}
-	return ""
-}
-
-func (x *ListPreviewShotOptionsRequest) GetDisplayLocale() string {
-	if x != nil {
-		return x.DisplayLocale
 	}
 	return ""
 }
@@ -2160,21 +2144,19 @@ const file_hualala_project_v1_project_service_proto_rawDesc = "" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\"O\n" +
 	"\x14ListEpisodesResponse\x127\n" +
-	"\bepisodes\x18\x01 \x03(\v2\x1b.hualala.project.v1.EpisodeR\bepisodes\"\x81\x01\n" +
+	"\bepisodes\x18\x01 \x03(\v2\x1b.hualala.project.v1.EpisodeR\bepisodes\"Z\n" +
 	"\x1aGetPreviewWorkbenchRequest\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x1d\n" +
 	"\n" +
-	"episode_id\x18\x02 \x01(\tR\tepisodeId\x12%\n" +
-	"\x0edisplay_locale\x18\x03 \x01(\tR\rdisplayLocale\"^\n" +
+	"episode_id\x18\x02 \x01(\tR\tepisodeId\"^\n" +
 	"\x1bGetPreviewWorkbenchResponse\x12?\n" +
-	"\bassembly\x18\x01 \x01(\v2#.hualala.project.v1.PreviewAssemblyR\bassembly\"\x84\x01\n" +
+	"\bassembly\x18\x01 \x01(\v2#.hualala.project.v1.PreviewAssemblyR\bassembly\"]\n" +
 	"\x1dListPreviewShotOptionsRequest\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x1d\n" +
 	"\n" +
-	"episode_id\x18\x02 \x01(\tR\tepisodeId\x12%\n" +
-	"\x0edisplay_locale\x18\x03 \x01(\tR\rdisplayLocale\"a\n" +
+	"episode_id\x18\x02 \x01(\tR\tepisodeId\"a\n" +
 	"\x1eListPreviewShotOptionsResponse\x12?\n" +
 	"\aoptions\x18\x01 \x03(\v2%.hualala.project.v1.PreviewShotOptionR\aoptions\"\xb3\x01\n" +
 	"\x1cUpsertPreviewAssemblyRequest\x12\x1d\n" +

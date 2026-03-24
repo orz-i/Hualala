@@ -32,8 +32,7 @@ func (s *Service) ListPreviewShotOptions(_ context.Context, input ListPreviewSho
 	}
 
 	projectRecord, _ := s.repo.GetProject(projectID)
-	sceneRecords := append([]content.Scene(nil), s.repo.ListScenes(projectID, episodeID)...)
-	sortPreviewCodedItems(sceneRecords, func(item content.Scene) string { return item.Code }, func(item content.Scene) string { return item.ID })
+	sceneRecords := s.listPreviewScopedScenes(projectID, episodeID)
 
 	orderedShots := make([]content.Shot, 0)
 	for _, sceneRecord := range sceneRecords {
@@ -51,7 +50,7 @@ func (s *Service) ListPreviewShotOptions(_ context.Context, input ListPreviewSho
 		}
 
 		option := PreviewShotOption{
-			Shot: s.buildPreviewShotSummary(lookups, sceneRecord, shotRecord, input.DisplayLocale),
+			Shot: s.buildPreviewShotSummary(lookups, sceneRecord, shotRecord),
 		}
 		if executionRecord, ok := lookups.executionByShotID[shotRecord.ID]; ok {
 			option.ShotExecutionID = executionRecord.ID
@@ -64,7 +63,7 @@ func (s *Service) ListPreviewShotOptions(_ context.Context, input ListPreviewSho
 	return options, nil
 }
 
-func (s *Service) buildPreviewWorkbench(record project.PreviewAssembly, displayLocale string) PreviewWorkbench {
+func (s *Service) buildPreviewWorkbench(record project.PreviewAssembly) PreviewWorkbench {
 	projectRecord, _ := s.repo.GetProject(record.ProjectID)
 	items := s.repo.ListPreviewAssemblyItems(record.ID)
 	lookups := s.buildPreviewMetadataLookups(
@@ -92,7 +91,7 @@ func (s *Service) buildPreviewWorkbench(record project.PreviewAssembly, displayL
 		shotRecord, shotOK := lookups.shotByID[item.ShotID]
 		sceneRecord, sceneOK := lookups.sceneByID[shotRecord.SceneID]
 		if shotOK && sceneOK {
-			state.Shot = s.buildPreviewShotSummary(lookups, sceneRecord, shotRecord, displayLocale)
+			state.Shot = s.buildPreviewShotSummary(lookups, sceneRecord, shotRecord)
 			if executionRecord, ok := lookups.executionByShotID[item.ShotID]; ok {
 				state.SourceRun = previewRunSummaryByID(lookups.runsByExecutionID[executionRecord.ID], item.SourceRunID)
 			}
@@ -104,6 +103,23 @@ func (s *Service) buildPreviewWorkbench(record project.PreviewAssembly, displayL
 		Assembly: record,
 		Items:    aggregatedItems,
 	}
+}
+
+func (s *Service) listPreviewScopedScenes(projectID string, episodeID string) []content.Scene {
+	if strings.TrimSpace(episodeID) != "" {
+		sceneRecords := append([]content.Scene(nil), s.repo.ListScenes(projectID, episodeID)...)
+		sortPreviewCodedItems(sceneRecords, func(item content.Scene) string { return item.Code }, func(item content.Scene) string { return item.ID })
+		return sceneRecords
+	}
+
+	episodes := s.repo.ListEpisodesByProject(projectID)
+	sceneRecords := make([]content.Scene, 0)
+	for _, episodeRecord := range episodes {
+		episodeScenes := append([]content.Scene(nil), s.repo.ListScenes(projectID, episodeRecord.ID)...)
+		sortPreviewCodedItems(episodeScenes, func(item content.Scene) string { return item.Code }, func(item content.Scene) string { return item.ID })
+		sceneRecords = append(sceneRecords, episodeScenes...)
+	}
+	return sceneRecords
 }
 
 func (s *Service) buildPreviewMetadataLookups(
@@ -169,17 +185,16 @@ func (s *Service) buildPreviewShotSummary(
 	lookups previewMetadataLookups,
 	sceneRecord content.Scene,
 	shotRecord content.Shot,
-	displayLocale string,
 ) PreviewShotSummary {
 	summary := PreviewShotSummary{
 		ProjectID:    lookups.projectRecord.ID,
 		ProjectTitle: lookups.projectRecord.Title,
 		SceneID:      sceneRecord.ID,
 		SceneCode:    sceneRecord.Code,
-		SceneTitle:   resolvePreviewDisplayTitle(sceneRecord.Title, sceneRecord.SourceLocale, displayLocale),
+		SceneTitle:   strings.TrimSpace(sceneRecord.Title),
 		ShotID:       shotRecord.ID,
 		ShotCode:     shotRecord.Code,
-		ShotTitle:    resolvePreviewDisplayTitle(shotRecord.Title, shotRecord.SourceLocale, displayLocale),
+		ShotTitle:    strings.TrimSpace(shotRecord.Title),
 	}
 	if episodeRecord, ok := lookups.episodeByID[sceneRecord.EpisodeID]; ok {
 		summary.EpisodeID = episodeRecord.ID
@@ -303,21 +318,4 @@ func uniqueNonEmptyStrings(values []string) []string {
 	}
 	sort.Strings(items)
 	return items
-}
-
-func resolvePreviewDisplayTitle(title string, sourceLocale string, displayLocale string) string {
-	normalizedTitle := strings.TrimSpace(title)
-	if normalizedTitle == "" {
-		return ""
-	}
-	normalizedDisplayLocale := strings.TrimSpace(displayLocale)
-	if normalizedDisplayLocale == "" {
-		return normalizedTitle
-	}
-	if strings.EqualFold(normalizedDisplayLocale, strings.TrimSpace(sourceLocale)) {
-		return normalizedTitle
-	}
-
-	// Phase 3 foundation 先冻结 display_locale 契约；当前 repo 还没有 scene/shot 标题的多语言真相。
-	return normalizedTitle
 }

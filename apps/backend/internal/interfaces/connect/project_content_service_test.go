@@ -273,9 +273,8 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 	}
 
 	workbench, err := projectClient.GetPreviewWorkbench(ctx, connectrpc.NewRequest(&projectv1.GetPreviewWorkbenchRequest{
-		ProjectId:     projectID,
-		EpisodeId:     episodeID,
-		DisplayLocale: "en-US",
+		ProjectId: projectID,
+		EpisodeId: episodeID,
 	}))
 	if err != nil {
 		t.Fatalf("GetPreviewWorkbench returned error: %v", err)
@@ -387,9 +386,8 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 	}
 
 	shotOptions, err := projectClient.ListPreviewShotOptions(ctx, connectrpc.NewRequest(&projectv1.ListPreviewShotOptionsRequest{
-		ProjectId:     projectID,
-		EpisodeId:     episodeID,
-		DisplayLocale: "en-US",
+		ProjectId: projectID,
+		EpisodeId: episodeID,
 	}))
 	if err != nil {
 		t.Fatalf("ListPreviewShotOptions returned error: %v", err)
@@ -408,6 +406,16 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 	}
 	if shotOptions.Msg.GetOptions()[1].GetCurrentPrimaryAsset() != nil {
 		t.Fatalf("expected shot without execution to keep asset summary nil")
+	}
+
+	projectScopedOptions, err := projectClient.ListPreviewShotOptions(ctx, connectrpc.NewRequest(&projectv1.ListPreviewShotOptionsRequest{
+		ProjectId: projectID,
+	}))
+	if err != nil {
+		t.Fatalf("project-scoped ListPreviewShotOptions returned error: %v", err)
+	}
+	if got := len(projectScopedOptions.Msg.GetOptions()); got != 2 {
+		t.Fatalf("expected 2 project-scoped shot options, got %d", got)
 	}
 
 	_, err = projectClient.GetPreviewWorkbench(ctx, connectrpc.NewRequest(&projectv1.GetPreviewWorkbenchRequest{

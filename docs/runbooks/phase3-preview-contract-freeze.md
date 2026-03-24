@@ -22,12 +22,12 @@
 
 其中：
 
-- `GetPreviewWorkbenchRequest` 新增 `display_locale`
 - `PreviewAssemblyItem` 在保留 `shot_id / primary_asset_id / source_run_id / sequence` 的同时，新增只读摘要：
   - `shot`
   - `primary_asset`
   - `source_run`
 - `ListPreviewShotOptions` 只承载 chooser 目录，不承载页面局部状态
+- `ListPreviewShotOptions` 同时支持 `project_id + episode_id` 和 project-only scope
 
 ## 摘要 Shared Truth
 
@@ -64,15 +64,14 @@ chooser 目录固定返回：
 
 ## Locale 规则
 
-本轮冻结 `display_locale` 这个 request contract，但当前 repo 里还没有 scene / shot 标题的多语言持久化真相。
+本轮不冻结 `display_locale`。原因是当前 repo 里还没有 scene / shot 标题的多语言持久化真相，把 locale hint 暴露进 preview contract 只会形成 no-op wire shape。
 
 因此当前行为固定为：
 
-- `display_locale` 已进入 preview contract 与 SDK client
 - scene / shot 标题暂时仍返回当前存储标题
 - project / episode 标题继续返回当前存储值
 
-后续如果要让 preview metadata 真正按 locale 切换标题，必须先补新的 title localization shared truth，而不是在产品分支里私扩 fallback 逻辑。
+后续如果要让 preview metadata 真正按 locale 切换标题，必须先补新的 title localization shared truth foundation patch，而不是在产品分支里私扩 fallback 逻辑。
 
 ## Fail-Closed 规则
 
