@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hualala/apps/backend/internal/application/policyapp"
 	"github.com/hualala/apps/backend/internal/application/workflowapp"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/platform/db"
@@ -63,9 +62,14 @@ func (s *Service) RequestPreviewRender(ctx context.Context, input RequestPreview
 		return PreviewRuntimeState{}, errors.New("projectapp: failed precondition: preview render already queued")
 	}
 
-	projectRecord, _ := s.repo.GetProject(projectID)
-	workflowService := workflowapp.NewService(s.repo, s.repo.Publisher(), nil, policyapp.NewService(s.repo))
-	run, err := workflowService.StartWorkflow(ctx, workflowapp.StartWorkflowInput{
+	projectRecord, ok := s.repo.GetProject(projectID)
+	if !ok {
+		return PreviewRuntimeState{}, errors.New("projectapp: project not found after preview scope validation")
+	}
+	if s.startWorkflow == nil {
+		return PreviewRuntimeState{}, errors.New("projectapp: workflow starter is required")
+	}
+	run, err := s.startWorkflow(ctx, workflowapp.StartWorkflowInput{
 		OrganizationID: projectRecord.OrganizationID,
 		ProjectID:      projectID,
 		WorkflowType:   "preview.render_assembly",
