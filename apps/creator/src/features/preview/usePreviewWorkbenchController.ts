@@ -1,5 +1,5 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
-import type { CreatorTranslator } from "../../i18n";
+import type { CreatorTranslator, LocaleCode } from "../../i18n";
 import { buildPreviewAudioSummary, type PreviewAudioSummaryViewModel } from "../audio/audioWorkbench";
 import { loadAudioWorkbench } from "../audio/loadAudioWorkbench";
 import type { ActionFeedbackModel } from "../shared/ActionFeedback";
@@ -13,10 +13,12 @@ import type {
   PreviewShotOptionViewModel,
   PreviewWorkbenchViewModel,
 } from "./previewWorkbench";
+import { hydratePreviewDraftItemsFromLocale } from "./previewWorkbench";
 
 type UsePreviewWorkbenchControllerOptions = {
   enabled: boolean;
   projectId: string;
+  locale: LocaleCode;
   t: CreatorTranslator;
   orgId?: string;
   userId?: string;
@@ -42,6 +44,7 @@ function formatActionError(error: unknown, fallback: string) {
 export function usePreviewWorkbenchController({
   enabled,
   projectId,
+  locale,
   t,
   orgId,
   userId,
@@ -57,6 +60,10 @@ export function usePreviewWorkbenchController({
   const [selectedShotOptionId, setSelectedShotOptionId] = useState("");
   const [manualShotIdInput, setManualShotIdInput] = useState("");
   const draftIdRef = useRef(1);
+  const draftItemsRef = useRef<PreviewItemViewModel[]>([]);
+  const previewWorkbenchRef = useRef<PreviewWorkbenchViewModel | null>(null);
+  const shotOptionsRef = useRef<PreviewShotOptionViewModel[]>([]);
+  const hydratedScopeKeyRef = useRef<string | null>(null);
   const {
     assetProvenanceDetail,
     assetProvenancePending,
@@ -71,8 +78,21 @@ export function usePreviewWorkbenchController({
   });
 
   useEffect(() => {
+    draftItemsRef.current = draftItems;
+  }, [draftItems]);
+
+  useEffect(() => {
+    previewWorkbenchRef.current = previewWorkbench;
+  }, [previewWorkbench]);
+
+  useEffect(() => {
+    shotOptionsRef.current = shotOptions;
+  }, [shotOptions]);
+
+  useEffect(() => {
     if (!enabled) {
       resetAssetProvenance();
+      hydratedScopeKeyRef.current = null;
       startTransition(() => {
         setPreviewWorkbench(null);
         setDraftItems([]);
@@ -90,15 +110,18 @@ export function usePreviewWorkbenchController({
 
     let cancelled = false;
     resetAssetProvenance();
+    const scopeKey = [projectId, orgId ?? "", userId ?? ""].join(":");
 
     Promise.allSettled([
       loadPreviewWorkbench({
         projectId,
+        displayLocale: locale,
         orgId,
         userId,
       }),
       loadPreviewShotOptions({
         projectId,
+        displayLocale: locale,
         orgId,
         userId,
       }),
@@ -112,11 +135,22 @@ export function usePreviewWorkbenchController({
         return;
       }
 
+      const isHydratingExistingScope = hydratedScopeKeyRef.current === scopeKey;
+      const hasExistingPreviewWorkbench = previewWorkbenchRef.current !== null;
+      const hasExistingShotOptions = shotOptionsRef.current.length > 0;
+
       if (previewResult.status === "rejected") {
         const message =
           previewResult.reason instanceof Error
             ? previewResult.reason.message
             : "creator: unknown preview workbench error";
+        if (isHydratingExistingScope && hasExistingPreviewWorkbench) {
+          startTransition(() => {
+            setFeedback(null);
+            setErrorMessage("");
+          });
+          return;
+        }
         startTransition(() => {
           setPreviewWorkbench(null);
           setDraftItems([]);
@@ -133,27 +167,42 @@ export function usePreviewWorkbenchController({
 
       startTransition(() => {
         setPreviewWorkbench(previewResult.value);
-        setDraftItems(buildOrderedDraftItems(previewResult.value.items));
+        const nextShotOptions =
+          shotOptionsResult.status === "fulfilled" ? shotOptionsResult.value : [];
+        if (isHydratingExistingScope) {
+          setDraftItems(
+            hydratePreviewDraftItemsFromLocale({
+              draftItems: draftItemsRef.current,
+              localizedItems: previewResult.value.items,
+              shotOptions: nextShotOptions,
+            }),
+          );
+        } else {
+          setDraftItems(buildOrderedDraftItems(previewResult.value.items));
+        }
         setFeedback(null);
         setErrorMessage("");
+        hydratedScopeKeyRef.current = scopeKey;
 
         if (shotOptionsResult.status === "fulfilled") {
-          setShotOptions(shotOptionsResult.value);
+          setShotOptions(nextShotOptions);
           setShotOptionsErrorMessage("");
           setSelectedShotOptionId((currentValue) => {
-            if (shotOptionsResult.value.some((option) => option.shotId === currentValue)) {
+            if (nextShotOptions.some((option) => option.shotId === currentValue)) {
               return currentValue;
             }
-            return shotOptionsResult.value[0]?.shotId ?? "";
+            return nextShotOptions[0]?.shotId ?? "";
           });
         } else {
           const message =
             shotOptionsResult.reason instanceof Error
               ? shotOptionsResult.reason.message
               : "creator: unknown preview shot options error";
-          setShotOptions([]);
           setShotOptionsErrorMessage(message);
-          setSelectedShotOptionId("");
+          if (!isHydratingExistingScope || !hasExistingShotOptions) {
+            setShotOptions([]);
+            setSelectedShotOptionId("");
+          }
         }
 
         if (audioResult.status === "fulfilled") {
@@ -173,7 +222,7 @@ export function usePreviewWorkbenchController({
     return () => {
       cancelled = true;
     };
-  }, [enabled, orgId, projectId, resetAssetProvenance, t, userId]);
+  }, [enabled, locale, orgId, projectId, resetAssetProvenance, t, userId]);
 
   const handleAddItemFromChooser = useCallback(() => {
     if (!previewWorkbench || !selectedShotOptionId) {
@@ -274,9 +323,17 @@ export function usePreviewWorkbenchController({
         orgId,
         userId,
       });
+      const hydratedSavedItems = hydratePreviewDraftItemsFromLocale({
+        draftItems: buildOrderedDraftItems(nextWorkbench.items),
+        localizedItems: draftItems,
+        shotOptions,
+      });
       startTransition(() => {
-        setPreviewWorkbench(nextWorkbench);
-        setDraftItems(buildOrderedDraftItems(nextWorkbench.items));
+        setPreviewWorkbench({
+          ...nextWorkbench,
+          items: hydratedSavedItems,
+        });
+        setDraftItems(hydratedSavedItems);
         setFeedback({
           tone: "success",
           message: t("feedback.success.savePreview"),

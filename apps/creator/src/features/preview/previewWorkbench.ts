@@ -60,6 +60,107 @@ export type PreviewWorkbenchViewModel = {
   items: PreviewItemViewModel[];
 };
 
+function buildOrderedDraftItems(items: PreviewItemViewModel[]) {
+  return items.map((item, index) => ({
+    ...item,
+    sequence: index + 1,
+  }));
+}
+
+function resolveHydratedAssetSummary({
+  item,
+  localizedItem,
+  shotOption,
+}: {
+  item: PreviewItemViewModel;
+  localizedItem: PreviewItemViewModel | null;
+  shotOption: PreviewShotOptionViewModel | null;
+}) {
+  if (!item.primaryAssetId) {
+    return null;
+  }
+  if (localizedItem?.primaryAssetSummary?.assetId === item.primaryAssetId) {
+    return localizedItem.primaryAssetSummary;
+  }
+  if (shotOption?.currentPrimaryAssetSummary?.assetId === item.primaryAssetId) {
+    return shotOption.currentPrimaryAssetSummary;
+  }
+  return item.primaryAssetSummary;
+}
+
+function resolveHydratedRunSummary({
+  item,
+  localizedItem,
+  shotOption,
+}: {
+  item: PreviewItemViewModel;
+  localizedItem: PreviewItemViewModel | null;
+  shotOption: PreviewShotOptionViewModel | null;
+}) {
+  if (!item.sourceRunId) {
+    return null;
+  }
+  if (localizedItem?.sourceRunSummary?.runId === item.sourceRunId) {
+    return localizedItem.sourceRunSummary;
+  }
+  if (shotOption?.latestRunSummary?.runId === item.sourceRunId) {
+    return shotOption.latestRunSummary;
+  }
+  return item.sourceRunSummary;
+}
+
+export function hydratePreviewDraftItemsFromLocale({
+  draftItems,
+  localizedItems,
+  shotOptions,
+}: {
+  draftItems: PreviewItemViewModel[];
+  localizedItems: PreviewItemViewModel[];
+  shotOptions: PreviewShotOptionViewModel[];
+}) {
+  const localizedItemByItemId = new Map(
+    localizedItems
+      .filter((item) => item.itemId && !item.itemId.startsWith("draft-"))
+      .map((item) => [item.itemId, item] as const),
+  );
+  const firstLocalizedItemByShotId = new Map<string, PreviewItemViewModel>();
+  for (const localizedItem of localizedItems) {
+    if (!firstLocalizedItemByShotId.has(localizedItem.shotId)) {
+      firstLocalizedItemByShotId.set(localizedItem.shotId, localizedItem);
+    }
+  }
+  const shotOptionByShotId = new Map(shotOptions.map((option) => [option.shotId, option] as const));
+
+  return buildOrderedDraftItems(
+    draftItems.map((item) => {
+      const localizedItemFromItemId = localizedItemByItemId.get(item.itemId) ?? null;
+      const localizedItemFromShotId = firstLocalizedItemByShotId.get(item.shotId) ?? null;
+      // locale 切换后的 hydration 先尽量保留“同 item + 同 shot”的精确命中；
+      // 如果保存后服务端重编了 itemId，则退回到按 shotId 重刷水合；
+      // 只有在没有更好命中的情况下，才保留按旧 itemId 找到的摘要。
+      const localizedItem =
+        localizedItemFromItemId?.shotId === item.shotId
+          ? localizedItemFromItemId
+          : localizedItemFromShotId ?? localizedItemFromItemId;
+      const shotOption = shotOptionByShotId.get(item.shotId) ?? null;
+      return {
+        ...item,
+        shotSummary: localizedItem?.shotSummary ?? shotOption?.shotSummary ?? item.shotSummary,
+        primaryAssetSummary: resolveHydratedAssetSummary({
+          item,
+          localizedItem,
+          shotOption,
+        }),
+        sourceRunSummary: resolveHydratedRunSummary({
+          item,
+          localizedItem,
+          shotOption,
+        }),
+      };
+    }),
+  );
+}
+
 type PreviewAssemblyPayload = {
   assemblyId?: string;
   projectId?: string;

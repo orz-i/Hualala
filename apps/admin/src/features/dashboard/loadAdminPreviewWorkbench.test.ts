@@ -81,12 +81,14 @@ describe("loadAdminPreviewWorkbench", () => {
 
     const result = await loadAdminPreviewWorkbench({
       projectId: "project-1",
+      displayLocale: "en-US",
       orgId: "org-1",
       userId: "user-1",
     });
 
     expect(getPreviewWorkbenchMock).toHaveBeenCalledWith({
       projectId: "project-1",
+      displayLocale: "en-US",
     });
     expect(result.summary.itemCount).toBe(2);
     expect(result.summary.missingPrimaryAssetCount).toBe(1);

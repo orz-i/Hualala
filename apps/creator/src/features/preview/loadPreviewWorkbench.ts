@@ -3,6 +3,7 @@ import { normalizePreviewWorkbench, type PreviewWorkbenchViewModel } from "./pre
 
 type LoadPreviewWorkbenchOptions = {
   projectId: string;
+  displayLocale?: string;
   orgId?: string;
   userId?: string;
   baseUrl?: string;
@@ -53,6 +54,7 @@ type GetPreviewWorkbenchResponse = {
 
 export async function loadPreviewWorkbench({
   projectId,
+  displayLocale,
   orgId,
   userId,
   baseUrl,
@@ -69,6 +71,7 @@ export async function loadPreviewWorkbench({
 
   const payload = (await client.getPreviewWorkbench({
     projectId,
+    ...(displayLocale ? { displayLocale } : {}),
   })) as GetPreviewWorkbenchResponse;
 
   return normalizePreviewWorkbench(

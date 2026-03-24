@@ -8,6 +8,7 @@ import {
 type LoadPreviewShotOptionsOptions = {
   projectId: string;
   episodeId?: string;
+  displayLocale?: string;
   orgId?: string;
   userId?: string;
   baseUrl?: string;
@@ -89,6 +90,7 @@ function normalizePreviewRunSummary(
 export async function loadPreviewShotOptions({
   projectId,
   episodeId,
+  displayLocale,
   orgId,
   userId,
   baseUrl,
@@ -105,7 +107,8 @@ export async function loadPreviewShotOptions({
 
   const payload = (await client.listPreviewShotOptions({
     projectId,
-    episodeId,
+    ...(episodeId ? { episodeId } : {}),
+    ...(displayLocale ? { displayLocale } : {}),
   })) as ListPreviewShotOptionsResponse;
 
   return (payload.options ?? []).map((option) => {

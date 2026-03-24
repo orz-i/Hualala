@@ -3,6 +3,7 @@ import { normalizeAdminPreviewWorkbench, type AdminPreviewWorkbenchViewModel } f
 
 type LoadAdminPreviewWorkbenchOptions = {
   projectId: string;
+  displayLocale?: string;
   orgId?: string;
   userId?: string;
   baseUrl?: string;
@@ -53,6 +54,7 @@ type GetPreviewWorkbenchResponse = {
 
 export async function loadAdminPreviewWorkbench({
   projectId,
+  displayLocale,
   orgId,
   userId,
   baseUrl,
@@ -69,6 +71,7 @@ export async function loadAdminPreviewWorkbench({
 
   const payload = (await client.getPreviewWorkbench({
     projectId,
+    ...(displayLocale ? { displayLocale } : {}),
   })) as GetPreviewWorkbenchResponse;
 
   return normalizeAdminPreviewWorkbench(

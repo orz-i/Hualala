@@ -63,6 +63,11 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function readDisplayLocale(route: Route) {
+  const body = route.request().postDataJSON() as { displayLocale?: string } | null;
+  return body?.displayLocale ?? "zh-CN";
+}
+
 function shouldUseAdminSession(scenario: MockConnectScenario) {
   return Boolean(
     scenario.admin ||
@@ -192,13 +197,17 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
 
     if ((scenario.preview || scenario.audio || scenario.admin) &&
       pathname === "/hualala.project.v1.ProjectService/GetPreviewWorkbench") {
-      await route.fulfill(jsonResponse(200, buildPreviewWorkbenchPayload(previewState)));
+      await route.fulfill(
+        jsonResponse(200, buildPreviewWorkbenchPayload(previewState, readDisplayLocale(route))),
+      );
       return;
     }
 
     if ((scenario.preview || scenario.admin) &&
       pathname === "/hualala.project.v1.ProjectService/ListPreviewShotOptions") {
-      await route.fulfill(jsonResponse(200, buildPreviewShotOptionsPayload(previewState)));
+      await route.fulfill(
+        jsonResponse(200, buildPreviewShotOptionsPayload(previewState, readDisplayLocale(route))),
+      );
       return;
     }
 
@@ -259,7 +268,9 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         }>;
       };
       previewState = upsertPreviewAssemblyState(previewState, body);
-      await route.fulfill(jsonResponse(200, buildPreviewWorkbenchPayload(previewState)));
+      await route.fulfill(
+        jsonResponse(200, buildPreviewWorkbenchPayload(previewState, readDisplayLocale(route))),
+      );
       return;
     }
 

@@ -142,6 +142,7 @@ export function App() {
     sessionState: sessionGate.sessionState,
     enabled: routeState.route === "preview",
     projectId,
+    locale,
     effectiveOrgId: sessionGate.effectiveOrgId,
     effectiveUserId: sessionGate.effectiveUserId,
     t,

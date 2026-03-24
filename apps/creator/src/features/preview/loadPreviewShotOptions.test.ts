@@ -50,12 +50,14 @@ describe("loadPreviewShotOptions", () => {
 
     const result = await loadPreviewShotOptions({
       projectId: "project-1",
+      displayLocale: "en-US",
       orgId: "org-1",
       userId: "user-1",
     });
 
     expect(listPreviewShotOptionsMock).toHaveBeenCalledWith({
       projectId: "project-1",
+      displayLocale: "en-US",
     });
     expect(result).toEqual([
       expect.objectContaining({

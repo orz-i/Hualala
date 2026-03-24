@@ -17,19 +17,22 @@
    - 当前 assembly 状态
    - 音频摘要卡
    - `Shot Chooser`
-3. 通过 chooser 选择镜头后，点击 `从镜头目录追加`
-4. 新条目会直接显示：
+3. 页面不会新增 preview 专属 locale picker，而是直接跟随 app 全局 locale。
+   - 当全局 locale 从 `zh-CN` 切到 `en-US` 时，`scene_title / shot_title` 和 chooser 元数据会重新拉取
+   - 当前未保存的条目顺序、增删结果、已选 chooser 项和手动 `shotId` 输入不会被重置
+4. 通过 chooser 选择镜头后，点击 `从镜头目录追加`
+5. 新条目会直接显示：
    - `scene_code / shot_code`
    - `scene_title / shot_title`
    - `primary_asset` 摘要
    - `source_run` 摘要
-5. 允许继续做：
+6. 允许继续做：
    - 上移 / 下移
    - 删除
    - 保存预演装配
    - 打开镜头工作台
    - 查看素材来源
-6. 如果 chooser 暂时失败，页面仍会保留已有 assembly，并显示独立 chooser 错误；次级路径可手动输入 `shotId`
+7. 如果 chooser 暂时失败，页面仍会保留已有 assembly，并显示独立 chooser 错误；次级路径可手动输入 `shotId`
 
 ## Admin 路径
 
@@ -39,12 +42,13 @@
    - 预演条目数
    - 缺失主素材的条目数
    - 缺失来源运行摘要的条目数
-3. 每个条目都按 metadata-first 方式展示：
+3. admin 也直接跟随 app 全局 locale；切换后只刷新 `scene_title / shot_title` 等 locale-sensitive 摘要，不改变只读审计语义。
+4. 每个条目都按 metadata-first 方式展示：
    - `scene_code / shot_code`
    - `scene_title / shot_title`
    - `primary_asset` 摘要
    - `source_run` 摘要
-4. admin 保持只读，只能查看 provenance，不允许改 assembly
+5. admin 保持只读，只能查看 provenance，不允许改 assembly
 
 ## 验证命令
 
@@ -59,5 +63,7 @@
 ## 已知边界
 
 - chooser 默认按 project-only scope 工作，当前 UI 不提供 `episode_id` picker
-- 当前页面还没有显式 locale 切换控件；但如果调用链传入 `display_locale` 且存在 `snapshot_kind=title`，scene / shot 标题会返回 localized title
+- 当前页面没有 preview 专属 locale 切换控件，只消费 app 全局 locale
+- 只有 `scene / shot` 标题会跟随 locale 变化；`project_title / episode_title` 继续保持当前存储值
+- 若缺少 `snapshot_kind=title` 翻译快照，后端会回退到源标题，页面不额外报错
 - `UpsertPreviewAssembly` 写入 shape 不变，仍只保存 `shotId / primaryAssetId / sourceRunId / sequence`
