@@ -223,6 +223,141 @@ func TestListPreviewShotOptionsReturnsProjectScopedShotsWhenEpisodeIsEmpty(t *te
 	}
 }
 
+func TestPreviewMetadataResolvesLocalizedSceneAndShotTitles(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	fixture := seedPreviewProject(t, ctx, store)
+	service := NewService(store)
+
+	now := time.Now().UTC()
+	sceneID := fixture.SceneIDByShotID[fixture.ShotIDs[0]]
+
+	sceneSourceID := store.GenerateSnapshotID()
+	sceneGroupID := store.GenerateTranslationGroupID()
+	if err := store.SaveSnapshot(ctx, content.Snapshot{
+		ID:                 sceneSourceID,
+		OwnerType:          "scene",
+		OwnerID:            sceneID,
+		SnapshotKind:       "title",
+		Locale:             "zh-CN",
+		TranslationGroupID: sceneGroupID,
+		TranslationStatus:  "source",
+		Body:               "开场",
+		CreatedAt:          now,
+		UpdatedAt:          now,
+	}); err != nil {
+		t.Fatalf("SaveSnapshot(scene source) returned error: %v", err)
+	}
+	if err := store.SaveSnapshot(ctx, content.Snapshot{
+		ID:                 store.GenerateSnapshotID(),
+		OwnerType:          "scene",
+		OwnerID:            sceneID,
+		SnapshotKind:       "title",
+		Locale:             "en-US",
+		SourceSnapshotID:   sceneSourceID,
+		TranslationGroupID: sceneGroupID,
+		TranslationStatus:  "draft_translation",
+		Body:               "Opening",
+		CreatedAt:          now,
+		UpdatedAt:          now,
+	}); err != nil {
+		t.Fatalf("SaveSnapshot(scene localized) returned error: %v", err)
+	}
+
+	shotSourceID := store.GenerateSnapshotID()
+	shotGroupID := store.GenerateTranslationGroupID()
+	if err := store.SaveSnapshot(ctx, content.Snapshot{
+		ID:                 shotSourceID,
+		OwnerType:          "shot",
+		OwnerID:            fixture.ShotIDs[0],
+		SnapshotKind:       "title",
+		Locale:             "zh-CN",
+		TranslationGroupID: shotGroupID,
+		TranslationStatus:  "source",
+		Body:               fixture.ShotTitleByID[fixture.ShotIDs[0]],
+		CreatedAt:          now,
+		UpdatedAt:          now,
+	}); err != nil {
+		t.Fatalf("SaveSnapshot(shot source) returned error: %v", err)
+	}
+	if err := store.SaveSnapshot(ctx, content.Snapshot{
+		ID:                 store.GenerateSnapshotID(),
+		OwnerType:          "shot",
+		OwnerID:            fixture.ShotIDs[0],
+		SnapshotKind:       "title",
+		Locale:             "en-US",
+		SourceSnapshotID:   shotSourceID,
+		TranslationGroupID: shotGroupID,
+		TranslationStatus:  "draft_translation",
+		Body:               "First shot localized",
+		CreatedAt:          now,
+		UpdatedAt:          now,
+	}); err != nil {
+		t.Fatalf("SaveSnapshot(shot localized) returned error: %v", err)
+	}
+
+	if _, err := service.UpsertPreviewAssembly(ctx, UpsertPreviewAssemblyInput{
+		ProjectID: fixture.ProjectID,
+		EpisodeID: fixture.EpisodeID,
+		Status:    "ready",
+		Items: []PreviewAssemblyItemInput{
+			{
+				ShotID:         fixture.ShotIDs[0],
+				PrimaryAssetID: fixture.AssetIDByShotID[fixture.ShotIDs[0]],
+				SourceRunID:    fixture.LatestRunIDByShotID[fixture.ShotIDs[0]],
+				Sequence:       1,
+			},
+			{
+				ShotID:   fixture.ShotIDs[1],
+				Sequence: 2,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("UpsertPreviewAssembly returned error: %v", err)
+	}
+
+	updated, err := service.GetPreviewWorkbench(ctx, GetPreviewWorkbenchInput{
+		ProjectID:     fixture.ProjectID,
+		EpisodeID:     fixture.EpisodeID,
+		DisplayLocale: "en-US",
+	})
+	if err != nil {
+		t.Fatalf("GetPreviewWorkbench returned error: %v", err)
+	}
+	if got := updated.Items[0].Shot.SceneTitle; got != "Opening" {
+		t.Fatalf("expected localized scene title %q, got %q", "Opening", got)
+	}
+	if got := updated.Items[0].Shot.ShotTitle; got != "First shot localized" {
+		t.Fatalf("expected localized shot title %q, got %q", "First shot localized", got)
+	}
+	if got := updated.Items[0].Shot.ProjectTitle; got != "预演项目" {
+		t.Fatalf("expected project title to stay stored value %q, got %q", "预演项目", got)
+	}
+	if got := updated.Items[0].Shot.EpisodeTitle; got != "第一集" {
+		t.Fatalf("expected episode title to stay stored value %q, got %q", "第一集", got)
+	}
+	if got := updated.Items[1].Shot.ShotTitle; got != fixture.ShotTitleByID[fixture.ShotIDs[1]] {
+		t.Fatalf("expected missing localization to fall back to %q, got %q", fixture.ShotTitleByID[fixture.ShotIDs[1]], got)
+	}
+
+	options, err := service.ListPreviewShotOptions(ctx, ListPreviewShotOptionsInput{
+		ProjectID:     fixture.ProjectID,
+		DisplayLocale: "en-US",
+	})
+	if err != nil {
+		t.Fatalf("ListPreviewShotOptions returned error: %v", err)
+	}
+	if got := options[0].Shot.SceneTitle; got != "Opening" {
+		t.Fatalf("expected localized option scene title %q, got %q", "Opening", got)
+	}
+	if got := options[0].Shot.ShotTitle; got != "First shot localized" {
+		t.Fatalf("expected localized option shot title %q, got %q", "First shot localized", got)
+	}
+	if got := options[1].Shot.ShotTitle; got != fixture.ShotTitleByID[fixture.ShotIDs[1]] {
+		t.Fatalf("expected option fallback title %q, got %q", fixture.ShotTitleByID[fixture.ShotIDs[1]], got)
+	}
+}
+
 func TestListPreviewShotOptionsReturnsEmptyWhenEpisodeHasNoShots(t *testing.T) {
 	ctx := context.Background()
 	store := db.NewMemoryStore()
@@ -302,6 +437,7 @@ type previewFixture struct {
 	ProjectID           string
 	EpisodeID           string
 	ShotIDs             []string
+	SceneIDByShotID     map[string]string
 	ShotCodeByID        map[string]string
 	ShotTitleByID       map[string]string
 	ExecutionIDByShotID map[string]string
@@ -369,6 +505,7 @@ func seedPreviewProject(t *testing.T, ctx context.Context, store *db.MemoryStore
 	}
 
 	shotIDs := make([]string, 0, 3)
+	sceneIDByShotID := make(map[string]string, 3)
 	shotCodeByID := make(map[string]string, 3)
 	shotTitleByID := make(map[string]string, 3)
 	executionIDByShotID := make(map[string]string, 2)
@@ -393,6 +530,7 @@ func seedPreviewProject(t *testing.T, ctx context.Context, store *db.MemoryStore
 			t.Fatalf("SaveShot returned error: %v", err)
 		}
 		shotIDs = append(shotIDs, shotID)
+		sceneIDByShotID[shotID] = sceneIDs[index-1]
 		shotCodeByID[shotID] = code
 		shotTitleByID[shotID] = titles[index-1]
 		if index >= 3 {
@@ -465,6 +603,7 @@ func seedPreviewProject(t *testing.T, ctx context.Context, store *db.MemoryStore
 		ProjectID:           projectID,
 		EpisodeID:           episodeID,
 		ShotIDs:             shotIDs,
+		SceneIDByShotID:     sceneIDByShotID,
 		ShotCodeByID:        shotCodeByID,
 		ShotTitleByID:       shotTitleByID,
 		ExecutionIDByShotID: executionIDByShotID,

@@ -172,6 +172,7 @@ message ListEpisodesResponse {
 message GetPreviewWorkbenchRequest {
   string project_id = 1;
   string episode_id = 2;
+  string display_locale = 3;
 }
 
 message GetPreviewWorkbenchResponse {
@@ -181,6 +182,7 @@ message GetPreviewWorkbenchResponse {
 message ListPreviewShotOptionsRequest {
   string project_id = 1;
   string episode_id = 2;
+  string display_locale = 3;
 }
 
 message ListPreviewShotOptionsResponse {

@@ -486,7 +486,7 @@ func (p *PostgresPersister) loadProjectsEpisodesScenesShotsSnapshots(ctx context
 	}
 
 	snapshotRows, err := p.db.QueryContext(ctx, `
-		SELECT id::text, resource_type, resource_id::text, locale,
+		SELECT id::text, resource_type, resource_id::text, snapshot_kind, locale,
 		       COALESCE(source_snapshot_id::text, ''), translation_group_id::text,
 		       translation_status, body, created_at, updated_at
 		FROM content_snapshots
@@ -497,16 +497,17 @@ func (p *PostgresPersister) loadProjectsEpisodesScenesShotsSnapshots(ctx context
 	defer snapshotRows.Close()
 	for snapshotRows.Next() {
 		var (
-			id, ownerType, ownerID, locale, sourceSnapshotID, translationGroupID, translationStatus, body string
+			id, ownerType, ownerID, snapshotKind, locale, sourceSnapshotID, translationGroupID, translationStatus, body string
 			createdAt, updatedAt                                                                          time.Time
 		)
-		if err := snapshotRows.Scan(&id, &ownerType, &ownerID, &locale, &sourceSnapshotID, &translationGroupID, &translationStatus, &body, &createdAt, &updatedAt); err != nil {
+		if err := snapshotRows.Scan(&id, &ownerType, &ownerID, &snapshotKind, &locale, &sourceSnapshotID, &translationGroupID, &translationStatus, &body, &createdAt, &updatedAt); err != nil {
 			return fmt.Errorf("db: scan content snapshot: %w", err)
 		}
 		snapshot.Snapshots[id] = content.Snapshot{
 			ID:                 id,
 			OwnerType:          ownerType,
 			OwnerID:            ownerID,
+			SnapshotKind:       snapshotKind,
 			Locale:             locale,
 			SourceSnapshotID:   sourceSnapshotID,
 			TranslationGroupID: translationGroupID,
@@ -1239,8 +1240,8 @@ func (p *PostgresPersister) saveProjectsEpisodesScenesShotsSnapshots(ctx context
 			INSERT INTO content_snapshots (
 				id, resource_type, resource_id, snapshot_kind, locale, translation_group_id,
 				source_snapshot_id, translation_status, body, created_at, updated_at
-			) VALUES ($1, $2, $3, 'content', $4, $5, $6, $7, $8, $9, $10)
-		`, record.ID, record.OwnerType, record.OwnerID, record.Locale, normalizeSnapshotGroupID(record.TranslationGroupID), nullableUUID(record.SourceSnapshotID), defaultString(record.TranslationStatus, "source"), record.Body, record.CreatedAt, record.UpdatedAt); err != nil {
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		`, record.ID, record.OwnerType, record.OwnerID, defaultString(strings.TrimSpace(record.SnapshotKind), content.SnapshotKindContent), record.Locale, normalizeSnapshotGroupID(record.TranslationGroupID), nullableUUID(record.SourceSnapshotID), defaultString(record.TranslationStatus, "source"), record.Body, record.CreatedAt, record.UpdatedAt); err != nil {
 			return fmt.Errorf("db: insert content snapshot %s: %w", record.ID, err)
 		}
 	}

@@ -59,5 +59,5 @@
 ## 已知边界
 
 - chooser 默认按 project-only scope 工作，当前 UI 不提供 `episode_id` picker
-- scene / shot 标题仍只消费当前存储标题，不做 locale 切换
+- 当前页面还没有显式 locale 切换控件；但如果调用链传入 `display_locale` 且存在 `snapshot_kind=title`，scene / shot 标题会返回 localized title
 - `UpsertPreviewAssembly` 写入 shape 不变，仍只保存 `shotId / primaryAssetId / sourceRunId / sequence`

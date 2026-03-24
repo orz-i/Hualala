@@ -82,6 +82,7 @@ type ProjectContentRepository interface {
 	SaveSnapshot(ctx context.Context, record content.Snapshot) error
 	GetSnapshot(snapshotID string) (content.Snapshot, bool)
 	ListSnapshotsByOwner(ownerType string, ownerID string) []content.Snapshot
+	ListSnapshotsByOwners(ownerType string, ownerIDs []string) []content.Snapshot
 
 	GenerateCollaborationSessionID() string
 	SaveCollaborationSession(ctx context.Context, record content.CollaborationSession) error
@@ -559,6 +560,37 @@ func (s *MemoryStore) ListSnapshotsByOwner(ownerType string, ownerID string) []c
 	}
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].ID < items[j].ID
+	})
+	return items
+}
+
+func (s *MemoryStore) ListSnapshotsByOwners(ownerType string, ownerIDs []string) []content.Snapshot {
+	if len(ownerIDs) == 0 {
+		return nil
+	}
+	allowed := make(map[string]struct{}, len(ownerIDs))
+	for _, ownerID := range ownerIDs {
+		normalizedOwnerID := strings.TrimSpace(ownerID)
+		if normalizedOwnerID == "" {
+			continue
+		}
+		allowed[normalizedOwnerID] = struct{}{}
+	}
+	items := make([]content.Snapshot, 0)
+	for _, record := range s.Snapshots {
+		if record.OwnerType != ownerType {
+			continue
+		}
+		if _, ok := allowed[record.OwnerID]; !ok {
+			continue
+		}
+		items = append(items, record)
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].OwnerID == items[j].OwnerID {
+			return items[i].ID < items[j].ID
+		}
+		return items[i].OwnerID < items[j].OwnerID
 	})
 	return items
 }

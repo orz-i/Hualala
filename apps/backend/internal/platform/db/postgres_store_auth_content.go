@@ -701,17 +701,18 @@ func (s *PostgresStore) SaveSnapshot(ctx context.Context, record content.Snapsho
 		INSERT INTO content_snapshots (
 			id, resource_type, resource_id, snapshot_kind, locale, translation_group_id,
 			source_snapshot_id, translation_status, body, created_at, updated_at
-		) VALUES ($1, $2, $3, 'content', $4, $5, $6, $7, $8, $9, $10)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (id) DO UPDATE
 		SET resource_type = EXCLUDED.resource_type,
 		    resource_id = EXCLUDED.resource_id,
+		    snapshot_kind = EXCLUDED.snapshot_kind,
 		    locale = EXCLUDED.locale,
 		    translation_group_id = EXCLUDED.translation_group_id,
 		    source_snapshot_id = EXCLUDED.source_snapshot_id,
 		    translation_status = EXCLUDED.translation_status,
 		    body = EXCLUDED.body,
 		    updated_at = EXCLUDED.updated_at
-	`, record.ID, record.OwnerType, record.OwnerID, record.Locale, normalizeSnapshotGroupID(record.TranslationGroupID), nullableUUID(record.SourceSnapshotID), defaultString(record.TranslationStatus, "source"), record.Body, record.CreatedAt, record.UpdatedAt)
+	`, record.ID, record.OwnerType, record.OwnerID, defaultString(strings.TrimSpace(record.SnapshotKind), content.SnapshotKindContent), record.Locale, normalizeSnapshotGroupID(record.TranslationGroupID), nullableUUID(record.SourceSnapshotID), defaultString(record.TranslationStatus, "source"), record.Body, record.CreatedAt, record.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("db: upsert content snapshot %s: %w", record.ID, err)
 	}
@@ -724,7 +725,7 @@ func (s *PostgresStore) GetSnapshot(snapshotID string) (content.Snapshot, bool) 
 	}
 	record := content.Snapshot{}
 	err := s.db.QueryRowContext(context.Background(), `
-		SELECT id::text, resource_type, resource_id::text, locale,
+		SELECT id::text, resource_type, resource_id::text, snapshot_kind, locale,
 		       COALESCE(source_snapshot_id::text, ''), translation_group_id::text,
 		       translation_status, body, created_at, updated_at
 		FROM content_snapshots
@@ -733,6 +734,7 @@ func (s *PostgresStore) GetSnapshot(snapshotID string) (content.Snapshot, bool) 
 		&record.ID,
 		&record.OwnerType,
 		&record.OwnerID,
+		&record.SnapshotKind,
 		&record.Locale,
 		&record.SourceSnapshotID,
 		&record.TranslationGroupID,
@@ -754,7 +756,7 @@ func (s *PostgresStore) ListSnapshotsByOwner(ownerType string, ownerID string) [
 		return nil
 	}
 	rows, err := s.db.QueryContext(context.Background(), `
-		SELECT id::text, resource_type, resource_id::text, locale,
+		SELECT id::text, resource_type, resource_id::text, snapshot_kind, locale,
 		       COALESCE(source_snapshot_id::text, ''), translation_group_id::text,
 		       translation_status, body, created_at, updated_at
 		FROM content_snapshots
@@ -769,7 +771,48 @@ func (s *PostgresStore) ListSnapshotsByOwner(ownerType string, ownerID string) [
 	items := make([]content.Snapshot, 0)
 	for rows.Next() {
 		var record content.Snapshot
-		if err := rows.Scan(&record.ID, &record.OwnerType, &record.OwnerID, &record.Locale, &record.SourceSnapshotID, &record.TranslationGroupID, &record.TranslationStatus, &record.Body, &record.CreatedAt, &record.UpdatedAt); err != nil {
+		if err := rows.Scan(&record.ID, &record.OwnerType, &record.OwnerID, &record.SnapshotKind, &record.Locale, &record.SourceSnapshotID, &record.TranslationGroupID, &record.TranslationStatus, &record.Body, &record.CreatedAt, &record.UpdatedAt); err != nil {
+			return nil
+		}
+		record.CreatedAt = record.CreatedAt.UTC()
+		record.UpdatedAt = record.UpdatedAt.UTC()
+		items = append(items, record)
+	}
+	return items
+}
+
+func (s *PostgresStore) ListSnapshotsByOwners(ownerType string, ownerIDs []string) []content.Snapshot {
+	if s == nil || s.db == nil {
+		return nil
+	}
+	normalizedOwnerIDs := make([]string, 0, len(ownerIDs))
+	for _, ownerID := range ownerIDs {
+		normalizedOwnerID := strings.TrimSpace(ownerID)
+		if normalizedOwnerID == "" {
+			continue
+		}
+		normalizedOwnerIDs = append(normalizedOwnerIDs, normalizedOwnerID)
+	}
+	if len(normalizedOwnerIDs) == 0 {
+		return nil
+	}
+	rows, err := s.db.QueryContext(context.Background(), `
+		SELECT id::text, resource_type, resource_id::text, snapshot_kind, locale,
+		       COALESCE(source_snapshot_id::text, ''), translation_group_id::text,
+		       translation_status, body, created_at, updated_at
+		FROM content_snapshots
+		WHERE resource_type = $1 AND resource_id = ANY($2)
+		ORDER BY resource_id ASC, id ASC
+	`, strings.TrimSpace(ownerType), pq.Array(normalizedOwnerIDs))
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	items := make([]content.Snapshot, 0)
+	for rows.Next() {
+		var record content.Snapshot
+		if err := rows.Scan(&record.ID, &record.OwnerType, &record.OwnerID, &record.SnapshotKind, &record.Locale, &record.SourceSnapshotID, &record.TranslationGroupID, &record.TranslationStatus, &record.Body, &record.CreatedAt, &record.UpdatedAt); err != nil {
 			return nil
 		}
 		record.CreatedAt = record.CreatedAt.UTC()

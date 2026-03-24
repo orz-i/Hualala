@@ -2,6 +2,11 @@ package content
 
 import "time"
 
+const (
+	SnapshotKindContent = "content"
+	SnapshotKindTitle   = "title"
+)
+
 type Scene struct {
 	ID           string
 	ProjectID    string
@@ -29,6 +34,7 @@ type Snapshot struct {
 	ID                 string
 	OwnerType          string
 	OwnerID            string
+	SnapshotKind       string
 	Locale             string
 	SourceSnapshotID   string
 	TranslationGroupID string

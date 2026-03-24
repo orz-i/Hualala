@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hualala/apps/backend/internal/application/titlelocalization"
 	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
@@ -20,6 +21,8 @@ type previewMetadataLookups struct {
 	assetByID         map[string]asset.MediaAsset
 	executionByShotID map[string]execution.ShotExecution
 	runsByExecutionID map[string][]execution.ShotExecutionRun
+	sceneTitleByID    map[string]string
+	shotTitleByID     map[string]string
 }
 
 func (s *Service) ListPreviewShotOptions(_ context.Context, input ListPreviewShotOptionsInput) ([]PreviewShotOption, error) {
@@ -41,7 +44,7 @@ func (s *Service) ListPreviewShotOptions(_ context.Context, input ListPreviewSho
 		orderedShots = append(orderedShots, shots...)
 	}
 
-	lookups := s.buildPreviewMetadataLookups(projectRecord, sceneRecords, orderedShots, collectShotIDs(orderedShots), nil)
+	lookups := s.buildPreviewMetadataLookups(projectRecord, sceneRecords, orderedShots, collectShotIDs(orderedShots), nil, input.DisplayLocale)
 	options := make([]PreviewShotOption, 0, len(orderedShots))
 	for _, shotRecord := range orderedShots {
 		sceneRecord, ok := lookups.sceneByID[shotRecord.SceneID]
@@ -63,7 +66,7 @@ func (s *Service) ListPreviewShotOptions(_ context.Context, input ListPreviewSho
 	return options, nil
 }
 
-func (s *Service) buildPreviewWorkbench(record project.PreviewAssembly) PreviewWorkbench {
+func (s *Service) buildPreviewWorkbench(record project.PreviewAssembly, displayLocale string) PreviewWorkbench {
 	projectRecord, _ := s.repo.GetProject(record.ProjectID)
 	items := s.repo.ListPreviewAssemblyItems(record.ID)
 	lookups := s.buildPreviewMetadataLookups(
@@ -72,6 +75,7 @@ func (s *Service) buildPreviewWorkbench(record project.PreviewAssembly) PreviewW
 		nil,
 		collectPreviewItemShotIDs(items),
 		collectPreviewItemAssetIDs(items),
+		displayLocale,
 	)
 
 	aggregatedItems := make([]PreviewAssemblyItemState, 0, len(items))
@@ -128,6 +132,7 @@ func (s *Service) buildPreviewMetadataLookups(
 	shotRecords []content.Shot,
 	shotIDs []string,
 	assetIDs []string,
+	displayLocale string,
 ) previewMetadataLookups {
 	lookups := previewMetadataLookups{
 		projectRecord:     projectRecord,
@@ -137,6 +142,8 @@ func (s *Service) buildPreviewMetadataLookups(
 		assetByID:         make(map[string]asset.MediaAsset),
 		executionByShotID: make(map[string]execution.ShotExecution),
 		runsByExecutionID: make(map[string][]execution.ShotExecutionRun),
+		sceneTitleByID:    make(map[string]string),
+		shotTitleByID:     make(map[string]string),
 	}
 
 	if len(shotRecords) == 0 && len(shotIDs) > 0 {
@@ -178,6 +185,8 @@ func (s *Service) buildPreviewMetadataLookups(
 	for _, runRecord := range s.repo.ListShotExecutionRunsByExecutionIDs(uniqueNonEmptyStrings(executionIDs)) {
 		lookups.runsByExecutionID[runRecord.ShotExecutionID] = append(lookups.runsByExecutionID[runRecord.ShotExecutionID], runRecord)
 	}
+	lookups.sceneTitleByID = titlelocalization.TitlesByOwnerID(s.repo.ListSnapshotsByOwners("scene", collectSceneIDsFromShotsMap(lookups.shotByID)), displayLocale)
+	lookups.shotTitleByID = titlelocalization.TitlesByOwnerID(s.repo.ListSnapshotsByOwners("shot", collectShotIDsFromMap(lookups.shotByID)), displayLocale)
 	return lookups
 }
 
@@ -191,10 +200,10 @@ func (s *Service) buildPreviewShotSummary(
 		ProjectTitle: lookups.projectRecord.Title,
 		SceneID:      sceneRecord.ID,
 		SceneCode:    sceneRecord.Code,
-		SceneTitle:   strings.TrimSpace(sceneRecord.Title),
+		SceneTitle:   titlelocalization.ResolveTitle(lookups.sceneTitleByID, sceneRecord.ID, sceneRecord.Title),
 		ShotID:       shotRecord.ID,
 		ShotCode:     shotRecord.Code,
-		ShotTitle:    strings.TrimSpace(shotRecord.Title),
+		ShotTitle:    titlelocalization.ResolveTitle(lookups.shotTitleByID, shotRecord.ID, shotRecord.Title),
 	}
 	if episodeRecord, ok := lookups.episodeByID[sceneRecord.EpisodeID]; ok {
 		summary.EpisodeID = episodeRecord.ID

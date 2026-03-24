@@ -184,6 +184,7 @@ type ContentSnapshot struct {
 	TranslationGroupId string                 `protobuf:"bytes,6,opt,name=translation_group_id,json=translationGroupId,proto3" json:"translation_group_id,omitempty"`
 	TranslationStatus  string                 `protobuf:"bytes,7,opt,name=translation_status,json=translationStatus,proto3" json:"translation_status,omitempty"`
 	Body               string                 `protobuf:"bytes,8,opt,name=body,proto3" json:"body,omitempty"`
+	SnapshotKind       string                 `protobuf:"bytes,9,opt,name=snapshot_kind,json=snapshotKind,proto3" json:"snapshot_kind,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -270,6 +271,13 @@ func (x *ContentSnapshot) GetTranslationStatus() string {
 func (x *ContentSnapshot) GetBody() string {
 	if x != nil {
 		return x.Body
+	}
+	return ""
+}
+
+func (x *ContentSnapshot) GetSnapshotKind() string {
+	if x != nil {
+		return x.SnapshotKind
 	}
 	return ""
 }
@@ -1192,6 +1200,7 @@ type CreateContentSnapshotRequest struct {
 	OwnerId       string                 `protobuf:"bytes,2,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
 	ContentLocale string                 `protobuf:"bytes,3,opt,name=content_locale,json=contentLocale,proto3" json:"content_locale,omitempty"`
 	Body          string                 `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"`
+	SnapshotKind  string                 `protobuf:"bytes,5,opt,name=snapshot_kind,json=snapshotKind,proto3" json:"snapshot_kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1254,6 +1263,13 @@ func (x *CreateContentSnapshotRequest) GetBody() string {
 	return ""
 }
 
+func (x *CreateContentSnapshotRequest) GetSnapshotKind() string {
+	if x != nil {
+		return x.SnapshotKind
+	}
+	return ""
+}
+
 type CreateContentSnapshotResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Snapshot      *ContentSnapshot       `protobuf:"bytes,1,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
@@ -1303,6 +1319,7 @@ type CreateLocalizedSnapshotRequest struct {
 	SourceSnapshotId string                 `protobuf:"bytes,1,opt,name=source_snapshot_id,json=sourceSnapshotId,proto3" json:"source_snapshot_id,omitempty"`
 	ContentLocale    string                 `protobuf:"bytes,2,opt,name=content_locale,json=contentLocale,proto3" json:"content_locale,omitempty"`
 	Body             string                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	SnapshotKind     string                 `protobuf:"bytes,4,opt,name=snapshot_kind,json=snapshotKind,proto3" json:"snapshot_kind,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1354,6 +1371,13 @@ func (x *CreateLocalizedSnapshotRequest) GetContentLocale() string {
 func (x *CreateLocalizedSnapshotRequest) GetBody() string {
 	if x != nil {
 		return x.Body
+	}
+	return ""
+}
+
+func (x *CreateLocalizedSnapshotRequest) GetSnapshotKind() string {
+	if x != nil {
+		return x.SnapshotKind
 	}
 	return ""
 }
@@ -1755,7 +1779,7 @@ const file_hualala_content_v1_content_proto_rawDesc = "" +
 	"\bscene_id\x18\x02 \x01(\tR\asceneId\x12\x12\n" +
 	"\x04code\x18\x03 \x01(\tR\x04code\x12\x14\n" +
 	"\x05title\x18\x04 \x01(\tR\x05title\x12#\n" +
-	"\rsource_locale\x18\x05 \x01(\tR\fsourceLocale\"\x96\x02\n" +
+	"\rsource_locale\x18\x05 \x01(\tR\fsourceLocale\"\xbb\x02\n" +
 	"\x0fContentSnapshot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1765,7 +1789,8 @@ const file_hualala_content_v1_content_proto_rawDesc = "" +
 	"\x12source_snapshot_id\x18\x05 \x01(\tR\x10sourceSnapshotId\x120\n" +
 	"\x14translation_group_id\x18\x06 \x01(\tR\x12translationGroupId\x12-\n" +
 	"\x12translation_status\x18\a \x01(\tR\x11translationStatus\x12\x12\n" +
-	"\x04body\x18\b \x01(\tR\x04body\"\x8c\x02\n" +
+	"\x04body\x18\b \x01(\tR\x04body\x12#\n" +
+	"\rsnapshot_kind\x18\t \x01(\tR\fsnapshotKind\"\x8c\x02\n" +
 	"\x15CollaborationPresence\x12\x1f\n" +
 	"\vpresence_id\x18\x01 \x01(\tR\n" +
 	"presenceId\x12\x1d\n" +
@@ -1836,19 +1861,21 @@ const file_hualala_content_v1_content_proto_rawDesc = "" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12%\n" +
 	"\x0econtent_locale\x18\x03 \x01(\tR\rcontentLocale\"K\n" +
 	"\x1bUpdateShotStructureResponse\x12,\n" +
-	"\x04shot\x18\x01 \x01(\v2\x18.hualala.content.v1.ShotR\x04shot\"\x93\x01\n" +
+	"\x04shot\x18\x01 \x01(\v2\x18.hualala.content.v1.ShotR\x04shot\"\xb8\x01\n" +
 	"\x1cCreateContentSnapshotRequest\x12\x1d\n" +
 	"\n" +
 	"owner_type\x18\x01 \x01(\tR\townerType\x12\x19\n" +
 	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12%\n" +
 	"\x0econtent_locale\x18\x03 \x01(\tR\rcontentLocale\x12\x12\n" +
-	"\x04body\x18\x04 \x01(\tR\x04body\"`\n" +
+	"\x04body\x18\x04 \x01(\tR\x04body\x12#\n" +
+	"\rsnapshot_kind\x18\x05 \x01(\tR\fsnapshotKind\"`\n" +
 	"\x1dCreateContentSnapshotResponse\x12?\n" +
-	"\bsnapshot\x18\x01 \x01(\v2#.hualala.content.v1.ContentSnapshotR\bsnapshot\"\x89\x01\n" +
+	"\bsnapshot\x18\x01 \x01(\v2#.hualala.content.v1.ContentSnapshotR\bsnapshot\"\xae\x01\n" +
 	"\x1eCreateLocalizedSnapshotRequest\x12,\n" +
 	"\x12source_snapshot_id\x18\x01 \x01(\tR\x10sourceSnapshotId\x12%\n" +
 	"\x0econtent_locale\x18\x02 \x01(\tR\rcontentLocale\x12\x12\n" +
-	"\x04body\x18\x03 \x01(\tR\x04body\"b\n" +
+	"\x04body\x18\x03 \x01(\tR\x04body\x12#\n" +
+	"\rsnapshot_kind\x18\x04 \x01(\tR\fsnapshotKind\"b\n" +
 	"\x1fCreateLocalizedSnapshotResponse\x12?\n" +
 	"\bsnapshot\x18\x01 \x01(\v2#.hualala.content.v1.ContentSnapshotR\bsnapshot\"Z\n" +
 	"\x1eGetCollaborationSessionRequest\x12\x1d\n" +

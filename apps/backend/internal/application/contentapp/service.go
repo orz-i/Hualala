@@ -35,30 +35,36 @@ type CreateContentSnapshotInput struct {
 	OwnerType     string
 	OwnerID       string
 	ContentLocale string
+	SnapshotKind  string
 	Body          string
 }
 
 type CreateLocalizedSnapshotInput struct {
 	SourceSnapshotID string
 	ContentLocale    string
+	SnapshotKind     string
 	Body             string
 }
 
 type ListScenesInput struct {
-	ProjectID string
-	EpisodeID string
+	ProjectID     string
+	EpisodeID     string
+	DisplayLocale string
 }
 
 type ListSceneShotsInput struct {
-	SceneID string
+	SceneID       string
+	DisplayLocale string
 }
 
 type GetSceneInput struct {
-	SceneID string
+	SceneID       string
+	DisplayLocale string
 }
 
 type GetShotInput struct {
-	ShotID string
+	ShotID        string
+	DisplayLocale string
 }
 
 type UpdateShotStructureInput struct {
@@ -203,6 +209,13 @@ func (s *Service) CreateContentSnapshot(ctx context.Context, input CreateContent
 	if strings.TrimSpace(input.Body) == "" {
 		return content.Snapshot{}, errors.New("body is required")
 	}
+	snapshotKind, err := normalizeSnapshotKind(input.SnapshotKind)
+	if err != nil {
+		return content.Snapshot{}, err
+	}
+	if err := s.validateSnapshotOwner(snapshotKind, input.OwnerType); err != nil {
+		return content.Snapshot{}, err
+	}
 
 	now := time.Now().UTC()
 
@@ -210,6 +223,7 @@ func (s *Service) CreateContentSnapshot(ctx context.Context, input CreateContent
 		ID:                 s.repo.GenerateSnapshotID(),
 		OwnerType:          input.OwnerType,
 		OwnerID:            input.OwnerID,
+		SnapshotKind:       snapshotKind,
 		Locale:             input.ContentLocale,
 		TranslationGroupID: s.repo.GenerateTranslationGroupID(),
 		TranslationStatus:  "source",
@@ -238,11 +252,35 @@ func (s *Service) CreateLocalizedSnapshot(ctx context.Context, input CreateLocal
 	if !ok {
 		return content.Snapshot{}, fmt.Errorf("source snapshot %q not found", input.SourceSnapshotID)
 	}
+	sourceSnapshotKind, err := normalizeStoredSnapshotKind(sourceSnapshot.SnapshotKind)
+	if err != nil {
+		return content.Snapshot{}, err
+	}
+	requestedSnapshotKind := strings.TrimSpace(input.SnapshotKind)
+	if requestedSnapshotKind == "" {
+		requestedSnapshotKind = sourceSnapshotKind
+	} else {
+		requestedSnapshotKind, err = normalizeSnapshotKind(requestedSnapshotKind)
+		if err != nil {
+			return content.Snapshot{}, err
+		}
+	}
+	if requestedSnapshotKind != sourceSnapshotKind {
+		return content.Snapshot{}, errors.New("contentapp: failed precondition: localized snapshot kind must match source snapshot")
+	}
+	if sourceSnapshotKind == content.SnapshotKindTitle {
+		switch strings.TrimSpace(sourceSnapshot.OwnerType) {
+		case "scene", "shot":
+		default:
+			return content.Snapshot{}, errors.New("contentapp: failed precondition: title source snapshot owner must be scene or shot")
+		}
+	}
 
 	snapshot := content.Snapshot{
 		ID:                 s.repo.GenerateSnapshotID(),
 		OwnerType:          sourceSnapshot.OwnerType,
 		OwnerID:            sourceSnapshot.OwnerID,
+		SnapshotKind:       sourceSnapshotKind,
 		Locale:             input.ContentLocale,
 		SourceSnapshotID:   sourceSnapshot.ID,
 		TranslationGroupID: sourceSnapshot.TranslationGroupID,
@@ -262,7 +300,7 @@ func (s *Service) ListScenes(_ context.Context, input ListScenesInput) ([]conten
 	if s == nil || s.repo == nil {
 		return nil, errors.New("contentapp: repository is required")
 	}
-	return s.repo.ListScenes(input.ProjectID, input.EpisodeID), nil
+	return s.resolveSceneTitles(s.repo.ListScenes(input.ProjectID, input.EpisodeID), input.DisplayLocale), nil
 }
 
 func (s *Service) GetScene(_ context.Context, input GetSceneInput) (content.Scene, error) {
@@ -277,14 +315,14 @@ func (s *Service) GetScene(_ context.Context, input GetSceneInput) (content.Scen
 	if !ok {
 		return content.Scene{}, fmt.Errorf("contentapp: scene %q not found", sceneID)
 	}
-	return record, nil
+	return s.resolveSceneTitle(record, input.DisplayLocale), nil
 }
 
 func (s *Service) ListSceneShots(_ context.Context, input ListSceneShotsInput) ([]content.Shot, error) {
 	if s == nil || s.repo == nil {
 		return nil, errors.New("contentapp: repository is required")
 	}
-	return s.repo.ListShotsByScene(input.SceneID), nil
+	return s.resolveShotTitles(s.repo.ListShotsByScene(input.SceneID), input.DisplayLocale), nil
 }
 
 func (s *Service) GetShot(_ context.Context, input GetShotInput) (content.Shot, error) {
@@ -300,7 +338,7 @@ func (s *Service) GetShot(_ context.Context, input GetShotInput) (content.Shot, 
 		return content.Shot{}, fmt.Errorf("contentapp: shot %q not found", shotID)
 	}
 
-	return shot, nil
+	return s.resolveShotTitle(shot, input.DisplayLocale), nil
 }
 
 func (s *Service) UpdateShotStructure(ctx context.Context, input UpdateShotStructureInput) (content.Shot, error) {

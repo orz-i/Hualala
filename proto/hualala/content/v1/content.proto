@@ -46,6 +46,7 @@ message ContentSnapshot {
   string translation_group_id = 6;
   string translation_status = 7;
   string body = 8;
+  string snapshot_kind = 9;
 }
 
 message CollaborationPresence {
@@ -143,6 +144,7 @@ message CreateContentSnapshotRequest {
   string owner_id = 2;
   string content_locale = 3;
   string body = 4;
+  string snapshot_kind = 5;
 }
 
 message CreateContentSnapshotResponse {
@@ -153,6 +155,7 @@ message CreateLocalizedSnapshotRequest {
   string source_snapshot_id = 1;
   string content_locale = 2;
   string body = 3;
+  string snapshot_kind = 4;
 }
 
 message CreateLocalizedSnapshotResponse {
