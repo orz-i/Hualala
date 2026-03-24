@@ -41,6 +41,7 @@ type Snapshot struct {
 	NextPresenceID        int
 	NextPreviewAssemblyID int
 	NextPreviewItemID     int
+	NextPreviewRuntimeID  int
 	NextAudioTimelineID   int
 	NextAudioTrackID      int
 	NextAudioClipID       int
@@ -78,6 +79,7 @@ type Snapshot struct {
 	CollaborationPresences map[string]content.CollaborationPresence
 	PreviewAssemblies      map[string]project.PreviewAssembly
 	PreviewAssemblyItems   map[string]project.PreviewAssemblyItem
+	PreviewRuntimes        map[string]project.PreviewRuntime
 	AudioTimelines         map[string]project.AudioTimeline
 	AudioTracks            map[string]project.AudioTrack
 	AudioClips             map[string]project.AudioClip
@@ -115,6 +117,7 @@ type MemoryStore struct {
 	nextPresenceID        int
 	nextPreviewAssemblyID int
 	nextPreviewItemID     int
+	nextPreviewRuntimeID  int
 	nextAudioTimelineID   int
 	nextAudioTrackID      int
 	nextAudioClipID       int
@@ -152,6 +155,7 @@ type MemoryStore struct {
 	CollaborationPresences map[string]content.CollaborationPresence
 	PreviewAssemblies      map[string]project.PreviewAssembly
 	PreviewAssemblyItems   map[string]project.PreviewAssemblyItem
+	PreviewRuntimes        map[string]project.PreviewRuntime
 	AudioTimelines         map[string]project.AudioTimeline
 	AudioTracks            map[string]project.AudioTrack
 	AudioClips             map[string]project.AudioClip
@@ -195,6 +199,7 @@ func NewMemoryStore() *MemoryStore {
 		CollaborationPresences: make(map[string]content.CollaborationPresence),
 		PreviewAssemblies:      make(map[string]project.PreviewAssembly),
 		PreviewAssemblyItems:   make(map[string]project.PreviewAssemblyItem),
+		PreviewRuntimes:        make(map[string]project.PreviewRuntime),
 		AudioTimelines:         make(map[string]project.AudioTimeline),
 		AudioTracks:            make(map[string]project.AudioTrack),
 		AudioClips:             make(map[string]project.AudioClip),
@@ -280,6 +285,7 @@ func (s *MemoryStore) snapshot() Snapshot {
 		NextPresenceID:         s.nextPresenceID,
 		NextPreviewAssemblyID:  s.nextPreviewAssemblyID,
 		NextPreviewItemID:      s.nextPreviewItemID,
+		NextPreviewRuntimeID:   s.nextPreviewRuntimeID,
 		NextAudioTimelineID:    s.nextAudioTimelineID,
 		NextAudioTrackID:       s.nextAudioTrackID,
 		NextAudioClipID:        s.nextAudioClipID,
@@ -316,6 +322,7 @@ func (s *MemoryStore) snapshot() Snapshot {
 		CollaborationPresences: cloneMap(s.CollaborationPresences),
 		PreviewAssemblies:      cloneMap(s.PreviewAssemblies),
 		PreviewAssemblyItems:   cloneMap(s.PreviewAssemblyItems),
+		PreviewRuntimes:        cloneMap(s.PreviewRuntimes),
 		AudioTimelines:         cloneMap(s.AudioTimelines),
 		AudioTracks:            cloneMap(s.AudioTracks),
 		AudioClips:             cloneMap(s.AudioClips),
@@ -355,6 +362,7 @@ func (s *MemoryStore) applySnapshot(snapshot Snapshot) {
 	s.nextPresenceID = snapshot.NextPresenceID
 	s.nextPreviewAssemblyID = snapshot.NextPreviewAssemblyID
 	s.nextPreviewItemID = snapshot.NextPreviewItemID
+	s.nextPreviewRuntimeID = snapshot.NextPreviewRuntimeID
 	s.nextAudioTimelineID = snapshot.NextAudioTimelineID
 	s.nextAudioTrackID = snapshot.NextAudioTrackID
 	s.nextAudioClipID = snapshot.NextAudioClipID
@@ -392,6 +400,7 @@ func (s *MemoryStore) applySnapshot(snapshot Snapshot) {
 	s.CollaborationPresences = cloneMap(snapshot.CollaborationPresences)
 	s.PreviewAssemblies = cloneMap(snapshot.PreviewAssemblies)
 	s.PreviewAssemblyItems = cloneMap(snapshot.PreviewAssemblyItems)
+	s.PreviewRuntimes = cloneMap(snapshot.PreviewRuntimes)
 	s.AudioTimelines = cloneMap(snapshot.AudioTimelines)
 	s.AudioTracks = cloneMap(snapshot.AudioTracks)
 	s.AudioClips = cloneMap(snapshot.AudioClips)
@@ -516,6 +525,14 @@ func (s *MemoryStore) NextPreviewAssemblyItemID() string {
 	}
 	s.nextPreviewItemID++
 	return fmt.Sprintf("preview-assembly-item-%d", s.nextPreviewItemID)
+}
+
+func (s *MemoryStore) NextPreviewRuntimeID() string {
+	if s.useUUIDIDs {
+		return uuid.NewString()
+	}
+	s.nextPreviewRuntimeID++
+	return fmt.Sprintf("preview-runtime-%d", s.nextPreviewRuntimeID)
 }
 
 func (s *MemoryStore) NextAudioTimelineID() string {

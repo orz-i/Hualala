@@ -346,3 +346,60 @@ test("phase3 preview title localization shared truth stays on content and projec
   assert.match(freezeDoc, /project_title/);
   assert.match(freezeDoc, /episode_title/);
 });
+
+test("phase3 preview runtime shared truth stays on project proto, sdk, runtime app, migration, and events entry points", () => {
+  const projectProto = readFileSync(
+    join(repoRoot, "proto", "hualala", "project", "v1", "project_service.proto"),
+    "utf8",
+  );
+  const workflowProto = readFileSync(join(repoRoot, "proto", "hualala", "workflow", "v1", "workflow.proto"), "utf8");
+  const projectService = readFileSync(
+    join(repoRoot, "packages", "sdk", "src", "connect", "services", "project.ts"),
+    "utf8",
+  );
+  const previewRuntimeService = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "application", "projectapp", "service_preview_runtime.go"),
+    "utf8",
+  );
+  const previewEvents = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "platform", "events", "events.go"),
+    "utf8",
+  );
+  const freezeDoc = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase3-preview-runtime-freeze.md"),
+    "utf8",
+  );
+
+  const expectedFiles = [
+    "proto/hualala/project/v1/project_service.proto",
+    "packages/sdk/src/connect/services/project.ts",
+    "apps/backend/internal/application/projectapp/service_preview_runtime.go",
+    "apps/backend/internal/platform/events/events.go",
+    "infra/migrations/0017_phase3_preview_runtime_shared_truth.sql",
+    "docs/runbooks/phase3-preview-runtime-freeze.md",
+  ];
+  for (const relativePath of expectedFiles) {
+    assert.equal(existsSync(join(repoRoot, ...relativePath.split("/"))), true, `${relativePath} should exist`);
+  }
+
+  assert.match(projectProto, /rpc GetPreviewRuntime/);
+  assert.match(projectProto, /rpc RequestPreviewRender/);
+  assert.match(projectProto, /message PreviewRuntime/);
+  assert.match(projectProto, /string render_workflow_run_id = 6;/);
+  assert.match(projectProto, /string resolved_locale = 10;/);
+
+  assert.match(projectService, /getPreviewRuntime/);
+  assert.match(projectService, /requestPreviewRender/);
+  assert.match(previewRuntimeService, /GetPreviewRuntime/);
+  assert.match(previewRuntimeService, /RequestPreviewRender/);
+  assert.match(previewRuntimeService, /preview\.render_assembly/);
+  assert.match(previewEvents, /project\.preview\.runtime\.updated/);
+  assert.match(previewEvents, /preview_runtime_id/);
+
+  assert.match(freezeDoc, /project\.preview\.runtime\.updated/);
+  assert.match(freezeDoc, /preview\.render_assembly/);
+  assert.match(freezeDoc, /playback_asset_id/);
+  assert.match(freezeDoc, /export_asset_id/);
+
+  assert.doesNotMatch(workflowProto, /GetPreviewRuntime|RequestPreviewRender|PreviewRuntime/);
+});

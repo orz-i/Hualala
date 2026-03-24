@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetAudioWorkbenchRequest, GetAudioWorkbenchResponse, GetPreviewWorkbenchRequest, GetPreviewWorkbenchResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListPreviewShotOptionsRequest, ListPreviewShotOptionsResponse, ListProjectsRequest, ListProjectsResponse, UpsertAudioTimelineRequest, UpsertAudioTimelineResponse, UpsertPreviewAssemblyRequest, UpsertPreviewAssemblyResponse } from "./project_service_pb.js";
+import { CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetAudioWorkbenchRequest, GetAudioWorkbenchResponse, GetPreviewRuntimeRequest, GetPreviewRuntimeResponse, GetPreviewWorkbenchRequest, GetPreviewWorkbenchResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListPreviewShotOptionsRequest, ListPreviewShotOptionsResponse, ListProjectsRequest, ListProjectsResponse, RequestPreviewRenderRequest, RequestPreviewRenderResponse, UpsertAudioTimelineRequest, UpsertAudioTimelineResponse, UpsertPreviewAssemblyRequest, UpsertPreviewAssemblyResponse } from "./project_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -82,6 +82,24 @@ export const ProjectService = {
       name: "UpsertPreviewAssembly",
       I: UpsertPreviewAssemblyRequest,
       O: UpsertPreviewAssemblyResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.project.v1.ProjectService.GetPreviewRuntime
+     */
+    getPreviewRuntime: {
+      name: "GetPreviewRuntime",
+      I: GetPreviewRuntimeRequest,
+      O: GetPreviewRuntimeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.project.v1.ProjectService.RequestPreviewRender
+     */
+    requestPreviewRender: {
+      name: "RequestPreviewRender",
+      I: RequestPreviewRenderRequest,
+      O: RequestPreviewRenderResponse,
       kind: MethodKind.Unary,
     },
     /**

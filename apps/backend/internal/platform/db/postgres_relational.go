@@ -230,6 +230,9 @@ func (p *PostgresPersister) loadRelationalSnapshot(ctx context.Context, snapshot
 	if err := p.loadCollaborationAndPreview(ctx, snapshot); err != nil {
 		return err
 	}
+	if err := p.loadPreviewRuntimes(ctx, snapshot); err != nil {
+		return err
+	}
 	runExecutionMap, err := p.loadExecutions(ctx, snapshot)
 	if err != nil {
 		return err
@@ -1025,6 +1028,9 @@ func (p *PostgresPersister) saveRelationalSnapshot(ctx context.Context, tx *sql.
 	if err := p.saveCollaborationAndPreview(ctx, tx, snapshot); err != nil {
 		return err
 	}
+	if err := p.savePreviewRuntimes(ctx, tx, snapshot); err != nil {
+		return err
+	}
 	usageIDsByRun, budgetIDsByProject, err := p.saveExecutionsAssetsReviewBilling(ctx, tx, snapshot)
 	if err != nil {
 		return err
@@ -1126,6 +1132,7 @@ func clearMainTables(ctx context.Context, tx *sql.Tx) error {
 		`DELETE FROM audio_clips`,
 		`DELETE FROM audio_tracks`,
 		`DELETE FROM audio_timelines`,
+		`DELETE FROM preview_runtimes`,
 		`DELETE FROM preview_assembly_items`,
 		`DELETE FROM preview_assemblies`,
 		`DELETE FROM event_outbox`,

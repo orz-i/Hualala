@@ -9,6 +9,7 @@ import (
 
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 type Service struct {
@@ -20,6 +21,8 @@ type repository interface {
 	db.ExecutionRepository
 	db.AssetRepository
 	db.WorkflowRepository
+	db.PolicyReader
+	Publisher() *events.Publisher
 }
 
 type CreateProjectInput struct {
@@ -55,10 +58,25 @@ type PreviewWorkbench struct {
 	Items    []PreviewAssemblyItemState
 }
 
+type PreviewRuntimeState struct {
+	Runtime project.PreviewRuntime
+}
+
 type GetPreviewWorkbenchInput struct {
 	ProjectID     string
 	EpisodeID     string
 	DisplayLocale string
+}
+
+type GetPreviewRuntimeInput struct {
+	ProjectID string
+	EpisodeID string
+}
+
+type RequestPreviewRenderInput struct {
+	ProjectID       string
+	EpisodeID       string
+	RequestedLocale string
 }
 
 type PreviewAssemblyItemInput struct {

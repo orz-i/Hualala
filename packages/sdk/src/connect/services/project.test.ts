@@ -113,6 +113,44 @@ describe("createProjectClient", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            runtime: {
+              previewRuntimeId: "preview-runtime-1",
+              projectId: "project-1",
+              episodeId: "episode-1",
+              assemblyId: "assembly-1",
+              status: "draft",
+              renderWorkflowRunId: "",
+              renderStatus: "idle",
+              playbackAssetId: "",
+              exportAssetId: "",
+              resolvedLocale: "",
+            },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            runtime: {
+              previewRuntimeId: "preview-runtime-1",
+              projectId: "project-1",
+              episodeId: "episode-1",
+              assemblyId: "assembly-1",
+              status: "queued",
+              renderWorkflowRunId: "workflow-run-preview-1",
+              renderStatus: "queued",
+              playbackAssetId: "",
+              exportAssetId: "",
+              resolvedLocale: "en-US",
+            },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
             timeline: {
               audioTimelineId: "audio-timeline-1",
               projectId: "project-1",
@@ -205,6 +243,15 @@ describe("createProjectClient", () => {
       episodeId: "episode-1",
       displayLocale: "en-US",
     });
+    const previewRuntime = await client.getPreviewRuntime({
+      projectId: "project-1",
+      episodeId: "episode-1",
+    });
+    const queuedPreviewRuntime = await client.requestPreviewRender({
+      projectId: "project-1",
+      episodeId: "episode-1",
+      requestedLocale: "en-US",
+    });
     const audioWorkbench = await client.getAudioWorkbench({
       projectId: "project-1",
       episodeId: "episode-1",
@@ -282,7 +329,7 @@ describe("createProjectClient", () => {
     );
     expect(fetchFn).toHaveBeenNthCalledWith(
       4,
-      "http://127.0.0.1:8080/hualala.project.v1.ProjectService/GetAudioWorkbench",
+      "http://127.0.0.1:8080/hualala.project.v1.ProjectService/GetPreviewRuntime",
       expect.objectContaining({
         body: JSON.stringify({
           projectId: "project-1",
@@ -292,6 +339,27 @@ describe("createProjectClient", () => {
     );
     expect(fetchFn).toHaveBeenNthCalledWith(
       5,
+      "http://127.0.0.1:8080/hualala.project.v1.ProjectService/RequestPreviewRender",
+      expect.objectContaining({
+        body: JSON.stringify({
+          projectId: "project-1",
+          episodeId: "episode-1",
+          requestedLocale: "en-US",
+        }),
+      }),
+    );
+    expect(fetchFn).toHaveBeenNthCalledWith(
+      6,
+      "http://127.0.0.1:8080/hualala.project.v1.ProjectService/GetAudioWorkbench",
+      expect.objectContaining({
+        body: JSON.stringify({
+          projectId: "project-1",
+          episodeId: "episode-1",
+        }),
+      }),
+    );
+    expect(fetchFn).toHaveBeenNthCalledWith(
+      7,
       "http://127.0.0.1:8080/hualala.project.v1.ProjectService/UpsertAudioTimeline",
       expect.objectContaining({
         body: JSON.stringify({
@@ -324,6 +392,9 @@ describe("createProjectClient", () => {
     );
     expect(previewOptions.options[0]?.shot?.projectTitle).toBe("项目一");
     expect(previewOptions.options[0]?.latestRun?.runId).toBe("run-1");
+    expect(previewRuntime.runtime?.previewRuntimeId).toBe("preview-runtime-1");
+    expect(queuedPreviewRuntime.runtime?.renderStatus).toBe("queued");
+    expect(queuedPreviewRuntime.runtime?.resolvedLocale).toBe("en-US");
     expect(audioWorkbench.timeline?.audioTimelineId).toBe("audio-timeline-1");
     expect(audioWorkbench.timeline?.tracks[0]?.volumePercent).toBe(0);
     expect(audioTimeline.timeline?.tracks[0]?.clips[0]?.durationMs).toBe(12000);

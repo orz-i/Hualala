@@ -294,6 +294,54 @@ func PublishCollaborationUpdated(ctx context.Context, publisher *Publisher, inpu
 	})
 }
 
+type PublishPreviewRuntimeUpdatedInput struct {
+	OrganizationID      string
+	ProjectID           string
+	EpisodeID           string
+	PreviewRuntimeID    string
+	RenderStatus        string
+	RenderWorkflowRunID string
+	ResolvedLocale      string
+	PlaybackAssetID     string
+	ExportAssetID       string
+	OccurredAt          time.Time
+}
+
+func PublishPreviewRuntimeUpdated(ctx context.Context, publisher *Publisher, input PublishPreviewRuntimeUpdatedInput) {
+	if publisher == nil {
+		return
+	}
+
+	occurredAt := input.OccurredAt.UTC()
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+	body, err := json.Marshal(map[string]any{
+		"project_id":            strings.TrimSpace(input.ProjectID),
+		"episode_id":            strings.TrimSpace(input.EpisodeID),
+		"preview_runtime_id":    strings.TrimSpace(input.PreviewRuntimeID),
+		"render_status":         strings.TrimSpace(input.RenderStatus),
+		"render_workflow_run_id": strings.TrimSpace(input.RenderWorkflowRunID),
+		"resolved_locale":       strings.TrimSpace(input.ResolvedLocale),
+		"playback_asset_id":     strings.TrimSpace(input.PlaybackAssetID),
+		"export_asset_id":       strings.TrimSpace(input.ExportAssetID),
+		"occurred_at":           occurredAt.Format(time.RFC3339),
+	})
+	if err != nil {
+		return
+	}
+
+	publisher.PublishWithContext(ctx, Event{
+		EventType:      "project.preview.runtime.updated",
+		OrganizationID: strings.TrimSpace(input.OrganizationID),
+		ProjectID:      strings.TrimSpace(input.ProjectID),
+		ResourceType:   "preview_runtime",
+		ResourceID:     strings.TrimSpace(input.PreviewRuntimeID),
+		Payload:        string(body),
+		CreatedAt:      occurredAt,
+	})
+}
+
 type subscriber struct {
 	organizationID string
 	projectID      string

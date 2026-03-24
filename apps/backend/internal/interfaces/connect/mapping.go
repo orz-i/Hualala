@@ -179,6 +179,23 @@ func mapPreviewShotOption(record projectapp.PreviewShotOption) *projectv1.Previe
 	}
 }
 
+func mapPreviewRuntime(record projectapp.PreviewRuntimeState) *projectv1.PreviewRuntime {
+	return &projectv1.PreviewRuntime{
+		PreviewRuntimeId:    record.Runtime.ID,
+		ProjectId:           record.Runtime.ProjectID,
+		EpisodeId:           record.Runtime.EpisodeID,
+		AssemblyId:          record.Runtime.AssemblyID,
+		Status:              record.Runtime.Status,
+		RenderWorkflowRunId: record.Runtime.RenderWorkflowRunID,
+		RenderStatus:        record.Runtime.RenderStatus,
+		PlaybackAssetId:     record.Runtime.PlaybackAssetID,
+		ExportAssetId:       record.Runtime.ExportAssetID,
+		ResolvedLocale:      record.Runtime.ResolvedLocale,
+		CreatedAt:           timestampOrNil(record.Runtime.CreatedAt),
+		UpdatedAt:           timestampOrNil(record.Runtime.UpdatedAt),
+	}
+}
+
 func mapAudioClip(record project.AudioClip) *projectv1.AudioClip {
 	return &projectv1.AudioClip{
 		ClipId:      record.ID,
