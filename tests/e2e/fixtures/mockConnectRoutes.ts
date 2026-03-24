@@ -25,6 +25,16 @@ import {
   createPreviewAssemblyState,
   upsertPreviewAssemblyState,
 } from "./mock-connect/preview.ts";
+import {
+  applyReusePrimaryAsset,
+  buildReuseAssetProvenancePayload,
+  buildReuseImportBatchSummaries,
+  buildReuseImportBatchWorkbenchPayload,
+  buildReuseShotWorkbenchPayload,
+  buildReuseShotExecutionPayload,
+  canApplyReuseAsset,
+  createAssetReuseState,
+} from "./mock-connect/reuse.ts";
 import { clone, initializeMockConnectState, loadPhase1DemoScenarios } from "./mock-connect/scenario.ts";
 import type { AdminState, MockConnectScenario } from "./mock-connect/types.ts";
 import {
@@ -57,6 +67,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
   } = initializeMockConnectState({ scenario, phase1DemoScenarios });
   let previewState = createPreviewAssemblyState(adminState.budgetSnapshot.projectId);
   let audioState = createAudioTimelineState(adminState.budgetSnapshot.projectId);
+  let reuseState = createAssetReuseState("project-live-1");
 
   await page.route(/\/sse\/events(?:\?.*)?$/, async (route: Route) => {
     await route.fulfill({
@@ -80,7 +91,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         return;
       }
       const session =
-        scenario.admin || scenario.creatorImport || scenario.preview || scenario.audio
+        scenario.admin || scenario.creatorImport || scenario.preview || scenario.audio || scenario.reuse
           ? adminState.governance.currentSession
           : buildDefaultDevSession();
       await route.fulfill(jsonResponse(200, { session }));
@@ -90,7 +101,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     if (pathname === "/hualala.auth.v1.AuthService/StartDevSession") {
       devSessionActive = true;
       const session =
-        scenario.admin || scenario.creatorImport || scenario.preview || scenario.audio
+        scenario.admin || scenario.creatorImport || scenario.preview || scenario.audio || scenario.reuse
           ? adminState.governance.currentSession
           : buildDefaultDevSession();
       await route.fulfill(jsonResponse(200, { session }));
@@ -242,6 +253,17 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
 
       if (pathname === "/hualala.execution.v1.ExecutionService/SelectPrimaryAsset") {
         await delay(120);
+        if (scenario.reuse) {
+          const body = route.request().postDataJSON() as { assetId?: string };
+          const assetId = body.assetId ?? "";
+          if (!canApplyReuseAsset(reuseState, assetId)) {
+            await route.fulfill(jsonResponse(412, { error: "asset reuse blocked" }));
+            return;
+          }
+          reuseState = applyReusePrimaryAsset(reuseState, assetId);
+          await route.fulfill(jsonResponse(200, {}));
+          return;
+        }
         creatorImportState = {
           ...clone(creatorImportState),
           ...clone(creatorImportState.afterSelect ?? creatorImportState),
@@ -438,12 +460,15 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       }
     }
 
-    if ((scenario.admin || scenario.creatorImport || scenario.audio) &&
+    if ((scenario.admin || scenario.creatorImport || scenario.audio || scenario.reuse) &&
       pathname === "/hualala.asset.v1.AssetService/ListImportBatches") {
+      const body = route.request().postDataJSON() as { projectId?: string };
       await route.fulfill(
         jsonResponse(200, {
           importBatches:
-            scenario.audio && !scenario.admin
+            scenario.reuse
+              ? buildReuseImportBatchSummaries(reuseState, body.projectId ?? "")
+              : scenario.audio && !scenario.admin
               ? [buildAudioImportBatchSummary(adminState.budgetSnapshot.projectId)]
               : [
                   buildImportBatchSummary({
@@ -456,12 +481,19 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       return;
     }
 
-    if ((scenario.admin || scenario.creatorImport || scenario.audio) &&
+    if ((scenario.admin || scenario.creatorImport || scenario.audio || scenario.reuse) &&
       pathname === "/hualala.asset.v1.AssetService/GetImportBatchWorkbench") {
+      const body = route.request().postDataJSON() as { importBatchId?: string };
+      const reusePayload =
+        scenario.reuse && body.importBatchId
+          ? buildReuseImportBatchWorkbenchPayload(reuseState, body.importBatchId)
+          : null;
       await route.fulfill(
         jsonResponse(
           200,
-          scenario.audio && !scenario.admin
+          reusePayload
+            ? reusePayload
+            : scenario.audio && !scenario.admin
             ? buildAudioImportBatchWorkbenchPayload(adminState.budgetSnapshot.projectId)
             : scenario.creatorImport && !scenario.admin
               ? creatorImportState
@@ -476,7 +508,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       return;
     }
 
-    if ((scenario.preview || scenario.audio || scenario.admin || scenario.creatorImport) &&
+    if ((scenario.preview || scenario.audio || scenario.admin || scenario.creatorImport || scenario.reuse) &&
       pathname === "/hualala.asset.v1.AssetService/GetAssetProvenanceSummary") {
       const body = route.request().postDataJSON() as { assetId?: string };
       if (body.assetId !== undefined && body.assetId.trim() === "") {
@@ -484,6 +516,13 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         return;
       }
       const requestedAssetId = body.assetId ?? "";
+      if (scenario.reuse && requestedAssetId) {
+        const reusePayload = buildReuseAssetProvenancePayload(reuseState, requestedAssetId);
+        if (reusePayload) {
+          await route.fulfill(jsonResponse(200, reusePayload));
+          return;
+        }
+      }
       const previewAssetId =
         requestedAssetId || previewState.items.find((item) => item.primaryAssetId)?.primaryAssetId;
       if (scenario.preview && previewAssetId) {
@@ -619,6 +658,31 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
           ...clone(creatorShotState),
           workbench: clone(creatorShotState.afterSubmit?.workbench ?? creatorShotState.workbench),
         };
+        await route.fulfill(jsonResponse(200, {}));
+        return;
+      }
+    }
+
+    if (scenario.reuse) {
+      if (pathname === "/hualala.execution.v1.ExecutionService/GetShotExecution") {
+        await route.fulfill(jsonResponse(200, buildReuseShotExecutionPayload(reuseState)));
+        return;
+      }
+
+      if (pathname === "/hualala.execution.v1.ExecutionService/GetShotWorkbench") {
+        await route.fulfill(jsonResponse(200, buildReuseShotWorkbenchPayload(reuseState)));
+        return;
+      }
+
+      if (pathname === "/hualala.execution.v1.ExecutionService/SelectPrimaryAsset") {
+        await delay(120);
+        const body = route.request().postDataJSON() as { assetId?: string };
+        const assetId = body.assetId ?? "";
+        if (!canApplyReuseAsset(reuseState, assetId)) {
+          await route.fulfill(jsonResponse(412, { error: "asset reuse blocked" }));
+          return;
+        }
+        reuseState = applyReusePrimaryAsset(reuseState, assetId);
         await route.fulfill(jsonResponse(200, {}));
         return;
       }

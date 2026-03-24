@@ -70,6 +70,18 @@ describe("creatorRoutes", () => {
     ).toBe("/audio?projectId=project-audio-1&orgId=org-live-1&userId=user-live-1");
   });
 
+  it("keeps the reuse pathname when a shot-scoped deep link targets /reuse", () => {
+    expect(
+      normalizeLegacyCreatorUrl({
+        pathname: "/reuse",
+        search:
+          "?projectId=project-live-1&shotId=shot-live-1&sourceProjectId=project-source-9&orgId=org-live-1&userId=user-live-1",
+      } as Pick<Location, "pathname" | "search">),
+    ).toBe(
+      "/reuse?projectId=project-live-1&shotId=shot-live-1&sourceProjectId=project-source-9&orgId=org-live-1&userId=user-live-1",
+    );
+  });
+
   it("keeps import precedence when both importBatchId and shotId are present", () => {
     expect(
       normalizeLegacyCreatorUrl({
@@ -99,6 +111,21 @@ describe("creatorRoutes", () => {
         userId: "user-live-1",
       }),
     ).toBe("/audio?projectId=project-audio-1&orgId=org-live-1&userId=user-live-1");
+  });
+
+  it("builds canonical reuse urls with target shot and external source project state", () => {
+    expect(
+      buildCreatorRouteUrl({
+        route: "reuse",
+        projectId: "project-live-1",
+        shotId: "shot-live-1",
+        sourceProjectId: "project-source-9",
+        orgId: "org-live-1",
+        userId: "user-live-1",
+      }),
+    ).toBe(
+      "/reuse?projectId=project-live-1&shotId=shot-live-1&sourceProjectId=project-source-9&orgId=org-live-1&userId=user-live-1",
+    );
   });
 
   it("drops route-local state when navigating back to home", () => {
@@ -160,6 +187,28 @@ describe("creatorRoutes", () => {
       route: "audio",
       projectId: "project-audio-1",
       shotId: undefined,
+      importBatchId: undefined,
+      orgId: "org-live-1",
+      userId: "user-live-1",
+    });
+  });
+
+  it("keeps target shot state when navigating from shots to reuse", () => {
+    expect(
+      selectCreatorRoute(
+        {
+          route: "shots",
+          projectId: "project-live-1",
+          shotId: "shot-live-1",
+          orgId: "org-live-1",
+          userId: "user-live-1",
+        },
+        "reuse",
+      ),
+    ).toEqual({
+      route: "reuse",
+      projectId: "project-live-1",
+      shotId: "shot-live-1",
       importBatchId: undefined,
       orgId: "org-live-1",
       userId: "user-live-1",

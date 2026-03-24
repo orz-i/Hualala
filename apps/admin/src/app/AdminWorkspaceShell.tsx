@@ -23,6 +23,7 @@ const navItems: Array<{
     | "nav.assets"
     | "nav.audio"
     | "nav.preview"
+    | "nav.reuse"
     | "nav.collaboration"
     | "nav.governance";
 }> = [
@@ -31,6 +32,7 @@ const navItems: Array<{
   { route: "assets", key: "nav.assets" },
   { route: "audio", key: "nav.audio" },
   { route: "preview", key: "nav.preview" },
+  { route: "reuse", key: "nav.reuse" },
   { route: "collaboration", key: "nav.collaboration" },
   { route: "governance", key: "nav.governance" },
 ];

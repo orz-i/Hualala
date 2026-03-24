@@ -7,6 +7,8 @@ import { AdminGovernancePage } from "../features/dashboard/AdminGovernancePage";
 import { AdminOverviewPage } from "../features/dashboard/AdminOverviewPage";
 import { AdminPreviewPage } from "../features/dashboard/AdminPreviewPage";
 import { AdminWorkflowPage } from "../features/dashboard/AdminWorkflowPage";
+import { AdminAssetReusePage } from "../features/dashboard/reuse/AdminAssetReusePage";
+import { useAdminAssetReuseController } from "../features/dashboard/reuse/useAdminAssetReuseController";
 import { useAdminAudioController } from "../features/dashboard/useAdminAudioController";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
 import { useAdminCollaborationController } from "../features/dashboard/useAdminCollaborationController";
@@ -145,6 +147,16 @@ export function App() {
     t,
   });
 
+  const reuse = useAdminAssetReuseController({
+    sessionState: sessionGate.sessionState,
+    enabled: routeState.route === "reuse",
+    projectId,
+    shotExecutionId,
+    effectiveOrgId: sessionGate.effectiveOrgId,
+    effectiveUserId: sessionGate.effectiveUserId,
+    t,
+  });
+
   useEffect(() => {
     if (routeState.route !== "workflow") {
       if (workflow.selectedWorkflowRunId) {
@@ -260,6 +272,7 @@ export function App() {
     collaboration: collaboration.errorMessage,
     audio: audio.errorMessage,
     preview: preview.errorMessage,
+    reuse: reuse.errorMessage,
   };
   const routeErrorMessage = routeErrorMessages[routeState.route] ?? "";
   const errorMessage = sessionGate.errorMessage || routeErrorMessage;
@@ -320,6 +333,10 @@ export function App() {
 
   if (routeState.route === "audio" && !audio.audioWorkbench) {
     return <main style={{ padding: "32px" }}>{t("app.loading.audio")}</main>;
+  }
+
+  if (routeState.route === "reuse" && !reuse.audit) {
+    return <main style={{ padding: "32px" }}>{t("app.loading.reuse")}</main>;
   }
 
   const sessionLabel = identityOverride
@@ -450,6 +467,20 @@ export function App() {
           void audio.handleOpenAssetProvenance(assetId);
         }}
         onCloseAssetProvenance={audio.handleCloseAssetProvenance}
+      />
+    );
+  } else if (routeState.route === "reuse" && reuse.audit) {
+    routeContent = (
+      <AdminAssetReusePage
+        audit={reuse.audit}
+        assetProvenanceDetail={reuse.assetProvenanceDetail}
+        assetProvenancePending={reuse.assetProvenancePending}
+        assetProvenanceErrorMessage={reuse.assetProvenanceErrorMessage}
+        t={t}
+        onOpenAssetProvenance={(assetId) => {
+          void reuse.handleOpenAssetProvenance(assetId);
+        }}
+        onCloseAssetProvenance={reuse.handleCloseAssetProvenance}
       />
     );
   } else if (overview.overview) {

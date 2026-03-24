@@ -5,6 +5,7 @@ import { ADMIN_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
 import { useAdminGovernanceController } from "../features/dashboard/useAdminGovernanceController";
 import { useAdminOverviewController } from "../features/dashboard/useAdminOverviewController";
+import { useAdminAssetReuseController } from "../features/dashboard/reuse/useAdminAssetReuseController";
 import { useAdminAudioController } from "../features/dashboard/useAdminAudioController";
 import { useAdminPreviewController } from "../features/dashboard/useAdminPreviewController";
 import { useAdminRecentChangesSubscription } from "../features/dashboard/useAdminRecentChangesSubscription";
@@ -13,10 +14,12 @@ import { useAdminSessionGate } from "../features/session/useAdminSessionGate";
 import { App } from "./App";
 
 const {
+  mockUseAdminAssetReuseController,
   mockUseAdminAudioController,
   mockUseAdminCollaborationController,
   mockUseAdminPreviewController,
 } = vi.hoisted(() => ({
+  mockUseAdminAssetReuseController: vi.fn(),
   mockUseAdminAudioController: vi.fn(),
   mockUseAdminCollaborationController: vi.fn(),
   mockUseAdminPreviewController: vi.fn(),
@@ -29,6 +32,7 @@ let lastAdminGovernancePageProps: Record<string, unknown> | null = null;
 let lastAdminCollaborationPageProps: Record<string, unknown> | null = null;
 let lastAdminAudioPageProps: Record<string, unknown> | null = null;
 let lastAdminPreviewPageProps: Record<string, unknown> | null = null;
+let lastAdminAssetReusePageProps: Record<string, unknown> | null = null;
 
 vi.mock("../features/dashboard/AdminOverviewPage", () => ({
   AdminOverviewPage: (props: Record<string, unknown>) => {
@@ -136,6 +140,12 @@ vi.mock("../features/dashboard/AdminPreviewPage", () => ({
     return <div data-testid="admin-preview-page">admin-preview-page</div>;
   },
 }));
+vi.mock("../features/dashboard/reuse/AdminAssetReusePage", () => ({
+  AdminAssetReusePage: (props: Record<string, unknown>) => {
+    lastAdminAssetReusePageProps = props;
+    return <div data-testid="admin-reuse-page">admin-reuse-page</div>;
+  },
+}));
 vi.mock("../features/session/useAdminSessionGate", () => ({
   useAdminSessionGate: vi.fn(),
 }));
@@ -154,6 +164,9 @@ vi.mock("../features/dashboard/useAdminAssetController", () => ({
 vi.mock("../features/dashboard/useAdminAudioController", () => ({
   useAdminAudioController: mockUseAdminAudioController,
 }));
+vi.mock("../features/dashboard/reuse/useAdminAssetReuseController", () => ({
+  useAdminAssetReuseController: mockUseAdminAssetReuseController,
+}));
 vi.mock("../features/dashboard/useAdminCollaborationController", () => ({
   useAdminCollaborationController: mockUseAdminCollaborationController,
 }));
@@ -169,6 +182,7 @@ const useAdminOverviewControllerMock = vi.mocked(useAdminOverviewController);
 const useAdminGovernanceControllerMock = vi.mocked(useAdminGovernanceController);
 const useAdminWorkflowControllerMock = vi.mocked(useAdminWorkflowController);
 const useAdminAssetControllerMock = vi.mocked(useAdminAssetController);
+const useAdminAssetReuseControllerMock = vi.mocked(useAdminAssetReuseController);
 const useAdminAudioControllerMock = vi.mocked(useAdminAudioController);
 const useAdminPreviewControllerMock = vi.mocked(useAdminPreviewController);
 const useAdminRecentChangesSubscriptionMock = vi.mocked(useAdminRecentChangesSubscription);
@@ -545,6 +559,50 @@ function buildAudio(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function buildAssetReuse(overrides: Record<string, unknown> = {}) {
+  return {
+    audit: {
+      shotExecution: {
+        id: "shot-exec-live-001",
+        shotId: "shot-live-001",
+        projectId: "project-live-001",
+        status: "primary_selected",
+        primaryAssetId: "asset-external-1",
+      },
+      assetProvenanceDetail: {
+        asset: {
+          id: "asset-external-1",
+          projectId: "project-source-9",
+          sourceType: "upload_session",
+          rightsStatus: "clear",
+          importBatchId: "batch-source-1",
+          locale: "zh-CN",
+          aiAnnotated: false,
+        },
+        provenanceSummary: "source_type=upload_session rights_status=clear",
+        candidateAssetId: "candidate-source-1",
+        shotExecutionId: "shot-exec-source-1",
+        sourceRunId: "run-source-1",
+        importBatchId: "batch-source-1",
+        variantCount: 1,
+      },
+      summary: {
+        isCrossProject: true,
+        isEligible: true,
+        blockedReason: "",
+        sourceProjectId: "project-source-9",
+      },
+    },
+    assetProvenanceDetail: null,
+    assetProvenancePending: false,
+    assetProvenanceErrorMessage: "",
+    errorMessage: "",
+    handleOpenAssetProvenance: vi.fn(),
+    handleCloseAssetProvenance: vi.fn(),
+    ...overrides,
+  };
+}
+
 describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -555,6 +613,7 @@ describe("App", () => {
     lastAdminCollaborationPageProps = null;
     lastAdminAudioPageProps = null;
     lastAdminPreviewPageProps = null;
+    lastAdminAssetReusePageProps = null;
     window.localStorage.clear();
     window.localStorage.setItem(ADMIN_UI_LOCALE_STORAGE_KEY, "zh-CN");
     window.history.pushState({}, "", "/");
@@ -564,6 +623,7 @@ describe("App", () => {
     useAdminGovernanceControllerMock.mockReturnValue(buildGovernanceController() as never);
     useAdminWorkflowControllerMock.mockReturnValue(buildWorkflow() as never);
     useAdminAssetControllerMock.mockReturnValue(buildAsset() as never);
+    useAdminAssetReuseControllerMock.mockReturnValue(buildAssetReuse() as never);
     useAdminAudioControllerMock.mockReturnValue(buildAudio() as never);
     mockUseAdminCollaborationController.mockReturnValue(buildCollaboration());
     useAdminPreviewControllerMock.mockReturnValue(buildPreview() as never);
@@ -780,6 +840,37 @@ describe("App", () => {
     );
   });
 
+  it("renders the reuse route when pathname is /reuse", () => {
+    window.history.pushState(
+      {},
+      "",
+      "/reuse?projectId=project-live-001&shotExecutionId=shot-exec-live-001",
+    );
+
+    render(<App />);
+
+    expect(useAdminAssetReuseControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        projectId: "project-live-001",
+        shotExecutionId: "shot-exec-live-001",
+        effectiveOrgId: "org-demo-001",
+        effectiveUserId: "user-demo-001",
+      }),
+    );
+    expect(screen.getByTestId("admin-reuse-page")).toHaveTextContent("admin-reuse-page");
+    expect(lastAdminAssetReusePageProps).toEqual(
+      expect.objectContaining({
+        audit: expect.objectContaining({
+          shotExecution: expect.objectContaining({
+            id: "shot-exec-live-001",
+            primaryAssetId: "asset-external-1",
+          }),
+        }),
+      }),
+    );
+  });
+
   it("renders the loading gate while the session is bootstrapping", () => {
     useAdminSessionGateMock.mockReturnValue(
       buildSessionGate({
@@ -893,6 +984,25 @@ describe("App", () => {
     expect(window.location.search).toContain("shotExecutionId=shot-exec-live-001");
     expect(window.location.search).not.toContain("workflowRunId=");
     expect(screen.getByTestId("admin-workflow-page")).toHaveTextContent("workflow-run-1");
+  });
+
+  it("navigates to the reuse audit route from the shell and preserves common query params", () => {
+    window.history.pushState(
+      {},
+      "",
+      "/overview?projectId=project-live-001&shotExecutionId=shot-exec-live-001&orgId=org-override-001&userId=user-override-001",
+    );
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "复用" }));
+
+    expect(window.location.pathname).toBe("/reuse");
+    expect(window.location.search).toContain("projectId=project-live-001");
+    expect(window.location.search).toContain("shotExecutionId=shot-exec-live-001");
+    expect(window.location.search).toContain("orgId=org-override-001");
+    expect(window.location.search).toContain("userId=user-override-001");
+    expect(screen.getByTestId("admin-reuse-page")).toHaveTextContent("admin-reuse-page");
   });
 
   it("navigates from the overview workflow summary cta and preserves route params", () => {

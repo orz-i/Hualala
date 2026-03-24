@@ -1,10 +1,18 @@
-export type CreatorRoute = "home" | "shots" | "imports" | "collab" | "preview" | "audio";
+export type CreatorRoute =
+  | "home"
+  | "shots"
+  | "imports"
+  | "collab"
+  | "preview"
+  | "audio"
+  | "reuse";
 
 export type CreatorRouteState = {
   route: CreatorRoute;
   projectId?: string;
   shotId?: string;
   importBatchId?: string;
+  sourceProjectId?: string;
   orgId?: string;
   userId?: string;
 };
@@ -16,10 +24,15 @@ const routePathMap: Record<CreatorRoute, string> = {
   collab: "/collab",
   preview: "/preview",
   audio: "/audio",
+  reuse: "/reuse",
 };
 
 function isProjectOnlyCreatorRoute(route: CreatorRoute): route is "preview" | "audio" {
   return route === "preview" || route === "audio";
+}
+
+function isShotScopedCreatorRoute(route: CreatorRoute): route is "collab" | "reuse" {
+  return route === "collab" || route === "reuse";
 }
 
 function normalizeValue(value: string | null | undefined) {
@@ -44,6 +57,9 @@ function normalizeCreatorRoute(pathname: string): CreatorRoute {
   if (normalizedPathname === routePathMap.audio) {
     return "audio";
   }
+  if (normalizedPathname === routePathMap.reuse) {
+    return "reuse";
+  }
   return "home";
 }
 
@@ -52,6 +68,7 @@ export function parseCreatorRouteState(locationLike: Pick<Location, "pathname" |
   const projectId = normalizeValue(searchParams.get("projectId"));
   const importBatchId = normalizeValue(searchParams.get("importBatchId"));
   const shotId = normalizeValue(searchParams.get("shotId"));
+  const sourceProjectId = normalizeValue(searchParams.get("sourceProjectId"));
   const orgId = normalizeValue(searchParams.get("orgId"));
   const userId = normalizeValue(searchParams.get("userId"));
   const requestedRoute = normalizeCreatorRoute(locationLike.pathname);
@@ -62,17 +79,19 @@ export function parseCreatorRouteState(locationLike: Pick<Location, "pathname" |
       projectId,
       importBatchId,
       shotId: undefined,
+      sourceProjectId: undefined,
       orgId,
       userId,
     } satisfies CreatorRouteState;
   }
 
-  if (requestedRoute === "collab" && (shotId || projectId)) {
+  if (isShotScopedCreatorRoute(requestedRoute) && shotId) {
     return {
-      route: "collab",
+      route: requestedRoute,
       projectId,
       shotId,
       importBatchId: undefined,
+      sourceProjectId: requestedRoute === "reuse" ? sourceProjectId : undefined,
       orgId,
       userId,
     } satisfies CreatorRouteState;
@@ -84,6 +103,7 @@ export function parseCreatorRouteState(locationLike: Pick<Location, "pathname" |
       projectId,
       shotId: undefined,
       importBatchId: undefined,
+      sourceProjectId: undefined,
       orgId,
       userId,
     } satisfies CreatorRouteState;
@@ -95,6 +115,7 @@ export function parseCreatorRouteState(locationLike: Pick<Location, "pathname" |
       projectId,
       shotId,
       importBatchId: undefined,
+      sourceProjectId: undefined,
       orgId,
       userId,
     } satisfies CreatorRouteState;
@@ -106,6 +127,7 @@ export function parseCreatorRouteState(locationLike: Pick<Location, "pathname" |
       projectId,
       shotId: undefined,
       importBatchId: undefined,
+      sourceProjectId: undefined,
       orgId,
       userId,
     } satisfies CreatorRouteState;
@@ -116,6 +138,7 @@ export function parseCreatorRouteState(locationLike: Pick<Location, "pathname" |
     projectId,
     shotId: undefined,
     importBatchId: undefined,
+    sourceProjectId: undefined,
     orgId,
     userId,
   } satisfies CreatorRouteState;
@@ -136,12 +159,15 @@ export function buildCreatorRouteUrl(state: CreatorRouteState) {
     searchParams.set("importBatchId", state.importBatchId);
   }
 
-  if (state.route === "collab") {
+  if (state.route === "collab" || state.route === "reuse") {
     if (state.projectId) {
       searchParams.set("projectId", state.projectId);
     }
     if (state.shotId) {
       searchParams.set("shotId", state.shotId);
+    }
+    if (state.route === "reuse" && state.sourceProjectId) {
+      searchParams.set("sourceProjectId", state.sourceProjectId);
     }
   }
 
@@ -183,10 +209,20 @@ export function selectCreatorRoute(
       ...state,
       route,
       importBatchId: undefined,
+      sourceProjectId: undefined,
     };
   }
 
   if (route === "collab") {
+    return {
+      ...state,
+      route,
+      importBatchId: undefined,
+      sourceProjectId: undefined,
+    };
+  }
+
+  if (route === "reuse") {
     return {
       ...state,
       route,
@@ -200,6 +236,7 @@ export function selectCreatorRoute(
       route,
       shotId: undefined,
       importBatchId: undefined,
+      sourceProjectId: undefined,
     };
   }
 
@@ -207,5 +244,6 @@ export function selectCreatorRoute(
     ...state,
     route,
     shotId: undefined,
+    sourceProjectId: undefined,
   };
 }

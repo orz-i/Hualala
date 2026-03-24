@@ -3,6 +3,7 @@ export type CreatorShotMode = "success" | "failure";
 export type CreatorImportMode = "success" | "failure";
 export type PreviewMode = "success";
 export type AudioMode = "success";
+export type ReuseMode = "success";
 
 export type MockConnectScenario = {
   admin?: AdminMode;
@@ -10,6 +11,7 @@ export type MockConnectScenario = {
   creatorImport?: CreatorImportMode;
   preview?: PreviewMode;
   audio?: AudioMode;
+  reuse?: ReuseMode;
 };
 
 export type MockSession = {

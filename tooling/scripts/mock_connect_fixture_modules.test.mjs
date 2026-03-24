@@ -279,3 +279,48 @@ test("audio helpers preserve timeline order and audio asset scope", async () => 
   assert.equal(provenance?.asset.projectId, "project-1");
   assert.equal(provenance?.sourceRunId, "run-audio-dialogue-1");
 });
+
+test("reuse helpers preserve cross-project scope, blocked eligibility, and selection state", async () => {
+  const {
+    createAssetReuseState,
+    buildReuseImportBatchSummaries,
+    buildReuseImportBatchWorkbenchPayload,
+    buildReuseAssetProvenancePayload,
+    buildReuseShotExecutionPayload,
+    buildReuseShotWorkbenchPayload,
+    applyReusePrimaryAsset,
+    canApplyReuseAsset,
+  } = await import("../../tests/e2e/fixtures/mock-connect/reuse.ts");
+
+  const initial = createAssetReuseState("project-live-1");
+  assert.equal(initial.shotWorkbench.shotExecution.primaryAssetId, "asset-current-1");
+
+  const summaries = buildReuseImportBatchSummaries(initial, "project-source-9");
+  assert.equal(summaries.length, 1);
+  assert.equal(summaries[0]?.projectId, "project-source-9");
+  assert.deepEqual(buildReuseImportBatchSummaries(initial, "project-live-1"), []);
+
+  const workbench = buildReuseImportBatchWorkbenchPayload(initial, "reuse-batch-source-9");
+  assert.equal(workbench?.importBatch.projectId, "project-source-9");
+  assert.equal(workbench?.mediaAssets[0]?.projectId, "project-source-9");
+  assert.equal(workbench?.mediaAssets[0]?.rightsStatus, "clear");
+  assert.equal(workbench?.mediaAssets[1]?.aiAnnotated, true);
+  assert.equal(workbench?.candidateAssets[0]?.shotExecutionId, "shot-exec-reuse-1");
+  assert.equal(buildReuseImportBatchWorkbenchPayload(initial, "missing-batch"), null);
+
+  const provenance = buildReuseAssetProvenancePayload(initial, "asset-external-1");
+  assert.equal(provenance?.asset.projectId, "project-source-9");
+  assert.equal(provenance?.sourceRunId, "run-source-1");
+  assert.match(provenance?.provenanceSummary ?? "", /rights_status=clear/);
+
+  assert.equal(canApplyReuseAsset(initial, "asset-external-1"), true);
+  assert.equal(canApplyReuseAsset(initial, "asset-external-ai-1"), false);
+
+  const updated = applyReusePrimaryAsset(initial, "asset-external-1");
+  const shotExecution = buildReuseShotExecutionPayload(updated);
+  assert.equal(shotExecution.shotExecution.primaryAssetId, "asset-external-1");
+
+  const shotWorkbench = buildReuseShotWorkbenchPayload(updated);
+  assert.equal(shotWorkbench.workbench.shotExecution.primaryAssetId, "asset-external-1");
+  assert.equal(shotWorkbench.workbench.shotExecution.projectId, "project-live-1");
+});
