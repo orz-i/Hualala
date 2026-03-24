@@ -219,33 +219,32 @@
 
 ## Task 5: 跨项目素材复用线
 
+> Status: 当前执行线，基于既有 foundation 的 thin-consumer 实现
+
 **Files:**
 - Modify: `apps/admin/src/app/adminRoutes.ts`
 - Modify: `apps/admin/src/app/App.tsx`
+- Modify: `apps/admin/src/app/App.test.tsx`
 - Create: `apps/admin/src/features/dashboard/reuse/`
-- Create: `apps/admin/src/features/dashboard/AdminAssetReusePage.tsx`
-- Create: `apps/admin/src/features/dashboard/useAssetReuseController.ts`
 - Modify: `apps/creator/src/app/creatorRoutes.ts`
 - Modify: `apps/creator/src/app/App.tsx`
+- Modify: `apps/creator/src/app/App.test.tsx`
 - Create: `apps/creator/src/features/reuse/`
-- Create: `apps/creator/src/features/reuse/AssetLibraryPage.tsx`
-- Create: `apps/creator/src/features/reuse/useAssetReusePicker.ts`
-- Modify: `apps/backend/internal/interfaces/connect/asset_service.go`
-- Create: `apps/backend/internal/application/assetapp/reuse_service.go`
-- Create: `apps/backend/internal/domain/asset/reuse.go`
-- Modify: `apps/backend/internal/platform/db/postgres_store_execution_asset.go`
-- Modify: `apps/backend/internal/platform/db/postgres_relational.go`
+- Modify: `tests/e2e/fixtures/mockConnectRoutes.ts`
+- Create: `tests/e2e/fixtures/mock-connect/reuse.ts`
+- Modify: `package.json`
+- Create: `docs/runbooks/phase2-asset-reuse-demo.md`
 - Test: `apps/admin/src/features/dashboard/reuse/*.test.tsx`
 - Test: `apps/creator/src/features/reuse/*.test.tsx`
 - Test: `tests/e2e/phase2-asset-reuse.spec.ts`
 
-- [ ] 先定义“复用”而不是“复制”：默认保存引用关系、来源项目、引用人、引用时间、权限校验结果。
-- [ ] creator 侧提供项目范围内检索/筛选可复用素材的入口，并能查看来源、授权、AI 标识、限制说明。
-- [ ] admin 侧提供跨项目素材库治理视图，重点是授权、来源、项目间可见性、复用审计与撤销。
-- [ ] backend 扩展 asset service，使其能返回“当前素材能否跨项目复用”的结论及原因，而不是只返回素材列表。
-- [ ] 复用关系必须接入现有 asset provenance，而不是另起一套脱离来源链的记录。
-- [ ] 对被限制、过期、缺 consent 的素材，creator 要明确 fail closed，不允许静默引用。
-- [ ] 先补 connect/service tests，再跑 admin/creator 组件测试和 `phase2-asset-reuse` mock E2E。
+- [x] 复用语义收敛为“reference，不是 copy”；creator 最终仍通过既有 shot workbench 选择主素材，不额外复制素材或生成平行 provenance 记录。
+- [x] creator 已新增 `/reuse?projectId=<id>&shotId=<id>` 独立入口，可按 `sourceProjectId` 加载外部项目素材并查看来源、授权、AI 标识与限制说明。
+- [x] 当前实现只消费既有 `AssetService.ListImportBatches / GetImportBatchWorkbench / GetAssetProvenanceSummary` 与 `ExecutionService.GetShotWorkbench / SelectPrimaryAsset`，没有新增 proto、SDK public API、SSE 或 backend shared truth。
+- [x] creator 对被限制、AI 标记且 consent 不可用的素材明确 fail closed：保留列表可见性和 blocked reason，但禁用“复用为当前镜头主素材”。
+- [x] admin 已新增 `/reuse?projectId=<id>&shotExecutionId=<id>` 只读审计页，可查看来源项目、当前复用资格、blocked reason 与 provenance drilldown。
+- [x] 已新增独立 reuse mock fixture 与 `phase2-asset-reuse` Playwright 验收，不把跨项目素材逻辑塞回 audio / preview / admin fixture。
+- [x] 当前线已补 creator/admin 组件测试、独立 reuse E2E、demo runbook 与计划文档同步。
 - [ ] 若跨项目可见性、授权范围、组织级策略不够表达，暂停本线并回 foundation micro-patch。
 
 **Exit checks:**
@@ -309,6 +308,6 @@
 
 ## 建议执行节奏
 
-1. Task 1 已完成；当前从最新 `master` 继续拉起“实时协同 + 预演工作台”两条主线。
-2. 多轨音频与跨项目素材复用在第二波并行推进，但在真正开工前要先补新的 foundation micro-patch 冻结各自 shared truth。
-3. 每合并一条主线 PR，其余 worktree 立即 `git fetch origin && git rebase origin/master`，避免 Phase 2 重新回到共享入口漂移。
+1. Task 1、Task 2、Task 3A、Task 4A、Task 4B 已完成；当前主线是 Task 5 跨项目素材复用。
+2. Task 5 持续只消费既有 foundation；如果复用线暴露出新的 rights / provenance / org policy shared truth 缺口，必须先拆 foundation micro-patch，再继续产品线。
+3. Task 5 合入后再启动 Task 6，统一补 Phase 2 closeout、runbook 收尾、CI 验收与必要的 real smoke。

@@ -15,6 +15,8 @@ import {
 import { useImportWorkbenchController } from "../features/import-batches/useImportWorkbenchController";
 import { PreviewWorkbenchPage } from "../features/preview/PreviewWorkbenchPage";
 import { usePreviewWorkbenchController } from "../features/preview/usePreviewWorkbenchController";
+import { AssetReusePage } from "../features/reuse/AssetReusePage";
+import { useAssetReusePicker } from "../features/reuse/useAssetReusePicker";
 import { ActionFeedback } from "../features/shared/ActionFeedback";
 import { ShotWorkbenchPage } from "../features/shot-workbench/ShotWorkbenchPage";
 import { useShotWorkbenchController } from "../features/shot-workbench/useShotWorkbenchController";
@@ -43,6 +45,9 @@ export function App() {
   const { locale, setLocale, t } = useLocaleState();
   const [routeState, setRouteState] = useState<CreatorRouteState>(() =>
     parseCreatorRouteState(window.location),
+  );
+  const [reuseSourceProjectIdInput, setReuseSourceProjectIdInput] = useState(
+    () => routeState.sourceProjectId ?? "",
   );
   const [sessionState, setSessionState] = useState<"loading" | "ready" | "unauthenticated">(
     "loading",
@@ -102,6 +107,14 @@ export function App() {
     }
     rememberProjectId(routeState.projectId);
   }, [routeState.projectId]);
+
+  useEffect(() => {
+    if (routeState.route !== "reuse") {
+      setReuseSourceProjectIdInput("");
+      return;
+    }
+    setReuseSourceProjectIdInput(routeState.sourceProjectId ?? "");
+  }, [routeState.route, routeState.sourceProjectId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -196,6 +209,19 @@ export function App() {
     enabled:
       sessionState === "ready" && routeState.route === "audio" && Boolean(routeState.projectId),
     projectId: routeState.projectId ?? "",
+    t,
+    orgId: effectiveOrgId,
+    userId: effectiveUserId,
+  });
+
+  const reuseController = useAssetReusePicker({
+    enabled:
+      sessionState === "ready" &&
+      routeState.route === "reuse" &&
+      Boolean(routeState.projectId) &&
+      Boolean(routeState.shotId),
+    shotId: routeState.shotId ?? "",
+    sourceProjectId: routeState.sourceProjectId ?? "",
     t,
     orgId: effectiveOrgId,
     userId: effectiveUserId,
@@ -366,6 +392,18 @@ export function App() {
   };
   const workbenchErrorMessage = workbenchErrorMessages[routeState.route] ?? "";
   const errorMessage = sessionErrorMessage || workbenchErrorMessage;
+
+  if (
+    routeState.route === "reuse" &&
+    reuseController.errorMessage &&
+    !reuseController.shotWorkbench
+  ) {
+    return (
+      <main style={{ padding: "32px" }}>
+        {t("app.error.load", { message: reuseController.errorMessage })}
+      </main>
+    );
+  }
 
   if (errorMessage) {
     return (
@@ -719,6 +757,79 @@ export function App() {
     );
   }
 
+  if (routeState.route === "reuse" && reuseController.shotWorkbench) {
+    const reuseShotWorkbench = reuseController.shotWorkbench;
+
+    return (
+      <AssetReusePage
+        shotWorkbench={reuseShotWorkbench}
+        reusableAssets={reuseController.reusableAssets}
+        sourceProjectIdInput={reuseSourceProjectIdInput}
+        loading={reuseController.loading}
+        errorMessage={reuseController.errorMessage}
+        feedback={reuseController.feedback}
+        assetProvenanceDetail={reuseController.assetProvenanceDetail}
+        assetProvenancePending={reuseController.assetProvenancePending}
+        assetProvenanceErrorMessage={reuseController.assetProvenanceErrorMessage}
+        t={t}
+        shellHeader={
+          <CreatorWorkspaceShell
+            tone="reuse"
+            badge={t("reuse.badge")}
+            title={reuseShotWorkbench.shotExecution.shotId}
+            description={t("reuse.header", {
+              shotId: reuseShotWorkbench.shotExecution.shotId,
+            })}
+            sessionLabel={sessionLabel}
+            locale={locale}
+            t={t}
+            onLocaleChange={setLocale}
+            onClearSession={
+              identityOverride
+                ? undefined
+                : () => {
+                    void handleClearCurrentSession();
+                  }
+            }
+            onBackHome={handleReturnHome}
+            feedback={
+              reuseController.feedback ? (
+                <ActionFeedback feedback={reuseController.feedback} />
+              ) : undefined
+            }
+          />
+        }
+        onSourceProjectIdInputChange={setReuseSourceProjectIdInput}
+        onLoadSourceProject={() => {
+          const nextSourceProjectId = reuseSourceProjectIdInput.trim();
+          commitRouteState(
+            {
+              ...selectCreatorRoute(routeState, "reuse"),
+              sourceProjectId: nextSourceProjectId || undefined,
+            },
+            "push",
+          );
+        }}
+        onApplyReuse={(assetId) => {
+          void reuseController.handleApplyReuse(assetId);
+        }}
+        onOpenAssetProvenance={(assetId) => {
+          void reuseController.handleOpenAssetProvenance(assetId);
+        }}
+        onCloseAssetProvenance={reuseController.handleCloseAssetProvenance}
+        onBackToShotWorkbench={(shotId) => {
+          commitRouteState(
+            {
+              ...selectCreatorRoute(routeState, "shots"),
+              shotId,
+            },
+            "push",
+          );
+        }}
+      />
+    );
+  }
+
   if (routeState.route === "home") {
     return (
       <CreatorHomePage
@@ -775,6 +886,10 @@ export function App() {
 
   if (routeState.route === "audio") {
     return <main style={{ padding: "32px" }}>{t("app.loading.audio")}</main>;
+  }
+
+  if (routeState.route === "reuse") {
+    return <main style={{ padding: "32px" }}>{t("app.loading.reuse")}</main>;
   }
 
   return <main style={{ padding: "32px" }}>{t("app.loading.shot")}</main>;

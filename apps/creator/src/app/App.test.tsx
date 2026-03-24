@@ -31,11 +31,18 @@ import {
 } from "../features/session/sessionBootstrap";
 import { useAudioWorkbenchController } from "../features/audio/useAudioWorkbenchController";
 import { usePreviewWorkbenchController } from "../features/preview/usePreviewWorkbenchController";
+import { useAssetReusePicker } from "../features/reuse/useAssetReusePicker";
 import { loadAssetProvenanceDetails } from "../features/shared/loadAssetProvenanceDetails";
 import { subscribeWorkbenchEvents } from "../features/subscribeWorkbenchEvents";
 import { App } from "./App";
 
-const { useAudioWorkbenchControllerMock, useCollabControllerMock, usePreviewWorkbenchControllerMock } = vi.hoisted(() => ({
+const {
+  useAssetReusePickerMock,
+  useAudioWorkbenchControllerMock,
+  useCollabControllerMock,
+  usePreviewWorkbenchControllerMock,
+} = vi.hoisted(() => ({
+  useAssetReusePickerMock: vi.fn(),
   useAudioWorkbenchControllerMock: vi.fn(),
   useCollabControllerMock: vi.fn(),
   usePreviewWorkbenchControllerMock: vi.fn(),
@@ -95,10 +102,14 @@ vi.mock("../features/audio/useAudioWorkbenchController", () => ({
 vi.mock("../features/preview/usePreviewWorkbenchController", () => ({
   usePreviewWorkbenchController: usePreviewWorkbenchControllerMock,
 }));
+vi.mock("../features/reuse/useAssetReusePicker", () => ({
+  useAssetReusePicker: useAssetReusePickerMock,
+}));
 
 let lastCollabWorkbenchPageProps: Record<string, unknown> | null = null;
 let lastAudioWorkbenchPageProps: Record<string, unknown> | null = null;
 let lastPreviewWorkbenchPageProps: Record<string, unknown> | null = null;
+let lastAssetReusePageProps: Record<string, unknown> | null = null;
 
 vi.mock("../features/collaboration/CollabWorkbenchPage", () => ({
   CollabWorkbenchPage: (props: Record<string, unknown>) => {
@@ -130,6 +141,42 @@ vi.mock("../features/preview/PreviewWorkbenchPage", () => ({
     );
   },
 }));
+vi.mock("../features/reuse/AssetReusePage", () => ({
+  AssetReusePage: (props: Record<string, unknown>) => {
+    lastAssetReusePageProps = props;
+    return (
+      <div data-testid="creator-reuse-page">
+        <input
+          aria-label="creator-reuse-source-input"
+          value={(props.sourceProjectIdInput as string) ?? ""}
+          onChange={(event) => {
+            (props.onSourceProjectIdInputChange as ((value: string) => void) | undefined)?.(
+              event.target.value,
+            );
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            (props.onLoadSourceProject as (() => void) | undefined)?.();
+          }}
+        >
+          creator-reuse-load-source
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            (props.onBackToShotWorkbench as ((shotId: string) => void) | undefined)?.(
+              "shot-reuse-1",
+            );
+          }}
+        >
+          creator-reuse-back-shot
+        </button>
+      </div>
+    );
+  },
+}));
 
 const loadShotWorkbenchMock = vi.mocked(loadShotWorkbench);
 const loadShotReviewTimelineMock = vi.mocked(loadShotReviewTimeline);
@@ -150,6 +197,7 @@ const retryShotWorkflowRunMock = vi.mocked(retryShotWorkflowRun);
 const loadCurrentSessionMock = vi.mocked(loadCurrentSession);
 const ensureDevSessionMock = vi.mocked(ensureDevSession);
 const clearCurrentSessionMock = vi.mocked(clearCurrentSession);
+const useAssetReusePickerMocked = vi.mocked(useAssetReusePicker);
 const useAudioWorkbenchControllerMocked = vi.mocked(useAudioWorkbenchController);
 const usePreviewWorkbenchControllerMocked = vi.mocked(usePreviewWorkbenchController);
 const loadAssetProvenanceDetailsMock = vi.mocked(loadAssetProvenanceDetails);
@@ -285,6 +333,44 @@ function createAudioControllerState() {
     handleTrackSoloChange: vi.fn(),
     handleClipFieldChange: vi.fn(),
     handleSaveTimeline: vi.fn(),
+    handleOpenAssetProvenance: vi.fn(),
+    handleCloseAssetProvenance: vi.fn(),
+  };
+}
+
+function createReuseControllerState() {
+  return {
+    shotWorkbench: {
+      ...createShotWorkbench("shot-reuse-1"),
+      shotExecution: {
+        ...createShotWorkbench("shot-reuse-1").shotExecution,
+        projectId: "project-live-1",
+      },
+    },
+    reusableAssets: [
+      {
+        assetId: "asset-external-1",
+        sourceProjectId: "project-source-9",
+        importBatchId: "batch-source-1",
+        fileName: "hero-shot.png",
+        mediaType: "image",
+        sourceType: "upload_session",
+        rightsStatus: "clear",
+        locale: "zh-CN",
+        aiAnnotated: false,
+        sourceRunId: "run-source-1",
+        mimeType: "image/png",
+        allowed: true,
+        blockedReason: "",
+      },
+    ],
+    loading: false,
+    feedback: null,
+    errorMessage: "",
+    assetProvenanceDetail: null,
+    assetProvenancePending: false,
+    assetProvenanceErrorMessage: "",
+    handleApplyReuse: vi.fn(),
     handleOpenAssetProvenance: vi.fn(),
     handleCloseAssetProvenance: vi.fn(),
   };
@@ -560,6 +646,7 @@ describe("App", () => {
     lastCollabWorkbenchPageProps = null;
     lastAudioWorkbenchPageProps = null;
     lastPreviewWorkbenchPageProps = null;
+    lastAssetReusePageProps = null;
     latestWorkbenchSubscription = undefined;
     latestWorkbenchSubscriptionCleanup = vi.fn();
     window.history.replaceState({}, "", "/");
@@ -615,6 +702,7 @@ describe("App", () => {
       return latestWorkbenchSubscriptionCleanup;
     });
     useCollabControllerMock.mockReturnValue(createCollabControllerState());
+    useAssetReusePickerMocked.mockReturnValue(createReuseControllerState());
     useAudioWorkbenchControllerMocked.mockReturnValue(createAudioControllerState());
     usePreviewWorkbenchControllerMocked.mockReturnValue(createPreviewControllerState());
     loadImportBatchSummariesMock.mockResolvedValue([]);
@@ -787,6 +875,62 @@ describe("App", () => {
         }),
       }),
     );
+  });
+
+  it("renders the reuse route, preserves deep-link params, and routes back to the shot workbench", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/reuse?projectId=project-live-1&shotId=shot-reuse-1&sourceProjectId=project-source-9&orgId=org-override-001&userId=user-override-001",
+    );
+
+    render(<App />);
+
+    expect(await screen.findByTestId("creator-reuse-page")).toBeInTheDocument();
+    expect(useAssetReusePickerMocked).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        shotId: "shot-reuse-1",
+        sourceProjectId: "project-source-9",
+        orgId: "org-override-001",
+        userId: "user-override-001",
+      }),
+    );
+    expect(lastAssetReusePageProps).toEqual(
+      expect.objectContaining({
+        shotWorkbench: expect.objectContaining({
+          shotExecution: expect.objectContaining({
+            shotId: "shot-reuse-1",
+            projectId: "project-live-1",
+          }),
+        }),
+        sourceProjectIdInput: "project-source-9",
+      }),
+    );
+
+    fireEvent.change(screen.getByLabelText("creator-reuse-source-input"), {
+      target: { value: "project-source-8" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "creator-reuse-load-source" }));
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/reuse");
+      expect(window.location.search).toContain("projectId=project-live-1");
+      expect(window.location.search).toContain("shotId=shot-reuse-1");
+      expect(window.location.search).toContain("sourceProjectId=project-source-8");
+      expect(window.location.search).toContain("orgId=org-override-001");
+      expect(window.location.search).toContain("userId=user-override-001");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "creator-reuse-back-shot" }));
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/shots");
+      expect(window.location.search).toContain("shotId=shot-reuse-1");
+      expect(window.location.search).not.toContain("sourceProjectId=");
+      expect(window.location.search).toContain("orgId=org-override-001");
+      expect(window.location.search).toContain("userId=user-override-001");
+    });
   });
 
   it("loads import batches from the projectId query param and remembers it locally", async () => {
