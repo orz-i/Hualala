@@ -19,16 +19,27 @@ function asJsonValue(response: Record<string, unknown>): JsonValue {
 
 export function createProjectClient(options: HualalaClientOptions = {}) {
   const client = createHualalaClient(options);
+  const unaryWithSchema = <TResponse>(
+    schema: Parameters<typeof fromJson>[0],
+    path: string,
+    body: Record<string, unknown>,
+    label: string,
+  ): Promise<TResponse> =>
+    client
+      .unary<Record<string, unknown>>(path, body, label)
+      .then((response) => fromJson(schema, asJsonValue(response)) as TResponse);
+
   return {
     getPreviewWorkbench(body: {
       projectId: string;
       episodeId?: string;
     }): Promise<GetPreviewWorkbenchResponse> {
-      return client.unary<Record<string, unknown>>(
+      return unaryWithSchema<GetPreviewWorkbenchResponse>(
+        GetPreviewWorkbenchResponseSchema,
         "/hualala.project.v1.ProjectService/GetPreviewWorkbench",
         body,
         "sdk: failed to get preview workbench",
-      ).then((response) => fromJson(GetPreviewWorkbenchResponseSchema, asJsonValue(response)));
+      );
     },
     upsertPreviewAssembly(body: {
       projectId: string;
@@ -43,21 +54,23 @@ export function createProjectClient(options: HualalaClientOptions = {}) {
         sequence?: number;
       }>;
     }): Promise<UpsertPreviewAssemblyResponse> {
-      return client.unary<Record<string, unknown>>(
+      return unaryWithSchema<UpsertPreviewAssemblyResponse>(
+        UpsertPreviewAssemblyResponseSchema,
         "/hualala.project.v1.ProjectService/UpsertPreviewAssembly",
         body,
         "sdk: failed to upsert preview assembly",
-      ).then((response) => fromJson(UpsertPreviewAssemblyResponseSchema, asJsonValue(response)));
+      );
     },
     getAudioWorkbench(body: {
       projectId: string;
       episodeId?: string;
     }): Promise<GetAudioWorkbenchResponse> {
-      return client.unary<Record<string, unknown>>(
+      return unaryWithSchema<GetAudioWorkbenchResponse>(
+        GetAudioWorkbenchResponseSchema,
         "/hualala.project.v1.ProjectService/GetAudioWorkbench",
         body,
         "sdk: failed to get audio workbench",
-      ).then((response) => fromJson(GetAudioWorkbenchResponseSchema, asJsonValue(response)));
+      );
     },
     upsertAudioTimeline(body: {
       projectId: string;
@@ -87,11 +100,12 @@ export function createProjectClient(options: HualalaClientOptions = {}) {
         }>;
       }>;
     }): Promise<UpsertAudioTimelineResponse> {
-      return client.unary<Record<string, unknown>>(
+      return unaryWithSchema<UpsertAudioTimelineResponse>(
+        UpsertAudioTimelineResponseSchema,
         "/hualala.project.v1.ProjectService/UpsertAudioTimeline",
         body,
         "sdk: failed to upsert audio timeline",
-      ).then((response) => fromJson(UpsertAudioTimelineResponseSchema, asJsonValue(response)));
+      );
     },
   };
 }

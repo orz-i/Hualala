@@ -62,6 +62,17 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function shouldUseAdminSession(scenario: MockConnectScenario) {
+  return Boolean(
+    scenario.admin ||
+      scenario.creatorImport ||
+      scenario.preview ||
+      scenario.audio ||
+      scenario.reuse ||
+      scenario.collaboration,
+  );
+}
+
 export async function mockConnectRoutes(page: Page, scenario: MockConnectScenario) {
   const phase1DemoScenarios = await loadPhase1DemoScenarios();
   let {
@@ -110,30 +121,18 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         await route.fulfill(jsonResponse(401, { error: "unauthenticated" }));
         return;
       }
-      const session =
-        scenario.admin ||
-        scenario.creatorImport ||
-        scenario.preview ||
-        scenario.audio ||
-        scenario.reuse ||
-        scenario.collaboration
-          ? adminState.governance.currentSession
-          : buildDefaultDevSession();
+      const session = shouldUseAdminSession(scenario)
+        ? adminState.governance.currentSession
+        : buildDefaultDevSession();
       await route.fulfill(jsonResponse(200, { session }));
       return;
     }
 
     if (pathname === "/hualala.auth.v1.AuthService/StartDevSession") {
       devSessionActive = true;
-      const session =
-        scenario.admin ||
-        scenario.creatorImport ||
-        scenario.preview ||
-        scenario.audio ||
-        scenario.reuse ||
-        scenario.collaboration
-          ? adminState.governance.currentSession
-          : buildDefaultDevSession();
+      const session = shouldUseAdminSession(scenario)
+        ? adminState.governance.currentSession
+        : buildDefaultDevSession();
       await route.fulfill(jsonResponse(200, { session }));
       return;
     }
