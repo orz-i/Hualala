@@ -20,7 +20,6 @@ function formatReuseError(error: unknown, fallback: string) {
 
 export function useAssetReusePicker({
   enabled,
-  projectId,
   shotId,
   sourceProjectId,
   t,
@@ -28,7 +27,6 @@ export function useAssetReusePicker({
   userId,
 }: {
   enabled: boolean;
-  projectId: string;
   shotId: string;
   sourceProjectId: string;
   t: CreatorTranslator;
@@ -73,63 +71,64 @@ export function useAssetReusePicker({
       setErrorMessage("");
     });
 
-    Promise.allSettled([
-      loadShotWorkbench({
-        shotId,
-        orgId,
-        userId,
-      }),
-      loadReusableAssetLibrary({
-        currentProjectId: projectId,
-        sourceProjectId,
-        orgId,
-        userId,
-      }),
-    ])
-      .then(([shotResult, reusableAssetsResult]) => {
+    void loadShotWorkbench({
+      shotId,
+      orgId,
+      userId,
+    })
+      .then(async (nextShotWorkbench) => {
+        let nextReusableAssets: ReusableAssetLibraryItemViewModel[] = [];
+        let nextErrorMessage = "";
+
+        try {
+          nextReusableAssets = await loadReusableAssetLibrary({
+            currentProjectId: nextShotWorkbench.shotExecution.projectId,
+            sourceProjectId,
+            orgId,
+            userId,
+          });
+        } catch (error: unknown) {
+          nextErrorMessage = formatReuseError(
+            error,
+            "creator: unknown cross-project asset reuse error",
+          );
+        }
+
         if (cancelled) {
           return;
         }
 
-        if (shotResult.status === "rejected") {
-          startTransition(() => {
-            setShotWorkbench(null);
-            setReusableAssets([]);
-            setLoading(false);
-            setFeedback(null);
-            setErrorMessage(
-              formatReuseError(
-                shotResult.reason,
-                "creator: unknown cross-project asset reuse error",
-              ),
-            );
-          });
-          return;
-        }
-
-        const nextReusableAssets =
-          reusableAssetsResult.status === "fulfilled" ? reusableAssetsResult.value : [];
-        const nextErrorMessage =
-          reusableAssetsResult.status === "rejected"
-            ? formatReuseError(
-                reusableAssetsResult.reason,
-                "creator: unknown cross-project asset reuse error",
-              )
-            : "";
-
         startTransition(() => {
-          setShotWorkbench(shotResult.value);
+          setShotWorkbench(nextShotWorkbench);
           setReusableAssets(nextReusableAssets);
           setLoading(false);
           setFeedback(null);
           setErrorMessage(nextErrorMessage);
+        });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+
+        startTransition(() => {
+          setShotWorkbench(null);
+          setReusableAssets([]);
+          setLoading(false);
+          setFeedback(null);
+          setErrorMessage(
+            formatReuseError(
+              error,
+              "creator: unknown cross-project asset reuse error",
+            ),
+          );
         });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [enabled, orgId, projectId, resetAssetProvenance, shotId, sourceProjectId, t, userId]);
+  }, [enabled, orgId, resetAssetProvenance, shotId, sourceProjectId, t, userId]);
 
   const handleApplyReuse = useCallback(
     async (assetId: string) => {

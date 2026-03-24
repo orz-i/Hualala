@@ -887,10 +887,9 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByTestId("creator-reuse-page")).toBeInTheDocument();
-    expect(useAssetReusePickerMocked).toHaveBeenCalledWith(
+    expect(useAssetReusePickerMocked).toHaveBeenLastCalledWith(
       expect.objectContaining({
         enabled: true,
-        projectId: "project-live-1",
         shotId: "shot-reuse-1",
         sourceProjectId: "project-source-9",
         orgId: "org-override-001",

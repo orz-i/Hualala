@@ -72,7 +72,6 @@ export async function loadAdminAssetReuseAudit({
     : null;
 
   return normalizeAdminAssetReuseAudit({
-    projectId,
     shotExecution: normalizedShotExecution,
     assetProvenanceDetail,
   });

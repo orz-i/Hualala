@@ -103,7 +103,6 @@ describe("useAssetReusePicker", () => {
     const { result } = renderHook(() =>
       useAssetReusePicker({
         enabled: true,
-        projectId: "project-live-1",
         shotId: "shot-live-1",
         sourceProjectId: "project-source-9",
         t,
@@ -138,7 +137,6 @@ describe("useAssetReusePicker", () => {
     const { result } = renderHook(() =>
       useAssetReusePicker({
         enabled: true,
-        projectId: "project-live-1",
         shotId: "shot-live-1",
         sourceProjectId: "project-source-9",
         t,
@@ -166,7 +164,6 @@ describe("useAssetReusePicker", () => {
     const { result } = renderHook(() =>
       useAssetReusePicker({
         enabled: true,
-        projectId: "project-live-1",
         shotId: "shot-live-1",
         sourceProjectId: "project-source-9",
         t,
@@ -182,5 +179,29 @@ describe("useAssetReusePicker", () => {
     expect(result.current.reusableAssets).toEqual([]);
     expect(result.current.errorMessage).toBe("library exploded");
     expect(result.current.loading).toBe(false);
+  });
+
+  it("loads the reusable asset library against the loaded shot project instead of the route project", async () => {
+    const { result } = renderHook(() =>
+      useAssetReusePicker({
+        enabled: true,
+        shotId: "shot-live-1",
+        sourceProjectId: "project-source-9",
+        t,
+        orgId: "org-live-1",
+        userId: "user-live-1",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.shotWorkbench?.shotExecution.id).toBe("shot-exec-live-1");
+    });
+
+    expect(loadReusableAssetLibraryMock).toHaveBeenCalledWith({
+      currentProjectId: "project-live-1",
+      sourceProjectId: "project-source-9",
+      orgId: "org-live-1",
+      userId: "user-live-1",
+    });
   });
 });

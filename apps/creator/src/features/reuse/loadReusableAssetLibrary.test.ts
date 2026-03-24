@@ -122,4 +122,85 @@ describe("loadReusableAssetLibrary", () => {
       }),
     ]);
   });
+
+  it("keeps successful import batches when another batch workbench fails", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            importBatches: [{ id: "batch-source-1" }, { id: "batch-source-2" }],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            importBatch: {
+              id: "batch-source-1",
+              projectId: "project-source-9",
+              sourceType: "upload_session",
+            },
+            uploadFiles: [
+              {
+                id: "upload-external-1",
+                fileName: "hero-shot.png",
+                mimeType: "image/png",
+              },
+            ],
+            mediaAssets: [
+              {
+                id: "asset-external-clear",
+                projectId: "project-source-9",
+                sourceType: "upload_session",
+                rightsStatus: "clear",
+                importBatchId: "batch-source-1",
+                locale: "zh-CN",
+                aiAnnotated: false,
+                mediaType: "image",
+              },
+            ],
+            mediaAssetVariants: [
+              {
+                id: "variant-external-1",
+                assetId: "asset-external-clear",
+                uploadFileId: "upload-external-1",
+                mimeType: "image/png",
+              },
+            ],
+            candidateAssets: [
+              {
+                assetId: "asset-external-clear",
+                sourceRunId: "run-external-1",
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "batch failed" }), {
+          status: 500,
+        }),
+      );
+
+    const items = await loadReusableAssetLibrary({
+      currentProjectId: "project-live-1",
+      sourceProjectId: "project-source-9",
+      orgId: "org-live-1",
+      userId: "user-live-1",
+      baseUrl: "http://127.0.0.1:8080",
+      fetchFn,
+    });
+
+    expect(items).toEqual([
+      expect.objectContaining({
+        assetId: "asset-external-clear",
+        sourceProjectId: "project-source-9",
+        sourceRunId: "run-external-1",
+        allowed: true,
+      }),
+    ]);
+  });
 });

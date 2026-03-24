@@ -110,4 +110,56 @@ describe("loadAdminAssetReuseAudit", () => {
       sourceProjectId: "",
     });
   });
+
+  it("derives cross-project eligibility from the loaded shot execution project instead of the route project", async () => {
+    const fetchFn = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          shotExecution: {
+            id: "shot-exec-live-1",
+            shotId: "shot-live-1",
+            projectId: "project-live-1",
+            status: "primary_selected",
+            primaryAssetId: "asset-local-1",
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    loadAssetProvenanceDetailsMock.mockResolvedValueOnce({
+      asset: {
+        id: "asset-local-1",
+        projectId: "project-live-1",
+        sourceType: "upload_session",
+        rightsStatus: "clear",
+        importBatchId: "batch-live-1",
+        locale: "zh-CN",
+        aiAnnotated: false,
+      },
+      provenanceSummary: "source_type=upload_session rights_status=clear",
+      candidateAssetId: "",
+      shotExecutionId: "shot-exec-live-1",
+      sourceRunId: "run-live-1",
+      importBatchId: "batch-live-1",
+      variantCount: 1,
+    });
+
+    const audit = await loadAdminAssetReuseAudit({
+      projectId: "project-route-stale-9",
+      shotExecutionId: "shot-exec-live-1",
+      orgId: "org-live-1",
+      userId: "user-live-1",
+      baseUrl: "http://127.0.0.1:8080",
+      fetchFn,
+    });
+
+    expect(audit.shotExecution.projectId).toBe("project-live-1");
+    expect(audit.summary).toEqual({
+      isCrossProject: false,
+      isEligible: false,
+      blockedReason: "",
+      sourceProjectId: "project-live-1",
+    });
+  });
 });

@@ -60,11 +60,9 @@ function decideAdminReuseEligibility(
 }
 
 export function normalizeAdminAssetReuseAudit({
-  projectId,
   shotExecution,
   assetProvenanceDetail,
 }: {
-  projectId: string;
   shotExecution: {
     id: string;
     shotId: string;
@@ -77,6 +75,6 @@ export function normalizeAdminAssetReuseAudit({
   return {
     shotExecution,
     assetProvenanceDetail,
-    summary: decideAdminReuseEligibility(projectId, assetProvenanceDetail),
+    summary: decideAdminReuseEligibility(shotExecution.projectId, assetProvenanceDetail),
   };
 }

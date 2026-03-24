@@ -4,7 +4,6 @@ import { normalizeAdminAssetReuseAudit } from "./adminAssetReuse";
 describe("normalizeAdminAssetReuseAudit", () => {
   it("marks a cross-project primary asset as reusable only when rights are clear and aiAnnotated is false", () => {
     const audit = normalizeAdminAssetReuseAudit({
-      projectId: "project-live-1",
       shotExecution: {
         id: "shot-exec-live-1",
         shotId: "shot-live-1",
@@ -41,7 +40,6 @@ describe("normalizeAdminAssetReuseAudit", () => {
 
   it("fails closed when the current primary asset is aiAnnotated and consent status is unavailable", () => {
     const audit = normalizeAdminAssetReuseAudit({
-      projectId: "project-live-1",
       shotExecution: {
         id: "shot-exec-live-1",
         shotId: "shot-live-1",

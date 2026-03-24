@@ -79,7 +79,7 @@ export async function loadReusableAssetLibrary({
 
   const items: ReusableAssetLibraryItemViewModel[] = [];
 
-  const importBatchPayloads = await Promise.all(
+  const importBatchPayloadResults = await Promise.allSettled(
     (listPayload.importBatches ?? [])
       .filter((importBatch): importBatch is { id: string } => Boolean(importBatch.id))
       .map(async (importBatch) => ({
@@ -89,6 +89,24 @@ export async function loadReusableAssetLibrary({
         })) as ImportBatchWorkbenchResponse,
       })),
   );
+
+  const importBatchPayloads = importBatchPayloadResults
+    .filter(
+      (
+        result,
+      ): result is PromiseFulfilledResult<{
+        importBatchId: string;
+        payload: ImportBatchWorkbenchResponse;
+      }> => result.status === "fulfilled",
+    )
+    .map((result) => result.value);
+
+  if (
+    importBatchPayloads.length === 0 &&
+    importBatchPayloadResults.some((result) => result.status === "rejected")
+  ) {
+    throw importBatchPayloadResults.find((result) => result.status === "rejected")?.reason;
+  }
 
   for (const { importBatchId, payload } of importBatchPayloads) {
     const uploadFileById = new Map(

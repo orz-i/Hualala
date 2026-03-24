@@ -220,7 +220,6 @@ export function App() {
       routeState.route === "reuse" &&
       Boolean(routeState.projectId) &&
       Boolean(routeState.shotId),
-    projectId: routeState.projectId ?? "",
     shotId: routeState.shotId ?? "",
     sourceProjectId: routeState.sourceProjectId ?? "",
     t,
