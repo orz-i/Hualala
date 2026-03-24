@@ -4,7 +4,8 @@ export type AdminRoute =
   | "assets"
   | "governance"
   | "collaboration"
-  | "preview";
+  | "preview"
+  | "audio";
 
 export type AdminRouteState = {
   route: AdminRoute;
@@ -28,6 +29,7 @@ const routePathMap: Record<AdminRoute, string> = {
   governance: "/governance",
   collaboration: "/collaboration",
   preview: "/preview",
+  audio: "/audio",
 };
 
 function normalizeAdminRoute(pathname: string): AdminRoute {
@@ -46,6 +48,9 @@ function normalizeAdminRoute(pathname: string): AdminRoute {
   }
   if (normalizedPathname === routePathMap.preview) {
     return "preview";
+  }
+  if (normalizedPathname === routePathMap.audio) {
+    return "audio";
   }
   return "overview";
 }

@@ -1,6 +1,14 @@
 import type { Page, Route } from "@playwright/test";
 
 import {
+  buildAudioAssetProvenancePayload,
+  buildAudioImportBatchSummary,
+  buildAudioImportBatchWorkbenchPayload,
+  buildAudioWorkbenchPayload,
+  createAudioTimelineState,
+  upsertAudioTimelineState,
+} from "./mock-connect/audio.ts";
+import {
   buildAssetProvenancePayload,
   buildImportBatchSummary,
   buildImportBatchWorkbenchPayload,
@@ -48,6 +56,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     creatorImportState,
   } = initializeMockConnectState({ scenario, phase1DemoScenarios });
   let previewState = createPreviewAssemblyState(adminState.budgetSnapshot.projectId);
+  let audioState = createAudioTimelineState(adminState.budgetSnapshot.projectId);
 
   await page.route(/\/sse\/events(?:\?.*)?$/, async (route: Route) => {
     await route.fulfill({
@@ -71,7 +80,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         return;
       }
       const session =
-        scenario.admin || scenario.creatorImport || scenario.preview
+        scenario.admin || scenario.creatorImport || scenario.preview || scenario.audio
           ? adminState.governance.currentSession
           : buildDefaultDevSession();
       await route.fulfill(jsonResponse(200, { session }));
@@ -81,7 +90,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     if (pathname === "/hualala.auth.v1.AuthService/StartDevSession") {
       devSessionActive = true;
       const session =
-        scenario.admin || scenario.creatorImport || scenario.preview
+        scenario.admin || scenario.creatorImport || scenario.preview || scenario.audio
           ? adminState.governance.currentSession
           : buildDefaultDevSession();
       await route.fulfill(jsonResponse(200, { session }));
@@ -94,13 +103,54 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       return;
     }
 
-    if ((scenario.preview || scenario.admin) &&
+    if ((scenario.preview || scenario.audio || scenario.admin) &&
       pathname === "/hualala.project.v1.ProjectService/GetPreviewWorkbench") {
       await route.fulfill(jsonResponse(200, buildPreviewWorkbenchPayload(previewState)));
       return;
     }
 
-    if ((scenario.preview || scenario.admin) &&
+    if ((scenario.preview || scenario.audio || scenario.admin) &&
+      pathname === "/hualala.project.v1.ProjectService/GetAudioWorkbench") {
+      await route.fulfill(jsonResponse(200, buildAudioWorkbenchPayload(audioState)));
+      return;
+    }
+
+    if ((scenario.audio || scenario.admin) &&
+      pathname === "/hualala.project.v1.ProjectService/UpsertAudioTimeline") {
+      await delay(120);
+      const body = route.request().postDataJSON() as {
+        projectId?: string;
+        status?: string;
+        renderWorkflowRunId?: string;
+        renderStatus?: string;
+        tracks?: Array<{
+          trackId?: string;
+          timelineId?: string;
+          trackType?: string;
+          displayName?: string;
+          sequence?: number;
+          muted?: boolean;
+          solo?: boolean;
+          volumePercent?: number;
+          clips?: Array<{
+            clipId?: string;
+            trackId?: string;
+            assetId?: string;
+            sourceRunId?: string;
+            sequence?: number;
+            startMs?: number;
+            durationMs?: number;
+            trimInMs?: number;
+            trimOutMs?: number;
+          }>;
+        }>;
+      };
+      audioState = upsertAudioTimelineState(audioState, body);
+      await route.fulfill(jsonResponse(200, buildAudioWorkbenchPayload(audioState)));
+      return;
+    }
+
+    if ((scenario.preview || scenario.audio || scenario.admin) &&
       pathname === "/hualala.project.v1.ProjectService/UpsertPreviewAssembly") {
       await delay(120);
       const body = route.request().postDataJSON() as {
@@ -118,24 +168,6 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       previewState = upsertPreviewAssemblyState(previewState, body);
       await route.fulfill(jsonResponse(200, buildPreviewWorkbenchPayload(previewState)));
       return;
-    }
-
-    if ((scenario.preview || scenario.admin) &&
-      pathname === "/hualala.asset.v1.AssetService/GetAssetProvenanceSummary") {
-      const body = route.request().postDataJSON() as { assetId?: string };
-      const previewAssetId =
-        body.assetId ?? previewState.items.find((item) => item.primaryAssetId)?.primaryAssetId;
-      if (previewAssetId) {
-        const previewPayload = buildPreviewAssetProvenancePayload(previewState, previewAssetId);
-        if (previewPayload) {
-          await route.fulfill(jsonResponse(200, previewPayload));
-          return;
-        }
-      }
-      if (scenario.preview && !scenario.admin) {
-        await route.fulfill(jsonResponse(404, { error: "asset not found" }));
-        return;
-      }
     }
 
     if (scenario.admin) {
@@ -194,57 +226,6 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
           jsonResponse(200, {
             workflowRun: summarizeWorkflowRun(record ?? creatorShotWorkflowRuns[0]!),
           }),
-        );
-        return;
-      }
-
-      if (pathname === "/hualala.asset.v1.AssetService/ListImportBatches") {
-        await route.fulfill(
-          jsonResponse(200, {
-            importBatches: [
-              buildImportBatchSummary({
-                adminState,
-                creatorImportState,
-              }),
-            ],
-          }),
-        );
-        return;
-      }
-
-      if (pathname === "/hualala.asset.v1.AssetService/GetImportBatchWorkbench") {
-        await route.fulfill(
-          jsonResponse(
-            200,
-            buildImportBatchWorkbenchPayload({
-              adminState,
-              creatorShotState,
-              creatorImportState,
-              workflowRuns: creatorShotWorkflowRuns,
-            }),
-          ),
-        );
-        return;
-      }
-
-      if (pathname === "/hualala.asset.v1.AssetService/GetAssetProvenanceSummary") {
-        const body = route.request().postDataJSON() as { assetId?: string };
-        const assetId = body.assetId ?? creatorImportState.items[0]?.assetId;
-        if (!assetId) {
-          await route.fulfill(jsonResponse(404, { error: "asset not found" }));
-          return;
-        }
-        await route.fulfill(
-          jsonResponse(
-            200,
-            buildAssetProvenancePayload({
-              adminState,
-              creatorShotState,
-              creatorImportState,
-              workflowRuns: creatorShotWorkflowRuns,
-              assetId,
-            }),
-          ),
         );
         return;
       }
@@ -457,6 +438,96 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
       }
     }
 
+    if ((scenario.admin || scenario.creatorImport || scenario.audio) &&
+      pathname === "/hualala.asset.v1.AssetService/ListImportBatches") {
+      await route.fulfill(
+        jsonResponse(200, {
+          importBatches:
+            scenario.audio && !scenario.admin
+              ? [buildAudioImportBatchSummary(adminState.budgetSnapshot.projectId)]
+              : [
+                  buildImportBatchSummary({
+                    adminState,
+                    creatorImportState,
+                  }),
+                ],
+        }),
+      );
+      return;
+    }
+
+    if ((scenario.admin || scenario.creatorImport || scenario.audio) &&
+      pathname === "/hualala.asset.v1.AssetService/GetImportBatchWorkbench") {
+      await route.fulfill(
+        jsonResponse(
+          200,
+          scenario.audio && !scenario.admin
+            ? buildAudioImportBatchWorkbenchPayload(adminState.budgetSnapshot.projectId)
+            : scenario.creatorImport && !scenario.admin
+              ? creatorImportState
+            : buildImportBatchWorkbenchPayload({
+                adminState,
+                creatorShotState,
+                creatorImportState,
+                workflowRuns: creatorShotWorkflowRuns,
+              }),
+        ),
+      );
+      return;
+    }
+
+    if ((scenario.preview || scenario.audio || scenario.admin || scenario.creatorImport) &&
+      pathname === "/hualala.asset.v1.AssetService/GetAssetProvenanceSummary") {
+      const body = route.request().postDataJSON() as { assetId?: string };
+      if (body.assetId !== undefined && body.assetId.trim() === "") {
+        await route.fulfill(jsonResponse(404, { error: "asset not found" }));
+        return;
+      }
+      const requestedAssetId = body.assetId ?? "";
+      const previewAssetId =
+        requestedAssetId || previewState.items.find((item) => item.primaryAssetId)?.primaryAssetId;
+      if (scenario.preview && previewAssetId) {
+        const previewPayload = buildPreviewAssetProvenancePayload(previewState, previewAssetId);
+        if (previewPayload) {
+          await route.fulfill(jsonResponse(200, previewPayload));
+          return;
+        }
+      }
+
+      if (scenario.audio && requestedAssetId) {
+        const audioPayload = buildAudioAssetProvenancePayload(
+          adminState.budgetSnapshot.projectId,
+          requestedAssetId,
+        );
+        if (audioPayload) {
+          await route.fulfill(jsonResponse(200, audioPayload));
+          return;
+        }
+      }
+
+      const assetId =
+        requestedAssetId ||
+        creatorImportState.items[0]?.assetId ||
+        creatorImportState.candidateAssets[0]?.assetId;
+      if (!assetId) {
+        await route.fulfill(jsonResponse(404, { error: "asset not found" }));
+        return;
+      }
+      await route.fulfill(
+        jsonResponse(
+          200,
+          buildAssetProvenancePayload({
+            adminState,
+            creatorShotState,
+            creatorImportState,
+            workflowRuns: creatorShotWorkflowRuns,
+            assetId,
+          }),
+        ),
+      );
+      return;
+    }
+
     if (scenario.creatorShot) {
       if (pathname === "/hualala.workflow.v1.WorkflowService/ListWorkflowRuns") {
         await route.fulfill(
@@ -554,11 +625,6 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     }
 
     if (scenario.creatorImport) {
-      if (pathname === "/hualala.asset.v1.AssetService/GetImportBatchWorkbench") {
-        await route.fulfill(jsonResponse(200, creatorImportState));
-        return;
-      }
-
       if (pathname === "/hualala.asset.v1.AssetService/BatchConfirmImportBatchItems") {
         await delay(120);
         if (scenario.creatorImport === "failure") {

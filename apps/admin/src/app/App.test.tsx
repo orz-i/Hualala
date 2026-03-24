@@ -5,15 +5,21 @@ import { ADMIN_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
 import { useAdminGovernanceController } from "../features/dashboard/useAdminGovernanceController";
 import { useAdminOverviewController } from "../features/dashboard/useAdminOverviewController";
+import { useAdminAudioController } from "../features/dashboard/useAdminAudioController";
 import { useAdminPreviewController } from "../features/dashboard/useAdminPreviewController";
 import { useAdminRecentChangesSubscription } from "../features/dashboard/useAdminRecentChangesSubscription";
 import { useAdminWorkflowController } from "../features/dashboard/useAdminWorkflowController";
 import { useAdminSessionGate } from "../features/session/useAdminSessionGate";
 import { App } from "./App";
 
-const { useAdminCollaborationControllerMock, useAdminPreviewControllerMock } = vi.hoisted(() => ({
-  useAdminCollaborationControllerMock: vi.fn(),
-  useAdminPreviewControllerMock: vi.fn(),
+const {
+  mockUseAdminAudioController,
+  mockUseAdminCollaborationController,
+  mockUseAdminPreviewController,
+} = vi.hoisted(() => ({
+  mockUseAdminAudioController: vi.fn(),
+  mockUseAdminCollaborationController: vi.fn(),
+  mockUseAdminPreviewController: vi.fn(),
 }));
 
 let lastAdminOverviewPageProps: Record<string, unknown> | null = null;
@@ -21,6 +27,7 @@ let lastAdminWorkflowPageProps: Record<string, unknown> | null = null;
 let lastAdminAssetsPageProps: Record<string, unknown> | null = null;
 let lastAdminGovernancePageProps: Record<string, unknown> | null = null;
 let lastAdminCollaborationPageProps: Record<string, unknown> | null = null;
+let lastAdminAudioPageProps: Record<string, unknown> | null = null;
 let lastAdminPreviewPageProps: Record<string, unknown> | null = null;
 
 vi.mock("../features/dashboard/AdminOverviewPage", () => ({
@@ -117,6 +124,12 @@ vi.mock("../features/dashboard/AdminCollaborationPage", () => ({
     return <div data-testid="admin-collaboration-page">admin-collaboration-page</div>;
   },
 }));
+vi.mock("../features/dashboard/AdminAudioPage", () => ({
+  AdminAudioPage: (props: Record<string, unknown>) => {
+    lastAdminAudioPageProps = props;
+    return <div data-testid="admin-audio-page">admin-audio-page</div>;
+  },
+}));
 vi.mock("../features/dashboard/AdminPreviewPage", () => ({
   AdminPreviewPage: (props: Record<string, unknown>) => {
     lastAdminPreviewPageProps = props;
@@ -138,11 +151,14 @@ vi.mock("../features/dashboard/useAdminWorkflowController", () => ({
 vi.mock("../features/dashboard/useAdminAssetController", () => ({
   useAdminAssetController: vi.fn(),
 }));
+vi.mock("../features/dashboard/useAdminAudioController", () => ({
+  useAdminAudioController: mockUseAdminAudioController,
+}));
 vi.mock("../features/dashboard/useAdminCollaborationController", () => ({
-  useAdminCollaborationController: useAdminCollaborationControllerMock,
+  useAdminCollaborationController: mockUseAdminCollaborationController,
 }));
 vi.mock("../features/dashboard/useAdminPreviewController", () => ({
-  useAdminPreviewController: useAdminPreviewControllerMock,
+  useAdminPreviewController: mockUseAdminPreviewController,
 }));
 vi.mock("../features/dashboard/useAdminRecentChangesSubscription", () => ({
   useAdminRecentChangesSubscription: vi.fn(),
@@ -153,7 +169,8 @@ const useAdminOverviewControllerMock = vi.mocked(useAdminOverviewController);
 const useAdminGovernanceControllerMock = vi.mocked(useAdminGovernanceController);
 const useAdminWorkflowControllerMock = vi.mocked(useAdminWorkflowController);
 const useAdminAssetControllerMock = vi.mocked(useAdminAssetController);
-const useAdminPreviewControllerMocked = vi.mocked(useAdminPreviewController);
+const useAdminAudioControllerMock = vi.mocked(useAdminAudioController);
+const useAdminPreviewControllerMock = vi.mocked(useAdminPreviewController);
 const useAdminRecentChangesSubscriptionMock = vi.mocked(useAdminRecentChangesSubscription);
 
 function createOverview(projectId: string, shotExecutionId: string): AdminOverviewViewModel {
@@ -496,6 +513,38 @@ function buildPreview(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function buildAudio(overrides: Record<string, unknown> = {}) {
+  return {
+    audioWorkbench: {
+      timeline: {
+        audioTimelineId: "timeline-project-live-001",
+        projectId: "project-live-001",
+        episodeId: "",
+        status: "draft",
+        renderWorkflowRunId: "workflow-audio-1",
+        renderStatus: "queued",
+        createdAt: "2026-03-23T09:00:00.000Z",
+        updatedAt: "2026-03-23T09:05:00.000Z",
+      },
+      tracks: [],
+      summary: {
+        trackCount: 0,
+        clipCount: 0,
+        missingAssetCount: 0,
+        invalidTimingClipCount: 0,
+        tracksByType: [],
+      },
+    },
+    assetProvenanceDetail: null,
+    assetProvenancePending: false,
+    assetProvenanceErrorMessage: "",
+    errorMessage: "",
+    handleOpenAssetProvenance: vi.fn(),
+    handleCloseAssetProvenance: vi.fn(),
+    ...overrides,
+  };
+}
+
 describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -504,6 +553,7 @@ describe("App", () => {
     lastAdminAssetsPageProps = null;
     lastAdminGovernancePageProps = null;
     lastAdminCollaborationPageProps = null;
+    lastAdminAudioPageProps = null;
     lastAdminPreviewPageProps = null;
     window.localStorage.clear();
     window.localStorage.setItem(ADMIN_UI_LOCALE_STORAGE_KEY, "zh-CN");
@@ -514,8 +564,9 @@ describe("App", () => {
     useAdminGovernanceControllerMock.mockReturnValue(buildGovernanceController() as never);
     useAdminWorkflowControllerMock.mockReturnValue(buildWorkflow() as never);
     useAdminAssetControllerMock.mockReturnValue(buildAsset() as never);
-    useAdminCollaborationControllerMock.mockReturnValue(buildCollaboration());
-    useAdminPreviewControllerMocked.mockReturnValue(buildPreview() as never);
+    useAdminAudioControllerMock.mockReturnValue(buildAudio() as never);
+    mockUseAdminCollaborationController.mockReturnValue(buildCollaboration());
+    useAdminPreviewControllerMock.mockReturnValue(buildPreview() as never);
     useAdminRecentChangesSubscriptionMock.mockImplementation(() => undefined);
   });
 
@@ -648,7 +699,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(useAdminCollaborationControllerMock).toHaveBeenCalledWith(
+    expect(mockUseAdminCollaborationController).toHaveBeenCalledWith(
       expect.objectContaining({
         enabled: true,
         projectId: "project-live-001",
@@ -680,7 +731,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(useAdminPreviewControllerMocked).toHaveBeenCalledWith(
+    expect(useAdminPreviewControllerMock).toHaveBeenCalledWith(
       expect.objectContaining({
         enabled: true,
         projectId: "project-live-001",
@@ -693,6 +744,35 @@ describe("App", () => {
       expect.objectContaining({
         previewWorkbench: expect.objectContaining({
           assembly: expect.objectContaining({
+            projectId: "project-live-001",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("renders the audio route when pathname is /audio", () => {
+    window.history.pushState(
+      {},
+      "",
+      "/audio?projectId=project-live-001&shotExecutionId=shot-exec-live-001",
+    );
+
+    render(<App />);
+
+    expect(useAdminAudioControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        projectId: "project-live-001",
+        effectiveOrgId: "org-demo-001",
+        effectiveUserId: "user-demo-001",
+      }),
+    );
+    expect(screen.getByTestId("admin-audio-page")).toHaveTextContent("admin-audio-page");
+    expect(lastAdminAudioPageProps).toEqual(
+      expect.objectContaining({
+        audioWorkbench: expect.objectContaining({
+          timeline: expect.objectContaining({
             projectId: "project-live-001",
           }),
         }),

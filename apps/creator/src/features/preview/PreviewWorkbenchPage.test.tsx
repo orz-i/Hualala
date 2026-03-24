@@ -8,6 +8,7 @@ describe("PreviewWorkbenchPage", () => {
   it("disables provenance actions when the item has no primary asset id", () => {
     const onOpenAssetProvenance = vi.fn();
     const onOpenShotWorkbench = vi.fn();
+    const onOpenAudioWorkbench = vi.fn();
 
     render(
       <PreviewWorkbenchPage
@@ -63,6 +64,13 @@ describe("PreviewWorkbenchPage", () => {
         assetProvenanceDetail={null}
         assetProvenancePending={false}
         assetProvenanceErrorMessage=""
+        audioSummary={{
+          trackCount: 3,
+          clipCount: 2,
+          renderStatus: "queued",
+          missingAssetCount: 1,
+        }}
+        audioSummaryErrorMessage=""
         t={t}
         onNewShotIdInputChange={vi.fn()}
         onNewPrimaryAssetIdInputChange={vi.fn()}
@@ -73,6 +81,7 @@ describe("PreviewWorkbenchPage", () => {
         onMoveItem={vi.fn()}
         onSaveAssembly={vi.fn()}
         onOpenShotWorkbench={onOpenShotWorkbench}
+        onOpenAudioWorkbench={onOpenAudioWorkbench}
         onOpenAssetProvenance={onOpenAssetProvenance}
         onCloseAssetProvenance={vi.fn()}
       />,
@@ -87,8 +96,12 @@ describe("PreviewWorkbenchPage", () => {
 
     fireEvent.click(within(secondItem).getByRole("button", { name: "查看来源" }));
     fireEvent.click(within(secondItem).getByRole("button", { name: "打开镜头工作台" }));
+    fireEvent.click(screen.getByRole("button", { name: "打开音频工作台" }));
 
     expect(onOpenAssetProvenance).toHaveBeenCalledWith("asset-2");
     expect(onOpenShotWorkbench).toHaveBeenCalledWith("shot-2");
+    expect(onOpenAudioWorkbench).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("音频轨道数：3")).toBeInTheDocument();
+    expect(screen.getByText("音频片段数：2")).toBeInTheDocument();
   });
 });

@@ -1,5 +1,7 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import type { CreatorTranslator } from "../../i18n";
+import { buildPreviewAudioSummary, type PreviewAudioSummaryViewModel } from "../audio/audioWorkbench";
+import { loadAudioWorkbench } from "../audio/loadAudioWorkbench";
 import type { ActionFeedbackModel } from "../shared/ActionFeedback";
 import { useAssetProvenanceState } from "../shared/useAssetProvenanceState";
 import { waitForFeedbackPaint } from "../shared/waitForFeedbackPaint";
@@ -45,6 +47,8 @@ export function usePreviewWorkbenchController({
   const [draftItems, setDraftItems] = useState<PreviewItemViewModel[]>([]);
   const [feedback, setFeedback] = useState<ActionFeedbackModel | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [audioSummary, setAudioSummary] = useState<PreviewAudioSummaryViewModel | null>(null);
+  const [audioSummaryErrorMessage, setAudioSummaryErrorMessage] = useState("");
   const [newShotIdInput, setNewShotIdInput] = useState("");
   const [newPrimaryAssetIdInput, setNewPrimaryAssetIdInput] = useState("");
   const [newSourceRunIdInput, setNewSourceRunIdInput] = useState("");
@@ -70,6 +74,8 @@ export function usePreviewWorkbenchController({
         setDraftItems([]);
         setFeedback(null);
         setErrorMessage("");
+        setAudioSummary(null);
+        setAudioSummaryErrorMessage("");
         setNewShotIdInput("");
         setNewPrimaryAssetIdInput("");
         setNewSourceRunIdInput("");
@@ -80,35 +86,55 @@ export function usePreviewWorkbenchController({
     let cancelled = false;
     resetAssetProvenance();
 
-    loadPreviewWorkbench({
-      projectId,
-      orgId,
-      userId,
-    })
-      .then((nextWorkbench) => {
-        if (cancelled) {
-          return;
-        }
-        startTransition(() => {
-          setPreviewWorkbench(nextWorkbench);
-          setDraftItems(buildOrderedDraftItems(nextWorkbench.items));
-          setFeedback(null);
-          setErrorMessage("");
-        });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) {
-          return;
-        }
+    Promise.allSettled([
+      loadPreviewWorkbench({
+        projectId,
+        orgId,
+        userId,
+      }),
+      loadAudioWorkbench({
+        projectId,
+        orgId,
+        userId,
+      }),
+    ]).then(([previewResult, audioResult]) => {
+      if (cancelled) {
+        return;
+      }
+
+      if (previewResult.status === "rejected") {
         const message =
-          error instanceof Error ? error.message : "creator: unknown preview workbench error";
+          previewResult.reason instanceof Error
+            ? previewResult.reason.message
+            : "creator: unknown preview workbench error";
         startTransition(() => {
           setPreviewWorkbench(null);
           setDraftItems([]);
           setFeedback(null);
           setErrorMessage(message);
+          setAudioSummary(null);
         });
+        return;
+      }
+
+      startTransition(() => {
+        setPreviewWorkbench(previewResult.value);
+        setDraftItems(buildOrderedDraftItems(previewResult.value.items));
+        setFeedback(null);
+        setErrorMessage("");
+        if (audioResult.status === "fulfilled") {
+          setAudioSummary(buildPreviewAudioSummary(audioResult.value));
+          setAudioSummaryErrorMessage("");
+        } else {
+          const message =
+            audioResult.reason instanceof Error
+              ? audioResult.reason.message
+              : "creator: unknown preview audio summary error";
+          setAudioSummary(null);
+          setAudioSummaryErrorMessage(message);
+        }
       });
+    });
 
     return () => {
       cancelled = true;
@@ -222,6 +248,8 @@ export function usePreviewWorkbenchController({
     draftItems,
     feedback,
     errorMessage,
+    audioSummary,
+    audioSummaryErrorMessage,
     newShotIdInput,
     newPrimaryAssetIdInput,
     newSourceRunIdInput,

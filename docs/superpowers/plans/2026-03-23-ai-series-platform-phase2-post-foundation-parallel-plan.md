@@ -194,20 +194,23 @@
 - Test: `apps/backend/internal/application/projectapp/service_audio_test.go`
 - Test: `apps/backend/internal/interfaces/connect/project_audio_service_test.go`
 
-- [ ] 先把音频当成 `media_type=audio` 的一等公民，而不是把 BGM/配音塞进图片或视频备注字段。
-- [ ] 定义首批轨道类型：对白、旁白、BGM；每条轨道至少要有片段、时长、音量、静音/solo、来源资产。
-- [ ] 利用现有 `media_assets.asset_type` 与 `media_asset_variants.duration_ms`，把 asset truth 显式映射到 domain / proto / SDK。
-- [ ] project_service 只新增 `GetAudioWorkbench / UpsertAudioTimeline`，workflow 继续复用通用 run，不扩 `workflow.proto`。
-- [ ] backend 需要持久化轨道与片段，提供 `render_workflow_run_id / render_status`，并保证首次读取自动建空 timeline。
-- [ ] 先跑 `proto:gen`、SDK tests、connect tests、db tests 和 backend 全量回归；产品 UI 与 mock E2E 留给 4B。
-- [ ] 若需要新的 provider 能力路由、成本归因或 callback payload，先回 foundation micro-patch。
+- [x] 已把音频当成 `media_type=audio` 的一等公民，而不是把 BGM/配音塞进图片或视频备注字段。
+- [x] 已定义首批轨道类型：对白、旁白、BGM；每条轨道至少具备片段、时长、音量、静音/solo、来源资产。
+- [x] 已利用现有 `media_assets.asset_type` 与 `media_asset_variants.duration_ms`，把 asset truth 显式映射到 domain / proto / SDK。
+- [x] `project_service` 只新增 `GetAudioWorkbench / UpsertAudioTimeline`，workflow 继续复用通用 run，没有扩 `workflow.proto`。
+- [x] backend 已持久化轨道与片段，并提供 `render_workflow_run_id / render_status`，首次读取会自动建空 timeline。
+- [x] foundation 验证已跑过 `proto:gen`、SDK tests、connect tests、db tests 和 backend 全量回归；产品 UI 与 mock E2E 留给 4B。
+- [x] provider 能力路由、成本归因、callback payload 仍留在后续 patch，不在 4A 混入。
 
 ## Task 4B: 多轨音频产品线
 
-- [ ] creator 新增音频工作台或预演内嵌音频面板，但代码组织应独立于预演页面，避免形成单文件巨兽。
-- [ ] 利用 foundation patch 暴露的 timeline / media_type / duration_ms，补真实轨道编排、波形、导入与混音状态可视化。
-- [ ] admin 增补音频相关治理视图时，重点看 rights、consent、provider 健康与渲染失败，而不是重做 creator 操作界面。
-- [ ] product 线先跑 creator/admin 组件测试和 `phase2-audio` mock E2E；若需要新 shared truth，再退回新的 foundation patch。
+- [x] creator 已新增独立 `/audio?projectId=<id>` 工作台，作为唯一完整编辑面；`/preview` 只保留音频摘要卡和跳转 CTA。
+- [x] creator 音频工作台已消费 foundation patch 暴露的 `timeline / media_type / duration_ms`，支持三类轨道、clip block、新增/删除/重排、`mute / solo / volume_percent / trim / duration / start` 编辑。
+- [x] creator 音频素材池基于现有 `listImportBatches + getImportBatchWorkbench` 拼装，只显示 `media_type=audio` 且携带 `duration_ms` 的素材；缺失时 fail closed。
+- [x] creator/admin 都复用了既有 provenance drilldown，音频 clip 可直接查看来源，不新增音频专属 shared truth。
+- [x] admin 已新增只读 `/audio` 观测页，聚焦 timeline 状态、轨道统计、render 状态、缺失素材和 provenance，而不是复刻 creator 编辑器。
+- [x] creator/admin 全量组件测试、根级 build、`test:tooling`、`test:e2e:phase2:audio` 已完成。
+- [ ] 若产品线实现中暴露出“项目级素材池接口、音频专用 SSE、混音执行 RPC、波形资源协议”缺口，需拆新的 foundation patch，不能在本线私扩。
 
 **Exit checks:**
 - 至少一个项目可保存并重新加载多轨音频结构。

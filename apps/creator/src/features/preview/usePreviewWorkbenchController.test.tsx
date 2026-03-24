@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { loadAudioWorkbench } from "../audio/loadAudioWorkbench";
 import { createTranslator } from "../../i18n";
 import { useAssetProvenanceState } from "../shared/useAssetProvenanceState";
 import { loadPreviewWorkbench } from "./loadPreviewWorkbench";
@@ -13,12 +14,17 @@ vi.mock("./loadPreviewWorkbench", () => ({
   loadPreviewWorkbench: vi.fn(),
 }));
 
+vi.mock("../audio/loadAudioWorkbench", () => ({
+  loadAudioWorkbench: vi.fn(),
+}));
+
 vi.mock("./mutatePreviewWorkbench", () => ({
   savePreviewWorkbench: vi.fn(),
 }));
 
 const useAssetProvenanceStateMock = vi.mocked(useAssetProvenanceState);
 const loadPreviewWorkbenchMock = vi.mocked(loadPreviewWorkbench);
+const loadAudioWorkbenchMock = vi.mocked(loadAudioWorkbench);
 const savePreviewWorkbenchMock = vi.mocked(savePreviewWorkbench);
 
 function buildPreviewWorkbench() {
@@ -60,6 +66,24 @@ describe("usePreviewWorkbenchController", () => {
       resetAssetProvenance: vi.fn(),
     } as never);
     loadPreviewWorkbenchMock.mockResolvedValue(buildPreviewWorkbench());
+    loadAudioWorkbenchMock.mockResolvedValue({
+      timeline: {
+        audioTimelineId: "timeline-project-1",
+        projectId: "project-1",
+        episodeId: "",
+        status: "draft",
+        renderWorkflowRunId: "workflow-audio-1",
+        renderStatus: "queued",
+        createdAt: "2026-03-23T09:00:00.000Z",
+        updatedAt: "2026-03-23T09:05:00.000Z",
+      },
+      tracks: [],
+      summary: {
+        trackCount: 0,
+        clipCount: 0,
+        missingDurationClipCount: 0,
+      },
+    });
     savePreviewWorkbenchMock.mockResolvedValue({
       assembly: {
         assemblyId: "assembly-project-1",
@@ -118,6 +142,12 @@ describe("usePreviewWorkbenchController", () => {
       projectId: "project-1",
       orgId: "org-1",
       userId: "user-1",
+    });
+    expect(result.current.audioSummary).toEqual({
+      trackCount: 0,
+      clipCount: 0,
+      renderStatus: "queued",
+      missingAssetCount: 0,
     });
   });
 

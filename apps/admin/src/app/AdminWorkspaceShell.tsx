@@ -21,6 +21,7 @@ const navItems: Array<{
     | "nav.overview"
     | "nav.workflow"
     | "nav.assets"
+    | "nav.audio"
     | "nav.preview"
     | "nav.collaboration"
     | "nav.governance";
@@ -28,6 +29,7 @@ const navItems: Array<{
   { route: "overview", key: "nav.overview" },
   { route: "workflow", key: "nav.workflow" },
   { route: "assets", key: "nav.assets" },
+  { route: "audio", key: "nav.audio" },
   { route: "preview", key: "nav.preview" },
   { route: "collaboration", key: "nav.collaboration" },
   { route: "governance", key: "nav.governance" },

@@ -29,12 +29,14 @@ import {
   ensureDevSession,
   loadCurrentSession,
 } from "../features/session/sessionBootstrap";
+import { useAudioWorkbenchController } from "../features/audio/useAudioWorkbenchController";
 import { usePreviewWorkbenchController } from "../features/preview/usePreviewWorkbenchController";
 import { loadAssetProvenanceDetails } from "../features/shared/loadAssetProvenanceDetails";
 import { subscribeWorkbenchEvents } from "../features/subscribeWorkbenchEvents";
 import { App } from "./App";
 
-const { useCollabControllerMock, usePreviewWorkbenchControllerMock } = vi.hoisted(() => ({
+const { useAudioWorkbenchControllerMock, useCollabControllerMock, usePreviewWorkbenchControllerMock } = vi.hoisted(() => ({
+  useAudioWorkbenchControllerMock: vi.fn(),
   useCollabControllerMock: vi.fn(),
   usePreviewWorkbenchControllerMock: vi.fn(),
 }));
@@ -87,11 +89,15 @@ vi.mock("../features/subscribeWorkbenchEvents", () => ({
 vi.mock("../features/collaboration/useCollabController", () => ({
   useCollabController: useCollabControllerMock,
 }));
+vi.mock("../features/audio/useAudioWorkbenchController", () => ({
+  useAudioWorkbenchController: useAudioWorkbenchControllerMock,
+}));
 vi.mock("../features/preview/usePreviewWorkbenchController", () => ({
   usePreviewWorkbenchController: usePreviewWorkbenchControllerMock,
 }));
 
 let lastCollabWorkbenchPageProps: Record<string, unknown> | null = null;
+let lastAudioWorkbenchPageProps: Record<string, unknown> | null = null;
 let lastPreviewWorkbenchPageProps: Record<string, unknown> | null = null;
 
 vi.mock("../features/collaboration/CollabWorkbenchPage", () => ({
@@ -100,10 +106,28 @@ vi.mock("../features/collaboration/CollabWorkbenchPage", () => ({
     return <div data-testid="creator-collab-page">creator-collab-page</div>;
   },
 }));
+vi.mock("../features/audio/AudioWorkbenchPage", () => ({
+  AudioWorkbenchPage: (props: Record<string, unknown>) => {
+    lastAudioWorkbenchPageProps = props;
+    return <div data-testid="creator-audio-page">creator-audio-page</div>;
+  },
+}));
 vi.mock("../features/preview/PreviewWorkbenchPage", () => ({
   PreviewWorkbenchPage: (props: Record<string, unknown>) => {
     lastPreviewWorkbenchPageProps = props;
-    return <div data-testid="creator-preview-page">creator-preview-page</div>;
+    return (
+      <div data-testid="creator-preview-page">
+        creator-preview-page
+        <button
+          type="button"
+          onClick={() => {
+            (props.onOpenAudioWorkbench as (() => void) | undefined)?.();
+          }}
+        >
+          creator-preview-open-audio
+        </button>
+      </div>
+    );
   },
 }));
 
@@ -126,6 +150,7 @@ const retryShotWorkflowRunMock = vi.mocked(retryShotWorkflowRun);
 const loadCurrentSessionMock = vi.mocked(loadCurrentSession);
 const ensureDevSessionMock = vi.mocked(ensureDevSession);
 const clearCurrentSessionMock = vi.mocked(clearCurrentSession);
+const useAudioWorkbenchControllerMocked = vi.mocked(useAudioWorkbenchController);
 const usePreviewWorkbenchControllerMocked = vi.mocked(usePreviewWorkbenchController);
 const loadAssetProvenanceDetailsMock = vi.mocked(loadAssetProvenanceDetails);
 const subscribeWorkbenchEventsMock = vi.mocked(subscribeWorkbenchEvents);
@@ -198,6 +223,13 @@ function createPreviewControllerState() {
     ],
     feedback: null,
     errorMessage: "",
+    audioSummary: {
+      trackCount: 3,
+      clipCount: 2,
+      renderStatus: "queued",
+      missingAssetCount: 1,
+    },
+    audioSummaryErrorMessage: "",
     newShotIdInput: "",
     newPrimaryAssetIdInput: "",
     newSourceRunIdInput: "",
@@ -212,6 +244,47 @@ function createPreviewControllerState() {
     assetProvenanceDetail: null,
     assetProvenancePending: false,
     assetProvenanceErrorMessage: "",
+    handleOpenAssetProvenance: vi.fn(),
+    handleCloseAssetProvenance: vi.fn(),
+  };
+}
+
+function createAudioControllerState() {
+  return {
+    audioWorkbench: {
+      timeline: {
+        audioTimelineId: "timeline-project-audio-1",
+        projectId: "project-audio-1",
+        episodeId: "",
+        status: "draft",
+        renderWorkflowRunId: "workflow-audio-1",
+        renderStatus: "queued",
+        createdAt: "2026-03-23T09:00:00.000Z",
+        updatedAt: "2026-03-23T09:05:00.000Z",
+      },
+      tracks: [],
+      summary: {
+        trackCount: 0,
+        clipCount: 0,
+        missingDurationClipCount: 0,
+      },
+    },
+    draftTracks: [],
+    audioAssetPool: [],
+    audioAssetPoolErrorMessage: "",
+    feedback: null,
+    errorMessage: "",
+    assetProvenanceDetail: null,
+    assetProvenancePending: false,
+    assetProvenanceErrorMessage: "",
+    handleAddClip: vi.fn(),
+    handleRemoveClip: vi.fn(),
+    handleMoveClip: vi.fn(),
+    handleTrackVolumeChange: vi.fn(),
+    handleTrackMutedChange: vi.fn(),
+    handleTrackSoloChange: vi.fn(),
+    handleClipFieldChange: vi.fn(),
+    handleSaveTimeline: vi.fn(),
     handleOpenAssetProvenance: vi.fn(),
     handleCloseAssetProvenance: vi.fn(),
   };
@@ -485,6 +558,7 @@ describe("App", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     lastCollabWorkbenchPageProps = null;
+    lastAudioWorkbenchPageProps = null;
     lastPreviewWorkbenchPageProps = null;
     latestWorkbenchSubscription = undefined;
     latestWorkbenchSubscriptionCleanup = vi.fn();
@@ -541,6 +615,7 @@ describe("App", () => {
       return latestWorkbenchSubscriptionCleanup;
     });
     useCollabControllerMock.mockReturnValue(createCollabControllerState());
+    useAudioWorkbenchControllerMocked.mockReturnValue(createAudioControllerState());
     usePreviewWorkbenchControllerMocked.mockReturnValue(createPreviewControllerState());
     loadImportBatchSummariesMock.mockResolvedValue([]);
     loadAssetProvenanceDetailsMock.mockResolvedValue(
@@ -661,6 +736,53 @@ describe("App", () => {
         previewWorkbench: expect.objectContaining({
           assembly: expect.objectContaining({
             projectId: "project-preview-1",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("navigates from the preview audio summary card to the audio workbench", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/preview?projectId=project-preview-1&orgId=org-override-001&userId=user-override-001",
+    );
+
+    render(<App />);
+
+    expect(await screen.findByTestId("creator-preview-page")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "creator-preview-open-audio" }));
+
+    expect(window.location.pathname).toBe("/audio");
+    expect(window.location.search).toContain("projectId=project-preview-1");
+    expect(await screen.findByTestId("creator-audio-page")).toBeInTheDocument();
+  });
+
+  it("renders the audio route when pathname is /audio", async () => {
+    window.history.pushState(
+      {},
+      "",
+      "/audio?projectId=project-audio-1&orgId=org-override-001&userId=user-override-001",
+    );
+
+    render(<App />);
+
+    expect(await screen.findByTestId("creator-audio-page")).toBeInTheDocument();
+    expect(useAudioWorkbenchControllerMocked).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        projectId: "project-audio-1",
+        orgId: "org-override-001",
+        userId: "user-override-001",
+      }),
+    );
+    expect(lastAudioWorkbenchPageProps).toEqual(
+      expect.objectContaining({
+        audioWorkbench: expect.objectContaining({
+          timeline: expect.objectContaining({
+            projectId: "project-audio-1",
           }),
         }),
       }),

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { CreatorTranslator, LocaleCode } from "../i18n";
 
-type CreatorWorkspaceShellTone = "home" | "shots" | "imports" | "collab" | "preview";
+type CreatorWorkspaceShellTone = "home" | "shots" | "imports" | "collab" | "preview" | "audio";
 
 type CreatorWorkspaceShellProps = {
   tone: CreatorWorkspaceShellTone;
@@ -45,6 +45,11 @@ const toneStyles: Record<
     badgeColor: "#4338ca",
     accentBackground:
       "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(238,242,255,0.92))",
+  },
+  audio: {
+    badgeColor: "#0f766e",
+    accentBackground:
+      "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(236,253,245,0.92))",
   },
 };
 
