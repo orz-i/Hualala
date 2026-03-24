@@ -88,14 +88,33 @@ func (h *projectHandler) ListEpisodes(ctx context.Context, req *connectrpc.Reque
 
 func (h *projectHandler) GetPreviewWorkbench(ctx context.Context, req *connectrpc.Request[projectv1.GetPreviewWorkbenchRequest]) (*connectrpc.Response[projectv1.GetPreviewWorkbenchResponse], error) {
 	record, err := h.service.GetPreviewWorkbench(ctx, projectapp.GetPreviewWorkbenchInput{
-		ProjectID: req.Msg.GetProjectId(),
-		EpisodeID: req.Msg.GetEpisodeId(),
+		ProjectID:     req.Msg.GetProjectId(),
+		EpisodeID:     req.Msg.GetEpisodeId(),
+		DisplayLocale: req.Msg.GetDisplayLocale(),
 	})
 	if err != nil {
 		return nil, asConnectError(err)
 	}
 	return connectrpc.NewResponse(&projectv1.GetPreviewWorkbenchResponse{
 		Assembly: mapPreviewWorkbench(record),
+	}), nil
+}
+
+func (h *projectHandler) ListPreviewShotOptions(ctx context.Context, req *connectrpc.Request[projectv1.ListPreviewShotOptionsRequest]) (*connectrpc.Response[projectv1.ListPreviewShotOptionsResponse], error) {
+	records, err := h.service.ListPreviewShotOptions(ctx, projectapp.ListPreviewShotOptionsInput{
+		ProjectID:     req.Msg.GetProjectId(),
+		EpisodeID:     req.Msg.GetEpisodeId(),
+		DisplayLocale: req.Msg.GetDisplayLocale(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	options := make([]*projectv1.PreviewShotOption, 0, len(records))
+	for _, record := range records {
+		options = append(options, mapPreviewShotOption(record))
+	}
+	return connectrpc.NewResponse(&projectv1.ListPreviewShotOptionsResponse{
+		Options: options,
 	}), nil
 }
 

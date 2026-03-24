@@ -13,6 +13,8 @@ import (
 	contentv1connect "github.com/hualala/apps/backend/gen/hualala/content/v1/contentv1connect"
 	projectv1 "github.com/hualala/apps/backend/gen/hualala/project/v1"
 	projectv1connect "github.com/hualala/apps/backend/gen/hualala/project/v1/projectv1connect"
+	"github.com/hualala/apps/backend/internal/domain/asset"
+	"github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/platform/authsession"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
@@ -271,14 +273,73 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 	}
 
 	workbench, err := projectClient.GetPreviewWorkbench(ctx, connectrpc.NewRequest(&projectv1.GetPreviewWorkbenchRequest{
-		ProjectId: projectID,
-		EpisodeId: episodeID,
+		ProjectId:     projectID,
+		EpisodeId:     episodeID,
+		DisplayLocale: "en-US",
 	}))
 	if err != nil {
 		t.Fatalf("GetPreviewWorkbench returned error: %v", err)
 	}
 	if got := workbench.Msg.GetAssembly().GetProjectId(); got != projectID {
 		t.Fatalf("expected project %q, got %q", projectID, got)
+	}
+
+	now := time.Now().UTC()
+	assetID := store.GenerateMediaAssetID()
+	if err := store.SaveMediaAsset(ctx, asset.MediaAsset{
+		ID:            assetID,
+		OrgID:         "org-1",
+		ProjectID:     projectID,
+		ImportBatchID: "batch-1",
+		MediaType:     "image",
+		SourceType:    "upload",
+		Locale:        "zh-CN",
+		RightsStatus:  "cleared",
+		AIAnnotated:   true,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}); err != nil {
+		t.Fatalf("SaveMediaAsset returned error: %v", err)
+	}
+	shotExecutionID := store.GenerateShotExecutionID()
+	if err := store.SaveShotExecution(ctx, execution.ShotExecution{
+		ID:             shotExecutionID,
+		OrgID:          "org-1",
+		ProjectID:      projectID,
+		ShotID:         firstShotResp.Msg.GetShot().GetId(),
+		Status:         "ready",
+		PrimaryAssetID: assetID,
+		CurrentRunID:   "",
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}); err != nil {
+		t.Fatalf("SaveShotExecution returned error: %v", err)
+	}
+	firstRunID := store.GenerateShotExecutionRunID()
+	if err := store.SaveShotExecutionRun(ctx, execution.ShotExecutionRun{
+		ID:              firstRunID,
+		ShotExecutionID: shotExecutionID,
+		RunNumber:       1,
+		Status:          "completed",
+		TriggerType:     "retry",
+		OperatorID:      "user-1",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}); err != nil {
+		t.Fatalf("SaveShotExecutionRun #1 returned error: %v", err)
+	}
+	secondRunID := store.GenerateShotExecutionRunID()
+	if err := store.SaveShotExecutionRun(ctx, execution.ShotExecutionRun{
+		ID:              secondRunID,
+		ShotExecutionID: shotExecutionID,
+		RunNumber:       2,
+		Status:          "completed",
+		TriggerType:     "manual",
+		OperatorID:      "user-1",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}); err != nil {
+		t.Fatalf("SaveShotExecutionRun #2 returned error: %v", err)
 	}
 
 	updatedWorkbench, err := projectClient.UpsertPreviewAssembly(ctx, connectrpc.NewRequest(&projectv1.UpsertPreviewAssemblyRequest{
@@ -288,14 +349,14 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 		Items: []*projectv1.PreviewAssemblyItem{
 			{
 				ShotId:         secondShotResp.Msg.GetShot().GetId(),
-				PrimaryAssetId: "asset-2",
-				SourceRunId:    "run-2",
+				PrimaryAssetId: "missing-asset",
+				SourceRunId:    "missing-run",
 				Sequence:       2,
 			},
 			{
 				ShotId:         firstShotResp.Msg.GetShot().GetId(),
-				PrimaryAssetId: "asset-1",
-				SourceRunId:    "run-1",
+				PrimaryAssetId: assetID,
+				SourceRunId:    secondRunID,
 				Sequence:       1,
 			},
 		},
@@ -308,6 +369,45 @@ func TestCollaborationAndPreviewRoutes(t *testing.T) {
 	}
 	if got := updatedWorkbench.Msg.GetAssembly().GetItems()[0].GetShotId(); got != firstShotResp.Msg.GetShot().GetId() {
 		t.Fatalf("expected first preview shot %q, got %q", firstShotResp.Msg.GetShot().GetId(), got)
+	}
+	if got := updatedWorkbench.Msg.GetAssembly().GetItems()[0].GetShot().GetProjectTitle(); got != "Phase 2 Foundation" {
+		t.Fatalf("expected project title %q, got %q", "Phase 2 Foundation", got)
+	}
+	if got := updatedWorkbench.Msg.GetAssembly().GetItems()[0].GetPrimaryAsset().GetMediaType(); got != "image" {
+		t.Fatalf("expected media type %q, got %q", "image", got)
+	}
+	if got := updatedWorkbench.Msg.GetAssembly().GetItems()[0].GetSourceRun().GetTriggerType(); got != "manual" {
+		t.Fatalf("expected trigger type %q, got %q", "manual", got)
+	}
+	if updatedWorkbench.Msg.GetAssembly().GetItems()[1].GetPrimaryAsset() != nil {
+		t.Fatalf("expected missing asset summary to stay nil")
+	}
+	if updatedWorkbench.Msg.GetAssembly().GetItems()[1].GetSourceRun() != nil {
+		t.Fatalf("expected missing run summary to stay nil")
+	}
+
+	shotOptions, err := projectClient.ListPreviewShotOptions(ctx, connectrpc.NewRequest(&projectv1.ListPreviewShotOptionsRequest{
+		ProjectId:     projectID,
+		EpisodeId:     episodeID,
+		DisplayLocale: "en-US",
+	}))
+	if err != nil {
+		t.Fatalf("ListPreviewShotOptions returned error: %v", err)
+	}
+	if got := len(shotOptions.Msg.GetOptions()); got != 2 {
+		t.Fatalf("expected 2 shot options, got %d", got)
+	}
+	if got := shotOptions.Msg.GetOptions()[0].GetShotExecutionId(); got != shotExecutionID {
+		t.Fatalf("expected shot execution id %q, got %q", shotExecutionID, got)
+	}
+	if got := shotOptions.Msg.GetOptions()[0].GetCurrentPrimaryAsset().GetAssetId(); got != assetID {
+		t.Fatalf("expected current primary asset %q, got %q", assetID, got)
+	}
+	if got := shotOptions.Msg.GetOptions()[0].GetLatestRun().GetRunId(); got != secondRunID {
+		t.Fatalf("expected latest run id %q, got %q", secondRunID, got)
+	}
+	if shotOptions.Msg.GetOptions()[1].GetCurrentPrimaryAsset() != nil {
+		t.Fatalf("expected shot without execution to keep asset summary nil")
 	}
 
 	_, err = projectClient.GetPreviewWorkbench(ctx, connectrpc.NewRequest(&projectv1.GetPreviewWorkbenchRequest{

@@ -51,6 +51,9 @@ const (
 	// ProjectServiceGetPreviewWorkbenchProcedure is the fully-qualified name of the ProjectService's
 	// GetPreviewWorkbench RPC.
 	ProjectServiceGetPreviewWorkbenchProcedure = "/hualala.project.v1.ProjectService/GetPreviewWorkbench"
+	// ProjectServiceListPreviewShotOptionsProcedure is the fully-qualified name of the ProjectService's
+	// ListPreviewShotOptions RPC.
+	ProjectServiceListPreviewShotOptionsProcedure = "/hualala.project.v1.ProjectService/ListPreviewShotOptions"
 	// ProjectServiceUpsertPreviewAssemblyProcedure is the fully-qualified name of the ProjectService's
 	// UpsertPreviewAssembly RPC.
 	ProjectServiceUpsertPreviewAssemblyProcedure = "/hualala.project.v1.ProjectService/UpsertPreviewAssembly"
@@ -70,6 +73,7 @@ type ProjectServiceClient interface {
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
 	GetPreviewWorkbench(context.Context, *connect.Request[v1.GetPreviewWorkbenchRequest]) (*connect.Response[v1.GetPreviewWorkbenchResponse], error)
+	ListPreviewShotOptions(context.Context, *connect.Request[v1.ListPreviewShotOptionsRequest]) (*connect.Response[v1.ListPreviewShotOptionsResponse], error)
 	UpsertPreviewAssembly(context.Context, *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error)
 	GetAudioWorkbench(context.Context, *connect.Request[v1.GetAudioWorkbenchRequest]) (*connect.Response[v1.GetAudioWorkbenchResponse], error)
 	UpsertAudioTimeline(context.Context, *connect.Request[v1.UpsertAudioTimelineRequest]) (*connect.Response[v1.UpsertAudioTimelineResponse], error)
@@ -122,6 +126,12 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(projectServiceMethods.ByName("GetPreviewWorkbench")),
 			connect.WithClientOptions(opts...),
 		),
+		listPreviewShotOptions: connect.NewClient[v1.ListPreviewShotOptionsRequest, v1.ListPreviewShotOptionsResponse](
+			httpClient,
+			baseURL+ProjectServiceListPreviewShotOptionsProcedure,
+			connect.WithSchema(projectServiceMethods.ByName("ListPreviewShotOptions")),
+			connect.WithClientOptions(opts...),
+		),
 		upsertPreviewAssembly: connect.NewClient[v1.UpsertPreviewAssemblyRequest, v1.UpsertPreviewAssemblyResponse](
 			httpClient,
 			baseURL+ProjectServiceUpsertPreviewAssemblyProcedure,
@@ -145,15 +155,16 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // projectServiceClient implements ProjectServiceClient.
 type projectServiceClient struct {
-	createProject         *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
-	createEpisode         *connect.Client[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse]
-	getProject            *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
-	listProjects          *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
-	listEpisodes          *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
-	getPreviewWorkbench   *connect.Client[v1.GetPreviewWorkbenchRequest, v1.GetPreviewWorkbenchResponse]
-	upsertPreviewAssembly *connect.Client[v1.UpsertPreviewAssemblyRequest, v1.UpsertPreviewAssemblyResponse]
-	getAudioWorkbench     *connect.Client[v1.GetAudioWorkbenchRequest, v1.GetAudioWorkbenchResponse]
-	upsertAudioTimeline   *connect.Client[v1.UpsertAudioTimelineRequest, v1.UpsertAudioTimelineResponse]
+	createProject          *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
+	createEpisode          *connect.Client[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse]
+	getProject             *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
+	listProjects           *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
+	listEpisodes           *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
+	getPreviewWorkbench    *connect.Client[v1.GetPreviewWorkbenchRequest, v1.GetPreviewWorkbenchResponse]
+	listPreviewShotOptions *connect.Client[v1.ListPreviewShotOptionsRequest, v1.ListPreviewShotOptionsResponse]
+	upsertPreviewAssembly  *connect.Client[v1.UpsertPreviewAssemblyRequest, v1.UpsertPreviewAssemblyResponse]
+	getAudioWorkbench      *connect.Client[v1.GetAudioWorkbenchRequest, v1.GetAudioWorkbenchResponse]
+	upsertAudioTimeline    *connect.Client[v1.UpsertAudioTimelineRequest, v1.UpsertAudioTimelineResponse]
 }
 
 // CreateProject calls hualala.project.v1.ProjectService.CreateProject.
@@ -186,6 +197,11 @@ func (c *projectServiceClient) GetPreviewWorkbench(ctx context.Context, req *con
 	return c.getPreviewWorkbench.CallUnary(ctx, req)
 }
 
+// ListPreviewShotOptions calls hualala.project.v1.ProjectService.ListPreviewShotOptions.
+func (c *projectServiceClient) ListPreviewShotOptions(ctx context.Context, req *connect.Request[v1.ListPreviewShotOptionsRequest]) (*connect.Response[v1.ListPreviewShotOptionsResponse], error) {
+	return c.listPreviewShotOptions.CallUnary(ctx, req)
+}
+
 // UpsertPreviewAssembly calls hualala.project.v1.ProjectService.UpsertPreviewAssembly.
 func (c *projectServiceClient) UpsertPreviewAssembly(ctx context.Context, req *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error) {
 	return c.upsertPreviewAssembly.CallUnary(ctx, req)
@@ -209,6 +225,7 @@ type ProjectServiceHandler interface {
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
 	GetPreviewWorkbench(context.Context, *connect.Request[v1.GetPreviewWorkbenchRequest]) (*connect.Response[v1.GetPreviewWorkbenchResponse], error)
+	ListPreviewShotOptions(context.Context, *connect.Request[v1.ListPreviewShotOptionsRequest]) (*connect.Response[v1.ListPreviewShotOptionsResponse], error)
 	UpsertPreviewAssembly(context.Context, *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error)
 	GetAudioWorkbench(context.Context, *connect.Request[v1.GetAudioWorkbenchRequest]) (*connect.Response[v1.GetAudioWorkbenchResponse], error)
 	UpsertAudioTimeline(context.Context, *connect.Request[v1.UpsertAudioTimelineRequest]) (*connect.Response[v1.UpsertAudioTimelineResponse], error)
@@ -257,6 +274,12 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		connect.WithSchema(projectServiceMethods.ByName("GetPreviewWorkbench")),
 		connect.WithHandlerOptions(opts...),
 	)
+	projectServiceListPreviewShotOptionsHandler := connect.NewUnaryHandler(
+		ProjectServiceListPreviewShotOptionsProcedure,
+		svc.ListPreviewShotOptions,
+		connect.WithSchema(projectServiceMethods.ByName("ListPreviewShotOptions")),
+		connect.WithHandlerOptions(opts...),
+	)
 	projectServiceUpsertPreviewAssemblyHandler := connect.NewUnaryHandler(
 		ProjectServiceUpsertPreviewAssemblyProcedure,
 		svc.UpsertPreviewAssembly,
@@ -289,6 +312,8 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 			projectServiceListEpisodesHandler.ServeHTTP(w, r)
 		case ProjectServiceGetPreviewWorkbenchProcedure:
 			projectServiceGetPreviewWorkbenchHandler.ServeHTTP(w, r)
+		case ProjectServiceListPreviewShotOptionsProcedure:
+			projectServiceListPreviewShotOptionsHandler.ServeHTTP(w, r)
 		case ProjectServiceUpsertPreviewAssemblyProcedure:
 			projectServiceUpsertPreviewAssemblyHandler.ServeHTTP(w, r)
 		case ProjectServiceGetAudioWorkbenchProcedure:
@@ -326,6 +351,10 @@ func (UnimplementedProjectServiceHandler) ListEpisodes(context.Context, *connect
 
 func (UnimplementedProjectServiceHandler) GetPreviewWorkbench(context.Context, *connect.Request[v1.GetPreviewWorkbenchRequest]) (*connect.Response[v1.GetPreviewWorkbenchResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.GetPreviewWorkbench is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) ListPreviewShotOptions(context.Context, *connect.Request[v1.ListPreviewShotOptionsRequest]) (*connect.Response[v1.ListPreviewShotOptionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.ListPreviewShotOptions is not implemented"))
 }
 
 func (UnimplementedProjectServiceHandler) UpsertPreviewAssembly(context.Context, *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error) {

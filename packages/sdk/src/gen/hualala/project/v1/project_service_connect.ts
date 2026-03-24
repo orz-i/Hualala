@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetAudioWorkbenchRequest, GetAudioWorkbenchResponse, GetPreviewWorkbenchRequest, GetPreviewWorkbenchResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListProjectsRequest, ListProjectsResponse, UpsertAudioTimelineRequest, UpsertAudioTimelineResponse, UpsertPreviewAssemblyRequest, UpsertPreviewAssemblyResponse } from "./project_service_pb.js";
+import { CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetAudioWorkbenchRequest, GetAudioWorkbenchResponse, GetPreviewWorkbenchRequest, GetPreviewWorkbenchResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListPreviewShotOptionsRequest, ListPreviewShotOptionsResponse, ListProjectsRequest, ListProjectsResponse, UpsertAudioTimelineRequest, UpsertAudioTimelineResponse, UpsertPreviewAssemblyRequest, UpsertPreviewAssemblyResponse } from "./project_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -64,6 +64,15 @@ export const ProjectService = {
       name: "GetPreviewWorkbench",
       I: GetPreviewWorkbenchRequest,
       O: GetPreviewWorkbenchResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.project.v1.ProjectService.ListPreviewShotOptions
+     */
+    listPreviewShotOptions: {
+      name: "ListPreviewShotOptions",
+      I: ListPreviewShotOptionsRequest,
+      O: ListPreviewShotOptionsResponse,
       kind: MethodKind.Unary,
     },
     /**

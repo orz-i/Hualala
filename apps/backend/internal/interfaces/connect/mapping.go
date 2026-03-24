@@ -101,7 +101,45 @@ func mapEpisode(record project.Episode) *projectv1.Episode {
 	}
 }
 
-func mapPreviewAssemblyItem(record project.PreviewAssemblyItem) *projectv1.PreviewAssemblyItem {
+func mapPreviewShotSummary(record projectapp.PreviewShotSummary) *projectv1.PreviewShotSummary {
+	return &projectv1.PreviewShotSummary{
+		ProjectId:    record.ProjectID,
+		ProjectTitle: record.ProjectTitle,
+		EpisodeId:    record.EpisodeID,
+		EpisodeTitle: record.EpisodeTitle,
+		SceneId:      record.SceneID,
+		SceneCode:    record.SceneCode,
+		SceneTitle:   record.SceneTitle,
+		ShotId:       record.ShotID,
+		ShotCode:     record.ShotCode,
+		ShotTitle:    record.ShotTitle,
+	}
+}
+
+func mapPreviewAssetSummary(record *projectapp.PreviewAssetSummary) *projectv1.PreviewAssetSummary {
+	if record == nil {
+		return nil
+	}
+	return &projectv1.PreviewAssetSummary{
+		AssetId:      record.AssetID,
+		MediaType:    record.MediaType,
+		RightsStatus: record.RightsStatus,
+		AiAnnotated:  record.AIAnnotated,
+	}
+}
+
+func mapPreviewRunSummary(record *projectapp.PreviewRunSummary) *projectv1.PreviewRunSummary {
+	if record == nil {
+		return nil
+	}
+	return &projectv1.PreviewRunSummary{
+		RunId:       record.RunID,
+		Status:      record.Status,
+		TriggerType: record.TriggerType,
+	}
+}
+
+func mapPreviewAssemblyItem(record projectapp.PreviewAssemblyItemState) *projectv1.PreviewAssemblyItem {
 	return &projectv1.PreviewAssemblyItem{
 		ItemId:         record.ID,
 		AssemblyId:     record.AssemblyID,
@@ -109,6 +147,9 @@ func mapPreviewAssemblyItem(record project.PreviewAssemblyItem) *projectv1.Previ
 		PrimaryAssetId: record.PrimaryAssetID,
 		SourceRunId:    record.SourceRunID,
 		Sequence:       uint32(record.Sequence),
+		Shot:           mapPreviewShotSummary(record.Shot),
+		PrimaryAsset:   mapPreviewAssetSummary(record.PrimaryAsset),
+		SourceRun:      mapPreviewRunSummary(record.SourceRun),
 	}
 }
 
@@ -125,6 +166,16 @@ func mapPreviewWorkbench(record projectapp.PreviewWorkbench) *projectv1.PreviewA
 		Items:      items,
 		CreatedAt:  timestampOrNil(record.Assembly.CreatedAt),
 		UpdatedAt:  timestampOrNil(record.Assembly.UpdatedAt),
+	}
+}
+
+func mapPreviewShotOption(record projectapp.PreviewShotOption) *projectv1.PreviewShotOption {
+	return &projectv1.PreviewShotOption{
+		Shot:                mapPreviewShotSummary(record.Shot),
+		ShotExecutionId:     record.ShotExecutionID,
+		ShotExecutionStatus: record.ShotExecutionStatus,
+		CurrentPrimaryAsset: mapPreviewAssetSummary(record.CurrentPrimaryAsset),
+		LatestRun:           mapPreviewRunSummary(record.LatestRun),
 	}
 }
 

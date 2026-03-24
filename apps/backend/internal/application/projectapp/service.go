@@ -17,6 +17,7 @@ type Service struct {
 
 type repository interface {
 	db.ProjectContentRepository
+	db.ExecutionRepository
 	db.AssetRepository
 	db.WorkflowRepository
 }
@@ -51,12 +52,13 @@ type ListEpisodesInput struct {
 
 type PreviewWorkbench struct {
 	Assembly project.PreviewAssembly
-	Items    []project.PreviewAssemblyItem
+	Items    []PreviewAssemblyItemState
 }
 
 type GetPreviewWorkbenchInput struct {
-	ProjectID string
-	EpisodeID string
+	ProjectID     string
+	EpisodeID     string
+	DisplayLocale string
 }
 
 type PreviewAssemblyItemInput struct {
@@ -71,6 +73,60 @@ type UpsertPreviewAssemblyInput struct {
 	EpisodeID string
 	Status    string
 	Items     []PreviewAssemblyItemInput
+}
+
+type PreviewShotSummary struct {
+	ProjectID    string
+	ProjectTitle string
+	EpisodeID    string
+	EpisodeTitle string
+	SceneID      string
+	SceneCode    string
+	SceneTitle   string
+	ShotID       string
+	ShotCode     string
+	ShotTitle    string
+}
+
+type PreviewAssetSummary struct {
+	AssetID      string
+	MediaType    string
+	RightsStatus string
+	AIAnnotated  bool
+}
+
+type PreviewRunSummary struct {
+	RunID       string
+	Status      string
+	TriggerType string
+}
+
+type PreviewAssemblyItemState struct {
+	ID             string
+	AssemblyID     string
+	ShotID         string
+	PrimaryAssetID string
+	SourceRunID    string
+	Sequence       int
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	Shot           PreviewShotSummary
+	PrimaryAsset   *PreviewAssetSummary
+	SourceRun      *PreviewRunSummary
+}
+
+type ListPreviewShotOptionsInput struct {
+	ProjectID     string
+	EpisodeID     string
+	DisplayLocale string
+}
+
+type PreviewShotOption struct {
+	Shot                PreviewShotSummary
+	ShotExecutionID     string
+	ShotExecutionStatus string
+	CurrentPrimaryAsset *PreviewAssetSummary
+	LatestRun           *PreviewRunSummary
 }
 
 func NewService(repo repository) *Service {
@@ -208,7 +264,7 @@ func (s *Service) GetPreviewWorkbench(ctx context.Context, input GetPreviewWorkb
 	if err != nil {
 		return PreviewWorkbench{}, err
 	}
-	return s.buildPreviewWorkbench(record), nil
+	return s.buildPreviewWorkbench(record, input.DisplayLocale), nil
 }
 
 func (s *Service) UpsertPreviewAssembly(ctx context.Context, input UpsertPreviewAssemblyInput) (PreviewWorkbench, error) {
@@ -269,7 +325,7 @@ func (s *Service) UpsertPreviewAssembly(ctx context.Context, input UpsertPreview
 	if err := s.repo.ReplacePreviewAssemblyItems(ctx, record.ID, items); err != nil {
 		return PreviewWorkbench{}, err
 	}
-	return s.buildPreviewWorkbench(record), nil
+	return s.buildPreviewWorkbench(record, ""), nil
 }
 
 func (s *Service) normalizePreviewScope(projectID string, episodeID string) (string, string, error) {
@@ -310,13 +366,6 @@ func (s *Service) ensurePreviewAssembly(ctx context.Context, projectID string, e
 		return project.PreviewAssembly{}, err
 	}
 	return record, nil
-}
-
-func (s *Service) buildPreviewWorkbench(record project.PreviewAssembly) PreviewWorkbench {
-	return PreviewWorkbench{
-		Assembly: record,
-		Items:    s.repo.ListPreviewAssemblyItems(record.ID),
-	}
 }
 
 func defaultPreviewStatus(raw string) string {
