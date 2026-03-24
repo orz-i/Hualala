@@ -2,15 +2,19 @@ import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { createHualalaClient, type HualalaClientOptions } from "../transport";
 import type {
   GetAudioWorkbenchResponse,
+  GetPreviewRuntimeResponse,
   GetPreviewWorkbenchResponse,
   ListPreviewShotOptionsResponse,
+  RequestPreviewRenderResponse,
   UpsertAudioTimelineResponse,
   UpsertPreviewAssemblyResponse,
 } from "../../gen/hualala/project/v1/project_service_pb";
 import {
   GetAudioWorkbenchResponseSchema,
+  GetPreviewRuntimeResponseSchema,
   GetPreviewWorkbenchResponseSchema,
   ListPreviewShotOptionsResponseSchema,
+  RequestPreviewRenderResponseSchema,
   UpsertAudioTimelineResponseSchema,
   UpsertPreviewAssemblyResponseSchema,
 } from "../../gen/hualala/project/v1/project_service_pb";
@@ -76,6 +80,29 @@ export function createProjectClient(options: HualalaClientOptions = {}) {
         "sdk: failed to upsert preview assembly",
       );
     },
+    getPreviewRuntime(body: {
+      projectId: string;
+      episodeId?: string;
+    }): Promise<GetPreviewRuntimeResponse> {
+      return unaryWithSchema<GetPreviewRuntimeResponse>(
+        GetPreviewRuntimeResponseSchema,
+        "/hualala.project.v1.ProjectService/GetPreviewRuntime",
+        body,
+        "sdk: failed to get preview runtime",
+      );
+    },
+    requestPreviewRender(body: {
+      projectId: string;
+      episodeId?: string;
+      requestedLocale?: string;
+    }): Promise<RequestPreviewRenderResponse> {
+      return unaryWithSchema<RequestPreviewRenderResponse>(
+        RequestPreviewRenderResponseSchema,
+        "/hualala.project.v1.ProjectService/RequestPreviewRender",
+        body,
+        "sdk: failed to request preview render",
+      );
+    },
     getAudioWorkbench(body: {
       projectId: string;
       episodeId?: string;
@@ -131,6 +158,8 @@ export type ProjectUnaryResponses = {
   getPreviewWorkbench: GetPreviewWorkbenchResponse;
   listPreviewShotOptions: ListPreviewShotOptionsResponse;
   upsertPreviewAssembly: UpsertPreviewAssemblyResponse;
+  getPreviewRuntime: GetPreviewRuntimeResponse;
+  requestPreviewRender: RequestPreviewRenderResponse;
   getAudioWorkbench: GetAudioWorkbenchResponse;
   upsertAudioTimeline: UpsertAudioTimelineResponse;
 };

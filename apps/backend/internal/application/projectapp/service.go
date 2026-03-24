@@ -7,12 +7,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hualala/apps/backend/internal/application/policyapp"
+	"github.com/hualala/apps/backend/internal/application/workflowapp"
 	"github.com/hualala/apps/backend/internal/domain/project"
+	"github.com/hualala/apps/backend/internal/domain/workflow"
 	"github.com/hualala/apps/backend/internal/platform/db"
+	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 type Service struct {
-	repo repository
+	repo          repository
+	startWorkflow func(context.Context, workflowapp.StartWorkflowInput) (workflow.WorkflowRun, error)
 }
 
 type repository interface {
@@ -20,6 +25,8 @@ type repository interface {
 	db.ExecutionRepository
 	db.AssetRepository
 	db.WorkflowRepository
+	db.PolicyReader
+	Publisher() *events.Publisher
 }
 
 type CreateProjectInput struct {
@@ -55,10 +62,25 @@ type PreviewWorkbench struct {
 	Items    []PreviewAssemblyItemState
 }
 
+type PreviewRuntimeState struct {
+	Runtime project.PreviewRuntime
+}
+
 type GetPreviewWorkbenchInput struct {
 	ProjectID     string
 	EpisodeID     string
 	DisplayLocale string
+}
+
+type GetPreviewRuntimeInput struct {
+	ProjectID string
+	EpisodeID string
+}
+
+type RequestPreviewRenderInput struct {
+	ProjectID       string
+	EpisodeID       string
+	RequestedLocale string
 }
 
 type PreviewAssemblyItemInput struct {
@@ -132,7 +154,13 @@ type PreviewShotOption struct {
 }
 
 func NewService(repo repository) *Service {
-	return &Service{repo: repo}
+	return &Service{
+		repo: repo,
+		startWorkflow: func(ctx context.Context, input workflowapp.StartWorkflowInput) (workflow.WorkflowRun, error) {
+			service := workflowapp.NewService(repo, repo.Publisher(), nil, policyapp.NewService(repo))
+			return service.StartWorkflow(ctx, input)
+		},
+	}
 }
 
 func (s *Service) CreateProject(ctx context.Context, input CreateProjectInput) (project.Project, error) {

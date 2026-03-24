@@ -305,3 +305,50 @@ func TestMemoryStorePersistsAndReloadsAudioTimelineSnapshot(t *testing.T) {
 		t.Fatalf("expected restored audio duration %d, got %d", 12000, got)
 	}
 }
+
+func TestMemoryStorePersistsAndReloadsPreviewRuntimeSnapshot(t *testing.T) {
+	ctx := context.Background()
+	persister := &fakePersister{}
+
+	store, err := NewPersistentMemoryStore(ctx, persister)
+	if err != nil {
+		t.Fatalf("NewPersistentMemoryStore returned error: %v", err)
+	}
+
+	now := time.Now().UTC().Round(time.Second)
+	runtimeID := store.NextPreviewRuntimeID()
+	store.PreviewRuntimes[runtimeID] = project.PreviewRuntime{
+		ID:                  runtimeID,
+		ProjectID:           "project-preview-1",
+		EpisodeID:           "episode-preview-1",
+		AssemblyID:          "assembly-preview-1",
+		Status:              "queued",
+		RenderWorkflowRunID: "workflow-run-preview-1",
+		RenderStatus:        "queued",
+		PlaybackAssetID:     "",
+		ExportAssetID:       "",
+		ResolvedLocale:      "en-US",
+		CreatedAt:           now,
+		UpdatedAt:           now,
+	}
+
+	if err := store.Save(ctx); err != nil {
+		t.Fatalf("Save returned error: %v", err)
+	}
+
+	reloaded, err := NewPersistentMemoryStore(ctx, persister)
+	if err != nil {
+		t.Fatalf("NewPersistentMemoryStore reload returned error: %v", err)
+	}
+
+	record, ok := reloaded.PreviewRuntimes[runtimeID]
+	if !ok {
+		t.Fatalf("expected preview runtime %q to be restored", runtimeID)
+	}
+	if got := record.RenderStatus; got != "queued" {
+		t.Fatalf("expected restored render status %q, got %q", "queued", got)
+	}
+	if got := record.ResolvedLocale; got != "en-US" {
+		t.Fatalf("expected restored resolved locale %q, got %q", "en-US", got)
+	}
+}

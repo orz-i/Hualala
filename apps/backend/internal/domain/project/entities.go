@@ -44,6 +44,21 @@ type PreviewAssemblyItem struct {
 	UpdatedAt      time.Time
 }
 
+type PreviewRuntime struct {
+	ID                  string
+	ProjectID           string
+	EpisodeID           string
+	AssemblyID          string
+	Status              string
+	RenderWorkflowRunID string
+	RenderStatus        string
+	PlaybackAssetID     string
+	ExportAssetID       string
+	ResolvedLocale      string
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+}
+
 type AudioTimeline struct {
 	ID                  string
 	ProjectID           string

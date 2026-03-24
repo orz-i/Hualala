@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hualala/project/v1/project_service.proto.
  */
 export const file_hualala_project_v1_project_service: GenFile = /*@__PURE__*/
-  fileDesc("CihodWFsYWxhL3Byb2plY3QvdjEvcHJvamVjdF9zZXJ2aWNlLnByb3RvEhJodWFsYWxhLnByb2plY3QudjEiTAoHUHJvamVjdBISCgpwcm9qZWN0X2lkGAEgASgJEg4KBm9yZ19pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIOCgZzdGF0dXMYBCABKAkiWAoHRXBpc29kZRISCgplcGlzb2RlX2lkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSDQoFdGl0bGUYAyABKAkSFgoOZXBpc29kZV9udW1iZXIYBCABKA0iwAIKE1ByZXZpZXdBc3NlbWJseUl0ZW0SDwoHaXRlbV9pZBgBIAEoCRITCgthc3NlbWJseV9pZBgCIAEoCRIPCgdzaG90X2lkGAMgASgJEhgKEHByaW1hcnlfYXNzZXRfaWQYBCABKAkSFQoNc291cmNlX3J1bl9pZBgFIAEoCRIQCghzZXF1ZW5jZRgGIAEoDRI0CgRzaG90GAcgASgLMiYuaHVhbGFsYS5wcm9qZWN0LnYxLlByZXZpZXdTaG90U3VtbWFyeRI+Cg1wcmltYXJ5X2Fzc2V0GAggASgLMicuaHVhbGFsYS5wcm9qZWN0LnYxLlByZXZpZXdBc3NldFN1bW1hcnkSOQoKc291cmNlX3J1bhgJIAEoCzIlLmh1YWxhbGEucHJvamVjdC52MS5QcmV2aWV3UnVuU3VtbWFyeSL2AQoPUHJldmlld0Fzc2VtYmx5EhMKC2Fzc2VtYmx5X2lkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSEgoKZXBpc29kZV9pZBgDIAEoCRIOCgZzdGF0dXMYBCABKAkSNgoFaXRlbXMYBSADKAsyJy5odWFsYWxhLnByb2plY3QudjEuUHJldmlld0Fzc2VtYmx5SXRlbRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLdAQoSUHJldmlld1Nob3RTdW1tYXJ5EhIKCnByb2plY3RfaWQYASABKAkSFQoNcHJvamVjdF90aXRsZRgCIAEoCRISCgplcGlzb2RlX2lkGAMgASgJEhUKDWVwaXNvZGVfdGl0bGUYBCABKAkSEAoIc2NlbmVfaWQYBSABKAkSEgoKc2NlbmVfY29kZRgGIAEoCRITCgtzY2VuZV90aXRsZRgHIAEoCRIPCgdzaG90X2lkGAggASgJEhEKCXNob3RfY29kZRgJIAEoCRISCgpzaG90X3RpdGxlGAogASgJImgKE1ByZXZpZXdBc3NldFN1bW1hcnkSEAoIYXNzZXRfaWQYASABKAkSEgoKbWVkaWFfdHlwZRgCIAEoCRIVCg1yaWdodHNfc3RhdHVzGAMgASgJEhQKDGFpX2Fubm90YXRlZBgEIAEoCCJJChFQcmV2aWV3UnVuU3VtbWFyeRIOCgZydW5faWQYASABKAkSDgoGc3RhdHVzGAIgASgJEhQKDHRyaWdnZXJfdHlwZRgDIAEoCSKGAgoRUHJldmlld1Nob3RPcHRpb24SNAoEc2hvdBgBIAEoCzImLmh1YWxhbGEucHJvamVjdC52MS5QcmV2aWV3U2hvdFN1bW1hcnkSGQoRc2hvdF9leGVjdXRpb25faWQYAiABKAkSHQoVc2hvdF9leGVjdXRpb25fc3RhdHVzGAMgASgJEkYKFWN1cnJlbnRfcHJpbWFyeV9hc3NldBgEIAEoCzInLmh1YWxhbGEucHJvamVjdC52MS5QcmV2aWV3QXNzZXRTdW1tYXJ5EjkKCmxhdGVzdF9ydW4YBSABKAsyJS5odWFsYWxhLnByb2plY3QudjEuUHJldmlld1J1blN1bW1hcnkiuQEKCUF1ZGlvQ2xpcBIPCgdjbGlwX2lkGAEgASgJEhAKCHRyYWNrX2lkGAIgASgJEhAKCGFzc2V0X2lkGAMgASgJEhUKDXNvdXJjZV9ydW5faWQYBCABKAkSEAoIc2VxdWVuY2UYBSABKA0SEAoIc3RhcnRfbXMYBiABKA0SEwoLZHVyYXRpb25fbXMYByABKA0SEgoKdHJpbV9pbl9tcxgIIAEoDRITCgt0cmltX291dF9tcxgJIAEoDSLSAQoKQXVkaW9UcmFjaxIQCgh0cmFja19pZBgBIAEoCRITCgt0aW1lbGluZV9pZBgCIAEoCRISCgp0cmFja190eXBlGAMgASgJEhQKDGRpc3BsYXlfbmFtZRgEIAEoCRIQCghzZXF1ZW5jZRgFIAEoDRINCgVtdXRlZBgGIAEoCBIMCgRzb2xvGAcgASgIEhYKDnZvbHVtZV9wZXJjZW50GAggASgNEiwKBWNsaXBzGAkgAygLMh0uaHVhbGFsYS5wcm9qZWN0LnYxLkF1ZGlvQ2xpcCKpAgoNQXVkaW9UaW1lbGluZRIZChFhdWRpb190aW1lbGluZV9pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEhIKCmVwaXNvZGVfaWQYAyABKAkSDgoGc3RhdHVzGAQgASgJEh4KFnJlbmRlcl93b3JrZmxvd19ydW5faWQYBSABKAkSFQoNcmVuZGVyX3N0YXR1cxgGIAEoCRIuCgZ0cmFja3MYByADKAsyHi5odWFsYWxhLnByb2plY3QudjEuQXVkaW9UcmFjaxIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJMChRDcmVhdGVQcm9qZWN0UmVxdWVzdBIOCgZvcmdfaWQYASABKAkSDQoFdGl0bGUYAiABKAkSFQoNb3duZXJfdXNlcl9pZBgDIAEoCSJFChVDcmVhdGVQcm9qZWN0UmVzcG9uc2USLAoHcHJvamVjdBgBIAEoCzIbLmh1YWxhbGEucHJvamVjdC52MS5Qcm9qZWN0IlEKFENyZWF0ZUVwaXNvZGVSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSFgoOZXBpc29kZV9udW1iZXIYAiABKA0SDQoFdGl0bGUYAyABKAkiRQoVQ3JlYXRlRXBpc29kZVJlc3BvbnNlEiwKB2VwaXNvZGUYASABKAsyGy5odWFsYWxhLnByb2plY3QudjEuRXBpc29kZSInChFHZXRQcm9qZWN0UmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJIkIKEkdldFByb2plY3RSZXNwb25zZRIsCgdwcm9qZWN0GAEgASgLMhsuaHVhbGFsYS5wcm9qZWN0LnYxLlByb2plY3QiJQoTTGlzdFByb2plY3RzUmVxdWVzdBIOCgZvcmdfaWQYASABKAkiRQoUTGlzdFByb2plY3RzUmVzcG9uc2USLQoIcHJvamVjdHMYASADKAsyGy5odWFsYWxhLnByb2plY3QudjEuUHJvamVjdCIpChNMaXN0RXBpc29kZXNSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkiRQoUTGlzdEVwaXNvZGVzUmVzcG9uc2USLQoIZXBpc29kZXMYASADKAsyGy5odWFsYWxhLnByb2plY3QudjEuRXBpc29kZSJcChpHZXRQcmV2aWV3V29ya2JlbmNoUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSFgoOZGlzcGxheV9sb2NhbGUYAyABKAkiVAobR2V0UHJldmlld1dvcmtiZW5jaFJlc3BvbnNlEjUKCGFzc2VtYmx5GAEgASgLMiMuaHVhbGFsYS5wcm9qZWN0LnYxLlByZXZpZXdBc3NlbWJseSJfCh1MaXN0UHJldmlld1Nob3RPcHRpb25zUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSFgoOZGlzcGxheV9sb2NhbGUYAyABKAkiWAoeTGlzdFByZXZpZXdTaG90T3B0aW9uc1Jlc3BvbnNlEjYKB29wdGlvbnMYASADKAsyJS5odWFsYWxhLnByb2plY3QudjEuUHJldmlld1Nob3RPcHRpb24ijgEKHFVwc2VydFByZXZpZXdBc3NlbWJseVJlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRISCgplcGlzb2RlX2lkGAIgASgJEg4KBnN0YXR1cxgDIAEoCRI2CgVpdGVtcxgEIAMoCzInLmh1YWxhbGEucHJvamVjdC52MS5QcmV2aWV3QXNzZW1ibHlJdGVtIlYKHVVwc2VydFByZXZpZXdBc3NlbWJseVJlc3BvbnNlEjUKCGFzc2VtYmx5GAEgASgLMiMuaHVhbGFsYS5wcm9qZWN0LnYxLlByZXZpZXdBc3NlbWJseSJCChhHZXRBdWRpb1dvcmtiZW5jaFJlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRISCgplcGlzb2RlX2lkGAIgASgJIlAKGUdldEF1ZGlvV29ya2JlbmNoUmVzcG9uc2USMwoIdGltZWxpbmUYASABKAsyIS5odWFsYWxhLnByb2plY3QudjEuQXVkaW9UaW1lbGluZSK7AQoaVXBzZXJ0QXVkaW9UaW1lbGluZVJlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRISCgplcGlzb2RlX2lkGAIgASgJEg4KBnN0YXR1cxgDIAEoCRIeChZyZW5kZXJfd29ya2Zsb3dfcnVuX2lkGAQgASgJEhUKDXJlbmRlcl9zdGF0dXMYBSABKAkSLgoGdHJhY2tzGAYgAygLMh4uaHVhbGFsYS5wcm9qZWN0LnYxLkF1ZGlvVHJhY2siUgobVXBzZXJ0QXVkaW9UaW1lbGluZVJlc3BvbnNlEjMKCHRpbWVsaW5lGAEgASgLMiEuaHVhbGFsYS5wcm9qZWN0LnYxLkF1ZGlvVGltZWxpbmUy4AgKDlByb2plY3RTZXJ2aWNlEmQKDUNyZWF0ZVByb2plY3QSKC5odWFsYWxhLnByb2plY3QudjEuQ3JlYXRlUHJvamVjdFJlcXVlc3QaKS5odWFsYWxhLnByb2plY3QudjEuQ3JlYXRlUHJvamVjdFJlc3BvbnNlEmQKDUNyZWF0ZUVwaXNvZGUSKC5odWFsYWxhLnByb2plY3QudjEuQ3JlYXRlRXBpc29kZVJlcXVlc3QaKS5odWFsYWxhLnByb2plY3QudjEuQ3JlYXRlRXBpc29kZVJlc3BvbnNlElsKCkdldFByb2plY3QSJS5odWFsYWxhLnByb2plY3QudjEuR2V0UHJvamVjdFJlcXVlc3QaJi5odWFsYWxhLnByb2plY3QudjEuR2V0UHJvamVjdFJlc3BvbnNlEmEKDExpc3RQcm9qZWN0cxInLmh1YWxhbGEucHJvamVjdC52MS5MaXN0UHJvamVjdHNSZXF1ZXN0GiguaHVhbGFsYS5wcm9qZWN0LnYxLkxpc3RQcm9qZWN0c1Jlc3BvbnNlEmEKDExpc3RFcGlzb2RlcxInLmh1YWxhbGEucHJvamVjdC52MS5MaXN0RXBpc29kZXNSZXF1ZXN0GiguaHVhbGFsYS5wcm9qZWN0LnYxLkxpc3RFcGlzb2Rlc1Jlc3BvbnNlEnYKE0dldFByZXZpZXdXb3JrYmVuY2gSLi5odWFsYWxhLnByb2plY3QudjEuR2V0UHJldmlld1dvcmtiZW5jaFJlcXVlc3QaLy5odWFsYWxhLnByb2plY3QudjEuR2V0UHJldmlld1dvcmtiZW5jaFJlc3BvbnNlEn8KFkxpc3RQcmV2aWV3U2hvdE9wdGlvbnMSMS5odWFsYWxhLnByb2plY3QudjEuTGlzdFByZXZpZXdTaG90T3B0aW9uc1JlcXVlc3QaMi5odWFsYWxhLnByb2plY3QudjEuTGlzdFByZXZpZXdTaG90T3B0aW9uc1Jlc3BvbnNlEnwKFVVwc2VydFByZXZpZXdBc3NlbWJseRIwLmh1YWxhbGEucHJvamVjdC52MS5VcHNlcnRQcmV2aWV3QXNzZW1ibHlSZXF1ZXN0GjEuaHVhbGFsYS5wcm9qZWN0LnYxLlVwc2VydFByZXZpZXdBc3NlbWJseVJlc3BvbnNlEnAKEUdldEF1ZGlvV29ya2JlbmNoEiwuaHVhbGFsYS5wcm9qZWN0LnYxLkdldEF1ZGlvV29ya2JlbmNoUmVxdWVzdBotLmh1YWxhbGEucHJvamVjdC52MS5HZXRBdWRpb1dvcmtiZW5jaFJlc3BvbnNlEnYKE1Vwc2VydEF1ZGlvVGltZWxpbmUSLi5odWFsYWxhLnByb2plY3QudjEuVXBzZXJ0QXVkaW9UaW1lbGluZVJlcXVlc3QaLy5odWFsYWxhLnByb2plY3QudjEuVXBzZXJ0QXVkaW9UaW1lbGluZVJlc3BvbnNlQtkBChZjb20uaHVhbGFsYS5wcm9qZWN0LnYxQhNQcm9qZWN0U2VydmljZVByb3RvUAFaQGdpdGh1Yi5jb20vaHVhbGFsYS9hcHBzL2JhY2tlbmQvZ2VuL2h1YWxhbGEvcHJvamVjdC92MTtwcm9qZWN0djGiAgNIUFiqAhJIdWFsYWxhLlByb2plY3QuVjHKAhJIdWFsYWxhXFByb2plY3RcVjHiAh5IdWFsYWxhXFByb2plY3RcVjFcR1BCTWV0YWRhdGHqAhRIdWFsYWxhOjpQcm9qZWN0OjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("CihodWFsYWxhL3Byb2plY3QvdjEvcHJvamVjdF9zZXJ2aWNlLnByb3RvEhJodWFsYWxhLnByb2plY3QudjEiTAoHUHJvamVjdBISCgpwcm9qZWN0X2lkGAEgASgJEg4KBm9yZ19pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIOCgZzdGF0dXMYBCABKAkiWAoHRXBpc29kZRISCgplcGlzb2RlX2lkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSDQoFdGl0bGUYAyABKAkSFgoOZXBpc29kZV9udW1iZXIYBCABKA0iwAIKE1ByZXZpZXdBc3NlbWJseUl0ZW0SDwoHaXRlbV9pZBgBIAEoCRITCgthc3NlbWJseV9pZBgCIAEoCRIPCgdzaG90X2lkGAMgASgJEhgKEHByaW1hcnlfYXNzZXRfaWQYBCABKAkSFQoNc291cmNlX3J1bl9pZBgFIAEoCRIQCghzZXF1ZW5jZRgGIAEoDRI0CgRzaG90GAcgASgLMiYuaHVhbGFsYS5wcm9qZWN0LnYxLlByZXZpZXdTaG90U3VtbWFyeRI+Cg1wcmltYXJ5X2Fzc2V0GAggASgLMicuaHVhbGFsYS5wcm9qZWN0LnYxLlByZXZpZXdBc3NldFN1bW1hcnkSOQoKc291cmNlX3J1bhgJIAEoCzIlLmh1YWxhbGEucHJvamVjdC52MS5QcmV2aWV3UnVuU3VtbWFyeSL2AQoPUHJldmlld0Fzc2VtYmx5EhMKC2Fzc2VtYmx5X2lkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSEgoKZXBpc29kZV9pZBgDIAEoCRIOCgZzdGF0dXMYBCABKAkSNgoFaXRlbXMYBSADKAsyJy5odWFsYWxhLnByb2plY3QudjEuUHJldmlld0Fzc2VtYmx5SXRlbRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLdAQoSUHJldmlld1Nob3RTdW1tYXJ5EhIKCnByb2plY3RfaWQYASABKAkSFQoNcHJvamVjdF90aXRsZRgCIAEoCRISCgplcGlzb2RlX2lkGAMgASgJEhUKDWVwaXNvZGVfdGl0bGUYBCABKAkSEAoIc2NlbmVfaWQYBSABKAkSEgoKc2NlbmVfY29kZRgGIAEoCRITCgtzY2VuZV90aXRsZRgHIAEoCRIPCgdzaG90X2lkGAggASgJEhEKCXNob3RfY29kZRgJIAEoCRISCgpzaG90X3RpdGxlGAogASgJImgKE1ByZXZpZXdBc3NldFN1bW1hcnkSEAoIYXNzZXRfaWQYASABKAkSEgoKbWVkaWFfdHlwZRgCIAEoCRIVCg1yaWdodHNfc3RhdHVzGAMgASgJEhQKDGFpX2Fubm90YXRlZBgEIAEoCCJJChFQcmV2aWV3UnVuU3VtbWFyeRIOCgZydW5faWQYASABKAkSDgoGc3RhdHVzGAIgASgJEhQKDHRyaWdnZXJfdHlwZRgDIAEoCSKGAgoRUHJldmlld1Nob3RPcHRpb24SNAoEc2hvdBgBIAEoCzImLmh1YWxhbGEucHJvamVjdC52MS5QcmV2aWV3U2hvdFN1bW1hcnkSGQoRc2hvdF9leGVjdXRpb25faWQYAiABKAkSHQoVc2hvdF9leGVjdXRpb25fc3RhdHVzGAMgASgJEkYKFWN1cnJlbnRfcHJpbWFyeV9hc3NldBgEIAEoCzInLmh1YWxhbGEucHJvamVjdC52MS5QcmV2aWV3QXNzZXRTdW1tYXJ5EjkKCmxhdGVzdF9ydW4YBSABKAsyJS5odWFsYWxhLnByb2plY3QudjEuUHJldmlld1J1blN1bW1hcnki3QIKDlByZXZpZXdSdW50aW1lEhoKEnByZXZpZXdfcnVudGltZV9pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEhIKCmVwaXNvZGVfaWQYAyABKAkSEwoLYXNzZW1ibHlfaWQYBCABKAkSDgoGc3RhdHVzGAUgASgJEh4KFnJlbmRlcl93b3JrZmxvd19ydW5faWQYBiABKAkSFQoNcmVuZGVyX3N0YXR1cxgHIAEoCRIZChFwbGF5YmFja19hc3NldF9pZBgIIAEoCRIXCg9leHBvcnRfYXNzZXRfaWQYCSABKAkSFwoPcmVzb2x2ZWRfbG9jYWxlGAogASgJEi4KCmNyZWF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIrkBCglBdWRpb0NsaXASDwoHY2xpcF9pZBgBIAEoCRIQCgh0cmFja19pZBgCIAEoCRIQCghhc3NldF9pZBgDIAEoCRIVCg1zb3VyY2VfcnVuX2lkGAQgASgJEhAKCHNlcXVlbmNlGAUgASgNEhAKCHN0YXJ0X21zGAYgASgNEhMKC2R1cmF0aW9uX21zGAcgASgNEhIKCnRyaW1faW5fbXMYCCABKA0SEwoLdHJpbV9vdXRfbXMYCSABKA0i0gEKCkF1ZGlvVHJhY2sSEAoIdHJhY2tfaWQYASABKAkSEwoLdGltZWxpbmVfaWQYAiABKAkSEgoKdHJhY2tfdHlwZRgDIAEoCRIUCgxkaXNwbGF5X25hbWUYBCABKAkSEAoIc2VxdWVuY2UYBSABKA0SDQoFbXV0ZWQYBiABKAgSDAoEc29sbxgHIAEoCBIWCg52b2x1bWVfcGVyY2VudBgIIAEoDRIsCgVjbGlwcxgJIAMoCzIdLmh1YWxhbGEucHJvamVjdC52MS5BdWRpb0NsaXAiqQIKDUF1ZGlvVGltZWxpbmUSGQoRYXVkaW9fdGltZWxpbmVfaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRISCgplcGlzb2RlX2lkGAMgASgJEg4KBnN0YXR1cxgEIAEoCRIeChZyZW5kZXJfd29ya2Zsb3dfcnVuX2lkGAUgASgJEhUKDXJlbmRlcl9zdGF0dXMYBiABKAkSLgoGdHJhY2tzGAcgAygLMh4uaHVhbGFsYS5wcm9qZWN0LnYxLkF1ZGlvVHJhY2sSLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiTAoUQ3JlYXRlUHJvamVjdFJlcXVlc3QSDgoGb3JnX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEhUKDW93bmVyX3VzZXJfaWQYAyABKAkiRQoVQ3JlYXRlUHJvamVjdFJlc3BvbnNlEiwKB3Byb2plY3QYASABKAsyGy5odWFsYWxhLnByb2plY3QudjEuUHJvamVjdCJRChRDcmVhdGVFcGlzb2RlUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhYKDmVwaXNvZGVfbnVtYmVyGAIgASgNEg0KBXRpdGxlGAMgASgJIkUKFUNyZWF0ZUVwaXNvZGVSZXNwb25zZRIsCgdlcGlzb2RlGAEgASgLMhsuaHVhbGFsYS5wcm9qZWN0LnYxLkVwaXNvZGUiJwoRR2V0UHJvamVjdFJlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCSJCChJHZXRQcm9qZWN0UmVzcG9uc2USLAoHcHJvamVjdBgBIAEoCzIbLmh1YWxhbGEucHJvamVjdC52MS5Qcm9qZWN0IiUKE0xpc3RQcm9qZWN0c1JlcXVlc3QSDgoGb3JnX2lkGAEgASgJIkUKFExpc3RQcm9qZWN0c1Jlc3BvbnNlEi0KCHByb2plY3RzGAEgAygLMhsuaHVhbGFsYS5wcm9qZWN0LnYxLlByb2plY3QiKQoTTGlzdEVwaXNvZGVzUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJIkUKFExpc3RFcGlzb2Rlc1Jlc3BvbnNlEi0KCGVwaXNvZGVzGAEgAygLMhsuaHVhbGFsYS5wcm9qZWN0LnYxLkVwaXNvZGUiXAoaR2V0UHJldmlld1dvcmtiZW5jaFJlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRISCgplcGlzb2RlX2lkGAIgASgJEhYKDmRpc3BsYXlfbG9jYWxlGAMgASgJIlQKG0dldFByZXZpZXdXb3JrYmVuY2hSZXNwb25zZRI1Cghhc3NlbWJseRgBIAEoCzIjLmh1YWxhbGEucHJvamVjdC52MS5QcmV2aWV3QXNzZW1ibHkiXwodTGlzdFByZXZpZXdTaG90T3B0aW9uc1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRISCgplcGlzb2RlX2lkGAIgASgJEhYKDmRpc3BsYXlfbG9jYWxlGAMgASgJIlgKHkxpc3RQcmV2aWV3U2hvdE9wdGlvbnNSZXNwb25zZRI2CgdvcHRpb25zGAEgAygLMiUuaHVhbGFsYS5wcm9qZWN0LnYxLlByZXZpZXdTaG90T3B0aW9uIo4BChxVcHNlcnRQcmV2aWV3QXNzZW1ibHlSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSEgoKZXBpc29kZV9pZBgCIAEoCRIOCgZzdGF0dXMYAyABKAkSNgoFaXRlbXMYBCADKAsyJy5odWFsYWxhLnByb2plY3QudjEuUHJldmlld0Fzc2VtYmx5SXRlbSJWCh1VcHNlcnRQcmV2aWV3QXNzZW1ibHlSZXNwb25zZRI1Cghhc3NlbWJseRgBIAEoCzIjLmh1YWxhbGEucHJvamVjdC52MS5QcmV2aWV3QXNzZW1ibHkiQgoYR2V0UHJldmlld1J1bnRpbWVSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSEgoKZXBpc29kZV9pZBgCIAEoCSJQChlHZXRQcmV2aWV3UnVudGltZVJlc3BvbnNlEjMKB3J1bnRpbWUYASABKAsyIi5odWFsYWxhLnByb2plY3QudjEuUHJldmlld1J1bnRpbWUiXwobUmVxdWVzdFByZXZpZXdSZW5kZXJSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSEgoKZXBpc29kZV9pZBgCIAEoCRIYChByZXF1ZXN0ZWRfbG9jYWxlGAMgASgJIlMKHFJlcXVlc3RQcmV2aWV3UmVuZGVyUmVzcG9uc2USMwoHcnVudGltZRgBIAEoCzIiLmh1YWxhbGEucHJvamVjdC52MS5QcmV2aWV3UnVudGltZSJCChhHZXRBdWRpb1dvcmtiZW5jaFJlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRISCgplcGlzb2RlX2lkGAIgASgJIlAKGUdldEF1ZGlvV29ya2JlbmNoUmVzcG9uc2USMwoIdGltZWxpbmUYASABKAsyIS5odWFsYWxhLnByb2plY3QudjEuQXVkaW9UaW1lbGluZSK7AQoaVXBzZXJ0QXVkaW9UaW1lbGluZVJlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRISCgplcGlzb2RlX2lkGAIgASgJEg4KBnN0YXR1cxgDIAEoCRIeChZyZW5kZXJfd29ya2Zsb3dfcnVuX2lkGAQgASgJEhUKDXJlbmRlcl9zdGF0dXMYBSABKAkSLgoGdHJhY2tzGAYgAygLMh4uaHVhbGFsYS5wcm9qZWN0LnYxLkF1ZGlvVHJhY2siUgobVXBzZXJ0QXVkaW9UaW1lbGluZVJlc3BvbnNlEjMKCHRpbWVsaW5lGAEgASgLMiEuaHVhbGFsYS5wcm9qZWN0LnYxLkF1ZGlvVGltZWxpbmUyzQoKDlByb2plY3RTZXJ2aWNlEmQKDUNyZWF0ZVByb2plY3QSKC5odWFsYWxhLnByb2plY3QudjEuQ3JlYXRlUHJvamVjdFJlcXVlc3QaKS5odWFsYWxhLnByb2plY3QudjEuQ3JlYXRlUHJvamVjdFJlc3BvbnNlEmQKDUNyZWF0ZUVwaXNvZGUSKC5odWFsYWxhLnByb2plY3QudjEuQ3JlYXRlRXBpc29kZVJlcXVlc3QaKS5odWFsYWxhLnByb2plY3QudjEuQ3JlYXRlRXBpc29kZVJlc3BvbnNlElsKCkdldFByb2plY3QSJS5odWFsYWxhLnByb2plY3QudjEuR2V0UHJvamVjdFJlcXVlc3QaJi5odWFsYWxhLnByb2plY3QudjEuR2V0UHJvamVjdFJlc3BvbnNlEmEKDExpc3RQcm9qZWN0cxInLmh1YWxhbGEucHJvamVjdC52MS5MaXN0UHJvamVjdHNSZXF1ZXN0GiguaHVhbGFsYS5wcm9qZWN0LnYxLkxpc3RQcm9qZWN0c1Jlc3BvbnNlEmEKDExpc3RFcGlzb2RlcxInLmh1YWxhbGEucHJvamVjdC52MS5MaXN0RXBpc29kZXNSZXF1ZXN0GiguaHVhbGFsYS5wcm9qZWN0LnYxLkxpc3RFcGlzb2Rlc1Jlc3BvbnNlEnYKE0dldFByZXZpZXdXb3JrYmVuY2gSLi5odWFsYWxhLnByb2plY3QudjEuR2V0UHJldmlld1dvcmtiZW5jaFJlcXVlc3QaLy5odWFsYWxhLnByb2plY3QudjEuR2V0UHJldmlld1dvcmtiZW5jaFJlc3BvbnNlEn8KFkxpc3RQcmV2aWV3U2hvdE9wdGlvbnMSMS5odWFsYWxhLnByb2plY3QudjEuTGlzdFByZXZpZXdTaG90T3B0aW9uc1JlcXVlc3QaMi5odWFsYWxhLnByb2plY3QudjEuTGlzdFByZXZpZXdTaG90T3B0aW9uc1Jlc3BvbnNlEnwKFVVwc2VydFByZXZpZXdBc3NlbWJseRIwLmh1YWxhbGEucHJvamVjdC52MS5VcHNlcnRQcmV2aWV3QXNzZW1ibHlSZXF1ZXN0GjEuaHVhbGFsYS5wcm9qZWN0LnYxLlVwc2VydFByZXZpZXdBc3NlbWJseVJlc3BvbnNlEnAKEUdldFByZXZpZXdSdW50aW1lEiwuaHVhbGFsYS5wcm9qZWN0LnYxLkdldFByZXZpZXdSdW50aW1lUmVxdWVzdBotLmh1YWxhbGEucHJvamVjdC52MS5HZXRQcmV2aWV3UnVudGltZVJlc3BvbnNlEnkKFFJlcXVlc3RQcmV2aWV3UmVuZGVyEi8uaHVhbGFsYS5wcm9qZWN0LnYxLlJlcXVlc3RQcmV2aWV3UmVuZGVyUmVxdWVzdBowLmh1YWxhbGEucHJvamVjdC52MS5SZXF1ZXN0UHJldmlld1JlbmRlclJlc3BvbnNlEnAKEUdldEF1ZGlvV29ya2JlbmNoEiwuaHVhbGFsYS5wcm9qZWN0LnYxLkdldEF1ZGlvV29ya2JlbmNoUmVxdWVzdBotLmh1YWxhbGEucHJvamVjdC52MS5HZXRBdWRpb1dvcmtiZW5jaFJlc3BvbnNlEnYKE1Vwc2VydEF1ZGlvVGltZWxpbmUSLi5odWFsYWxhLnByb2plY3QudjEuVXBzZXJ0QXVkaW9UaW1lbGluZVJlcXVlc3QaLy5odWFsYWxhLnByb2plY3QudjEuVXBzZXJ0QXVkaW9UaW1lbGluZVJlc3BvbnNlQtkBChZjb20uaHVhbGFsYS5wcm9qZWN0LnYxQhNQcm9qZWN0U2VydmljZVByb3RvUAFaQGdpdGh1Yi5jb20vaHVhbGFsYS9hcHBzL2JhY2tlbmQvZ2VuL2h1YWxhbGEvcHJvamVjdC92MTtwcm9qZWN0djGiAgNIUFiqAhJIdWFsYWxhLlByb2plY3QuVjHKAhJIdWFsYWxhXFByb2plY3RcVjHiAh5IdWFsYWxhXFByb2plY3RcVjFcR1BCTWV0YWRhdGHqAhRIdWFsYWxhOjpQcm9qZWN0OjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message hualala.project.v1.Project
@@ -341,6 +341,78 @@ export const PreviewShotOptionSchema: GenMessage<PreviewShotOption> = /*@__PURE_
   messageDesc(file_hualala_project_v1_project_service, 7);
 
 /**
+ * @generated from message hualala.project.v1.PreviewRuntime
+ */
+export type PreviewRuntime = Message<"hualala.project.v1.PreviewRuntime"> & {
+  /**
+   * @generated from field: string preview_runtime_id = 1;
+   */
+  previewRuntimeId: string;
+
+  /**
+   * @generated from field: string project_id = 2;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string episode_id = 3;
+   */
+  episodeId: string;
+
+  /**
+   * @generated from field: string assembly_id = 4;
+   */
+  assemblyId: string;
+
+  /**
+   * @generated from field: string status = 5;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string render_workflow_run_id = 6;
+   */
+  renderWorkflowRunId: string;
+
+  /**
+   * @generated from field: string render_status = 7;
+   */
+  renderStatus: string;
+
+  /**
+   * @generated from field: string playback_asset_id = 8;
+   */
+  playbackAssetId: string;
+
+  /**
+   * @generated from field: string export_asset_id = 9;
+   */
+  exportAssetId: string;
+
+  /**
+   * @generated from field: string resolved_locale = 10;
+   */
+  resolvedLocale: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 11;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 12;
+   */
+  updatedAt?: Timestamp;
+};
+
+/**
+ * Describes the message hualala.project.v1.PreviewRuntime.
+ * Use `create(PreviewRuntimeSchema)` to create a new message.
+ */
+export const PreviewRuntimeSchema: GenMessage<PreviewRuntime> = /*@__PURE__*/
+  messageDesc(file_hualala_project_v1_project_service, 8);
+
+/**
  * @generated from message hualala.project.v1.AudioClip
  */
 export type AudioClip = Message<"hualala.project.v1.AudioClip"> & {
@@ -395,7 +467,7 @@ export type AudioClip = Message<"hualala.project.v1.AudioClip"> & {
  * Use `create(AudioClipSchema)` to create a new message.
  */
 export const AudioClipSchema: GenMessage<AudioClip> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 8);
+  messageDesc(file_hualala_project_v1_project_service, 9);
 
 /**
  * @generated from message hualala.project.v1.AudioTrack
@@ -452,7 +524,7 @@ export type AudioTrack = Message<"hualala.project.v1.AudioTrack"> & {
  * Use `create(AudioTrackSchema)` to create a new message.
  */
 export const AudioTrackSchema: GenMessage<AudioTrack> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 9);
+  messageDesc(file_hualala_project_v1_project_service, 10);
 
 /**
  * @generated from message hualala.project.v1.AudioTimeline
@@ -509,7 +581,7 @@ export type AudioTimeline = Message<"hualala.project.v1.AudioTimeline"> & {
  * Use `create(AudioTimelineSchema)` to create a new message.
  */
 export const AudioTimelineSchema: GenMessage<AudioTimeline> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 10);
+  messageDesc(file_hualala_project_v1_project_service, 11);
 
 /**
  * @generated from message hualala.project.v1.CreateProjectRequest
@@ -536,7 +608,7 @@ export type CreateProjectRequest = Message<"hualala.project.v1.CreateProjectRequ
  * Use `create(CreateProjectRequestSchema)` to create a new message.
  */
 export const CreateProjectRequestSchema: GenMessage<CreateProjectRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 11);
+  messageDesc(file_hualala_project_v1_project_service, 12);
 
 /**
  * @generated from message hualala.project.v1.CreateProjectResponse
@@ -553,7 +625,7 @@ export type CreateProjectResponse = Message<"hualala.project.v1.CreateProjectRes
  * Use `create(CreateProjectResponseSchema)` to create a new message.
  */
 export const CreateProjectResponseSchema: GenMessage<CreateProjectResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 12);
+  messageDesc(file_hualala_project_v1_project_service, 13);
 
 /**
  * @generated from message hualala.project.v1.CreateEpisodeRequest
@@ -580,7 +652,7 @@ export type CreateEpisodeRequest = Message<"hualala.project.v1.CreateEpisodeRequ
  * Use `create(CreateEpisodeRequestSchema)` to create a new message.
  */
 export const CreateEpisodeRequestSchema: GenMessage<CreateEpisodeRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 13);
+  messageDesc(file_hualala_project_v1_project_service, 14);
 
 /**
  * @generated from message hualala.project.v1.CreateEpisodeResponse
@@ -597,7 +669,7 @@ export type CreateEpisodeResponse = Message<"hualala.project.v1.CreateEpisodeRes
  * Use `create(CreateEpisodeResponseSchema)` to create a new message.
  */
 export const CreateEpisodeResponseSchema: GenMessage<CreateEpisodeResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 14);
+  messageDesc(file_hualala_project_v1_project_service, 15);
 
 /**
  * @generated from message hualala.project.v1.GetProjectRequest
@@ -614,7 +686,7 @@ export type GetProjectRequest = Message<"hualala.project.v1.GetProjectRequest"> 
  * Use `create(GetProjectRequestSchema)` to create a new message.
  */
 export const GetProjectRequestSchema: GenMessage<GetProjectRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 15);
+  messageDesc(file_hualala_project_v1_project_service, 16);
 
 /**
  * @generated from message hualala.project.v1.GetProjectResponse
@@ -631,7 +703,7 @@ export type GetProjectResponse = Message<"hualala.project.v1.GetProjectResponse"
  * Use `create(GetProjectResponseSchema)` to create a new message.
  */
 export const GetProjectResponseSchema: GenMessage<GetProjectResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 16);
+  messageDesc(file_hualala_project_v1_project_service, 17);
 
 /**
  * @generated from message hualala.project.v1.ListProjectsRequest
@@ -648,7 +720,7 @@ export type ListProjectsRequest = Message<"hualala.project.v1.ListProjectsReques
  * Use `create(ListProjectsRequestSchema)` to create a new message.
  */
 export const ListProjectsRequestSchema: GenMessage<ListProjectsRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 17);
+  messageDesc(file_hualala_project_v1_project_service, 18);
 
 /**
  * @generated from message hualala.project.v1.ListProjectsResponse
@@ -665,7 +737,7 @@ export type ListProjectsResponse = Message<"hualala.project.v1.ListProjectsRespo
  * Use `create(ListProjectsResponseSchema)` to create a new message.
  */
 export const ListProjectsResponseSchema: GenMessage<ListProjectsResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 18);
+  messageDesc(file_hualala_project_v1_project_service, 19);
 
 /**
  * @generated from message hualala.project.v1.ListEpisodesRequest
@@ -682,7 +754,7 @@ export type ListEpisodesRequest = Message<"hualala.project.v1.ListEpisodesReques
  * Use `create(ListEpisodesRequestSchema)` to create a new message.
  */
 export const ListEpisodesRequestSchema: GenMessage<ListEpisodesRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 19);
+  messageDesc(file_hualala_project_v1_project_service, 20);
 
 /**
  * @generated from message hualala.project.v1.ListEpisodesResponse
@@ -699,7 +771,7 @@ export type ListEpisodesResponse = Message<"hualala.project.v1.ListEpisodesRespo
  * Use `create(ListEpisodesResponseSchema)` to create a new message.
  */
 export const ListEpisodesResponseSchema: GenMessage<ListEpisodesResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 20);
+  messageDesc(file_hualala_project_v1_project_service, 21);
 
 /**
  * @generated from message hualala.project.v1.GetPreviewWorkbenchRequest
@@ -726,7 +798,7 @@ export type GetPreviewWorkbenchRequest = Message<"hualala.project.v1.GetPreviewW
  * Use `create(GetPreviewWorkbenchRequestSchema)` to create a new message.
  */
 export const GetPreviewWorkbenchRequestSchema: GenMessage<GetPreviewWorkbenchRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 21);
+  messageDesc(file_hualala_project_v1_project_service, 22);
 
 /**
  * @generated from message hualala.project.v1.GetPreviewWorkbenchResponse
@@ -743,7 +815,7 @@ export type GetPreviewWorkbenchResponse = Message<"hualala.project.v1.GetPreview
  * Use `create(GetPreviewWorkbenchResponseSchema)` to create a new message.
  */
 export const GetPreviewWorkbenchResponseSchema: GenMessage<GetPreviewWorkbenchResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 22);
+  messageDesc(file_hualala_project_v1_project_service, 23);
 
 /**
  * @generated from message hualala.project.v1.ListPreviewShotOptionsRequest
@@ -770,7 +842,7 @@ export type ListPreviewShotOptionsRequest = Message<"hualala.project.v1.ListPrev
  * Use `create(ListPreviewShotOptionsRequestSchema)` to create a new message.
  */
 export const ListPreviewShotOptionsRequestSchema: GenMessage<ListPreviewShotOptionsRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 23);
+  messageDesc(file_hualala_project_v1_project_service, 24);
 
 /**
  * @generated from message hualala.project.v1.ListPreviewShotOptionsResponse
@@ -787,7 +859,7 @@ export type ListPreviewShotOptionsResponse = Message<"hualala.project.v1.ListPre
  * Use `create(ListPreviewShotOptionsResponseSchema)` to create a new message.
  */
 export const ListPreviewShotOptionsResponseSchema: GenMessage<ListPreviewShotOptionsResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 24);
+  messageDesc(file_hualala_project_v1_project_service, 25);
 
 /**
  * @generated from message hualala.project.v1.UpsertPreviewAssemblyRequest
@@ -819,7 +891,7 @@ export type UpsertPreviewAssemblyRequest = Message<"hualala.project.v1.UpsertPre
  * Use `create(UpsertPreviewAssemblyRequestSchema)` to create a new message.
  */
 export const UpsertPreviewAssemblyRequestSchema: GenMessage<UpsertPreviewAssemblyRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 25);
+  messageDesc(file_hualala_project_v1_project_service, 26);
 
 /**
  * @generated from message hualala.project.v1.UpsertPreviewAssemblyResponse
@@ -836,7 +908,90 @@ export type UpsertPreviewAssemblyResponse = Message<"hualala.project.v1.UpsertPr
  * Use `create(UpsertPreviewAssemblyResponseSchema)` to create a new message.
  */
 export const UpsertPreviewAssemblyResponseSchema: GenMessage<UpsertPreviewAssemblyResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 26);
+  messageDesc(file_hualala_project_v1_project_service, 27);
+
+/**
+ * @generated from message hualala.project.v1.GetPreviewRuntimeRequest
+ */
+export type GetPreviewRuntimeRequest = Message<"hualala.project.v1.GetPreviewRuntimeRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string episode_id = 2;
+   */
+  episodeId: string;
+};
+
+/**
+ * Describes the message hualala.project.v1.GetPreviewRuntimeRequest.
+ * Use `create(GetPreviewRuntimeRequestSchema)` to create a new message.
+ */
+export const GetPreviewRuntimeRequestSchema: GenMessage<GetPreviewRuntimeRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_project_v1_project_service, 28);
+
+/**
+ * @generated from message hualala.project.v1.GetPreviewRuntimeResponse
+ */
+export type GetPreviewRuntimeResponse = Message<"hualala.project.v1.GetPreviewRuntimeResponse"> & {
+  /**
+   * @generated from field: hualala.project.v1.PreviewRuntime runtime = 1;
+   */
+  runtime?: PreviewRuntime;
+};
+
+/**
+ * Describes the message hualala.project.v1.GetPreviewRuntimeResponse.
+ * Use `create(GetPreviewRuntimeResponseSchema)` to create a new message.
+ */
+export const GetPreviewRuntimeResponseSchema: GenMessage<GetPreviewRuntimeResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_project_v1_project_service, 29);
+
+/**
+ * @generated from message hualala.project.v1.RequestPreviewRenderRequest
+ */
+export type RequestPreviewRenderRequest = Message<"hualala.project.v1.RequestPreviewRenderRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string episode_id = 2;
+   */
+  episodeId: string;
+
+  /**
+   * @generated from field: string requested_locale = 3;
+   */
+  requestedLocale: string;
+};
+
+/**
+ * Describes the message hualala.project.v1.RequestPreviewRenderRequest.
+ * Use `create(RequestPreviewRenderRequestSchema)` to create a new message.
+ */
+export const RequestPreviewRenderRequestSchema: GenMessage<RequestPreviewRenderRequest> = /*@__PURE__*/
+  messageDesc(file_hualala_project_v1_project_service, 30);
+
+/**
+ * @generated from message hualala.project.v1.RequestPreviewRenderResponse
+ */
+export type RequestPreviewRenderResponse = Message<"hualala.project.v1.RequestPreviewRenderResponse"> & {
+  /**
+   * @generated from field: hualala.project.v1.PreviewRuntime runtime = 1;
+   */
+  runtime?: PreviewRuntime;
+};
+
+/**
+ * Describes the message hualala.project.v1.RequestPreviewRenderResponse.
+ * Use `create(RequestPreviewRenderResponseSchema)` to create a new message.
+ */
+export const RequestPreviewRenderResponseSchema: GenMessage<RequestPreviewRenderResponse> = /*@__PURE__*/
+  messageDesc(file_hualala_project_v1_project_service, 31);
 
 /**
  * @generated from message hualala.project.v1.GetAudioWorkbenchRequest
@@ -858,7 +1013,7 @@ export type GetAudioWorkbenchRequest = Message<"hualala.project.v1.GetAudioWorkb
  * Use `create(GetAudioWorkbenchRequestSchema)` to create a new message.
  */
 export const GetAudioWorkbenchRequestSchema: GenMessage<GetAudioWorkbenchRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 27);
+  messageDesc(file_hualala_project_v1_project_service, 32);
 
 /**
  * @generated from message hualala.project.v1.GetAudioWorkbenchResponse
@@ -875,7 +1030,7 @@ export type GetAudioWorkbenchResponse = Message<"hualala.project.v1.GetAudioWork
  * Use `create(GetAudioWorkbenchResponseSchema)` to create a new message.
  */
 export const GetAudioWorkbenchResponseSchema: GenMessage<GetAudioWorkbenchResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 28);
+  messageDesc(file_hualala_project_v1_project_service, 33);
 
 /**
  * @generated from message hualala.project.v1.UpsertAudioTimelineRequest
@@ -917,7 +1072,7 @@ export type UpsertAudioTimelineRequest = Message<"hualala.project.v1.UpsertAudio
  * Use `create(UpsertAudioTimelineRequestSchema)` to create a new message.
  */
 export const UpsertAudioTimelineRequestSchema: GenMessage<UpsertAudioTimelineRequest> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 29);
+  messageDesc(file_hualala_project_v1_project_service, 34);
 
 /**
  * @generated from message hualala.project.v1.UpsertAudioTimelineResponse
@@ -934,7 +1089,7 @@ export type UpsertAudioTimelineResponse = Message<"hualala.project.v1.UpsertAudi
  * Use `create(UpsertAudioTimelineResponseSchema)` to create a new message.
  */
 export const UpsertAudioTimelineResponseSchema: GenMessage<UpsertAudioTimelineResponse> = /*@__PURE__*/
-  messageDesc(file_hualala_project_v1_project_service, 30);
+  messageDesc(file_hualala_project_v1_project_service, 35);
 
 /**
  * @generated from service hualala.project.v1.ProjectService
@@ -1003,6 +1158,22 @@ export const ProjectService: GenService<{
     methodKind: "unary";
     input: typeof UpsertPreviewAssemblyRequestSchema;
     output: typeof UpsertPreviewAssemblyResponseSchema;
+  },
+  /**
+   * @generated from rpc hualala.project.v1.ProjectService.GetPreviewRuntime
+   */
+  getPreviewRuntime: {
+    methodKind: "unary";
+    input: typeof GetPreviewRuntimeRequestSchema;
+    output: typeof GetPreviewRuntimeResponseSchema;
+  },
+  /**
+   * @generated from rpc hualala.project.v1.ProjectService.RequestPreviewRender
+   */
+  requestPreviewRender: {
+    methodKind: "unary";
+    input: typeof RequestPreviewRenderRequestSchema;
+    output: typeof RequestPreviewRenderResponseSchema;
   },
   /**
    * @generated from rpc hualala.project.v1.ProjectService.GetAudioWorkbench

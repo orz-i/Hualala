@@ -142,6 +142,33 @@ func (h *projectHandler) UpsertPreviewAssembly(ctx context.Context, req *connect
 	}), nil
 }
 
+func (h *projectHandler) GetPreviewRuntime(ctx context.Context, req *connectrpc.Request[projectv1.GetPreviewRuntimeRequest]) (*connectrpc.Response[projectv1.GetPreviewRuntimeResponse], error) {
+	record, err := h.service.GetPreviewRuntime(ctx, projectapp.GetPreviewRuntimeInput{
+		ProjectID: req.Msg.GetProjectId(),
+		EpisodeID: req.Msg.GetEpisodeId(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&projectv1.GetPreviewRuntimeResponse{
+		Runtime: mapPreviewRuntime(record),
+	}), nil
+}
+
+func (h *projectHandler) RequestPreviewRender(ctx context.Context, req *connectrpc.Request[projectv1.RequestPreviewRenderRequest]) (*connectrpc.Response[projectv1.RequestPreviewRenderResponse], error) {
+	record, err := h.service.RequestPreviewRender(ctx, projectapp.RequestPreviewRenderInput{
+		ProjectID:       req.Msg.GetProjectId(),
+		EpisodeID:       req.Msg.GetEpisodeId(),
+		RequestedLocale: req.Msg.GetRequestedLocale(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&projectv1.RequestPreviewRenderResponse{
+		Runtime: mapPreviewRuntime(record),
+	}), nil
+}
+
 func (h *projectHandler) GetAudioWorkbench(ctx context.Context, req *connectrpc.Request[projectv1.GetAudioWorkbenchRequest]) (*connectrpc.Response[projectv1.GetAudioWorkbenchResponse], error) {
 	record, err := h.service.GetAudioWorkbench(ctx, projectapp.GetAudioWorkbenchInput{
 		ProjectID: req.Msg.GetProjectId(),

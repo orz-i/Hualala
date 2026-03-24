@@ -217,6 +217,58 @@ func TestPublishCollaborationUpdatedTrimsScopeAndPayloadFields(t *testing.T) {
 	}
 }
 
+func TestPublishPreviewRuntimeUpdatedTrimsScopeAndPayloadFields(t *testing.T) {
+	publisher := NewPublisher()
+	occurredAt := time.Unix(300, 0).UTC()
+
+	PublishPreviewRuntimeUpdated(context.Background(), publisher, PublishPreviewRuntimeUpdatedInput{
+		ProjectID:           " project-1 ",
+		EpisodeID:           " episode-1 ",
+		PreviewRuntimeID:    " runtime-1 ",
+		RenderStatus:        " queued ",
+		RenderWorkflowRunID: " workflow-run-1 ",
+		ResolvedLocale:      " en-US ",
+		PlaybackAssetID:     " playback-asset-1 ",
+		ExportAssetID:       " export-asset-1 ",
+		OccurredAt:          occurredAt,
+	})
+
+	items := publisher.List("", "project-1", "")
+	if len(items) != 1 {
+		t.Fatalf("expected 1 runtime event, got %d", len(items))
+	}
+	event := items[0]
+	if got := event.EventType; got != "project.preview.runtime.updated" {
+		t.Fatalf("expected event type %q, got %q", "project.preview.runtime.updated", got)
+	}
+	if got := event.ProjectID; got != "project-1" {
+		t.Fatalf("expected trimmed project id %q, got %q", "project-1", got)
+	}
+	if got := event.ResourceType; got != "preview_runtime" {
+		t.Fatalf("expected resource type %q, got %q", "preview_runtime", got)
+	}
+	if got := event.ResourceID; got != "runtime-1" {
+		t.Fatalf("expected resource id %q, got %q", "runtime-1", got)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(event.Payload), &payload); err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v", err)
+	}
+	if got := payload["episode_id"].(string); got != "episode-1" {
+		t.Fatalf("expected episode_id %q, got %q", "episode-1", got)
+	}
+	if got := payload["render_status"].(string); got != "queued" {
+		t.Fatalf("expected render_status %q, got %q", "queued", got)
+	}
+	if got := payload["resolved_locale"].(string); got != "en-US" {
+		t.Fatalf("expected resolved_locale %q, got %q", "en-US", got)
+	}
+	if got := payload["occurred_at"].(string); got != occurredAt.Format(time.RFC3339) {
+		t.Fatalf("expected occurred_at %q, got %q", occurredAt.Format(time.RFC3339), got)
+	}
+}
+
 type stubRecorder struct {
 	appendFn  func(context.Context, Event) (Event, error)
 	listFn    func(context.Context, string, string, string) ([]Event, error)

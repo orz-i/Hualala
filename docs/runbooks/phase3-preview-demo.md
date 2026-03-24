@@ -8,7 +8,9 @@
 - admin `/preview?projectId=<id>&shotExecutionId=<id>`
 - 已冻结 contract 见 [`phase3-preview-contract-freeze.md`](./phase3-preview-contract-freeze.md)
 
-本轮不包含播放器、preview SSE、导出执行和音频联动增强。
+本轮不包含播放器、导出执行和音频联动增强。
+
+runtime shared truth 已单独冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-preview-runtime-freeze.md)。
 
 ## Creator 路径
 
@@ -67,3 +69,4 @@
 - 只有 `scene / shot` 标题会跟随 locale 变化；`project_title / episode_title` 继续保持当前存储值
 - 若缺少 `snapshot_kind=title` 翻译快照，后端会回退到源标题，页面不额外报错
 - `UpsertPreviewAssembly` 写入 shape 不变，仍只保存 `shotId / primaryAssetId / sourceRunId / sequence`
+- 播放器 / 导出执行后续会直接消费 preview runtime contract，而不是复用 assembly metadata shape

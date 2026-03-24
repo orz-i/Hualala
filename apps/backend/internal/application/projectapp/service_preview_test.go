@@ -11,6 +11,7 @@ import (
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/domain/project"
+	"github.com/hualala/apps/backend/internal/domain/workflow"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
@@ -427,6 +428,180 @@ func TestPreviewWorkbenchRejectsMismatchedEpisodeScope(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatalf("expected ListPreviewShotOptions to reject mismatched episode scope")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "failed precondition") {
+		t.Fatalf("expected failed precondition error, got %v", err)
+	}
+}
+
+func TestGetPreviewRuntimeAutoCreatesProjectScopedRuntime(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	fixture := seedPreviewProject(t, ctx, store)
+	service := NewService(store)
+
+	runtimeState, err := service.GetPreviewRuntime(ctx, GetPreviewRuntimeInput{
+		ProjectID: fixture.ProjectID,
+	})
+	if err != nil {
+		t.Fatalf("GetPreviewRuntime returned error: %v", err)
+	}
+	if got := runtimeState.Runtime.ProjectID; got != fixture.ProjectID {
+		t.Fatalf("expected project %q, got %q", fixture.ProjectID, got)
+	}
+	if got := runtimeState.Runtime.EpisodeID; got != "" {
+		t.Fatalf("expected empty episode_id for project-only scope, got %q", got)
+	}
+	if got := runtimeState.Runtime.Status; got != "draft" {
+		t.Fatalf("expected initial status %q, got %q", "draft", got)
+	}
+	if got := runtimeState.Runtime.RenderStatus; got != "idle" {
+		t.Fatalf("expected initial render_status %q, got %q", "idle", got)
+	}
+	if got := runtimeState.Runtime.RenderWorkflowRunID; got != "" {
+		t.Fatalf("expected empty render workflow run id, got %q", got)
+	}
+}
+
+func TestGetPreviewRuntimeAutoCreatesEpisodeScopedRuntime(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	fixture := seedPreviewProject(t, ctx, store)
+	service := NewService(store)
+
+	runtimeState, err := service.GetPreviewRuntime(ctx, GetPreviewRuntimeInput{
+		ProjectID: fixture.ProjectID,
+		EpisodeID: fixture.EpisodeID,
+	})
+	if err != nil {
+		t.Fatalf("GetPreviewRuntime returned error: %v", err)
+	}
+	if got := runtimeState.Runtime.ProjectID; got != fixture.ProjectID {
+		t.Fatalf("expected project %q, got %q", fixture.ProjectID, got)
+	}
+	if got := runtimeState.Runtime.EpisodeID; got != fixture.EpisodeID {
+		t.Fatalf("expected episode %q, got %q", fixture.EpisodeID, got)
+	}
+}
+
+func TestRequestPreviewRenderQueuesWorkflowRunForNonEmptyAssembly(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	fixture := seedPreviewProject(t, ctx, store)
+	service := NewService(store)
+
+	if _, err := service.UpsertPreviewAssembly(ctx, UpsertPreviewAssemblyInput{
+		ProjectID: fixture.ProjectID,
+		EpisodeID: fixture.EpisodeID,
+		Status:    "ready",
+		Items: []PreviewAssemblyItemInput{
+			{
+				ShotID:         fixture.ShotIDs[0],
+				PrimaryAssetID: fixture.AssetIDByShotID[fixture.ShotIDs[0]],
+				SourceRunID:    fixture.LatestRunIDByShotID[fixture.ShotIDs[0]],
+				Sequence:       1,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("UpsertPreviewAssembly returned error: %v", err)
+	}
+
+	runtimeState, err := service.RequestPreviewRender(ctx, RequestPreviewRenderInput{
+		ProjectID:       fixture.ProjectID,
+		EpisodeID:       fixture.EpisodeID,
+		RequestedLocale: "en-US",
+	})
+	if err != nil {
+		t.Fatalf("RequestPreviewRender returned error: %v", err)
+	}
+	if got := runtimeState.Runtime.Status; got != "queued" {
+		t.Fatalf("expected runtime status %q, got %q", "queued", got)
+	}
+	if got := runtimeState.Runtime.RenderStatus; got != "queued" {
+		t.Fatalf("expected render status %q, got %q", "queued", got)
+	}
+	if got := runtimeState.Runtime.ResolvedLocale; got != "en-US" {
+		t.Fatalf("expected resolved locale %q, got %q", "en-US", got)
+	}
+	if got := runtimeState.Runtime.AssemblyID; got == "" {
+		t.Fatalf("expected assembly_id to be populated")
+	}
+	if got := runtimeState.Runtime.RenderWorkflowRunID; got == "" {
+		t.Fatalf("expected render_workflow_run_id to be populated")
+	}
+
+	run, ok := store.GetWorkflowRun(runtimeState.Runtime.RenderWorkflowRunID)
+	if !ok {
+		t.Fatalf("expected workflow run %q to be persisted", runtimeState.Runtime.RenderWorkflowRunID)
+	}
+	if got := run.WorkflowType; got != "preview.render_assembly" {
+		t.Fatalf("expected workflow_type %q, got %q", "preview.render_assembly", got)
+	}
+	if got := run.ProjectID; got != fixture.ProjectID {
+		t.Fatalf("expected workflow project %q, got %q", fixture.ProjectID, got)
+	}
+	if got := run.Status; got != workflow.StatusPending {
+		t.Fatalf("expected workflow status %q, got %q", workflow.StatusPending, got)
+	}
+}
+
+func TestRequestPreviewRenderRejectsEmptyAssembly(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	fixture := seedPreviewProject(t, ctx, store)
+	service := NewService(store)
+
+	_, err := service.RequestPreviewRender(ctx, RequestPreviewRenderInput{
+		ProjectID: fixture.ProjectID,
+		EpisodeID: fixture.EpisodeID,
+	})
+	if err == nil {
+		t.Fatalf("expected RequestPreviewRender to reject empty assembly")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "failed precondition") {
+		t.Fatalf("expected failed precondition error, got %v", err)
+	}
+}
+
+func TestRequestPreviewRenderRejectsExistingQueuedRuntime(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	fixture := seedPreviewProject(t, ctx, store)
+	service := NewService(store)
+
+	if _, err := service.UpsertPreviewAssembly(ctx, UpsertPreviewAssemblyInput{
+		ProjectID: fixture.ProjectID,
+		EpisodeID: fixture.EpisodeID,
+		Status:    "ready",
+		Items: []PreviewAssemblyItemInput{
+			{
+				ShotID:   fixture.ShotIDs[0],
+				Sequence: 1,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("UpsertPreviewAssembly returned error: %v", err)
+	}
+
+	first, err := service.RequestPreviewRender(ctx, RequestPreviewRenderInput{
+		ProjectID:       fixture.ProjectID,
+		EpisodeID:       fixture.EpisodeID,
+		RequestedLocale: "zh-CN",
+	})
+	if err != nil {
+		t.Fatalf("first RequestPreviewRender returned error: %v", err)
+	}
+	if got := first.Runtime.RenderStatus; got != "queued" {
+		t.Fatalf("expected first render status %q, got %q", "queued", got)
+	}
+
+	_, err = service.RequestPreviewRender(ctx, RequestPreviewRenderInput{
+		ProjectID:       fixture.ProjectID,
+		EpisodeID:       fixture.EpisodeID,
+		RequestedLocale: "en-US",
+	})
+	if err == nil {
+		t.Fatalf("expected duplicate RequestPreviewRender to fail")
 	}
 	if !strings.Contains(strings.ToLower(err.Error()), "failed precondition") {
 		t.Fatalf("expected failed precondition error, got %v", err)

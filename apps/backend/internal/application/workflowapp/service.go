@@ -67,8 +67,9 @@ type workflowJobPayload struct {
 }
 
 var defaultProviderByWorkflowType = map[string]string{
-	"asset.import":  "seedance",
-	"shot_pipeline": "seedance",
+	"asset.import":            "seedance",
+	"shot_pipeline":           "seedance",
+	"preview.render_assembly": "seedance",
 }
 
 func NewService(repo db.WorkflowRepository, publisher *events.Publisher, executor temporal.Executor, policy budgetGuard) *Service {

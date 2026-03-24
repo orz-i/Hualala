@@ -101,6 +101,10 @@ type ProjectContentRepository interface {
 	ReplacePreviewAssemblyItems(ctx context.Context, assemblyID string, items []project.PreviewAssemblyItem) error
 	ListPreviewAssemblyItems(assemblyID string) []project.PreviewAssemblyItem
 
+	GeneratePreviewRuntimeID() string
+	SavePreviewRuntime(ctx context.Context, record project.PreviewRuntime) error
+	GetPreviewRuntime(projectID string, episodeID string) (project.PreviewRuntime, bool)
+
 	GenerateAudioTimelineID() string
 	SaveAudioTimeline(ctx context.Context, record project.AudioTimeline) error
 	GetAudioTimeline(projectID string, episodeID string) (project.AudioTimeline, bool)
@@ -248,6 +252,7 @@ func (s *MemoryStore) GeneratePreviewAssemblyID() string { return s.NextPreviewA
 func (s *MemoryStore) GeneratePreviewAssemblyItemID() string {
 	return s.NextPreviewAssemblyItemID()
 }
+func (s *MemoryStore) GeneratePreviewRuntimeID() string   { return s.NextPreviewRuntimeID() }
 func (s *MemoryStore) GenerateAudioTimelineID() string     { return s.NextAudioTimelineID() }
 func (s *MemoryStore) GenerateAudioTrackID() string        { return s.NextAudioTrackID() }
 func (s *MemoryStore) GenerateAudioClipID() string         { return s.NextAudioClipID() }
@@ -677,6 +682,19 @@ func (s *MemoryStore) ListPreviewAssemblyItems(assemblyID string) []project.Prev
 		return items[i].Sequence < items[j].Sequence
 	})
 	return items
+}
+
+func (s *MemoryStore) SavePreviewRuntime(ctx context.Context, record project.PreviewRuntime) error {
+	return s.save(ctx, func() { s.PreviewRuntimes[record.ID] = record })
+}
+
+func (s *MemoryStore) GetPreviewRuntime(projectID string, episodeID string) (project.PreviewRuntime, bool) {
+	for _, record := range s.PreviewRuntimes {
+		if record.ProjectID == projectID && record.EpisodeID == episodeID {
+			return record, true
+		}
+	}
+	return project.PreviewRuntime{}, false
 }
 
 func (s *MemoryStore) SaveAudioTimeline(ctx context.Context, record project.AudioTimeline) error {
