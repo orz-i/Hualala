@@ -496,6 +496,35 @@ func (s *PostgresStore) GetScene(sceneID string) (content.Scene, bool) {
 	return record, true
 }
 
+func (s *PostgresStore) ListScenesByIDs(sceneIDs []string) []content.Scene {
+	if s == nil || s.db == nil || len(sceneIDs) == 0 {
+		return nil
+	}
+	rows, err := s.db.QueryContext(context.Background(), `
+		SELECT id::text, project_id::text, episode_id::text, scene_no, title, COALESCE(source_locale, ''), created_at, updated_at
+		FROM scenes
+		WHERE id = ANY($1::uuid[])
+		ORDER BY id ASC
+	`, pqStringUUIDArray(sceneIDs))
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	items := make([]content.Scene, 0)
+	for rows.Next() {
+		var record content.Scene
+		if err := rows.Scan(&record.ID, &record.ProjectID, &record.EpisodeID, &record.SceneNo, &record.Title, &record.SourceLocale, &record.CreatedAt, &record.UpdatedAt); err != nil {
+			return nil
+		}
+		record.Code = fmt.Sprintf("SCENE-%03d", record.SceneNo)
+		record.CreatedAt = record.CreatedAt.UTC()
+		record.UpdatedAt = record.UpdatedAt.UTC()
+		items = append(items, record)
+	}
+	return items
+}
+
 func (s *PostgresStore) ListScenes(projectID string, episodeID string) []content.Scene {
 	if s == nil || s.db == nil {
 		return nil
@@ -560,6 +589,34 @@ func (s *PostgresStore) GetShot(shotID string) (content.Shot, bool) {
 	record.CreatedAt = record.CreatedAt.UTC()
 	record.UpdatedAt = record.UpdatedAt.UTC()
 	return record, true
+}
+
+func (s *PostgresStore) ListShotsByIDs(shotIDs []string) []content.Shot {
+	if s == nil || s.db == nil || len(shotIDs) == 0 {
+		return nil
+	}
+	rows, err := s.db.QueryContext(context.Background(), `
+		SELECT id::text, scene_id::text, shot_no, COALESCE(code, ''), COALESCE(title, ''), COALESCE(source_locale, ''), created_at, updated_at
+		FROM shots
+		WHERE id = ANY($1::uuid[])
+		ORDER BY id ASC
+	`, pqStringUUIDArray(shotIDs))
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	items := make([]content.Shot, 0)
+	for rows.Next() {
+		var record content.Shot
+		if err := rows.Scan(&record.ID, &record.SceneID, &record.ShotNo, &record.Code, &record.Title, &record.SourceLocale, &record.CreatedAt, &record.UpdatedAt); err != nil {
+			return nil
+		}
+		record.CreatedAt = record.CreatedAt.UTC()
+		record.UpdatedAt = record.UpdatedAt.UTC()
+		items = append(items, record)
+	}
+	return items
 }
 
 func (s *PostgresStore) GetCollaborationScope(ownerType string, ownerID string) (string, string, error) {

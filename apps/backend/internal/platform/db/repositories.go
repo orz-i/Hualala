@@ -67,11 +67,13 @@ type ProjectContentRepository interface {
 	GenerateSceneID() string
 	SaveScene(ctx context.Context, record content.Scene) error
 	GetScene(sceneID string) (content.Scene, bool)
+	ListScenesByIDs(sceneIDs []string) []content.Scene
 	ListScenes(projectID string, episodeID string) []content.Scene
 
 	GenerateShotID() string
 	SaveShot(ctx context.Context, record content.Shot) error
 	GetShot(shotID string) (content.Shot, bool)
+	ListShotsByIDs(shotIDs []string) []content.Shot
 	ListShotsByScene(sceneID string) []content.Shot
 	GetCollaborationScope(ownerType string, ownerID string) (string, string, error)
 
@@ -116,11 +118,13 @@ type ExecutionRepository interface {
 	SaveShotExecution(ctx context.Context, record execution.ShotExecution) error
 	GetShotExecution(shotExecutionID string) (execution.ShotExecution, bool)
 	FindShotExecutionByShotID(shotID string) (execution.ShotExecution, bool)
+	ListShotExecutionsByShotIDs(shotIDs []string) []execution.ShotExecution
 	ListShotExecutionsByIDs(ids []string) []execution.ShotExecution
 
 	GenerateShotExecutionRunID() string
 	SaveShotExecutionRun(ctx context.Context, record execution.ShotExecutionRun) error
 	ListShotExecutionRuns(shotExecutionID string) []execution.ShotExecutionRun
+	ListShotExecutionRunsByExecutionIDs(shotExecutionIDs []string) []execution.ShotExecutionRun
 }
 
 type AssetRepository interface {
@@ -147,6 +151,7 @@ type AssetRepository interface {
 	GenerateMediaAssetID() string
 	SaveMediaAsset(ctx context.Context, record asset.MediaAsset) error
 	GetMediaAsset(assetID string) (asset.MediaAsset, bool)
+	ListMediaAssetsByIDs(assetIDs []string) []asset.MediaAsset
 	ListMediaAssetsByImportBatch(importBatchID string) []asset.MediaAsset
 
 	GenerateMediaAssetVariantID() string
@@ -408,6 +413,25 @@ func (s *MemoryStore) GetScene(sceneID string) (content.Scene, bool) {
 	return record, ok
 }
 
+func (s *MemoryStore) ListScenesByIDs(sceneIDs []string) []content.Scene {
+	lookup := make(map[string]struct{}, len(sceneIDs))
+	for _, sceneID := range sceneIDs {
+		normalizedID := strings.TrimSpace(sceneID)
+		if normalizedID == "" {
+			continue
+		}
+		lookup[normalizedID] = struct{}{}
+	}
+	items := make([]content.Scene, 0, len(lookup))
+	for _, record := range s.Scenes {
+		if _, ok := lookup[record.ID]; ok {
+			items = append(items, record)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items
+}
+
 func (s *MemoryStore) ListScenes(projectID string, episodeID string) []content.Scene {
 	items := make([]content.Scene, 0)
 	for _, record := range s.Scenes {
@@ -431,6 +455,25 @@ func (s *MemoryStore) SaveShot(ctx context.Context, record content.Shot) error {
 func (s *MemoryStore) GetShot(shotID string) (content.Shot, bool) {
 	record, ok := s.Shots[shotID]
 	return record, ok
+}
+
+func (s *MemoryStore) ListShotsByIDs(shotIDs []string) []content.Shot {
+	lookup := make(map[string]struct{}, len(shotIDs))
+	for _, shotID := range shotIDs {
+		normalizedID := strings.TrimSpace(shotID)
+		if normalizedID == "" {
+			continue
+		}
+		lookup[normalizedID] = struct{}{}
+	}
+	items := make([]content.Shot, 0, len(lookup))
+	for _, record := range s.Shots {
+		if _, ok := lookup[record.ID]; ok {
+			items = append(items, record)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items
 }
 
 func (s *MemoryStore) GetCollaborationScope(ownerType string, ownerID string) (string, string, error) {
@@ -703,6 +746,25 @@ func (s *MemoryStore) FindShotExecutionByShotID(shotID string) (execution.ShotEx
 	return execution.ShotExecution{}, false
 }
 
+func (s *MemoryStore) ListShotExecutionsByShotIDs(shotIDs []string) []execution.ShotExecution {
+	lookup := make(map[string]struct{}, len(shotIDs))
+	for _, shotID := range shotIDs {
+		normalizedID := strings.TrimSpace(shotID)
+		if normalizedID == "" {
+			continue
+		}
+		lookup[normalizedID] = struct{}{}
+	}
+	items := make([]execution.ShotExecution, 0, len(lookup))
+	for _, record := range s.ShotExecutions {
+		if _, ok := lookup[record.ShotID]; ok {
+			items = append(items, record)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items
+}
+
 func (s *MemoryStore) ListShotExecutionsByIDs(ids []string) []execution.ShotExecution {
 	lookup := make(map[string]struct{}, len(ids))
 	for _, id := range ids {
@@ -734,6 +796,33 @@ func (s *MemoryStore) ListShotExecutionRuns(shotExecutionID string) []execution.
 			return items[i].ID < items[j].ID
 		}
 		return items[i].RunNumber < items[j].RunNumber
+	})
+	return items
+}
+
+func (s *MemoryStore) ListShotExecutionRunsByExecutionIDs(shotExecutionIDs []string) []execution.ShotExecutionRun {
+	lookup := make(map[string]struct{}, len(shotExecutionIDs))
+	for _, shotExecutionID := range shotExecutionIDs {
+		normalizedID := strings.TrimSpace(shotExecutionID)
+		if normalizedID == "" {
+			continue
+		}
+		lookup[normalizedID] = struct{}{}
+	}
+	items := make([]execution.ShotExecutionRun, 0, len(lookup))
+	for _, record := range s.ShotExecutionRuns {
+		if _, ok := lookup[record.ShotExecutionID]; ok {
+			items = append(items, record)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].ShotExecutionID == items[j].ShotExecutionID {
+			if items[i].RunNumber == items[j].RunNumber {
+				return items[i].ID < items[j].ID
+			}
+			return items[i].RunNumber < items[j].RunNumber
+		}
+		return items[i].ShotExecutionID < items[j].ShotExecutionID
 	})
 	return items
 }
@@ -897,6 +986,25 @@ func (s *MemoryStore) SaveMediaAsset(ctx context.Context, record asset.MediaAsse
 func (s *MemoryStore) GetMediaAsset(assetID string) (asset.MediaAsset, bool) {
 	record, ok := s.MediaAssets[assetID]
 	return record, ok
+}
+
+func (s *MemoryStore) ListMediaAssetsByIDs(assetIDs []string) []asset.MediaAsset {
+	lookup := make(map[string]struct{}, len(assetIDs))
+	for _, assetID := range assetIDs {
+		normalizedID := strings.TrimSpace(assetID)
+		if normalizedID == "" {
+			continue
+		}
+		lookup[normalizedID] = struct{}{}
+	}
+	items := make([]asset.MediaAsset, 0, len(lookup))
+	for _, record := range s.MediaAssets {
+		if _, ok := lookup[record.ID]; ok {
+			items = append(items, record)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items
 }
 
 func (s *MemoryStore) ListMediaAssetsByImportBatch(importBatchID string) []asset.MediaAsset {
