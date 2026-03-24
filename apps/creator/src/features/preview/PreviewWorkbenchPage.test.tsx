@@ -9,6 +9,9 @@ describe("PreviewWorkbenchPage", () => {
     const onOpenAssetProvenance = vi.fn();
     const onOpenShotWorkbench = vi.fn();
     const onOpenAudioWorkbench = vi.fn();
+    const onAddItemFromChooser = vi.fn();
+    const onManualShotIdInputChange = vi.fn();
+    const onAddManualItem = vi.fn();
 
     render(
       <PreviewWorkbenchPage
@@ -29,6 +32,14 @@ describe("PreviewWorkbenchPage", () => {
               primaryAssetId: "",
               sourceRunId: "",
               sequence: 1,
+              shotSummary: {
+                sceneCode: "SCENE-001",
+                sceneTitle: "开场",
+                shotCode: "SHOT-001",
+                shotTitle: "第一镜",
+              },
+              primaryAssetSummary: null,
+              sourceRunSummary: null,
             },
             {
               itemId: "item-2",
@@ -37,6 +48,23 @@ describe("PreviewWorkbenchPage", () => {
               primaryAssetId: "asset-2",
               sourceRunId: "run-2",
               sequence: 2,
+              shotSummary: {
+                sceneCode: "SCENE-001",
+                sceneTitle: "开场",
+                shotCode: "SHOT-002",
+                shotTitle: "第二镜",
+              },
+              primaryAssetSummary: {
+                assetId: "asset-2",
+                mediaType: "image",
+                rightsStatus: "cleared",
+                aiAnnotated: true,
+              },
+              sourceRunSummary: {
+                runId: "run-2",
+                status: "completed",
+                triggerType: "manual",
+              },
             },
           ],
         }}
@@ -48,6 +76,14 @@ describe("PreviewWorkbenchPage", () => {
             primaryAssetId: "",
             sourceRunId: "",
             sequence: 1,
+            shotSummary: {
+              sceneCode: "SCENE-001",
+              sceneTitle: "开场",
+              shotCode: "SHOT-001",
+              shotTitle: "第一镜",
+            },
+            primaryAssetSummary: null,
+            sourceRunSummary: null,
           },
           {
             itemId: "item-2",
@@ -56,11 +92,53 @@ describe("PreviewWorkbenchPage", () => {
             primaryAssetId: "asset-2",
             sourceRunId: "run-2",
             sequence: 2,
+            shotSummary: {
+              sceneCode: "SCENE-001",
+              sceneTitle: "开场",
+              shotCode: "SHOT-002",
+              shotTitle: "第二镜",
+            },
+            primaryAssetSummary: {
+              assetId: "asset-2",
+              mediaType: "image",
+              rightsStatus: "cleared",
+              aiAnnotated: true,
+            },
+            sourceRunSummary: {
+              runId: "run-2",
+              status: "completed",
+              triggerType: "manual",
+            },
           },
         ]}
-        newShotIdInput=""
-        newPrimaryAssetIdInput=""
-        newSourceRunIdInput=""
+        shotOptions={[
+          {
+            shotId: "shot-2",
+            label: "SCENE-001 / SHOT-002",
+            shotExecutionId: "shot-exec-2",
+            shotExecutionStatus: "ready",
+            shotSummary: {
+              sceneCode: "SCENE-001",
+              sceneTitle: "开场",
+              shotCode: "SHOT-002",
+              shotTitle: "第二镜",
+            },
+            currentPrimaryAssetSummary: {
+              assetId: "asset-2",
+              mediaType: "image",
+              rightsStatus: "cleared",
+              aiAnnotated: true,
+            },
+            latestRunSummary: {
+              runId: "run-2",
+              status: "completed",
+              triggerType: "manual",
+            },
+          },
+        ]}
+        selectedShotOptionId="shot-2"
+        shotOptionsErrorMessage=""
+        manualShotIdInput=""
         assetProvenanceDetail={null}
         assetProvenancePending={false}
         assetProvenanceErrorMessage=""
@@ -72,11 +150,10 @@ describe("PreviewWorkbenchPage", () => {
         }}
         audioSummaryErrorMessage=""
         t={t}
-        onNewShotIdInputChange={vi.fn()}
-        onNewPrimaryAssetIdInputChange={vi.fn()}
-        onNewSourceRunIdInputChange={vi.fn()}
-        onDraftItemFieldChange={vi.fn()}
-        onAddItem={vi.fn()}
+        onSelectedShotOptionIdChange={vi.fn()}
+        onAddItemFromChooser={onAddItemFromChooser}
+        onManualShotIdInputChange={onManualShotIdInputChange}
+        onAddManualItem={onAddManualItem}
         onRemoveItem={vi.fn()}
         onMoveItem={vi.fn()}
         onSaveAssembly={vi.fn()}
@@ -97,10 +174,16 @@ describe("PreviewWorkbenchPage", () => {
     fireEvent.click(within(secondItem).getByRole("button", { name: "查看来源" }));
     fireEvent.click(within(secondItem).getByRole("button", { name: "打开镜头工作台" }));
     fireEvent.click(screen.getByRole("button", { name: "打开音频工作台" }));
+    fireEvent.click(screen.getByRole("button", { name: "从镜头目录追加" }));
 
     expect(onOpenAssetProvenance).toHaveBeenCalledWith("asset-2");
     expect(onOpenShotWorkbench).toHaveBeenCalledWith("shot-2");
     expect(onOpenAudioWorkbench).toHaveBeenCalledTimes(1);
+    expect(onAddItemFromChooser).toHaveBeenCalledTimes(1);
+    expect(within(firstItem).getByText("SCENE-001 / SHOT-001")).toBeInTheDocument();
+    expect(within(firstItem).getByText("开场 / 第一镜")).toBeInTheDocument();
+    expect(within(secondItem).getByText("image · cleared · AI annotated")).toBeInTheDocument();
+    expect(within(secondItem).getByText("completed · manual")).toBeInTheDocument();
     expect(screen.getByText("音频轨道数：3")).toBeInTheDocument();
     expect(screen.getByText("音频片段数：2")).toBeInTheDocument();
   });

@@ -5,9 +5,14 @@ import { loadAudioWorkbench } from "../audio/loadAudioWorkbench";
 import type { ActionFeedbackModel } from "../shared/ActionFeedback";
 import { useAssetProvenanceState } from "../shared/useAssetProvenanceState";
 import { waitForFeedbackPaint } from "../shared/waitForFeedbackPaint";
+import { loadPreviewShotOptions } from "./loadPreviewShotOptions";
 import { loadPreviewWorkbench } from "./loadPreviewWorkbench";
 import { savePreviewWorkbench } from "./mutatePreviewWorkbench";
-import type { PreviewItemViewModel, PreviewWorkbenchViewModel } from "./previewWorkbench";
+import type {
+  PreviewItemViewModel,
+  PreviewShotOptionViewModel,
+  PreviewWorkbenchViewModel,
+} from "./previewWorkbench";
 
 type UsePreviewWorkbenchControllerOptions = {
   enabled: boolean;
@@ -16,8 +21,6 @@ type UsePreviewWorkbenchControllerOptions = {
   orgId?: string;
   userId?: string;
 };
-
-type DraftField = "shotId" | "primaryAssetId" | "sourceRunId";
 
 function buildOrderedDraftItems(items: PreviewItemViewModel[]) {
   return items.map((item, index) => ({
@@ -49,9 +52,10 @@ export function usePreviewWorkbenchController({
   const [errorMessage, setErrorMessage] = useState("");
   const [audioSummary, setAudioSummary] = useState<PreviewAudioSummaryViewModel | null>(null);
   const [audioSummaryErrorMessage, setAudioSummaryErrorMessage] = useState("");
-  const [newShotIdInput, setNewShotIdInput] = useState("");
-  const [newPrimaryAssetIdInput, setNewPrimaryAssetIdInput] = useState("");
-  const [newSourceRunIdInput, setNewSourceRunIdInput] = useState("");
+  const [shotOptions, setShotOptions] = useState<PreviewShotOptionViewModel[]>([]);
+  const [shotOptionsErrorMessage, setShotOptionsErrorMessage] = useState("");
+  const [selectedShotOptionId, setSelectedShotOptionId] = useState("");
+  const [manualShotIdInput, setManualShotIdInput] = useState("");
   const draftIdRef = useRef(1);
   const {
     assetProvenanceDetail,
@@ -76,9 +80,10 @@ export function usePreviewWorkbenchController({
         setErrorMessage("");
         setAudioSummary(null);
         setAudioSummaryErrorMessage("");
-        setNewShotIdInput("");
-        setNewPrimaryAssetIdInput("");
-        setNewSourceRunIdInput("");
+        setShotOptions([]);
+        setShotOptionsErrorMessage("");
+        setSelectedShotOptionId("");
+        setManualShotIdInput("");
       });
       return;
     }
@@ -92,12 +97,17 @@ export function usePreviewWorkbenchController({
         orgId,
         userId,
       }),
+      loadPreviewShotOptions({
+        projectId,
+        orgId,
+        userId,
+      }),
       loadAudioWorkbench({
         projectId,
         orgId,
         userId,
       }),
-    ]).then(([previewResult, audioResult]) => {
+    ]).then(([previewResult, shotOptionsResult, audioResult]) => {
       if (cancelled) {
         return;
       }
@@ -113,6 +123,10 @@ export function usePreviewWorkbenchController({
           setFeedback(null);
           setErrorMessage(message);
           setAudioSummary(null);
+          setAudioSummaryErrorMessage("");
+          setShotOptions([]);
+          setShotOptionsErrorMessage("");
+          setSelectedShotOptionId("");
         });
         return;
       }
@@ -122,6 +136,26 @@ export function usePreviewWorkbenchController({
         setDraftItems(buildOrderedDraftItems(previewResult.value.items));
         setFeedback(null);
         setErrorMessage("");
+
+        if (shotOptionsResult.status === "fulfilled") {
+          setShotOptions(shotOptionsResult.value);
+          setShotOptionsErrorMessage("");
+          setSelectedShotOptionId((currentValue) => {
+            if (shotOptionsResult.value.some((option) => option.shotId === currentValue)) {
+              return currentValue;
+            }
+            return shotOptionsResult.value[0]?.shotId ?? "";
+          });
+        } else {
+          const message =
+            shotOptionsResult.reason instanceof Error
+              ? shotOptionsResult.reason.message
+              : "creator: unknown preview shot options error";
+          setShotOptions([]);
+          setShotOptionsErrorMessage(message);
+          setSelectedShotOptionId("");
+        }
+
         if (audioResult.status === "fulfilled") {
           setAudioSummary(buildPreviewAudioSummary(audioResult.value));
           setAudioSummaryErrorMessage("");
@@ -141,14 +175,36 @@ export function usePreviewWorkbenchController({
     };
   }, [enabled, orgId, projectId, resetAssetProvenance, t, userId]);
 
-  const handleDraftItemFieldChange = useCallback((itemId: string, field: DraftField, value: string) => {
-    setDraftItems((currentItems) =>
-      currentItems.map((item) => (item.itemId === itemId ? { ...item, [field]: value } : item)),
-    );
-  }, []);
+  const handleAddItemFromChooser = useCallback(() => {
+    if (!previewWorkbench || !selectedShotOptionId) {
+      return;
+    }
 
-  const handleAddItem = useCallback(() => {
-    const nextShotId = newShotIdInput.trim();
+    const selectedShotOption = shotOptions.find((option) => option.shotId === selectedShotOptionId);
+    if (!selectedShotOption) {
+      return;
+    }
+
+    const nextItem: PreviewItemViewModel = {
+      itemId: `draft-${draftIdRef.current}`,
+      assemblyId: previewWorkbench.assembly.assemblyId,
+      shotId: selectedShotOption.shotId,
+      primaryAssetId: selectedShotOption.currentPrimaryAssetSummary?.assetId ?? "",
+      sourceRunId: selectedShotOption.latestRunSummary?.runId ?? "",
+      sequence: draftItems.length + 1,
+      shotSummary: selectedShotOption.shotSummary,
+      primaryAssetSummary: selectedShotOption.currentPrimaryAssetSummary,
+      sourceRunSummary: selectedShotOption.latestRunSummary,
+    };
+    draftIdRef.current += 1;
+
+    startTransition(() => {
+      setDraftItems((currentItems) => buildOrderedDraftItems([...currentItems, nextItem]));
+    });
+  }, [draftItems.length, previewWorkbench, selectedShotOptionId, shotOptions]);
+
+  const handleAddManualItem = useCallback(() => {
+    const nextShotId = manualShotIdInput.trim();
     if (!nextShotId || !previewWorkbench) {
       return;
     }
@@ -157,25 +213,20 @@ export function usePreviewWorkbenchController({
       itemId: `draft-${draftIdRef.current}`,
       assemblyId: previewWorkbench.assembly.assemblyId,
       shotId: nextShotId,
-      primaryAssetId: newPrimaryAssetIdInput.trim(),
-      sourceRunId: newSourceRunIdInput.trim(),
+      primaryAssetId: "",
+      sourceRunId: "",
       sequence: draftItems.length + 1,
+      shotSummary: null,
+      primaryAssetSummary: null,
+      sourceRunSummary: null,
     };
     draftIdRef.current += 1;
 
     startTransition(() => {
       setDraftItems((currentItems) => buildOrderedDraftItems([...currentItems, nextItem]));
-      setNewShotIdInput("");
-      setNewPrimaryAssetIdInput("");
-      setNewSourceRunIdInput("");
+      setManualShotIdInput("");
     });
-  }, [
-    draftItems.length,
-    newPrimaryAssetIdInput,
-    newShotIdInput,
-    newSourceRunIdInput,
-    previewWorkbench,
-  ]);
+  }, [draftItems.length, manualShotIdInput, previewWorkbench]);
 
   const handleRemoveItem = useCallback((itemId: string) => {
     setDraftItems((currentItems) =>
@@ -250,14 +301,14 @@ export function usePreviewWorkbenchController({
     errorMessage,
     audioSummary,
     audioSummaryErrorMessage,
-    newShotIdInput,
-    newPrimaryAssetIdInput,
-    newSourceRunIdInput,
-    setNewShotIdInput,
-    setNewPrimaryAssetIdInput,
-    setNewSourceRunIdInput,
-    handleDraftItemFieldChange,
-    handleAddItem,
+    shotOptions,
+    shotOptionsErrorMessage,
+    selectedShotOptionId,
+    setSelectedShotOptionId,
+    manualShotIdInput,
+    setManualShotIdInput,
+    handleAddItemFromChooser,
+    handleAddManualItem,
     handleRemoveItem,
     handleMoveItem,
     handleSaveAssembly,

@@ -7,6 +7,32 @@ export type PreviewAssemblyViewModel = {
   updatedAt: string;
 };
 
+export type PreviewShotSummaryViewModel = {
+  projectId: string;
+  projectTitle: string;
+  episodeId: string;
+  episodeTitle: string;
+  sceneId: string;
+  sceneCode: string;
+  sceneTitle: string;
+  shotId: string;
+  shotCode: string;
+  shotTitle: string;
+};
+
+export type PreviewAssetSummaryViewModel = {
+  assetId: string;
+  mediaType: string;
+  rightsStatus: string;
+  aiAnnotated: boolean;
+};
+
+export type PreviewRunSummaryViewModel = {
+  runId: string;
+  status: string;
+  triggerType: string;
+};
+
 export type PreviewItemViewModel = {
   itemId: string;
   assemblyId: string;
@@ -14,6 +40,19 @@ export type PreviewItemViewModel = {
   primaryAssetId: string;
   sourceRunId: string;
   sequence: number;
+  shotSummary: PreviewShotSummaryViewModel | null;
+  primaryAssetSummary: PreviewAssetSummaryViewModel | null;
+  sourceRunSummary: PreviewRunSummaryViewModel | null;
+};
+
+export type PreviewShotOptionViewModel = {
+  shotId: string;
+  label: string;
+  shotExecutionId: string;
+  shotExecutionStatus: string;
+  shotSummary: PreviewShotSummaryViewModel;
+  currentPrimaryAssetSummary: PreviewAssetSummaryViewModel | null;
+  latestRunSummary: PreviewRunSummaryViewModel | null;
 };
 
 export type PreviewWorkbenchViewModel = {
@@ -38,10 +77,106 @@ type PreviewItemPayload = {
   primaryAssetId?: string;
   sourceRunId?: string;
   sequence?: number;
+  shot?: PreviewShotSummaryPayload;
+  primaryAsset?: PreviewAssetSummaryPayload;
+  sourceRun?: PreviewRunSummaryPayload;
+};
+
+type PreviewShotSummaryPayload = {
+  projectId?: string;
+  projectTitle?: string;
+  episodeId?: string;
+  episodeTitle?: string;
+  sceneId?: string;
+  sceneCode?: string;
+  sceneTitle?: string;
+  shotId?: string;
+  shotCode?: string;
+  shotTitle?: string;
+};
+
+type PreviewAssetSummaryPayload = {
+  assetId?: string;
+  mediaType?: string;
+  rightsStatus?: string;
+  aiAnnotated?: boolean;
+};
+
+type PreviewRunSummaryPayload = {
+  runId?: string;
+  status?: string;
+  triggerType?: string;
 };
 
 function normalizeSequence(value: number | undefined, fallback: number) {
   return typeof value === "number" && value > 0 ? value : fallback;
+}
+
+function normalizePreviewShotSummary(
+  payload: PreviewShotSummaryPayload | undefined,
+): PreviewShotSummaryViewModel | null {
+  if (!payload?.shotId) {
+    return null;
+  }
+
+  return {
+    projectId: payload.projectId ?? "",
+    projectTitle: payload.projectTitle ?? "",
+    episodeId: payload.episodeId ?? "",
+    episodeTitle: payload.episodeTitle ?? "",
+    sceneId: payload.sceneId ?? "",
+    sceneCode: payload.sceneCode ?? "",
+    sceneTitle: payload.sceneTitle ?? "",
+    shotId: payload.shotId,
+    shotCode: payload.shotCode ?? "",
+    shotTitle: payload.shotTitle ?? "",
+  };
+}
+
+function normalizePreviewAssetSummary(
+  payload: PreviewAssetSummaryPayload | undefined,
+): PreviewAssetSummaryViewModel | null {
+  if (!payload?.assetId) {
+    return null;
+  }
+
+  return {
+    assetId: payload.assetId,
+    mediaType: payload.mediaType ?? "",
+    rightsStatus: payload.rightsStatus ?? "",
+    aiAnnotated: payload.aiAnnotated ?? false,
+  };
+}
+
+function normalizePreviewRunSummary(
+  payload: PreviewRunSummaryPayload | undefined,
+): PreviewRunSummaryViewModel | null {
+  if (!payload?.runId) {
+    return null;
+  }
+
+  return {
+    runId: payload.runId,
+    status: payload.status ?? "",
+    triggerType: payload.triggerType ?? "",
+  };
+}
+
+export function normalizeRequiredPreviewShotSummary(
+  payload: PreviewShotSummaryPayload | undefined,
+  errorMessage: string,
+): PreviewShotSummaryViewModel {
+  const normalized = normalizePreviewShotSummary(payload);
+  if (!normalized) {
+    throw new Error(errorMessage);
+  }
+  return normalized;
+}
+
+export function buildPreviewShotOptionLabel(summary: PreviewShotSummaryViewModel) {
+  const sceneSegment = summary.sceneCode || summary.sceneId || "scene";
+  const shotSegment = summary.shotCode || summary.shotId;
+  return `${sceneSegment} / ${shotSegment}`;
 }
 
 export function normalizePreviewWorkbench(
@@ -74,6 +209,9 @@ export function normalizePreviewWorkbench(
       primaryAssetId: item.primaryAssetId ?? "",
       sourceRunId: item.sourceRunId ?? "",
       sequence: index + 1,
+      shotSummary: normalizePreviewShotSummary(item.shot),
+      primaryAssetSummary: normalizePreviewAssetSummary(item.primaryAsset),
+      sourceRunSummary: normalizePreviewRunSummary(item.sourceRun),
     }));
 
   return {

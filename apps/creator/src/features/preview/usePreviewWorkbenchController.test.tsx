@@ -3,6 +3,7 @@ import { loadAudioWorkbench } from "../audio/loadAudioWorkbench";
 import { createTranslator } from "../../i18n";
 import { useAssetProvenanceState } from "../shared/useAssetProvenanceState";
 import { loadPreviewWorkbench } from "./loadPreviewWorkbench";
+import { loadPreviewShotOptions } from "./loadPreviewShotOptions";
 import { savePreviewWorkbench } from "./mutatePreviewWorkbench";
 import { usePreviewWorkbenchController } from "./usePreviewWorkbenchController";
 
@@ -12,6 +13,10 @@ vi.mock("../shared/useAssetProvenanceState", () => ({
 
 vi.mock("./loadPreviewWorkbench", () => ({
   loadPreviewWorkbench: vi.fn(),
+}));
+
+vi.mock("./loadPreviewShotOptions", () => ({
+  loadPreviewShotOptions: vi.fn(),
 }));
 
 vi.mock("../audio/loadAudioWorkbench", () => ({
@@ -24,6 +29,7 @@ vi.mock("./mutatePreviewWorkbench", () => ({
 
 const useAssetProvenanceStateMock = vi.mocked(useAssetProvenanceState);
 const loadPreviewWorkbenchMock = vi.mocked(loadPreviewWorkbench);
+const loadPreviewShotOptionsMock = vi.mocked(loadPreviewShotOptions);
 const loadAudioWorkbenchMock = vi.mocked(loadAudioWorkbench);
 const savePreviewWorkbenchMock = vi.mocked(savePreviewWorkbench);
 
@@ -45,6 +51,20 @@ function buildPreviewWorkbench() {
         primaryAssetId: "",
         sourceRunId: "",
         sequence: 1,
+        shotSummary: {
+          projectId: "project-1",
+          projectTitle: "项目一",
+          episodeId: "episode-1",
+          episodeTitle: "第一集",
+          sceneId: "scene-1",
+          sceneCode: "SCENE-001",
+          sceneTitle: "开场",
+          shotId: "shot-1",
+          shotCode: "SHOT-001",
+          shotTitle: "第一镜",
+        },
+        primaryAssetSummary: null,
+        sourceRunSummary: null,
       },
     ],
   };
@@ -66,6 +86,37 @@ describe("usePreviewWorkbenchController", () => {
       resetAssetProvenance: vi.fn(),
     } as never);
     loadPreviewWorkbenchMock.mockResolvedValue(buildPreviewWorkbench());
+    loadPreviewShotOptionsMock.mockResolvedValue([
+      {
+        shotId: "shot-2",
+        label: "SCENE-001 / SHOT-002",
+        shotExecutionId: "shot-exec-2",
+        shotExecutionStatus: "ready",
+        shotSummary: {
+          projectId: "project-1",
+          projectTitle: "项目一",
+          episodeId: "episode-1",
+          episodeTitle: "第一集",
+          sceneId: "scene-1",
+          sceneCode: "SCENE-001",
+          sceneTitle: "开场",
+          shotId: "shot-2",
+          shotCode: "SHOT-002",
+          shotTitle: "第二镜",
+        },
+        currentPrimaryAssetSummary: {
+          assetId: "asset-2",
+          mediaType: "image",
+          rightsStatus: "cleared",
+          aiAnnotated: true,
+        },
+        latestRunSummary: {
+          runId: "run-2",
+          status: "completed",
+          triggerType: "manual",
+        },
+      },
+    ]);
     loadAudioWorkbenchMock.mockResolvedValue({
       timeline: {
         audioTimelineId: "timeline-project-1",
@@ -143,15 +194,27 @@ describe("usePreviewWorkbenchController", () => {
       orgId: "org-1",
       userId: "user-1",
     });
+    expect(loadPreviewShotOptionsMock).toHaveBeenCalledWith({
+      projectId: "project-1",
+      orgId: "org-1",
+      userId: "user-1",
+    });
     expect(result.current.audioSummary).toEqual({
       trackCount: 0,
       clipCount: 0,
       renderStatus: "queued",
       missingAssetCount: 0,
     });
+    expect(result.current.shotOptions).toEqual([
+      expect.objectContaining({
+        shotId: "shot-2",
+        label: "SCENE-001 / SHOT-002",
+      }),
+    ]);
+    expect(result.current.selectedShotOptionId).toBe("shot-2");
   });
 
-  it("adds, reorders, and saves preview items as an ordered assembly", async () => {
+  it("adds items from the chooser, reorders them, and saves only the stable write shape", async () => {
     const { result } = renderHook(() =>
       usePreviewWorkbenchController({
         enabled: true,
@@ -167,16 +230,20 @@ describe("usePreviewWorkbenchController", () => {
     });
 
     act(() => {
-      result.current.setNewShotIdInput("shot-2");
-      result.current.setNewPrimaryAssetIdInput("asset-2");
-      result.current.setNewSourceRunIdInput("run-2");
+      result.current.setSelectedShotOptionId("shot-2");
     });
 
     act(() => {
-      result.current.handleAddItem();
+      result.current.handleAddItemFromChooser();
     });
 
     expect(result.current.draftItems.map((item) => item.shotId)).toEqual(["shot-1", "shot-2"]);
+    expect(result.current.draftItems[1]).toEqual(
+      expect.objectContaining({
+        primaryAssetId: "asset-2",
+        sourceRunId: "run-2",
+      }),
+    );
 
     act(() => {
       result.current.handleMoveItem("draft-1", "up");
@@ -210,5 +277,27 @@ describe("usePreviewWorkbenchController", () => {
       "shot-2",
       "shot-1",
     ]);
+  });
+
+  it("keeps the existing assembly visible when chooser loading fails", async () => {
+    loadPreviewShotOptionsMock.mockRejectedValue(new Error("chooser exploded"));
+
+    const { result } = renderHook(() =>
+      usePreviewWorkbenchController({
+        enabled: true,
+        projectId: "project-1",
+        t,
+        orgId: "org-1",
+        userId: "user-1",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.previewWorkbench?.assembly.assemblyId).toBe("assembly-project-1");
+    });
+
+    expect(result.current.shotOptions).toEqual([]);
+    expect(result.current.shotOptionsErrorMessage).toBe("chooser exploded");
+    expect(result.current.errorMessage).toBe("");
   });
 });

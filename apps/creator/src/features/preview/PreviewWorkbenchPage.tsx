@@ -1,16 +1,21 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { CreatorTranslator } from "../../i18n";
+import type { PreviewAudioSummaryViewModel } from "../audio/audioWorkbench";
 import type { AssetProvenanceDetailViewModel } from "../shared/assetProvenance";
 import { AssetProvenanceDialog } from "../shared/AssetProvenanceDialog";
-import type { PreviewAudioSummaryViewModel } from "../audio/audioWorkbench";
-import type { PreviewItemViewModel, PreviewWorkbenchViewModel } from "./previewWorkbench";
+import type {
+  PreviewItemViewModel,
+  PreviewShotOptionViewModel,
+  PreviewWorkbenchViewModel,
+} from "./previewWorkbench";
 
 type PreviewWorkbenchPageProps = {
   previewWorkbench: PreviewWorkbenchViewModel;
   draftItems: PreviewItemViewModel[];
-  newShotIdInput: string;
-  newPrimaryAssetIdInput: string;
-  newSourceRunIdInput: string;
+  shotOptions: PreviewShotOptionViewModel[];
+  selectedShotOptionId: string;
+  shotOptionsErrorMessage: string;
+  manualShotIdInput: string;
   assetProvenanceDetail: AssetProvenanceDetailViewModel | null;
   assetProvenancePending: boolean;
   assetProvenanceErrorMessage: string;
@@ -18,15 +23,10 @@ type PreviewWorkbenchPageProps = {
   audioSummaryErrorMessage: string;
   t: CreatorTranslator;
   shellHeader?: ReactNode;
-  onNewShotIdInputChange: (value: string) => void;
-  onNewPrimaryAssetIdInputChange: (value: string) => void;
-  onNewSourceRunIdInputChange: (value: string) => void;
-  onDraftItemFieldChange: (
-    itemId: string,
-    field: "shotId" | "primaryAssetId" | "sourceRunId",
-    value: string,
-  ) => void;
-  onAddItem: () => void;
+  onSelectedShotOptionIdChange: (value: string) => void;
+  onAddItemFromChooser: () => void;
+  onManualShotIdInputChange: (value: string) => void;
+  onAddManualItem: () => void;
   onRemoveItem: (itemId: string) => void;
   onMoveItem: (itemId: string, direction: "up" | "down") => void;
   onSaveAssembly: () => void;
@@ -71,12 +71,76 @@ const primaryButtonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
+function formatShotIdentity(item: PreviewItemViewModel, t: CreatorTranslator) {
+  if (!item.shotSummary) {
+    return item.shotId || t("preview.metadata.unavailable");
+  }
+
+  const sceneSegment = item.shotSummary.sceneCode || item.shotSummary.sceneId || item.shotId;
+  const shotSegment = item.shotSummary.shotCode || item.shotSummary.shotId || item.shotId;
+  return `${sceneSegment} / ${shotSegment}`;
+}
+
+function formatShotTitle(item: PreviewItemViewModel, t: CreatorTranslator) {
+  if (!item.shotSummary) {
+    return t("preview.metadata.unavailable");
+  }
+
+  const sceneTitle = item.shotSummary.sceneTitle || item.shotSummary.sceneCode || item.shotSummary.sceneId;
+  const shotTitle = item.shotSummary.shotTitle || item.shotSummary.shotCode || item.shotSummary.shotId;
+  return `${sceneTitle} / ${shotTitle}`;
+}
+
+function formatPrimaryAssetSummary(item: PreviewItemViewModel, t: CreatorTranslator) {
+  if (item.primaryAssetSummary) {
+    return `${item.primaryAssetSummary.mediaType || "asset"} · ${item.primaryAssetSummary.rightsStatus || "unknown"} · ${item.primaryAssetSummary.aiAnnotated ? "AI annotated" : "Human curated"}`;
+  }
+  if (item.primaryAssetId) {
+    return `${t("preview.inputs.primaryAssetId")}：${item.primaryAssetId}`;
+  }
+  return t("preview.metadata.primaryAssetMissing");
+}
+
+function formatSourceRunSummary(item: PreviewItemViewModel, t: CreatorTranslator) {
+  if (item.sourceRunSummary) {
+    return `${item.sourceRunSummary.status || "unknown"} · ${item.sourceRunSummary.triggerType || "unknown"}`;
+  }
+  if (item.sourceRunId) {
+    return `${t("preview.inputs.sourceRunId")}：${item.sourceRunId}`;
+  }
+  return t("preview.metadata.sourceRunMissing");
+}
+
+function formatChooserPrimaryAsset(
+  option: PreviewShotOptionViewModel | null,
+  t: CreatorTranslator,
+) {
+  if (!option) {
+    return "";
+  }
+  if (!option.currentPrimaryAssetSummary) {
+    return t("preview.metadata.primaryAssetMissing");
+  }
+  return `${option.currentPrimaryAssetSummary.mediaType || "asset"} · ${option.currentPrimaryAssetSummary.rightsStatus || "unknown"} · ${option.currentPrimaryAssetSummary.aiAnnotated ? "AI annotated" : "Human curated"}`;
+}
+
+function formatChooserRun(option: PreviewShotOptionViewModel | null, t: CreatorTranslator) {
+  if (!option) {
+    return "";
+  }
+  if (!option.latestRunSummary) {
+    return t("preview.metadata.sourceRunMissing");
+  }
+  return `${option.latestRunSummary.status || "unknown"} · ${option.latestRunSummary.triggerType || "unknown"}`;
+}
+
 export function PreviewWorkbenchPage({
   previewWorkbench,
   draftItems,
-  newShotIdInput,
-  newPrimaryAssetIdInput,
-  newSourceRunIdInput,
+  shotOptions,
+  selectedShotOptionId,
+  shotOptionsErrorMessage,
+  manualShotIdInput,
   assetProvenanceDetail,
   assetProvenancePending,
   assetProvenanceErrorMessage,
@@ -84,11 +148,10 @@ export function PreviewWorkbenchPage({
   audioSummaryErrorMessage,
   t,
   shellHeader,
-  onNewShotIdInputChange,
-  onNewPrimaryAssetIdInputChange,
-  onNewSourceRunIdInputChange,
-  onDraftItemFieldChange,
-  onAddItem,
+  onSelectedShotOptionIdChange,
+  onAddItemFromChooser,
+  onManualShotIdInputChange,
+  onAddManualItem,
   onRemoveItem,
   onMoveItem,
   onSaveAssembly,
@@ -97,6 +160,9 @@ export function PreviewWorkbenchPage({
   onOpenAssetProvenance,
   onCloseAssetProvenance,
 }: PreviewWorkbenchPageProps) {
+  const selectedShotOption =
+    shotOptions.find((option) => option.shotId === selectedShotOptionId) ?? null;
+
   return (
     <main style={{ display: "grid", gap: "24px", padding: "0 24px 40px" }}>
       {shellHeader}
@@ -114,51 +180,84 @@ export function PreviewWorkbenchPage({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
             gap: "16px",
           }}
         >
-          <label style={{ display: "grid", gap: "6px" }}>
-            <span>{t("preview.inputs.shotId")}</span>
-            <input
-              value={newShotIdInput}
-              placeholder={t("preview.inputs.shotIdPlaceholder")}
-              onChange={(event) => {
-                onNewShotIdInputChange(event.target.value);
-              }}
-              style={inputStyle}
-            />
-          </label>
-          <label style={{ display: "grid", gap: "6px" }}>
-            <span>{t("preview.inputs.primaryAssetId")}</span>
-            <input
-              value={newPrimaryAssetIdInput}
-              placeholder={t("preview.inputs.primaryAssetIdPlaceholder")}
-              onChange={(event) => {
-                onNewPrimaryAssetIdInputChange(event.target.value);
-              }}
-              style={inputStyle}
-            />
-          </label>
-          <label style={{ display: "grid", gap: "6px" }}>
-            <span>{t("preview.inputs.sourceRunId")}</span>
-            <input
-              value={newSourceRunIdInput}
-              placeholder={t("preview.inputs.sourceRunIdPlaceholder")}
-              onChange={(event) => {
-                onNewSourceRunIdInputChange(event.target.value);
-              }}
-              style={inputStyle}
-            />
-          </label>
-        </div>
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-          <button type="button" onClick={onAddItem} style={secondaryButtonStyle}>
-            {t("preview.actions.addItem")}
-          </button>
-          <button type="button" onClick={onSaveAssembly} style={primaryButtonStyle}>
-            {t("preview.actions.saveAssembly")}
-          </button>
+          <div style={{ display: "grid", gap: "10px" }}>
+            <strong>{t("preview.chooser.title")}</strong>
+            <p style={{ margin: 0, color: "#475569" }}>{t("preview.chooser.description")}</p>
+            <label style={{ display: "grid", gap: "6px" }}>
+              <span>{t("preview.chooser.label")}</span>
+              <select
+                value={selectedShotOptionId}
+                onChange={(event) => {
+                  onSelectedShotOptionIdChange(event.target.value);
+                }}
+                style={inputStyle}
+              >
+                {shotOptions.length === 0 ? (
+                  <option value="">{t("preview.chooser.empty")}</option>
+                ) : null}
+                {shotOptions.map((option) => (
+                  <option key={option.shotExecutionId || option.shotId} value={option.shotId}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {selectedShotOption ? (
+              <div style={{ display: "grid", gap: "4px", color: "#475569" }}>
+                <span>{selectedShotOption.label}</span>
+                <span>
+                  {selectedShotOption.shotSummary.sceneTitle} / {selectedShotOption.shotSummary.shotTitle}
+                </span>
+                <span>{formatChooserPrimaryAsset(selectedShotOption, t)}</span>
+                <span>{formatChooserRun(selectedShotOption, t)}</span>
+              </div>
+            ) : null}
+            {shotOptionsErrorMessage ? (
+              <p style={{ margin: 0, color: "#991b1b" }}>{shotOptionsErrorMessage}</p>
+            ) : null}
+            <div>
+              <button
+                type="button"
+                onClick={onAddItemFromChooser}
+                disabled={!selectedShotOptionId}
+                style={{
+                  ...secondaryButtonStyle,
+                  opacity: selectedShotOptionId ? 1 : 0.45,
+                  cursor: selectedShotOptionId ? "pointer" : "not-allowed",
+                }}
+              >
+                {t("preview.actions.addFromChooser")}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gap: "10px" }}>
+            <strong>{t("preview.manual.title")}</strong>
+            <p style={{ margin: 0, color: "#475569" }}>{t("preview.manual.description")}</p>
+            <label style={{ display: "grid", gap: "6px" }}>
+              <span>{t("preview.inputs.shotId")}</span>
+              <input
+                value={manualShotIdInput}
+                placeholder={t("preview.inputs.shotIdPlaceholder")}
+                onChange={(event) => {
+                  onManualShotIdInputChange(event.target.value);
+                }}
+                style={inputStyle}
+              />
+            </label>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+              <button type="button" onClick={onAddManualItem} style={secondaryButtonStyle}>
+                {t("preview.actions.addManualItem")}
+              </button>
+              <button type="button" onClick={onSaveAssembly} style={primaryButtonStyle}>
+                {t("preview.actions.saveAssembly")}
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -212,7 +311,14 @@ export function PreviewWorkbenchPage({
                   gap: "12px",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: "12px",
+                    flexWrap: "wrap",
+                  }}
+                >
                   <strong>{t("preview.item.sequence", { sequence: item.sequence })}</strong>
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                     <button
@@ -245,43 +351,11 @@ export function PreviewWorkbenchPage({
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                    gap: "12px",
-                  }}
-                >
-                  <label style={{ display: "grid", gap: "6px" }}>
-                    <span>{t("preview.inputs.shotId")}</span>
-                    <input
-                      value={item.shotId}
-                      onChange={(event) => {
-                        onDraftItemFieldChange(item.itemId, "shotId", event.target.value);
-                      }}
-                      style={inputStyle}
-                    />
-                  </label>
-                  <label style={{ display: "grid", gap: "6px" }}>
-                    <span>{t("preview.inputs.primaryAssetId")}</span>
-                    <input
-                      value={item.primaryAssetId}
-                      onChange={(event) => {
-                        onDraftItemFieldChange(item.itemId, "primaryAssetId", event.target.value);
-                      }}
-                      style={inputStyle}
-                    />
-                  </label>
-                  <label style={{ display: "grid", gap: "6px" }}>
-                    <span>{t("preview.inputs.sourceRunId")}</span>
-                    <input
-                      value={item.sourceRunId}
-                      onChange={(event) => {
-                        onDraftItemFieldChange(item.itemId, "sourceRunId", event.target.value);
-                      }}
-                      style={inputStyle}
-                    />
-                  </label>
+                <div style={{ display: "grid", gap: "6px", color: "#475569" }}>
+                  <strong>{formatShotIdentity(item, t)}</strong>
+                  <span>{formatShotTitle(item, t)}</span>
+                  <span>{formatPrimaryAssetSummary(item, t)}</span>
+                  <span>{formatSourceRunSummary(item, t)}</span>
                 </div>
 
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>

@@ -27,6 +27,7 @@ import {
 } from "./mock-connect/collaboration.ts";
 import {
   buildPreviewAssetProvenancePayload,
+  buildPreviewShotOptionsPayload,
   buildPreviewWorkbenchPayload,
   createPreviewAssemblyState,
   upsertPreviewAssemblyState,
@@ -192,6 +193,12 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     if ((scenario.preview || scenario.audio || scenario.admin) &&
       pathname === "/hualala.project.v1.ProjectService/GetPreviewWorkbench") {
       await route.fulfill(jsonResponse(200, buildPreviewWorkbenchPayload(previewState)));
+      return;
+    }
+
+    if ((scenario.preview || scenario.admin) &&
+      pathname === "/hualala.project.v1.ProjectService/ListPreviewShotOptions") {
+      await route.fulfill(jsonResponse(200, buildPreviewShotOptionsPayload(previewState)));
       return;
     }
 

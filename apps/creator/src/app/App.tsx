@@ -609,9 +609,10 @@ export function App() {
       <PreviewWorkbenchPage
         previewWorkbench={previewWorkbench}
         draftItems={previewWorkbenchController.draftItems}
-        newShotIdInput={previewWorkbenchController.newShotIdInput}
-        newPrimaryAssetIdInput={previewWorkbenchController.newPrimaryAssetIdInput}
-        newSourceRunIdInput={previewWorkbenchController.newSourceRunIdInput}
+        shotOptions={previewWorkbenchController.shotOptions}
+        selectedShotOptionId={previewWorkbenchController.selectedShotOptionId}
+        shotOptionsErrorMessage={previewWorkbenchController.shotOptionsErrorMessage}
+        manualShotIdInput={previewWorkbenchController.manualShotIdInput}
         assetProvenanceDetail={previewWorkbenchController.assetProvenanceDetail}
         assetProvenancePending={previewWorkbenchController.assetProvenancePending}
         assetProvenanceErrorMessage={previewWorkbenchController.assetProvenanceErrorMessage}
@@ -646,11 +647,10 @@ export function App() {
             }
           />
         }
-        onNewShotIdInputChange={previewWorkbenchController.setNewShotIdInput}
-        onNewPrimaryAssetIdInputChange={previewWorkbenchController.setNewPrimaryAssetIdInput}
-        onNewSourceRunIdInputChange={previewWorkbenchController.setNewSourceRunIdInput}
-        onDraftItemFieldChange={previewWorkbenchController.handleDraftItemFieldChange}
-        onAddItem={previewWorkbenchController.handleAddItem}
+        onSelectedShotOptionIdChange={previewWorkbenchController.setSelectedShotOptionId}
+        onAddItemFromChooser={previewWorkbenchController.handleAddItemFromChooser}
+        onManualShotIdInputChange={previewWorkbenchController.setManualShotIdInput}
+        onAddManualItem={previewWorkbenchController.handleAddManualItem}
         onRemoveItem={previewWorkbenchController.handleRemoveItem}
         onMoveItem={previewWorkbenchController.handleMoveItem}
         onSaveAssembly={() => {

@@ -186,6 +186,7 @@ test("preview helpers preserve assembly order and provenance scope", async () =>
     createPreviewAssemblyState,
     upsertPreviewAssemblyState,
     buildPreviewWorkbenchPayload,
+    buildPreviewShotOptionsPayload,
     buildPreviewAssetProvenancePayload,
   } = await import("../../tests/e2e/fixtures/mock-connect/preview.ts");
 
@@ -216,7 +217,14 @@ test("preview helpers preserve assembly order and provenance scope", async () =>
   const payload = buildPreviewWorkbenchPayload(updated);
   assert.equal(payload.assembly.items[0]?.shotId, "shot-preview-2");
   assert.equal(payload.assembly.items[0]?.sequence, 1);
+  assert.equal(payload.assembly.items[0]?.shot?.shotCode, "SHOT-002");
+  assert.equal(payload.assembly.items[0]?.primaryAsset?.assetId, "asset-preview-2");
+  assert.equal(payload.assembly.items[0]?.sourceRun?.runId, "run-preview-2");
   assert.equal(payload.assembly.items[1]?.shotId, "shot-preview-1");
+
+  const optionsPayload = buildPreviewShotOptionsPayload(updated);
+  assert.equal(optionsPayload.options[0]?.shot?.shotCode, "SHOT-001");
+  assert.equal(optionsPayload.options[1]?.currentPrimaryAsset?.assetId, "asset-preview-2");
 
   const provenance = buildPreviewAssetProvenancePayload(updated, "asset-preview-2");
   assert.equal(provenance?.asset.projectId, "project-1");

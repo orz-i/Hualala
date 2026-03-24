@@ -33,6 +33,14 @@ function buildPreviewWorkbench() {
         primaryAssetId: "",
         sourceRunId: "",
         sequence: 1,
+        shotSummary: {
+          sceneCode: "SCENE-001",
+          sceneTitle: "开场",
+          shotCode: "SHOT-001",
+          shotTitle: "第一镜",
+        },
+        primaryAssetSummary: null,
+        sourceRunSummary: null,
       },
       {
         itemId: "item-2",
@@ -41,11 +49,29 @@ function buildPreviewWorkbench() {
         primaryAssetId: "asset-2",
         sourceRunId: "run-2",
         sequence: 2,
+        shotSummary: {
+          sceneCode: "SCENE-001",
+          sceneTitle: "开场",
+          shotCode: "SHOT-002",
+          shotTitle: "第二镜",
+        },
+        primaryAssetSummary: {
+          assetId: "asset-2",
+          mediaType: "image",
+          rightsStatus: "cleared",
+          aiAnnotated: true,
+        },
+        sourceRunSummary: {
+          runId: "run-2",
+          status: "completed",
+          triggerType: "manual",
+        },
       },
     ],
     summary: {
       itemCount: 2,
       missingPrimaryAssetCount: 1,
+      missingSourceRunCount: 1,
     },
   };
 }
