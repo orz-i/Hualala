@@ -1,53 +1,14 @@
-export type AdminPreviewRuntimeViewModel = {
-  previewRuntimeId: string;
-  projectId: string;
-  episodeId: string;
-  assemblyId: string;
-  status: string;
-  renderWorkflowRunId: string;
-  renderStatus: string;
-  playbackAssetId: string;
-  exportAssetId: string;
-  resolvedLocale: string;
-  createdAt: string;
-  updatedAt: string;
-};
+import {
+  normalizePreviewRuntime,
+  type PreviewRuntimePayload,
+  type PreviewRuntimeViewModel,
+} from "../../../../shared/preview/previewRuntime";
 
-type PreviewRuntimePayload = {
-  previewRuntimeId?: string;
-  projectId?: string;
-  episodeId?: string;
-  assemblyId?: string;
-  status?: string;
-  renderWorkflowRunId?: string;
-  renderStatus?: string;
-  playbackAssetId?: string;
-  exportAssetId?: string;
-  resolvedLocale?: string;
-  createdAt?: string;
-  updatedAt?: string;
-};
+export type AdminPreviewRuntimeViewModel = PreviewRuntimeViewModel;
 
 export function normalizeAdminPreviewRuntime(
   payload: PreviewRuntimePayload | undefined,
   errorMessage: string,
 ): AdminPreviewRuntimeViewModel {
-  if (!payload?.previewRuntimeId || !payload.projectId) {
-    throw new Error(errorMessage);
-  }
-
-  return {
-    previewRuntimeId: payload.previewRuntimeId,
-    projectId: payload.projectId,
-    episodeId: payload.episodeId ?? "",
-    assemblyId: payload.assemblyId ?? "",
-    status: payload.status ?? "",
-    renderWorkflowRunId: payload.renderWorkflowRunId ?? "",
-    renderStatus: payload.renderStatus ?? "",
-    playbackAssetId: payload.playbackAssetId ?? "",
-    exportAssetId: payload.exportAssetId ?? "",
-    resolvedLocale: payload.resolvedLocale ?? "",
-    createdAt: payload.createdAt ?? "",
-    updatedAt: payload.updatedAt ?? "",
-  };
+  return normalizePreviewRuntime(payload, errorMessage);
 }

@@ -177,20 +177,9 @@ export function useAdminPreviewController({
       orgId: effectiveOrgId,
       userId: effectiveUserId,
       onRefreshNeeded: () => {
-        void refreshPreviewRuntime()
-          .then((nextRuntime) => {
-            startTransition(() => {
-              setPreviewRuntime(nextRuntime);
-              setRuntimeErrorMessage("");
-            });
-          })
-          .catch((error: unknown) => {
-            const message =
-              error instanceof Error ? error.message : "admin: unknown preview runtime error";
-            startTransition(() => {
-              setRuntimeErrorMessage(message);
-            });
-          });
+        void refreshPreviewRuntime().catch(() => {
+          // refreshPreviewRuntime 已经负责设置错误消息，这里只负责避免未处理的 Promise rejection。
+        });
       },
       onError: (error) => {
         startTransition(() => {

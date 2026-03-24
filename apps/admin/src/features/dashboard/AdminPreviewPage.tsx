@@ -76,6 +76,10 @@ function formatSourceRunSummary(item: AdminPreviewItemViewModel, t: AdminTransla
   return t("preview.item.metadataUnavailable");
 }
 
+function formatRuntimeField(value: string, fallback: string) {
+  return value || fallback;
+}
+
 export function AdminPreviewPage({
   previewWorkbench,
   previewRuntime,
@@ -126,38 +130,58 @@ export function AdminPreviewPage({
           <div style={{ display: "grid", gap: "6px", color: "#475569" }}>
             <p style={{ margin: 0 }}>
               {t("preview.runtime.status", {
-                status: previewRuntime.status || t("preview.runtime.emptyValue"),
+                status: formatRuntimeField(
+                  previewRuntime.status,
+                  t("preview.runtime.emptyValue"),
+                ),
               })}
             </p>
             <p style={{ margin: 0 }}>
               {t("preview.runtime.renderStatus", {
-                status: previewRuntime.renderStatus || t("preview.runtime.emptyValue"),
+                status: formatRuntimeField(
+                  previewRuntime.renderStatus,
+                  t("preview.runtime.emptyValue"),
+                ),
               })}
             </p>
             <p style={{ margin: 0 }}>
               {t("preview.runtime.workflowRunId", {
-                workflowRunId:
-                  previewRuntime.renderWorkflowRunId || t("preview.runtime.emptyValue"),
+                workflowRunId: formatRuntimeField(
+                  previewRuntime.renderWorkflowRunId,
+                  t("preview.runtime.emptyValue"),
+                ),
               })}
             </p>
             <p style={{ margin: 0 }}>
               {t("preview.runtime.resolvedLocale", {
-                locale: previewRuntime.resolvedLocale || t("preview.runtime.emptyValue"),
+                locale: formatRuntimeField(
+                  previewRuntime.resolvedLocale,
+                  t("preview.runtime.emptyValue"),
+                ),
               })}
             </p>
             <p style={{ margin: 0 }}>
               {t("preview.runtime.playbackAssetId", {
-                assetId: previewRuntime.playbackAssetId || t("preview.runtime.emptyValue"),
+                assetId: formatRuntimeField(
+                  previewRuntime.playbackAssetId,
+                  t("preview.runtime.emptyValue"),
+                ),
               })}
             </p>
             <p style={{ margin: 0 }}>
               {t("preview.runtime.exportAssetId", {
-                assetId: previewRuntime.exportAssetId || t("preview.runtime.emptyValue"),
+                assetId: formatRuntimeField(
+                  previewRuntime.exportAssetId,
+                  t("preview.runtime.emptyValue"),
+                ),
               })}
             </p>
             <p style={{ margin: 0 }}>
               {t("preview.runtime.updatedAt", {
-                updatedAt: previewRuntime.updatedAt || t("preview.runtime.emptyValue"),
+                updatedAt: formatRuntimeField(
+                  previewRuntime.updatedAt,
+                  t("preview.runtime.emptyValue"),
+                ),
               })}
             </p>
           </div>
