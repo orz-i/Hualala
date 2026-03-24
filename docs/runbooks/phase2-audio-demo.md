@@ -14,6 +14,7 @@ corepack pnpm --filter @hualala/creator test
 corepack pnpm --filter @hualala/admin test
 corepack pnpm run build
 corepack pnpm run test:e2e:phase2:audio
+corepack pnpm run test:e2e:phase2:audio:real
 corepack pnpm run test:tooling
 ```
 
@@ -32,3 +33,4 @@ corepack pnpm run test:tooling
 - 如果 creator `/audio` 为空，先检查 `AssetService/ListImportBatches` 和 `AssetService/GetImportBatchWorkbench` 是否返回 `media_type=audio` 且 `duration_ms > 0`。
 - 如果 preview 没有音频摘要，先检查 `ProjectService/GetAudioWorkbench` 是否返回空 timeline 还是错误；当前 preview 对音频摘要是 fail-closed，不会让整页白屏。
 - 如果 admin 看不到 provenance，先查 `AssetService/GetAssetProvenanceSummary` 是否为对应 `assetId` 返回了 `source_run_id` 和 `import_batch_id`。
+- 如果 real smoke 打开 `/audio` 后素材池为空，先检查 `tooling/scripts/backend_seed.mjs` 是否已为目标 project 注入 `audio/wav` 或 `audio/mpeg` 资产，并确认 `duration_ms > 0`。

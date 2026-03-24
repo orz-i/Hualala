@@ -26,3 +26,19 @@ test("phase1 docs treat real acceptance as an official quality gate", () => {
   assert.match(runbook, /正式质量门/);
   assert.match(plan, /phase1:real|真实 acceptance|真实 backend acceptance/);
 });
+
+test("repo exposes phase2 mock and real acceptance entrypoints", () => {
+  const packageJson = read("package.json");
+  const readme = read("README.md");
+  const testsReadme = read("tests/README.md");
+
+  assert.match(packageJson, /"test:e2e:phase2:collaboration":/);
+  assert.match(packageJson, /"test:e2e:phase2":/);
+  assert.match(packageJson, /"test:e2e:phase2:preview:real":/);
+  assert.match(packageJson, /"test:e2e:phase2:audio:real":/);
+  assert.match(packageJson, /"test:e2e:phase2:real":/);
+  assert.match(readme, /test:e2e:phase2/);
+  assert.match(readme, /test:e2e:phase2:real/);
+  assert.match(testsReadme, /test:e2e:phase2/);
+  assert.match(testsReadme, /test:e2e:phase2:real/);
+});

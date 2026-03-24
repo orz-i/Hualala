@@ -378,6 +378,51 @@ async function createShotDataset({ fetchFn, baseUrl, orgId, operatorId, projectT
   };
 }
 
+async function createAudioImportAsset({
+  fetchFn,
+  baseUrl,
+  orgId,
+  operatorId,
+  projectId,
+  shotExecutionId,
+}) {
+  const importBatchPayload = await postConnect(
+    fetchFn,
+    baseUrl,
+    "/hualala.asset.v1.AssetService/CreateImportBatch",
+    {
+      projectId,
+      orgId,
+      operatorId,
+      sourceType: "upload_session",
+    },
+  );
+  const importBatchId = importBatchPayload.importBatch?.id;
+
+  const uploadSessionPayload = await postJson(fetchFn, baseUrl, "/upload/sessions", {
+    organization_id: orgId,
+    project_id: projectId,
+    import_batch_id: importBatchId,
+    file_name: "phase2-dialogue.wav",
+    checksum: "sha256:phase2-dialogue.wav",
+    size_bytes: 4096,
+    expires_in_seconds: 600,
+  });
+  const uploadSessionId = uploadSessionPayload.session_id;
+
+  return postJson(fetchFn, baseUrl, `/upload/sessions/${uploadSessionId}/complete`, {
+    shot_execution_id: shotExecutionId,
+    variant_type: "master",
+    mime_type: "audio/wav",
+    locale: "zh-CN",
+    rights_status: "clear",
+    ai_annotated: false,
+    width: 0,
+    height: 0,
+    duration_ms: 12000,
+  });
+}
+
 export async function seedPhase1Backend({
   baseUrl = "http://127.0.0.1:8080",
   fetchFn = fetch,
@@ -407,6 +452,15 @@ export async function seedPhase1Backend({
     estimatedCostCents: 1800,
     shouldSelectPrimary: true,
     shouldCreateReview: true,
+  });
+
+  await createAudioImportAsset({
+    fetchFn: sessionFetchFn,
+    baseUrl: resolvedBaseUrl,
+    orgId,
+    operatorId,
+    projectId: adminDataset.projectId,
+    shotExecutionId: adminDataset.shotExecutionId,
   });
 
   const importDataset = await createShotDataset({

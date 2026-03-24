@@ -311,8 +311,11 @@ test("backend_seed cli writes the generated backend seed artifact", async () => 
     assert.equal(written.admin.operatorId, "22222222-2222-2222-2222-222222222222");
     assert.equal(written.admin.projectId, "project-10");
     assert.equal(written.creatorShot.shotId, "shot-10");
-    assert.equal(written.creatorImport.importBatchId, "import-batch-2");
-    assert.match(written.urls.creatorImport, /\?importBatchId=import-batch-2$/);
+    assert.match(written.creatorImport.importBatchId, /^import-batch-\d+$/);
+    assert.match(
+      written.urls.creatorImport,
+      new RegExp(`\\?importBatchId=${written.creatorImport.importBatchId}$`),
+    );
   } finally {
     rmSync(outputDir, { recursive: true, force: true });
     server.close();

@@ -14,6 +14,7 @@ corepack pnpm --filter @hualala/creator test
 corepack pnpm --filter @hualala/admin test
 corepack pnpm run build
 corepack pnpm run test:e2e:phase2:asset-reuse
+corepack pnpm run test:e2e:phase2
 corepack pnpm run test:tooling
 ```
 

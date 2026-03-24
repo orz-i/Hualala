@@ -219,7 +219,7 @@
 
 ## Task 5: 跨项目素材复用线
 
-> Status: 当前执行线，基于既有 foundation 的 thin-consumer 实现
+> Status: 已于 2026-03-24 合入 `master`，PR `#52`
 
 **Files:**
 - Modify: `apps/admin/src/app/adminRoutes.ts`
@@ -254,22 +254,23 @@
 
 ## Task 6: Phase 2 验收、runbook 与质量门
 
+> Status: 当前执行线，负责收口 Phase 2 acceptance / CI / runbook / closeout
+
 **Files:**
 - Create: `tests/e2e/phase2-collaboration.spec.ts`
-- Create: `tests/e2e/phase2-preview.spec.ts`
-- Create: `tests/e2e/phase2-audio.spec.ts`
-- Create: `tests/e2e/phase2-asset-reuse.spec.ts`
 - Modify: `tests/e2e/fixtures/mockConnectRoutes.ts`
 - Create: `tests/e2e/fixtures/mock-connect/collaboration.ts`
-- Create: `tests/e2e/fixtures/mock-connect/preview.ts`
-- Create: `tests/e2e/fixtures/mock-connect/audio.ts`
-- Create: `tests/e2e/fixtures/mock-connect/reuse.ts`
+- Create: `tests/e2e/phase2-preview-real-smoke.spec.ts`
+- Create: `tests/e2e/phase2-audio-real-smoke.spec.ts`
 - Modify: `package.json`
 - Create: `docs/runbooks/phase2-collaboration-demo.md`
 - Create: `docs/runbooks/phase2-preview-demo.md`
-- Create: `docs/runbooks/phase2-audio-demo.md`
-- Create: `docs/runbooks/phase2-asset-reuse-demo.md`
-- Create: `docs/reports/2026-03-xx-phase2-closeout.md`
+- Modify: `docs/runbooks/phase2-audio-demo.md`
+- Modify: `docs/runbooks/phase2-asset-reuse-demo.md`
+- Create: `docs/reports/2026-03-24-phase2-closeout.md`
+- Modify: `README.md`
+- Modify: `tests/README.md`
+- Modify: `.github/workflows/ci.yml`
 - Test: `.github/workflows/ci.yml`
 
 - [ ] 为四条主线分别补 mock E2E，避免只依赖一个超长 `phase2-acceptance` 场景。
@@ -308,6 +309,6 @@
 
 ## 建议执行节奏
 
-1. Task 1、Task 2、Task 3A、Task 4A、Task 4B 已完成；当前主线是 Task 5 跨项目素材复用。
-2. Task 5 持续只消费既有 foundation；如果复用线暴露出新的 rights / provenance / org policy shared truth 缺口，必须先拆 foundation micro-patch，再继续产品线。
-3. Task 5 合入后再启动 Task 6，统一补 Phase 2 closeout、runbook 收尾、CI 验收与必要的 real smoke。
+1. Task 1、Task 2、Task 3A、Task 4A、Task 4B、Task 5 已完成；当前主线是 Task 6 验收与收尾线。
+2. Task 6 继续只做 acceptance / CI / docs / runbook / 低风险修复，不再新增产品 shared truth。
+3. Task 6 完成后，Phase 2 进入 closeout 状态，后续新增能力统一进入 Phase 3 或新的 foundation patch。
