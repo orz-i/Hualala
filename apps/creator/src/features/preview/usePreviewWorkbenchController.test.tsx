@@ -70,6 +70,21 @@ function buildPreviewWorkbench() {
   };
 }
 
+function buildShotSummary(shotId: string, shotCode: string, shotTitle: string) {
+  return {
+    projectId: "project-1",
+    projectTitle: "项目一",
+    episodeId: "episode-1",
+    episodeTitle: "第一集",
+    sceneId: "scene-1",
+    sceneCode: "SCENE-001",
+    sceneTitle: "开场",
+    shotId,
+    shotCode,
+    shotTitle,
+  };
+}
+
 describe("usePreviewWorkbenchController", () => {
   const t = createTranslator("zh-CN");
 
@@ -152,6 +167,18 @@ describe("usePreviewWorkbenchController", () => {
           primaryAssetId: "asset-2",
           sourceRunId: "run-2",
           sequence: 1,
+          shotSummary: buildShotSummary("shot-2", "SHOT-002", "第二镜"),
+          primaryAssetSummary: {
+            assetId: "asset-2",
+            mediaType: "image",
+            rightsStatus: "cleared",
+            aiAnnotated: true,
+          },
+          sourceRunSummary: {
+            runId: "run-2",
+            status: "completed",
+            triggerType: "manual",
+          },
         },
         {
           itemId: "item-1",
@@ -160,6 +187,9 @@ describe("usePreviewWorkbenchController", () => {
           primaryAssetId: "",
           sourceRunId: "",
           sequence: 2,
+          shotSummary: buildShotSummary("shot-1", "SHOT-001", "第一镜"),
+          primaryAssetSummary: null,
+          sourceRunSummary: null,
         },
       ],
     });

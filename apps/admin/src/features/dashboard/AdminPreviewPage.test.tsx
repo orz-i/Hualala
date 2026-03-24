@@ -4,6 +4,18 @@ import { AdminPreviewPage } from "./AdminPreviewPage";
 
 describe("AdminPreviewPage", () => {
   const t = createTranslator("zh-CN");
+  const buildShotSummary = (shotId: string, shotCode: string, shotTitle: string) => ({
+    projectId: "project-1",
+    projectTitle: "项目一",
+    episodeId: "episode-1",
+    episodeTitle: "第一集",
+    sceneId: "scene-1",
+    sceneCode: "SCENE-001",
+    sceneTitle: "开场",
+    shotId,
+    shotCode,
+    shotTitle,
+  });
 
   it("renders metadata-first preview items and keeps provenance fail-closed", () => {
     const onOpenAssetProvenance = vi.fn();
@@ -27,12 +39,7 @@ describe("AdminPreviewPage", () => {
               primaryAssetId: "",
               sourceRunId: "",
               sequence: 1,
-              shotSummary: {
-                sceneCode: "SCENE-001",
-                sceneTitle: "开场",
-                shotCode: "SHOT-001",
-                shotTitle: "第一镜",
-              },
+              shotSummary: buildShotSummary("shot-1", "SHOT-001", "第一镜"),
               primaryAssetSummary: null,
               sourceRunSummary: null,
             },
@@ -43,12 +50,7 @@ describe("AdminPreviewPage", () => {
               primaryAssetId: "asset-2",
               sourceRunId: "run-2",
               sequence: 2,
-              shotSummary: {
-                sceneCode: "SCENE-001",
-                sceneTitle: "开场",
-                shotCode: "SHOT-002",
-                shotTitle: "第二镜",
-              },
+              shotSummary: buildShotSummary("shot-2", "SHOT-002", "第二镜"),
               primaryAssetSummary: {
                 assetId: "asset-2",
                 mediaType: "image",

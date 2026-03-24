@@ -238,6 +238,19 @@ function createCollabControllerState() {
 }
 
 function createPreviewControllerState() {
+  const buildShotSummary = (shotId: string, shotCode: string, shotTitle: string) => ({
+    projectId: "project-preview-1",
+    projectTitle: "项目预演",
+    episodeId: "episode-preview-1",
+    episodeTitle: "第一集",
+    sceneId: "scene-preview-1",
+    sceneCode: "SCENE-001",
+    sceneTitle: "开场",
+    shotId,
+    shotCode,
+    shotTitle,
+  });
+
   return {
     previewWorkbench: {
       assembly: {
@@ -256,12 +269,7 @@ function createPreviewControllerState() {
           primaryAssetId: "asset-preview-1",
           sourceRunId: "run-preview-1",
           sequence: 1,
-          shotSummary: {
-            sceneCode: "SCENE-001",
-            sceneTitle: "开场",
-            shotCode: "SHOT-001",
-            shotTitle: "第一镜",
-          },
+          shotSummary: buildShotSummary("shot-preview-1", "SHOT-001", "第一镜"),
           primaryAssetSummary: {
             assetId: "asset-preview-1",
             mediaType: "image",
@@ -284,12 +292,7 @@ function createPreviewControllerState() {
         primaryAssetId: "asset-preview-1",
         sourceRunId: "run-preview-1",
         sequence: 1,
-        shotSummary: {
-          sceneCode: "SCENE-001",
-          sceneTitle: "开场",
-          shotCode: "SHOT-001",
-          shotTitle: "第一镜",
-        },
+        shotSummary: buildShotSummary("shot-preview-1", "SHOT-001", "第一镜"),
         primaryAssetSummary: {
           assetId: "asset-preview-1",
           mediaType: "image",
@@ -318,12 +321,7 @@ function createPreviewControllerState() {
         label: "SCENE-001 / SHOT-002",
         shotExecutionId: "shot-exec-preview-2",
         shotExecutionStatus: "ready",
-        shotSummary: {
-          sceneCode: "SCENE-001",
-          sceneTitle: "开场",
-          shotCode: "SHOT-002",
-          shotTitle: "第二镜",
-        },
+        shotSummary: buildShotSummary("shot-preview-2", "SHOT-002", "第二镜"),
         currentPrimaryAssetSummary: null,
         latestRunSummary: null,
       },

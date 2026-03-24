@@ -10,9 +10,8 @@ test("phase2 real smoke: creator preview workbench saves and reloads assembly", 
 
   await expect(page.getByRole("heading", { name: seed.creatorShot.projectId })).toBeVisible();
 
-  await page.getByPlaceholder("输入 shotId，例如 shot-live-1").fill(seed.creatorShot.shotId);
-  await page.getByPlaceholder("可选，输入 sourceRunId").fill("real-preview-run-1");
-  await page.getByRole("button", { name: "追加预演条目" }).click();
+  await page.getByLabel("可选镜头").selectOption(seed.creatorShot.shotId);
+  await page.getByRole("button", { name: "从镜头目录追加" }).click();
   await page.getByRole("button", { name: "保存预演装配" }).click();
 
   await expect(page.getByText("预演装配已保存")).toBeVisible();
@@ -20,5 +19,5 @@ test("phase2 real smoke: creator preview workbench saves and reloads assembly", 
   await expect(page.getByRole("heading", { name: seed.creatorShot.projectId })).toBeVisible();
   const previewItems = page.locator('[data-testid^="preview-item-"]');
   await expect(previewItems).toHaveCount(1);
-  await expect(previewItems.first().locator("input").first()).toHaveValue(seed.creatorShot.shotId);
+  await expect(previewItems.first().getByRole("button", { name: "打开镜头工作台" })).toBeVisible();
 });
