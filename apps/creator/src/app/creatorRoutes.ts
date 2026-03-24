@@ -1,4 +1,4 @@
-export type CreatorRoute = "home" | "shots" | "imports" | "collab" | "preview";
+export type CreatorRoute = "home" | "shots" | "imports" | "collab" | "preview" | "audio";
 
 export type CreatorRouteState = {
   route: CreatorRoute;
@@ -15,6 +15,7 @@ const routePathMap: Record<CreatorRoute, string> = {
   imports: "/imports",
   collab: "/collab",
   preview: "/preview",
+  audio: "/audio",
 };
 
 function normalizeValue(value: string | null | undefined) {
@@ -35,6 +36,9 @@ function normalizeCreatorRoute(pathname: string): CreatorRoute {
   }
   if (normalizedPathname === routePathMap.preview) {
     return "preview";
+  }
+  if (normalizedPathname === routePathMap.audio) {
+    return "audio";
   }
   return "home";
 }
@@ -73,6 +77,17 @@ export function parseCreatorRouteState(locationLike: Pick<Location, "pathname" |
   if (requestedRoute === "preview" && projectId) {
     return {
       route: "preview",
+      projectId,
+      shotId: undefined,
+      importBatchId: undefined,
+      orgId,
+      userId,
+    } satisfies CreatorRouteState;
+  }
+
+  if (requestedRoute === "audio" && projectId) {
+    return {
+      route: "audio",
       projectId,
       shotId: undefined,
       importBatchId: undefined,
@@ -141,6 +156,10 @@ export function buildCreatorRouteUrl(state: CreatorRouteState) {
     searchParams.set("projectId", state.projectId);
   }
 
+  if (state.route === "audio" && state.projectId) {
+    searchParams.set("projectId", state.projectId);
+  }
+
   if (state.orgId) {
     searchParams.set("orgId", state.orgId);
   }
@@ -187,6 +206,15 @@ export function selectCreatorRoute(
   }
 
   if (route === "preview") {
+    return {
+      ...state,
+      route,
+      shotId: undefined,
+      importBatchId: undefined,
+    };
+  }
+
+  if (route === "audio") {
     return {
       ...state,
       route,

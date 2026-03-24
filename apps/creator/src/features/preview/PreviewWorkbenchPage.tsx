@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { CreatorTranslator } from "../../i18n";
 import type { AssetProvenanceDetailViewModel } from "../shared/assetProvenance";
 import { AssetProvenanceDialog } from "../shared/AssetProvenanceDialog";
+import type { PreviewAudioSummaryViewModel } from "../audio/audioWorkbench";
 import type { PreviewItemViewModel, PreviewWorkbenchViewModel } from "./previewWorkbench";
 
 type PreviewWorkbenchPageProps = {
@@ -13,6 +14,8 @@ type PreviewWorkbenchPageProps = {
   assetProvenanceDetail: AssetProvenanceDetailViewModel | null;
   assetProvenancePending: boolean;
   assetProvenanceErrorMessage: string;
+  audioSummary?: PreviewAudioSummaryViewModel | null;
+  audioSummaryErrorMessage: string;
   t: CreatorTranslator;
   shellHeader?: ReactNode;
   onNewShotIdInputChange: (value: string) => void;
@@ -28,6 +31,7 @@ type PreviewWorkbenchPageProps = {
   onMoveItem: (itemId: string, direction: "up" | "down") => void;
   onSaveAssembly: () => void;
   onOpenShotWorkbench: (shotId: string) => void;
+  onOpenAudioWorkbench: () => void;
   onOpenAssetProvenance: (assetId: string) => void;
   onCloseAssetProvenance: () => void;
 };
@@ -76,6 +80,8 @@ export function PreviewWorkbenchPage({
   assetProvenanceDetail,
   assetProvenancePending,
   assetProvenanceErrorMessage,
+  audioSummary,
+  audioSummaryErrorMessage,
   t,
   shellHeader,
   onNewShotIdInputChange,
@@ -87,6 +93,7 @@ export function PreviewWorkbenchPage({
   onMoveItem,
   onSaveAssembly,
   onOpenShotWorkbench,
+  onOpenAudioWorkbench,
   onOpenAssetProvenance,
   onCloseAssetProvenance,
 }: PreviewWorkbenchPageProps) {
@@ -151,6 +158,32 @@ export function PreviewWorkbenchPage({
           </button>
           <button type="button" onClick={onSaveAssembly} style={primaryButtonStyle}>
             {t("preview.actions.saveAssembly")}
+          </button>
+        </div>
+      </section>
+
+      <section style={panelStyle}>
+        <div style={{ display: "grid", gap: "8px" }}>
+          <h2 style={{ margin: 0 }}>{t("preview.audio.title")}</h2>
+          <p style={{ margin: 0, color: "#475569" }}>{t("preview.audio.description")}</p>
+        </div>
+        {audioSummary ? (
+          <div style={{ display: "grid", gap: "6px", color: "#475569" }}>
+            <p style={{ margin: 0 }}>{t("preview.audio.trackCount", { count: audioSummary.trackCount })}</p>
+            <p style={{ margin: 0 }}>{t("preview.audio.clipCount", { count: audioSummary.clipCount })}</p>
+            <p style={{ margin: 0 }}>{t("preview.audio.renderStatus", { status: audioSummary.renderStatus })}</p>
+            <p style={{ margin: 0 }}>
+              {t("preview.audio.missingAssetCount", { count: audioSummary.missingAssetCount })}
+            </p>
+          </div>
+        ) : (
+          <p style={{ margin: 0, color: "#64748b" }}>
+            {audioSummaryErrorMessage || t("preview.audio.empty")}
+          </p>
+        )}
+        <div>
+          <button type="button" onClick={onOpenAudioWorkbench} style={secondaryButtonStyle}>
+            {t("preview.audio.openWorkbench")}
           </button>
         </div>
       </section>

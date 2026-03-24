@@ -1,11 +1,13 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useLocaleState } from "../i18n";
+import { AdminAudioPage } from "../features/dashboard/AdminAudioPage";
 import { AdminAssetsPage } from "../features/dashboard/AdminAssetsPage";
 import { AdminCollaborationPage } from "../features/dashboard/AdminCollaborationPage";
 import { AdminGovernancePage } from "../features/dashboard/AdminGovernancePage";
 import { AdminOverviewPage } from "../features/dashboard/AdminOverviewPage";
 import { AdminPreviewPage } from "../features/dashboard/AdminPreviewPage";
 import { AdminWorkflowPage } from "../features/dashboard/AdminWorkflowPage";
+import { useAdminAudioController } from "../features/dashboard/useAdminAudioController";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
 import { useAdminCollaborationController } from "../features/dashboard/useAdminCollaborationController";
 import { useAdminGovernanceController } from "../features/dashboard/useAdminGovernanceController";
@@ -120,6 +122,15 @@ export function App() {
     enabled: routeState.route === "collaboration",
     projectId,
     shotId: routeState.shotId,
+    effectiveOrgId: sessionGate.effectiveOrgId,
+    effectiveUserId: sessionGate.effectiveUserId,
+    t,
+  });
+
+  const audio = useAdminAudioController({
+    sessionState: sessionGate.sessionState,
+    enabled: routeState.route === "audio",
+    projectId,
     effectiveOrgId: sessionGate.effectiveOrgId,
     effectiveUserId: sessionGate.effectiveUserId,
     t,
@@ -247,6 +258,7 @@ export function App() {
     overview: overview.errorMessage,
     governance: governance.errorMessage,
     collaboration: collaboration.errorMessage,
+    audio: audio.errorMessage,
     preview: preview.errorMessage,
   };
   const routeErrorMessage = routeErrorMessages[routeState.route] ?? "";
@@ -304,6 +316,10 @@ export function App() {
 
   if (routeState.route === "preview" && !preview.previewWorkbench) {
     return <main style={{ padding: "32px" }}>{t("app.loading.preview")}</main>;
+  }
+
+  if (routeState.route === "audio" && !audio.audioWorkbench) {
+    return <main style={{ padding: "32px" }}>{t("app.loading.audio")}</main>;
   }
 
   const sessionLabel = identityOverride
@@ -420,6 +436,20 @@ export function App() {
           void preview.handleOpenAssetProvenance(assetId);
         }}
         onCloseAssetProvenance={preview.handleCloseAssetProvenance}
+      />
+    );
+  } else if (routeState.route === "audio" && audio.audioWorkbench) {
+    routeContent = (
+      <AdminAudioPage
+        audioWorkbench={audio.audioWorkbench}
+        assetProvenanceDetail={audio.assetProvenanceDetail}
+        assetProvenancePending={audio.assetProvenancePending}
+        assetProvenanceErrorMessage={audio.assetProvenanceErrorMessage}
+        t={t}
+        onOpenAssetProvenance={(assetId) => {
+          void audio.handleOpenAssetProvenance(assetId);
+        }}
+        onCloseAssetProvenance={audio.handleCloseAssetProvenance}
       />
     );
   } else if (overview.overview) {

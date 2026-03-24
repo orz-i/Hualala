@@ -2,12 +2,14 @@ export type AdminMode = "success" | "failure";
 export type CreatorShotMode = "success" | "failure";
 export type CreatorImportMode = "success" | "failure";
 export type PreviewMode = "success";
+export type AudioMode = "success";
 
 export type MockConnectScenario = {
   admin?: AdminMode;
   creatorShot?: CreatorShotMode;
   creatorImport?: CreatorImportMode;
   preview?: PreviewMode;
+  audio?: AudioMode;
 };
 
 export type MockSession = {
@@ -207,4 +209,40 @@ export type PreviewAssemblyState = {
   createdAt: string;
   updatedAt: string;
   items: PreviewAssemblyItemState[];
+};
+
+export type AudioClipState = {
+  clipId: string;
+  trackId: string;
+  assetId: string;
+  sourceRunId: string;
+  sequence: number;
+  startMs: number;
+  durationMs: number;
+  trimInMs: number;
+  trimOutMs: number;
+};
+
+export type AudioTrackState = {
+  trackId: string;
+  timelineId: string;
+  trackType: string;
+  displayName: string;
+  sequence: number;
+  muted: boolean;
+  solo: boolean;
+  volumePercent: number;
+  clips: AudioClipState[];
+};
+
+export type AudioTimelineState = {
+  audioTimelineId: string;
+  projectId: string;
+  episodeId: string;
+  status: string;
+  renderWorkflowRunId: string;
+  renderStatus: string;
+  createdAt: string;
+  updatedAt: string;
+  tracks: AudioTrackState[];
 };

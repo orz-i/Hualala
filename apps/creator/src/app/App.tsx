@@ -1,4 +1,6 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
+import { AudioWorkbenchPage } from "../features/audio/AudioWorkbenchPage";
+import { useAudioWorkbenchController } from "../features/audio/useAudioWorkbenchController";
 import { CollabWorkbenchPage } from "../features/collaboration/CollabWorkbenchPage";
 import { useCollabController } from "../features/collaboration/useCollabController";
 import { CreatorHomePage } from "../features/home/CreatorHomePage";
@@ -190,6 +192,15 @@ export function App() {
     userId: effectiveUserId,
   });
 
+  const audioWorkbenchController = useAudioWorkbenchController({
+    enabled:
+      sessionState === "ready" && routeState.route === "audio" && Boolean(routeState.projectId),
+    projectId: routeState.projectId ?? "",
+    t,
+    orgId: effectiveOrgId,
+    userId: effectiveUserId,
+  });
+
   const homeController = useCreatorHomeController({
     enabled: sessionState === "ready" && routeState.route === "home",
     projectId: homeProjectId,
@@ -318,6 +329,7 @@ export function App() {
       importWorkbenchController.importWorkbench?.importBatch.projectId ??
       collabController.collaborationSession?.scope?.projectId ??
       previewWorkbenchController.previewWorkbench?.assembly.projectId ??
+      audioWorkbenchController.audioWorkbench?.timeline.projectId ??
       shotWorkbenchController.shotWorkbench?.shotExecution.projectId ??
       undefined;
 
@@ -333,6 +345,7 @@ export function App() {
     collabController.collaborationSession?.scope?.projectId,
     importWorkbenchController.importWorkbench,
     previewWorkbenchController.previewWorkbench?.assembly.projectId,
+    audioWorkbenchController.audioWorkbench?.timeline.projectId,
     routeState,
     shotWorkbenchController.shotWorkbench,
   ]);
@@ -349,6 +362,7 @@ export function App() {
     shots: shotWorkbenchController.errorMessage,
     collab: collabController.errorMessage,
     preview: previewWorkbenchController.errorMessage,
+    audio: audioWorkbenchController.errorMessage,
   };
   const workbenchErrorMessage = workbenchErrorMessages[routeState.route] ?? "";
   const errorMessage = sessionErrorMessage || workbenchErrorMessage;
@@ -563,6 +577,8 @@ export function App() {
         assetProvenanceDetail={previewWorkbenchController.assetProvenanceDetail}
         assetProvenancePending={previewWorkbenchController.assetProvenancePending}
         assetProvenanceErrorMessage={previewWorkbenchController.assetProvenanceErrorMessage}
+        audioSummary={previewWorkbenchController.audioSummary}
+        audioSummaryErrorMessage={previewWorkbenchController.audioSummaryErrorMessage}
         t={t}
         shellHeader={
           <CreatorWorkspaceShell
@@ -622,10 +638,82 @@ export function App() {
             "push",
           );
         }}
+        onOpenAudioWorkbench={() => {
+          commitRouteState(
+            {
+              ...selectCreatorRoute(
+                {
+                  ...routeState,
+                  projectId: previewWorkbench.assembly.projectId,
+                },
+                "audio",
+              ),
+            },
+            "push",
+          );
+        }}
         onOpenAssetProvenance={(assetId) => {
           void previewWorkbenchController.handleOpenAssetProvenance(assetId);
         }}
         onCloseAssetProvenance={previewWorkbenchController.handleCloseAssetProvenance}
+      />
+    );
+  }
+
+  if (routeState.route === "audio" && audioWorkbenchController.audioWorkbench) {
+    const audioWorkbench = audioWorkbenchController.audioWorkbench;
+
+    return (
+      <AudioWorkbenchPage
+        audioWorkbench={audioWorkbench}
+        draftTracks={audioWorkbenchController.draftTracks}
+        audioAssetPool={audioWorkbenchController.audioAssetPool}
+        assetProvenanceDetail={audioWorkbenchController.assetProvenanceDetail}
+        assetProvenancePending={audioWorkbenchController.assetProvenancePending}
+        assetProvenanceErrorMessage={audioWorkbenchController.assetProvenanceErrorMessage}
+        t={t}
+        shellHeader={
+          <CreatorWorkspaceShell
+            tone="audio"
+            badge={t("audio.badge")}
+            title={audioWorkbench.timeline.projectId}
+            description={t("audio.header", {
+              status: audioWorkbench.timeline.status,
+              count: audioWorkbench.summary.clipCount,
+            })}
+            sessionLabel={sessionLabel}
+            locale={locale}
+            t={t}
+            onLocaleChange={setLocale}
+            onClearSession={
+              identityOverride
+                ? undefined
+                : () => {
+                    void handleClearCurrentSession();
+                  }
+            }
+            onBackHome={handleReturnHome}
+            feedback={
+              audioWorkbenchController.feedback ? (
+                <ActionFeedback feedback={audioWorkbenchController.feedback} />
+              ) : undefined
+            }
+          />
+        }
+        onAddClip={audioWorkbenchController.handleAddClip}
+        onRemoveClip={audioWorkbenchController.handleRemoveClip}
+        onMoveClip={audioWorkbenchController.handleMoveClip}
+        onTrackVolumeChange={audioWorkbenchController.handleTrackVolumeChange}
+        onTrackMutedChange={audioWorkbenchController.handleTrackMutedChange}
+        onTrackSoloChange={audioWorkbenchController.handleTrackSoloChange}
+        onClipFieldChange={audioWorkbenchController.handleClipFieldChange}
+        onSaveTimeline={() => {
+          void audioWorkbenchController.handleSaveTimeline();
+        }}
+        onOpenAssetProvenance={(assetId) => {
+          void audioWorkbenchController.handleOpenAssetProvenance(assetId);
+        }}
+        onCloseAssetProvenance={audioWorkbenchController.handleCloseAssetProvenance}
       />
     );
   }
@@ -682,6 +770,10 @@ export function App() {
 
   if (routeState.route === "preview") {
     return <main style={{ padding: "32px" }}>{t("app.loading.preview")}</main>;
+  }
+
+  if (routeState.route === "audio") {
+    return <main style={{ padding: "32px" }}>{t("app.loading.audio")}</main>;
   }
 
   return <main style={{ padding: "32px" }}>{t("app.loading.shot")}</main>;

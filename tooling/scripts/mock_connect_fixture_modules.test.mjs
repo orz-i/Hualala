@@ -223,3 +223,59 @@ test("preview helpers preserve assembly order and provenance scope", async () =>
   assert.equal(provenance?.sourceRunId, "run-preview-2");
   assert.match(provenance?.provenanceSummary ?? "", /preview_assembly=assembly-project-1/);
 });
+
+test("audio helpers preserve timeline order and audio asset scope", async () => {
+  const {
+    createAudioTimelineState,
+    upsertAudioTimelineState,
+    buildAudioWorkbenchPayload,
+    buildAudioImportBatchSummary,
+    buildAudioImportBatchWorkbenchPayload,
+    buildAudioAssetProvenancePayload,
+  } = await import("../../tests/e2e/fixtures/mock-connect/audio.ts");
+
+  const initial = createAudioTimelineState("project-1");
+  assert.equal(initial.projectId, "project-1");
+  assert.equal(initial.tracks.length, 0);
+
+  const updated = upsertAudioTimelineState(initial, {
+    projectId: "project-1",
+    status: "draft",
+    tracks: [
+      {
+        trackId: "draft-track-dialogue",
+        trackType: "dialogue",
+        volumePercent: 0,
+        clips: [
+          {
+            clipId: "draft-clip-1",
+            assetId: "asset-audio-dialogue-1",
+            sourceRunId: "run-audio-dialogue-1",
+            sequence: 1,
+            startMs: 200,
+            durationMs: 12000,
+            trimInMs: 0,
+            trimOutMs: 240,
+          },
+        ],
+      },
+    ],
+  });
+
+  const payload = buildAudioWorkbenchPayload(updated);
+  assert.equal(payload.timeline.tracks[0]?.trackId, "track-dialogue");
+  assert.equal(payload.timeline.tracks[0]?.volumePercent, 0);
+  assert.equal(payload.timeline.tracks[0]?.clips[0]?.startMs, 200);
+
+  const summary = buildAudioImportBatchSummary("project-1");
+  assert.equal(summary.projectId, "project-1");
+  assert.equal(summary.mediaAssetCount, 2);
+
+  const workbench = buildAudioImportBatchWorkbenchPayload("project-1");
+  assert.equal(workbench.mediaAssets[0]?.mediaType, "audio");
+  assert.equal(workbench.mediaAssetVariants[0]?.durationMs, 12000);
+
+  const provenance = buildAudioAssetProvenancePayload("project-1", "asset-audio-dialogue-1");
+  assert.equal(provenance?.asset.projectId, "project-1");
+  assert.equal(provenance?.sourceRunId, "run-audio-dialogue-1");
+});

@@ -87,6 +87,25 @@ describe("adminRoutes", () => {
     });
   });
 
+  it("parses the audio route and keeps only common query state", () => {
+    expect(
+      parseAdminRouteState({
+        pathname: "/audio",
+        search: "?projectId=project-live-001&shotExecutionId=shot-exec-live-001&orgId=org-live-001&userId=user-live-001",
+      } as Pick<Location, "pathname" | "search">),
+    ).toEqual({
+      route: "audio",
+      projectId: "project-live-001",
+      shotExecutionId: "shot-exec-live-001",
+      orgId: "org-live-001",
+      userId: "user-live-001",
+      workflowRunId: undefined,
+      importBatchId: undefined,
+      assetId: undefined,
+      shotId: undefined,
+    });
+  });
+
   it("builds preview urls with the common route params only", () => {
     expect(
       buildAdminRouteUrl({
@@ -98,6 +117,20 @@ describe("adminRoutes", () => {
       }),
     ).toBe(
       "/preview?projectId=project-live-001&shotExecutionId=shot-exec-live-001&orgId=org-live-001&userId=user-live-001",
+    );
+  });
+
+  it("builds audio urls with the common route params only", () => {
+    expect(
+      buildAdminRouteUrl({
+        route: "audio",
+        projectId: "project-live-001",
+        shotExecutionId: "shot-exec-live-001",
+        orgId: "org-live-001",
+        userId: "user-live-001",
+      }),
+    ).toBe(
+      "/audio?projectId=project-live-001&shotExecutionId=shot-exec-live-001&orgId=org-live-001&userId=user-live-001",
     );
   });
 

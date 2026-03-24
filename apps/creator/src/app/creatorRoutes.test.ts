@@ -61,6 +61,15 @@ describe("creatorRoutes", () => {
     ).toBe("/preview?projectId=project-live-1&orgId=org-live-1&userId=user-live-1");
   });
 
+  it("keeps the audio pathname when a project deep link targets /audio", () => {
+    expect(
+      normalizeLegacyCreatorUrl({
+        pathname: "/audio",
+        search: "?projectId=project-audio-1&orgId=org-live-1&userId=user-live-1",
+      } as Pick<Location, "pathname" | "search">),
+    ).toBe("/audio?projectId=project-audio-1&orgId=org-live-1&userId=user-live-1");
+  });
+
   it("keeps import precedence when both importBatchId and shotId are present", () => {
     expect(
       normalizeLegacyCreatorUrl({
@@ -79,6 +88,17 @@ describe("creatorRoutes", () => {
         userId: "user-live-1",
       }),
     ).toBe("/preview?projectId=project-preview-1&orgId=org-live-1&userId=user-live-1");
+  });
+
+  it("builds canonical audio urls with project and identity state", () => {
+    expect(
+      buildCreatorRouteUrl({
+        route: "audio",
+        projectId: "project-audio-1",
+        orgId: "org-live-1",
+        userId: "user-live-1",
+      }),
+    ).toBe("/audio?projectId=project-audio-1&orgId=org-live-1&userId=user-live-1");
   });
 
   it("drops route-local state when navigating back to home", () => {
@@ -118,6 +138,27 @@ describe("creatorRoutes", () => {
     ).toEqual({
       route: "preview",
       projectId: "project-preview-1",
+      shotId: undefined,
+      importBatchId: undefined,
+      orgId: "org-live-1",
+      userId: "user-live-1",
+    });
+  });
+
+  it("keeps project and identity state when navigating from home to audio", () => {
+    expect(
+      selectCreatorRoute(
+        {
+          route: "home",
+          projectId: "project-audio-1",
+          orgId: "org-live-1",
+          userId: "user-live-1",
+        },
+        "audio",
+      ),
+    ).toEqual({
+      route: "audio",
+      projectId: "project-audio-1",
       shotId: undefined,
       importBatchId: undefined,
       orgId: "org-live-1",
