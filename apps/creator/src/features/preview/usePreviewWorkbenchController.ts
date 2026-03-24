@@ -61,6 +61,8 @@ export function usePreviewWorkbenchController({
   const [manualShotIdInput, setManualShotIdInput] = useState("");
   const draftIdRef = useRef(1);
   const draftItemsRef = useRef<PreviewItemViewModel[]>([]);
+  const previewWorkbenchRef = useRef<PreviewWorkbenchViewModel | null>(null);
+  const shotOptionsRef = useRef<PreviewShotOptionViewModel[]>([]);
   const hydratedScopeKeyRef = useRef<string | null>(null);
   const {
     assetProvenanceDetail,
@@ -78,6 +80,14 @@ export function usePreviewWorkbenchController({
   useEffect(() => {
     draftItemsRef.current = draftItems;
   }, [draftItems]);
+
+  useEffect(() => {
+    previewWorkbenchRef.current = previewWorkbench;
+  }, [previewWorkbench]);
+
+  useEffect(() => {
+    shotOptionsRef.current = shotOptions;
+  }, [shotOptions]);
 
   useEffect(() => {
     if (!enabled) {
@@ -125,11 +135,22 @@ export function usePreviewWorkbenchController({
         return;
       }
 
+      const isHydratingExistingScope = hydratedScopeKeyRef.current === scopeKey;
+      const hasExistingPreviewWorkbench = previewWorkbenchRef.current !== null;
+      const hasExistingShotOptions = shotOptionsRef.current.length > 0;
+
       if (previewResult.status === "rejected") {
         const message =
           previewResult.reason instanceof Error
             ? previewResult.reason.message
             : "creator: unknown preview workbench error";
+        if (isHydratingExistingScope && hasExistingPreviewWorkbench) {
+          startTransition(() => {
+            setFeedback(null);
+            setErrorMessage("");
+          });
+          return;
+        }
         startTransition(() => {
           setPreviewWorkbench(null);
           setDraftItems([]);
@@ -148,7 +169,7 @@ export function usePreviewWorkbenchController({
         setPreviewWorkbench(previewResult.value);
         const nextShotOptions =
           shotOptionsResult.status === "fulfilled" ? shotOptionsResult.value : [];
-        if (hydratedScopeKeyRef.current === scopeKey) {
+        if (isHydratingExistingScope) {
           setDraftItems(
             hydratePreviewDraftItemsFromLocale({
               draftItems: draftItemsRef.current,
@@ -177,9 +198,11 @@ export function usePreviewWorkbenchController({
             shotOptionsResult.reason instanceof Error
               ? shotOptionsResult.reason.message
               : "creator: unknown preview shot options error";
-          setShotOptions([]);
           setShotOptionsErrorMessage(message);
-          setSelectedShotOptionId("");
+          if (!isHydratingExistingScope || !hasExistingShotOptions) {
+            setShotOptions([]);
+            setSelectedShotOptionId("");
+          }
         }
 
         if (audioResult.status === "fulfilled") {

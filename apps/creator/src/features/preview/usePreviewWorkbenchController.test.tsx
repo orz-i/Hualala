@@ -335,6 +335,140 @@ describe("usePreviewWorkbenchController", () => {
     expect(result.current.errorMessage).toBe("");
   });
 
+  it("keeps unsaved draft state when locale refresh fails to reload the preview workbench", async () => {
+    loadPreviewWorkbenchMock
+      .mockResolvedValueOnce(buildPreviewWorkbench())
+      .mockRejectedValueOnce(new Error("preview locale exploded"));
+
+    const { result, rerender } = renderHook(
+      (props: { locale: "zh-CN" | "en-US" }) =>
+        usePreviewWorkbenchController({
+          enabled: true,
+          projectId: "project-1",
+          locale: props.locale,
+          t,
+          orgId: "org-1",
+          userId: "user-1",
+        }),
+      {
+        initialProps: { locale: "zh-CN" },
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.previewWorkbench?.assembly.assemblyId).toBe("assembly-project-1");
+    });
+
+    act(() => {
+      result.current.handleAddItemFromChooser();
+      result.current.handleMoveItem("draft-1", "up");
+      result.current.setManualShotIdInput("shot-manual-9");
+    });
+
+    rerender({ locale: "en-US" });
+
+    await waitFor(() => {
+      expect(loadPreviewWorkbenchMock).toHaveBeenCalledTimes(2);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.previewWorkbench?.assembly.assemblyId).toBe("assembly-project-1");
+    expect(result.current.draftItems.map((item) => item.shotId)).toEqual(["shot-2", "shot-1"]);
+    expect(result.current.manualShotIdInput).toBe("shot-manual-9");
+    expect(result.current.audioSummary).toEqual({
+      trackCount: 0,
+      clipCount: 0,
+      renderStatus: "queued",
+      missingAssetCount: 0,
+    });
+    expect(result.current.errorMessage).toBe("");
+  });
+
+  it("keeps the current chooser selection when locale refresh cannot reload chooser options", async () => {
+    const englishWorkbench = {
+      ...buildPreviewWorkbench(),
+      items: [
+        {
+          ...buildPreviewWorkbench().items[0],
+          shotSummary: {
+            ...buildPreviewWorkbench().items[0].shotSummary,
+            sceneTitle: "Opening",
+            shotTitle: "First Shot",
+          },
+        },
+      ],
+    };
+
+    loadPreviewWorkbenchMock
+      .mockResolvedValueOnce(buildPreviewWorkbench())
+      .mockResolvedValueOnce(englishWorkbench);
+    loadPreviewShotOptionsMock
+      .mockResolvedValueOnce([
+        {
+          shotId: "shot-2",
+          label: "SCENE-001 / SHOT-002",
+          shotExecutionId: "shot-exec-2",
+          shotExecutionStatus: "ready",
+          shotSummary: {
+            projectId: "project-1",
+            projectTitle: "项目一",
+            episodeId: "episode-1",
+            episodeTitle: "第一集",
+            sceneId: "scene-1",
+            sceneCode: "SCENE-001",
+            sceneTitle: "开场",
+            shotId: "shot-2",
+            shotCode: "SHOT-002",
+            shotTitle: "第二镜",
+          },
+          currentPrimaryAssetSummary: {
+            assetId: "asset-2",
+            mediaType: "image",
+            rightsStatus: "cleared",
+            aiAnnotated: true,
+          },
+          latestRunSummary: {
+            runId: "run-2",
+            status: "completed",
+            triggerType: "manual",
+          },
+        },
+      ])
+      .mockRejectedValueOnce(new Error("chooser exploded"));
+
+    const { result, rerender } = renderHook(
+      (props: { locale: "zh-CN" | "en-US" }) =>
+        usePreviewWorkbenchController({
+          enabled: true,
+          projectId: "project-1",
+          locale: props.locale,
+          t,
+          orgId: "org-1",
+          userId: "user-1",
+        }),
+      {
+        initialProps: { locale: "zh-CN" },
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.selectedShotOptionId).toBe("shot-2");
+    });
+
+    rerender({ locale: "en-US" });
+
+    await waitFor(() => {
+      expect(result.current.previewWorkbench?.items[0]?.shotSummary?.shotTitle).toBe("First Shot");
+    });
+
+    expect(result.current.selectedShotOptionId).toBe("shot-2");
+    expect(result.current.shotOptions).toHaveLength(1);
+    expect(result.current.shotOptions[0]?.shotSummary.shotTitle).toBe("第二镜");
+    expect(result.current.shotOptionsErrorMessage).toBe("chooser exploded");
+  });
+
   it("rehydrates locale-sensitive metadata without losing unsaved draft state", async () => {
     const englishWorkbench = {
       ...buildPreviewWorkbench(),
