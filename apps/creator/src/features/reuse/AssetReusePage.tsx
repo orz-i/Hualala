@@ -191,6 +191,7 @@ export function AssetReusePage({
                   {t("reuse.item.meta", {
                     mimeType: asset.mimeType || t("asset.provenance.none"),
                     rightsStatus: asset.rightsStatus || t("asset.provenance.none"),
+                    consentStatus: asset.consentStatus || t("asset.provenance.none"),
                     locale: asset.locale || t("asset.provenance.none"),
                   })}
                 </span>

@@ -133,6 +133,7 @@ func TestExecutionAssetReviewBillingRoutes(t *testing.T) {
 		SourceType:      "manual_upload",
 		AssetLocale:     "zh-CN",
 		RightsStatus:    "clear",
+		ConsentStatus:   "granted",
 		AiAnnotated:     true,
 	}))
 	if err != nil {

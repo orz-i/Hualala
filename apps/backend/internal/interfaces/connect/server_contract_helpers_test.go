@@ -145,6 +145,7 @@ func seedConnectShotExecutionReworkScenario(t *testing.T, title string) connectS
 		SourceType:      "manual_upload",
 		AssetLocale:     "zh-CN",
 		RightsStatus:    "clear",
+		ConsentStatus:   "granted",
 		AiAnnotated:     true,
 	}))
 	if err != nil {
@@ -407,5 +408,16 @@ func seedConnectAuthStore(store *db.MemoryStore) {
 		UserID: connectTestUserID,
 		RoleID: "connect-test-role",
 		Status: "active",
+	}
+	store.RolePermissions["connect-test-role"] = []string{
+		"session.read",
+		"user.preferences.write",
+		"org.members.read",
+		"org.roles.read",
+		"org.members.write",
+		"org.settings.write",
+		"org.roles.write",
+		"org.model_governance.read",
+		"org.model_governance.write",
 	}
 }

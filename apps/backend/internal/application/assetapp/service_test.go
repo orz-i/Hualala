@@ -208,6 +208,7 @@ func TestGetAssetProvenanceSummaryIncludesStructuredFields(t *testing.T) {
 		SourceType:    "workflow_import",
 		Locale:        "zh-CN",
 		RightsStatus:  "clear",
+		ConsentStatus: "granted",
 		AIAnnotated:   true,
 		CreatedAt:     time.Date(2026, 3, 21, 8, 2, 0, 0, time.UTC),
 		UpdatedAt:     time.Date(2026, 3, 21, 8, 3, 0, 0, time.UTC),
@@ -269,6 +270,9 @@ func TestGetAssetProvenanceSummaryIncludesStructuredFields(t *testing.T) {
 	if got := record.Asset.MediaType; got != "audio" {
 		t.Fatalf("expected media_type %q, got %q", "audio", got)
 	}
+	if got := record.Asset.ConsentStatus; got != "granted" {
+		t.Fatalf("expected consent_status %q, got %q", "granted", got)
+	}
 	if got := record.ImportBatchID; got != batch.ID {
 		t.Fatalf("expected import_batch_id %q, got %q", batch.ID, got)
 	}
@@ -286,6 +290,9 @@ func TestGetAssetProvenanceSummaryIncludesStructuredFields(t *testing.T) {
 	}
 	if got := record.ProvenanceSummary; got == "" {
 		t.Fatalf("expected non-empty provenance_summary")
+	}
+	if !strings.Contains(record.ProvenanceSummary, "consent_status=granted") {
+		t.Fatalf("expected provenance_summary to include consent_status, got %q", record.ProvenanceSummary)
 	}
 }
 

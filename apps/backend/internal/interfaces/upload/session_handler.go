@@ -132,6 +132,7 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 				MimeType        string `json:"mime_type"`
 				Locale          string `json:"locale"`
 				RightsStatus    string `json:"rights_status"`
+				ConsentStatus   string `json:"consent_status"`
 				AIAnnotated     bool   `json:"ai_annotated"`
 				Width           int    `json:"width"`
 				Height          int    `json:"height"`
@@ -150,7 +151,7 @@ func RegisterRoutes(mux *http.ServeMux, service *Service) {
 				writeUploadError(w, err)
 				return
 			}
-			session, err := service.CompleteSession(r, sessionID, request.ShotExecutionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.AIAnnotated, request.Width, request.Height, request.DurationMs)
+			session, err := service.CompleteSession(r, sessionID, request.ShotExecutionID, request.VariantType, request.MimeType, request.Locale, request.RightsStatus, request.ConsentStatus, request.AIAnnotated, request.Width, request.Height, request.DurationMs)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
 					http.NotFound(w, r)
@@ -270,7 +271,7 @@ func (s *Service) RetrySession(r *http.Request, sessionID string) (asset.UploadS
 	return session, nil
 }
 
-func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecutionID string, variantType string, mimeType string, locale string, rightsStatus string, aiAnnotated bool, width int, height int, durationMs int) (asset.UploadSession, error) {
+func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecutionID string, variantType string, mimeType string, locale string, rightsStatus string, consentStatus string, aiAnnotated bool, width int, height int, durationMs int) (asset.UploadSession, error) {
 	if s == nil || s.assets == nil {
 		return asset.UploadSession{}, fmt.Errorf("upload: asset repository is required")
 	}
@@ -312,6 +313,7 @@ func (s *Service) CompleteSession(r *http.Request, sessionID string, shotExecuti
 		SourceType:    "upload_session",
 		Locale:        strings.TrimSpace(locale),
 		RightsStatus:  strings.TrimSpace(rightsStatus),
+		ConsentStatus: asset.NormalizeConsentStatus(aiAnnotated, consentStatus),
 		AIAnnotated:   aiAnnotated,
 		CreatedAt:     now,
 		UpdatedAt:     now,

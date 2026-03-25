@@ -5,6 +5,7 @@ export type PreviewMode = "success" | "failure";
 export type AudioMode = "success" | "failure";
 export type ReuseMode = "success";
 export type CollaborationMode = "success";
+export type ConsentStatus = "granted" | "unknown" | "not_required" | "denied";
 
 export type MockConnectScenario = {
   admin?: AdminMode;
@@ -72,6 +73,61 @@ export type GovernanceState = {
   };
 };
 
+export type ModelProfileState = {
+  id: string;
+  orgId: string;
+  provider: string;
+  modelName: string;
+  capabilityType: string;
+  region: string;
+  supportedInputLocales: string[];
+  supportedOutputLocales: string[];
+  pricingSnapshotJson: string;
+  rateLimitPolicyJson: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PromptTemplateState = {
+  id: string;
+  orgId: string;
+  templateFamily: string;
+  templateKey: string;
+  locale: string;
+  version: number;
+  content: string;
+  inputSchemaJson: string;
+  outputSchemaJson: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ContextBundleState = {
+  id: string;
+  orgId: string;
+  projectId: string;
+  shotId: string;
+  shotExecutionId: string;
+  modelProfileId: string;
+  promptTemplateId: string;
+  inputLocale: string;
+  outputLocale: string;
+  resolvedPromptVersion: number;
+  sourceSnapshotIds: string[];
+  referencedAssetIds: string[];
+  payloadJson: string;
+  createdByUserId: string;
+  createdAt: string;
+};
+
+export type ModelGovernanceState = {
+  modelProfiles: ModelProfileState[];
+  promptTemplates: PromptTemplateState[];
+  contextBundles: ContextBundleState[];
+};
+
 export type AdminState = {
   budgetSnapshot: {
     projectId: string;
@@ -91,10 +147,11 @@ export type AdminState = {
   evaluationRuns: Array<{ id: string; status: string; failedChecks: string[] }>;
   shotReviews: Array<{ id: string; conclusion: string }>;
   governance: GovernanceState;
+  modelGovernance: ModelGovernanceState;
 };
 
 export type AdminScenarioState = Omit<AdminState, "governance"> &
-  Partial<Pick<AdminState, "governance">>;
+  Partial<Pick<AdminState, "governance" | "modelGovernance">>;
 
 export type RecentChange = {
   id: string;

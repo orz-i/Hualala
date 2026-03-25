@@ -60,13 +60,14 @@ func TestAssetMonitorRoutesExposeImportBatchSummariesAndStructuredProvenance(t *
 	sessionID := createResp["session_id"].(string)
 
 	completeResp := performConnectUploadJSONRequest(t, server, http.MethodPost, "/upload/sessions/"+sessionID+"/complete", map[string]any{
-		"variant_type":  "original",
-		"mime_type":     "image/png",
-		"locale":        "zh-CN",
-		"rights_status": "clear",
-		"ai_annotated":  true,
-		"width":         1280,
-		"height":        720,
+		"variant_type":   "original",
+		"mime_type":      "image/png",
+		"locale":         "zh-CN",
+		"rights_status":  "clear",
+		"consent_status": "granted",
+		"ai_annotated":   true,
+		"width":          1280,
+		"height":         720,
 	})
 	assetID := completeResp["asset_id"].(string)
 
@@ -110,7 +111,13 @@ func TestAssetMonitorRoutesExposeImportBatchSummariesAndStructuredProvenance(t *
 	if got := provenance.Msg.GetVariantCount(); got != 1 {
 		t.Fatalf("expected variant_count 1, got %d", got)
 	}
+	if got := provenance.Msg.GetAsset().GetConsentStatus(); got != "granted" {
+		t.Fatalf("expected consent_status %q, got %q", "granted", got)
+	}
 	if got := provenance.Msg.GetProvenanceSummary(); !strings.Contains(got, "source_type=upload_session") {
 		t.Fatalf("expected provenance_summary to describe source_type, got %q", got)
+	}
+	if got := provenance.Msg.GetProvenanceSummary(); !strings.Contains(got, "consent_status=granted") {
+		t.Fatalf("expected provenance_summary to describe consent_status, got %q", got)
 	}
 }

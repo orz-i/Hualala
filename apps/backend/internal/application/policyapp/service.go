@@ -21,6 +21,20 @@ type UploadResumeDecision struct {
 	ResumeHint  string
 }
 
+type AssetReusePolicyInput struct {
+	TargetProjectID string
+	SourceProjectID string
+	RightsStatus    string
+	ConsentStatus   string
+	AIAnnotated     bool
+}
+
+type AssetReusePolicyDecision struct {
+	Allowed       bool
+	BlockedReason string
+	ConsentStatus string
+}
+
 func NewService(budgets db.PolicyReader) *Service {
 	return &Service{budgets: budgets}
 }
@@ -68,6 +82,40 @@ func (s *Service) EvaluateUploadResumeAllowed(session asset.UploadSession) Uploa
 		CanComplete: true,
 		ResumeHint:  fmt.Sprintf("upload %s from byte 0", session.FileName),
 	}
+}
+
+func (s *Service) EvaluateAssetReusePolicy(input AssetReusePolicyInput) AssetReusePolicyDecision {
+	decision := AssetReusePolicyDecision{
+		Allowed:       false,
+		BlockedReason: "",
+		ConsentStatus: asset.NormalizeConsentStatus(input.AIAnnotated, input.ConsentStatus),
+	}
+	targetProjectID := strings.TrimSpace(input.TargetProjectID)
+	sourceProjectID := strings.TrimSpace(input.SourceProjectID)
+	rightsStatus := strings.TrimSpace(input.RightsStatus)
+	if rightsStatus == "" {
+		rightsStatus = "unknown"
+	}
+
+	if sourceProjectID == "" {
+		decision.BlockedReason = "policyapp: source project is unavailable for cross-project reuse"
+		return decision
+	}
+	if sourceProjectID == targetProjectID {
+		decision.BlockedReason = "policyapp: asset belongs to the current project"
+		return decision
+	}
+	if rightsStatus != "clear" {
+		decision.BlockedReason = "policyapp: rights status does not allow cross-project reuse"
+		return decision
+	}
+	if input.AIAnnotated && decision.ConsentStatus != "granted" {
+		decision.BlockedReason = "policyapp: consent status must be granted for ai_annotated assets"
+		return decision
+	}
+
+	decision.Allowed = true
+	return decision
 }
 
 func (s *Service) EvaluateWorkflowRecoveryAllowed(run workflow.WorkflowRun) error {

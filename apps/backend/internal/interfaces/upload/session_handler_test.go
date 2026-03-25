@@ -410,13 +410,14 @@ func TestCompleteUploadSessionCreatesAssetRecords(t *testing.T) {
 	sessionID := createResponse["session_id"].(string)
 
 	completeRec := performUploadJSONRequest(t, mux, http.MethodPost, "/upload/sessions/"+sessionID+"/complete", map[string]any{
-		"variant_type":  "original",
-		"mime_type":     "image/png",
-		"locale":        "zh-CN",
-		"rights_status": "clear",
-		"ai_annotated":  true,
-		"width":         1920,
-		"height":        1080,
+		"variant_type":   "original",
+		"mime_type":      "image/png",
+		"locale":         "zh-CN",
+		"rights_status":  "clear",
+		"consent_status": "granted",
+		"ai_annotated":   true,
+		"width":          1920,
+		"height":         1080,
 	})
 	completeResponse := decodeUploadJSONResponse(t, completeRec)
 	if got := completeResponse["status"].(string); got != "uploaded" {
@@ -444,6 +445,9 @@ func TestCompleteUploadSessionCreatesAssetRecords(t *testing.T) {
 		}
 		if mediaAsset.Locale != "zh-CN" {
 			t.Fatalf("expected media asset locale zh-CN, got %q", mediaAsset.Locale)
+		}
+		if mediaAsset.ConsentStatus != "granted" {
+			t.Fatalf("expected media asset consent_status %q, got %q", "granted", mediaAsset.ConsentStatus)
 		}
 	}
 
@@ -539,6 +543,7 @@ func TestCompleteUploadSessionCanAttachCandidateToShotExecution(t *testing.T) {
 		"mime_type":         "image/png",
 		"locale":            "zh-CN",
 		"rights_status":     "clear",
+		"consent_status":    "granted",
 		"ai_annotated":      true,
 		"width":             1920,
 		"height":            1080,
@@ -616,6 +621,7 @@ func TestCompleteUploadSessionRejectsShotExecutionOutsideSessionScope(t *testing
 		"mime_type":         "image/png",
 		"locale":            "zh-CN",
 		"rights_status":     "clear",
+		"consent_status":    "granted",
 		"ai_annotated":      true,
 		"width":             1920,
 		"height":            1080,
@@ -683,8 +689,8 @@ func TestCompleteUploadSessionDoesNotPublishShotExecutionEventBeforeImportBatchS
 	}
 
 	assets := &failingUploadAssetRepository{
-		MemoryStore:         store,
-		saveImportBatchErr:  errors.New("upload test: injected import batch save failure"),
+		MemoryStore:        store,
+		saveImportBatchErr: errors.New("upload test: injected import batch save failure"),
 	}
 	mux := http.NewServeMux()
 	RegisterRoutes(mux, NewService(Dependencies{
@@ -713,6 +719,7 @@ func TestCompleteUploadSessionDoesNotPublishShotExecutionEventBeforeImportBatchS
 		"mime_type":         "image/png",
 		"locale":            "zh-CN",
 		"rights_status":     "clear",
+		"consent_status":    "granted",
 		"ai_annotated":      true,
 		"width":             1920,
 		"height":            1080,

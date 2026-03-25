@@ -309,7 +309,13 @@ function createGovernance(orgId: string, userId: string) {
       locale: "zh-CN",
       roleId: "role-admin",
       roleCode: "admin",
-      permissionCodes: ["session.read", "org.roles.read", "org.roles.write"],
+      permissionCodes: [
+        "session.read",
+        "org.roles.read",
+        "org.roles.write",
+        "org.model_governance.read",
+        "org.model_governance.write",
+      ],
       timezone: "Asia/Shanghai",
     },
     userPreferences: {
@@ -324,7 +330,13 @@ function createGovernance(orgId: string, userId: string) {
         orgId,
         code: "admin",
         displayName: "Administrator",
-        permissionCodes: ["session.read", "org.roles.read", "org.roles.write"],
+        permissionCodes: [
+          "session.read",
+          "org.roles.read",
+          "org.roles.write",
+          "org.model_governance.read",
+          "org.model_governance.write",
+        ],
         memberCount: 1,
       },
     ],
@@ -332,6 +344,16 @@ function createGovernance(orgId: string, userId: string) {
       {
         code: "org.roles.write",
         displayName: "Manage roles",
+        group: "governance",
+      },
+      {
+        code: "org.model_governance.read",
+        displayName: "Read model governance resources",
+        group: "governance",
+      },
+      {
+        code: "org.model_governance.write",
+        displayName: "Manage model governance resources",
         group: "governance",
       },
     ],

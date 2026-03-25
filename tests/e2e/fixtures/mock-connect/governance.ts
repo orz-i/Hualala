@@ -5,6 +5,7 @@ import type {
   GovernanceState,
   MockSession,
 } from "./types.ts";
+import { buildModelGovernanceBaseline } from "./model-governance.ts";
 
 export function buildGovernanceBaseline(): GovernanceState {
   const orgId = "org-live-1";
@@ -22,6 +23,16 @@ export function buildGovernanceBaseline(): GovernanceState {
     { code: "org.members.write", displayName: "Update member roles", group: "governance" },
     { code: "org.settings.write", displayName: "Update organization locale", group: "governance" },
     { code: "org.roles.write", displayName: "Manage roles and permissions", group: "governance" },
+    {
+      code: "org.model_governance.read",
+      displayName: "Read model governance resources",
+      group: "governance",
+    },
+    {
+      code: "org.model_governance.write",
+      displayName: "Manage model governance resources",
+      group: "governance",
+    },
   ];
   const adminPermissionCodes = availablePermissions.map((permission) => permission.code);
 
@@ -87,6 +98,7 @@ export function withGovernance(state: AdminScenarioState): AdminState {
   return {
     ...state,
     governance: buildGovernanceBaseline(),
+    modelGovernance: buildModelGovernanceBaseline(),
   };
 }
 

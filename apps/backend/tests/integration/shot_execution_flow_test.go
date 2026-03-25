@@ -127,6 +127,7 @@ func TestShotExecutionFlow(t *testing.T) {
 		SourceType:      "manual_upload",
 		AssetLocale:     "zh-CN",
 		RightsStatus:    "clear",
+		ConsentStatus:   "granted",
 		AIAnnotated:     true,
 	})
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hualala/apps/backend/internal/application/policyapp"
 	"github.com/hualala/apps/backend/internal/domain/asset"
 	"github.com/hualala/apps/backend/internal/domain/billing"
 	"github.com/hualala/apps/backend/internal/domain/execution"
@@ -211,8 +212,21 @@ func (s *Service) SelectPrimaryAsset(ctx context.Context, input SelectPrimaryAss
 	if !ok {
 		return execution.ShotExecution{}, errors.New("executionapp: shot execution not found")
 	}
-	if _, ok := s.assets.GetMediaAsset(input.AssetID); !ok {
+	primaryAsset, ok := s.assets.GetMediaAsset(input.AssetID)
+	if !ok {
 		return execution.ShotExecution{}, errors.New("executionapp: asset not found")
+	}
+	if strings.TrimSpace(primaryAsset.ProjectID) != strings.TrimSpace(record.ProjectID) {
+		decision := policyapp.NewService(nil).EvaluateAssetReusePolicy(policyapp.AssetReusePolicyInput{
+			TargetProjectID: record.ProjectID,
+			SourceProjectID: primaryAsset.ProjectID,
+			RightsStatus:    primaryAsset.RightsStatus,
+			ConsentStatus:   primaryAsset.ConsentStatus,
+			AIAnnotated:     primaryAsset.AIAnnotated,
+		})
+		if !decision.Allowed {
+			return execution.ShotExecution{}, fmt.Errorf("executionapp: failed precondition: %s", decision.BlockedReason)
+		}
 	}
 
 	record.PrimaryAssetID = input.AssetID

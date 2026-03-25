@@ -40,6 +40,16 @@ const governancePermissionCatalog = [
     displayName: "Manage roles",
     group: "governance",
   },
+  {
+    code: "org.model_governance.read",
+    displayName: "Read model governance resources",
+    group: "governance",
+  },
+  {
+    code: "org.model_governance.write",
+    displayName: "Manage model governance resources",
+    group: "governance",
+  },
 ] as const;
 
 export function createOverview(projectId = "project-live-1", shotExecutionId = "shot-exec-live-1") {

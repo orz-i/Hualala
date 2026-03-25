@@ -302,6 +302,19 @@ export function GovernanceSessionPanel({
         </div>
       </article>
 
+      <article style={panelStyle}>
+        <h2 style={{ marginTop: 0, marginBottom: "12px", fontSize: "1.05rem" }}>
+          {t("governance.policy.title")}
+        </h2>
+        <p style={metricStyle}>{t("governance.policy.summary")}</p>
+        <div style={{ display: "grid", gap: "8px" }}>
+          <p style={metricStyle}>{t("governance.policy.rule.sameProject")}</p>
+          <p style={metricStyle}>{t("governance.policy.rule.rights")}</p>
+          <p style={metricStyle}>{t("governance.policy.rule.aiConsent")}</p>
+          <p style={metricStyle}>{t("governance.policy.rule.nonAiConsent")}</p>
+        </div>
+      </article>
+
       <GovernanceRolesPanel
         governance={governance}
         governanceActionPending={governanceActionPending}

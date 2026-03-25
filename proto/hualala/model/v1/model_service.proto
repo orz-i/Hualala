@@ -1,0 +1,199 @@
+syntax = "proto3";
+
+package hualala.model.v1;
+
+option go_package = "github.com/hualala/apps/backend/gen/hualala/model/v1;modelv1";
+
+import "google/protobuf/timestamp.proto";
+
+service ModelGovernanceService {
+  rpc ListModelProfiles(ListModelProfilesRequest) returns (ListModelProfilesResponse);
+  rpc CreateModelProfile(CreateModelProfileRequest) returns (CreateModelProfileResponse);
+  rpc UpdateModelProfile(UpdateModelProfileRequest) returns (UpdateModelProfileResponse);
+  rpc SetModelProfileStatus(SetModelProfileStatusRequest) returns (SetModelProfileStatusResponse);
+
+  rpc ListPromptTemplates(ListPromptTemplatesRequest) returns (ListPromptTemplatesResponse);
+  rpc GetPromptTemplate(GetPromptTemplateRequest) returns (GetPromptTemplateResponse);
+  rpc CreatePromptTemplateVersion(CreatePromptTemplateVersionRequest) returns (CreatePromptTemplateVersionResponse);
+  rpc UpdatePromptTemplateDraft(UpdatePromptTemplateDraftRequest) returns (UpdatePromptTemplateDraftResponse);
+  rpc SetPromptTemplateStatus(SetPromptTemplateStatusRequest) returns (SetPromptTemplateStatusResponse);
+
+  rpc ListContextBundles(ListContextBundlesRequest) returns (ListContextBundlesResponse);
+  rpc GetContextBundle(GetContextBundleRequest) returns (GetContextBundleResponse);
+}
+
+message ModelProfile {
+  string id = 1;
+  string org_id = 2;
+  string provider = 3;
+  string model_name = 4;
+  string capability_type = 5;
+  string region = 6;
+  repeated string supported_input_locales = 7;
+  repeated string supported_output_locales = 8;
+  string pricing_snapshot_json = 9;
+  string rate_limit_policy_json = 10;
+  string status = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message PromptTemplate {
+  string id = 1;
+  string org_id = 2;
+  string template_family = 3;
+  string template_key = 4;
+  string locale = 5;
+  uint32 version = 6;
+  string content = 7;
+  string input_schema_json = 8;
+  string output_schema_json = 9;
+  string status = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message ContextBundle {
+  string id = 1;
+  string org_id = 2;
+  string project_id = 3;
+  string shot_id = 4;
+  string shot_execution_id = 5;
+  string model_profile_id = 6;
+  string prompt_template_id = 7;
+  string input_locale = 8;
+  string output_locale = 9;
+  uint32 resolved_prompt_version = 10;
+  repeated string source_snapshot_ids = 11;
+  repeated string referenced_asset_ids = 12;
+  string payload_json = 13;
+  string created_by_user_id = 14;
+  google.protobuf.Timestamp created_at = 15;
+}
+
+message ListModelProfilesRequest {
+  string org_id = 1;
+  string capability_type = 2;
+  string status = 3;
+}
+
+message ListModelProfilesResponse {
+  repeated ModelProfile model_profiles = 1;
+}
+
+message CreateModelProfileRequest {
+  string org_id = 1;
+  string provider = 2;
+  string model_name = 3;
+  string capability_type = 4;
+  string region = 5;
+  repeated string supported_input_locales = 6;
+  repeated string supported_output_locales = 7;
+  string pricing_snapshot_json = 8;
+  string rate_limit_policy_json = 9;
+}
+
+message CreateModelProfileResponse {
+  ModelProfile model_profile = 1;
+}
+
+message UpdateModelProfileRequest {
+  string org_id = 1;
+  string model_profile_id = 2;
+  repeated string supported_input_locales = 3;
+  repeated string supported_output_locales = 4;
+  string pricing_snapshot_json = 5;
+  string rate_limit_policy_json = 6;
+}
+
+message UpdateModelProfileResponse {
+  ModelProfile model_profile = 1;
+}
+
+message SetModelProfileStatusRequest {
+  string org_id = 1;
+  string model_profile_id = 2;
+  string status = 3;
+}
+
+message SetModelProfileStatusResponse {
+  ModelProfile model_profile = 1;
+}
+
+message ListPromptTemplatesRequest {
+  string org_id = 1;
+  string template_key = 2;
+  string locale = 3;
+  string status = 4;
+}
+
+message ListPromptTemplatesResponse {
+  repeated PromptTemplate prompt_templates = 1;
+}
+
+message GetPromptTemplateRequest {
+  string org_id = 1;
+  string prompt_template_id = 2;
+}
+
+message GetPromptTemplateResponse {
+  PromptTemplate prompt_template = 1;
+}
+
+message CreatePromptTemplateVersionRequest {
+  string org_id = 1;
+  string template_family = 2;
+  string template_key = 3;
+  string locale = 4;
+  string content = 5;
+  string input_schema_json = 6;
+  string output_schema_json = 7;
+}
+
+message CreatePromptTemplateVersionResponse {
+  PromptTemplate prompt_template = 1;
+}
+
+message UpdatePromptTemplateDraftRequest {
+  string org_id = 1;
+  string prompt_template_id = 2;
+  string content = 3;
+  string input_schema_json = 4;
+  string output_schema_json = 5;
+}
+
+message UpdatePromptTemplateDraftResponse {
+  PromptTemplate prompt_template = 1;
+}
+
+message SetPromptTemplateStatusRequest {
+  string org_id = 1;
+  string prompt_template_id = 2;
+  string status = 3;
+}
+
+message SetPromptTemplateStatusResponse {
+  PromptTemplate prompt_template = 1;
+}
+
+message ListContextBundlesRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string shot_id = 3;
+  string shot_execution_id = 4;
+  string model_profile_id = 5;
+  string prompt_template_id = 6;
+}
+
+message ListContextBundlesResponse {
+  repeated ContextBundle context_bundles = 1;
+}
+
+message GetContextBundleRequest {
+  string org_id = 1;
+  string context_bundle_id = 2;
+}
+
+message GetContextBundleResponse {
+  ContextBundle context_bundle = 1;
+}

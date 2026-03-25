@@ -13,6 +13,7 @@ import (
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/domain/gateway"
+	"github.com/hualala/apps/backend/internal/domain/modelgovernance"
 	"github.com/hualala/apps/backend/internal/domain/org"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/review"
@@ -26,6 +27,7 @@ type RuntimeStore interface {
 	ExecutionRepository
 	AssetRepository
 	ReviewBillingRepository
+	ModelGovernanceRepository
 	PolicyReader
 	GatewayResultStore
 	WorkflowRepository
@@ -207,6 +209,23 @@ type ReviewBillingRepository interface {
 	GenerateBillingEventID() string
 	SaveBillingEvent(ctx context.Context, record billing.BillingEvent) error
 	ListBillingEventsByProject(projectID string) []billing.BillingEvent
+}
+
+type ModelGovernanceRepository interface {
+	GenerateModelProfileID() string
+	SaveModelProfile(ctx context.Context, record modelgovernance.ModelProfile) error
+	GetModelProfile(modelProfileID string) (modelgovernance.ModelProfile, bool)
+	ListModelProfiles(orgID string, capabilityType string, status string) []modelgovernance.ModelProfile
+
+	GeneratePromptTemplateID() string
+	SavePromptTemplate(ctx context.Context, record modelgovernance.PromptTemplate) error
+	GetPromptTemplate(promptTemplateID string) (modelgovernance.PromptTemplate, bool)
+	ListPromptTemplates(orgID string, templateKey string, locale string, status string) []modelgovernance.PromptTemplate
+
+	GenerateContextBundleID() string
+	SaveContextBundle(ctx context.Context, record modelgovernance.ContextBundle) error
+	GetContextBundle(contextBundleID string) (modelgovernance.ContextBundle, bool)
+	ListContextBundles(orgID string, projectID string, shotID string, shotExecutionID string, modelProfileID string, promptTemplateID string) []modelgovernance.ContextBundle
 }
 
 type PolicyReader interface {
@@ -1083,11 +1102,13 @@ func (s *MemoryStore) ListUploadFilesBySessionIDs(sessionIDs []string) []asset.U
 }
 
 func (s *MemoryStore) SaveMediaAsset(ctx context.Context, record asset.MediaAsset) error {
+	record.ConsentStatus = asset.NormalizeConsentStatus(record.AIAnnotated, record.ConsentStatus)
 	return s.save(ctx, func() { s.MediaAssets[record.ID] = record })
 }
 
 func (s *MemoryStore) GetMediaAsset(assetID string) (asset.MediaAsset, bool) {
 	record, ok := s.MediaAssets[assetID]
+	record.ConsentStatus = asset.NormalizeConsentStatus(record.AIAnnotated, record.ConsentStatus)
 	return record, ok
 }
 
@@ -1103,6 +1124,7 @@ func (s *MemoryStore) ListMediaAssetsByIDs(assetIDs []string) []asset.MediaAsset
 	items := make([]asset.MediaAsset, 0, len(lookup))
 	for _, record := range s.MediaAssets {
 		if _, ok := lookup[record.ID]; ok {
+			record.ConsentStatus = asset.NormalizeConsentStatus(record.AIAnnotated, record.ConsentStatus)
 			items = append(items, record)
 		}
 	}
@@ -1114,6 +1136,7 @@ func (s *MemoryStore) ListMediaAssetsByImportBatch(importBatchID string) []asset
 	items := make([]asset.MediaAsset, 0)
 	for _, record := range s.MediaAssets {
 		if record.ImportBatchID == importBatchID {
+			record.ConsentStatus = asset.NormalizeConsentStatus(record.AIAnnotated, record.ConsentStatus)
 			items = append(items, record)
 		}
 	}

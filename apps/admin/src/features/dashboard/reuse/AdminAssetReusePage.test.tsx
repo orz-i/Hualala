@@ -24,11 +24,13 @@ describe("AdminAssetReusePage", () => {
               projectId: "project-source-9",
               sourceType: "upload_session",
               rightsStatus: "clear",
+              consentStatus: "not_required",
               importBatchId: "batch-source-1",
               locale: "zh-CN",
               aiAnnotated: false,
             },
-            provenanceSummary: "source_type=upload_session rights_status=clear",
+            provenanceSummary:
+              "source_type=upload_session rights_status=clear consent_status=not_required",
             candidateAssetId: "candidate-source-1",
             shotExecutionId: "shot-exec-source-1",
             sourceRunId: "run-source-1",
@@ -53,6 +55,7 @@ describe("AdminAssetReusePage", () => {
 
     expect(screen.getByText("来源项目 ID：project-source-9")).toBeInTheDocument();
     expect(screen.getByText("admin: rights status does not allow cross-project reuse")).toBeInTheDocument();
+    expect(screen.getByText(/consent_status=not_required/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "查看来源" }));
 
