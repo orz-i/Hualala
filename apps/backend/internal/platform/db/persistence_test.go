@@ -325,9 +325,23 @@ func TestMemoryStorePersistsAndReloadsPreviewRuntimeSnapshot(t *testing.T) {
 		Status:              "queued",
 		RenderWorkflowRunID: "workflow-run-preview-1",
 		RenderStatus:        "queued",
-		PlaybackAssetID:     "",
-		ExportAssetID:       "",
+		PlaybackAssetID:     "playback-asset-1",
+		ExportAssetID:       "export-asset-1",
 		ResolvedLocale:      "en-US",
+		Playback: project.PreviewPlaybackDelivery{
+			DeliveryMode: "file",
+			PlaybackURL:  "https://cdn.example.com/playback.mp4",
+			PosterURL:    "https://cdn.example.com/playback.jpg",
+			DurationMs:   32000,
+		},
+		ExportOutput: project.PreviewExportDelivery{
+			DownloadURL: "https://cdn.example.com/export.mp4",
+			MimeType:    "video/mp4",
+			FileName:    "export.mp4",
+			SizeBytes:   4096,
+		},
+		LastErrorCode:    "preview_render_failed",
+		LastErrorMessage: "stale failure",
 		CreatedAt:           now,
 		UpdatedAt:           now,
 	}
@@ -350,5 +364,20 @@ func TestMemoryStorePersistsAndReloadsPreviewRuntimeSnapshot(t *testing.T) {
 	}
 	if got := record.ResolvedLocale; got != "en-US" {
 		t.Fatalf("expected restored resolved locale %q, got %q", "en-US", got)
+	}
+	if got := record.Playback.DeliveryMode; got != "file" {
+		t.Fatalf("expected restored delivery mode %q, got %q", "file", got)
+	}
+	if got := record.Playback.PlaybackURL; got != "https://cdn.example.com/playback.mp4" {
+		t.Fatalf("expected restored playback url %q, got %q", "https://cdn.example.com/playback.mp4", got)
+	}
+	if got := record.ExportOutput.DownloadURL; got != "https://cdn.example.com/export.mp4" {
+		t.Fatalf("expected restored export download url %q, got %q", "https://cdn.example.com/export.mp4", got)
+	}
+	if got := record.LastErrorCode; got != "preview_render_failed" {
+		t.Fatalf("expected restored last_error_code %q, got %q", "preview_render_failed", got)
+	}
+	if got := record.LastErrorMessage; got != "stale failure" {
+		t.Fatalf("expected restored last_error_message %q, got %q", "stale failure", got)
 	}
 }

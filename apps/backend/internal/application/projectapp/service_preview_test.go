@@ -608,6 +608,288 @@ func TestRequestPreviewRenderRejectsExistingQueuedRuntime(t *testing.T) {
 	}
 }
 
+func TestRequestPreviewRenderClearsExistingRuntimeOutputsAndErrors(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	fixture := seedPreviewProject(t, ctx, store)
+	service := NewService(store)
+
+	assembly, err := service.UpsertPreviewAssembly(ctx, UpsertPreviewAssemblyInput{
+		ProjectID: fixture.ProjectID,
+		EpisodeID: fixture.EpisodeID,
+		Status:    "ready",
+		Items: []PreviewAssemblyItemInput{
+			{
+				ShotID:         fixture.ShotIDs[0],
+				PrimaryAssetID: fixture.AssetIDByShotID[fixture.ShotIDs[0]],
+				SourceRunID:    fixture.LatestRunIDByShotID[fixture.ShotIDs[0]],
+				Sequence:       1,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("UpsertPreviewAssembly returned error: %v", err)
+	}
+
+	now := time.Now().UTC()
+	existingRuntimeID := store.GeneratePreviewRuntimeID()
+	if err := store.SavePreviewRuntime(ctx, project.PreviewRuntime{
+		ID:                  existingRuntimeID,
+		ProjectID:           fixture.ProjectID,
+		EpisodeID:           fixture.EpisodeID,
+		AssemblyID:          assembly.Assembly.ID,
+		Status:              "failed",
+		RenderWorkflowRunID: "workflow-run-stale",
+		RenderStatus:        "failed",
+		PlaybackAssetID:     "playback-asset-stale",
+		ExportAssetID:       "export-asset-stale",
+		ResolvedLocale:      "zh-CN",
+		Playback: project.PreviewPlaybackDelivery{
+			DeliveryMode: "file",
+			PlaybackURL:  "https://cdn.example.com/preview-old.mp4",
+			PosterURL:    "https://cdn.example.com/poster-old.jpg",
+			DurationMs:   42000,
+		},
+		ExportOutput: project.PreviewExportDelivery{
+			DownloadURL: "https://cdn.example.com/export-old.mp4",
+			MimeType:    "video/mp4",
+			FileName:    "preview-old.mp4",
+			SizeBytes:   2048,
+		},
+		LastErrorCode:    "preview_runtime_failed",
+		LastErrorMessage: "stale failure",
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}); err != nil {
+		t.Fatalf("SavePreviewRuntime returned error: %v", err)
+	}
+
+	runtimeState, err := service.RequestPreviewRender(ctx, RequestPreviewRenderInput{
+		ProjectID:       fixture.ProjectID,
+		EpisodeID:       fixture.EpisodeID,
+		RequestedLocale: "en-US",
+	})
+	if err != nil {
+		t.Fatalf("RequestPreviewRender returned error: %v", err)
+	}
+	if got := runtimeState.Runtime.ID; got != existingRuntimeID {
+		t.Fatalf("expected existing runtime %q to be reused, got %q", existingRuntimeID, got)
+	}
+	if got := runtimeState.Runtime.Status; got != "queued" {
+		t.Fatalf("expected runtime status %q, got %q", "queued", got)
+	}
+	if got := runtimeState.Runtime.RenderStatus; got != "queued" {
+		t.Fatalf("expected render status %q, got %q", "queued", got)
+	}
+	if got := runtimeState.Runtime.PlaybackAssetID; got != "" {
+		t.Fatalf("expected playback_asset_id to be cleared, got %q", got)
+	}
+	if got := runtimeState.Runtime.ExportAssetID; got != "" {
+		t.Fatalf("expected export_asset_id to be cleared, got %q", got)
+	}
+	if got := runtimeState.Runtime.Playback.PlaybackURL; got != "" {
+		t.Fatalf("expected playback url to be cleared, got %q", got)
+	}
+	if got := runtimeState.Runtime.ExportOutput.DownloadURL; got != "" {
+		t.Fatalf("expected export download url to be cleared, got %q", got)
+	}
+	if got := runtimeState.Runtime.LastErrorCode; got != "" {
+		t.Fatalf("expected last_error_code to be cleared, got %q", got)
+	}
+	if got := runtimeState.Runtime.LastErrorMessage; got != "" {
+		t.Fatalf("expected last_error_message to be cleared, got %q", got)
+	}
+	if got := runtimeState.Runtime.ResolvedLocale; got != "en-US" {
+		t.Fatalf("expected resolved locale %q, got %q", "en-US", got)
+	}
+}
+
+func TestApplyPreviewRenderUpdateTransitionsRuntimeAcrossRunningCompletedAndFailed(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	fixture := seedPreviewProject(t, ctx, store)
+	service := NewService(store)
+
+	if _, err := service.UpsertPreviewAssembly(ctx, UpsertPreviewAssemblyInput{
+		ProjectID: fixture.ProjectID,
+		EpisodeID: fixture.EpisodeID,
+		Status:    "ready",
+		Items: []PreviewAssemblyItemInput{
+			{
+				ShotID:         fixture.ShotIDs[0],
+				PrimaryAssetID: fixture.AssetIDByShotID[fixture.ShotIDs[0]],
+				SourceRunID:    fixture.LatestRunIDByShotID[fixture.ShotIDs[0]],
+				Sequence:       1,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("UpsertPreviewAssembly returned error: %v", err)
+	}
+
+	queued, err := service.RequestPreviewRender(ctx, RequestPreviewRenderInput{
+		ProjectID:       fixture.ProjectID,
+		EpisodeID:       fixture.EpisodeID,
+		RequestedLocale: "en-US",
+	})
+	if err != nil {
+		t.Fatalf("RequestPreviewRender returned error: %v", err)
+	}
+
+	running, err := service.ApplyPreviewRenderUpdate(ctx, ApplyPreviewRenderUpdateInput{
+		PreviewRuntimeID:    queued.Runtime.ID,
+		RenderWorkflowRunID: queued.Runtime.RenderWorkflowRunID,
+		RenderStatus:        "running",
+		ResolvedLocale:      "en-US",
+	})
+	if err != nil {
+		t.Fatalf("ApplyPreviewRenderUpdate(running) returned error: %v", err)
+	}
+	if got := running.Runtime.Status; got != "running" {
+		t.Fatalf("expected runtime status %q, got %q", "running", got)
+	}
+	if got := running.Runtime.RenderStatus; got != "running" {
+		t.Fatalf("expected render status %q, got %q", "running", got)
+	}
+
+	completed, err := service.ApplyPreviewRenderUpdate(ctx, ApplyPreviewRenderUpdateInput{
+		PreviewRuntimeID:    queued.Runtime.ID,
+		RenderWorkflowRunID: queued.Runtime.RenderWorkflowRunID,
+		RenderStatus:        "completed",
+		ResolvedLocale:      "en-US",
+		PlaybackAssetID:     "playback-asset-1",
+		ExportAssetID:       "export-asset-1",
+		Playback: project.PreviewPlaybackDelivery{
+			DeliveryMode: "manifest",
+			PlaybackURL:  "https://cdn.example.com/preview-runtime-1.m3u8",
+			PosterURL:    "https://cdn.example.com/preview-runtime-1.jpg",
+			DurationMs:   30000,
+		},
+		ExportOutput: project.PreviewExportDelivery{
+			DownloadURL: "https://cdn.example.com/preview-export-1.mp4",
+			MimeType:    "video/mp4",
+			FileName:    "preview-export-1.mp4",
+			SizeBytes:   4096,
+		},
+	})
+	if err != nil {
+		t.Fatalf("ApplyPreviewRenderUpdate(completed) returned error: %v", err)
+	}
+	if got := completed.Runtime.Status; got != "ready" {
+		t.Fatalf("expected runtime status %q, got %q", "ready", got)
+	}
+	if got := completed.Runtime.RenderStatus; got != "completed" {
+		t.Fatalf("expected render status %q, got %q", "completed", got)
+	}
+	if got := completed.Runtime.Playback.DeliveryMode; got != "manifest" {
+		t.Fatalf("expected delivery mode %q, got %q", "manifest", got)
+	}
+	if got := completed.Runtime.Playback.PlaybackURL; got != "https://cdn.example.com/preview-runtime-1.m3u8" {
+		t.Fatalf("expected playback url to round-trip, got %q", got)
+	}
+	if got := completed.Runtime.ExportOutput.DownloadURL; got != "https://cdn.example.com/preview-export-1.mp4" {
+		t.Fatalf("expected export download url to round-trip, got %q", got)
+	}
+	if got := completed.Runtime.LastErrorCode; got != "" {
+		t.Fatalf("expected last_error_code to stay empty, got %q", got)
+	}
+
+	failed, err := service.ApplyPreviewRenderUpdate(ctx, ApplyPreviewRenderUpdateInput{
+		PreviewRuntimeID:    queued.Runtime.ID,
+		RenderWorkflowRunID: queued.Runtime.RenderWorkflowRunID,
+		RenderStatus:        "failed",
+		ErrorCode:           "preview_render_failed",
+		ErrorMessage:        "provider timeout",
+	})
+	if err != nil {
+		t.Fatalf("ApplyPreviewRenderUpdate(failed) returned error: %v", err)
+	}
+	if got := failed.Runtime.Status; got != "failed" {
+		t.Fatalf("expected runtime status %q, got %q", "failed", got)
+	}
+	if got := failed.Runtime.RenderStatus; got != "failed" {
+		t.Fatalf("expected render status %q, got %q", "failed", got)
+	}
+	if got := failed.Runtime.LastErrorCode; got != "preview_render_failed" {
+		t.Fatalf("expected last_error_code %q, got %q", "preview_render_failed", got)
+	}
+	if got := failed.Runtime.LastErrorMessage; got != "provider timeout" {
+		t.Fatalf("expected last_error_message %q, got %q", "provider timeout", got)
+	}
+}
+
+func TestApplyPreviewRenderUpdateRejectsCompletedWithoutOutputsAndStaleWorkflowRuns(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	fixture := seedPreviewProject(t, ctx, store)
+	service := NewService(store)
+
+	if _, err := service.UpsertPreviewAssembly(ctx, UpsertPreviewAssemblyInput{
+		ProjectID: fixture.ProjectID,
+		EpisodeID: fixture.EpisodeID,
+		Status:    "ready",
+		Items: []PreviewAssemblyItemInput{
+			{
+				ShotID:   fixture.ShotIDs[0],
+				Sequence: 1,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("UpsertPreviewAssembly returned error: %v", err)
+	}
+
+	queued, err := service.RequestPreviewRender(ctx, RequestPreviewRenderInput{
+		ProjectID:       fixture.ProjectID,
+		EpisodeID:       fixture.EpisodeID,
+		RequestedLocale: "zh-CN",
+	})
+	if err != nil {
+		t.Fatalf("RequestPreviewRender returned error: %v", err)
+	}
+
+	_, err = service.ApplyPreviewRenderUpdate(ctx, ApplyPreviewRenderUpdateInput{
+		PreviewRuntimeID:    queued.Runtime.ID,
+		RenderWorkflowRunID: queued.Runtime.RenderWorkflowRunID,
+		RenderStatus:        "completed",
+		ResolvedLocale:      "zh-CN",
+	})
+	if err == nil {
+		t.Fatalf("expected completed update without outputs to fail")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "failed precondition") {
+		t.Fatalf("expected failed precondition for missing outputs, got %v", err)
+	}
+
+	_, err = service.ApplyPreviewRenderUpdate(ctx, ApplyPreviewRenderUpdateInput{
+		PreviewRuntimeID:    queued.Runtime.ID,
+		RenderWorkflowRunID: queued.Runtime.RenderWorkflowRunID,
+		RenderStatus:        "completed",
+		ResolvedLocale:      "zh-CN",
+		PlaybackAssetID:     "playback-asset-1",
+		Playback: project.PreviewPlaybackDelivery{
+			DeliveryMode: "hls-live",
+			PlaybackURL:  "https://cdn.example.com/runtime-1.m3u8",
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected completed update with invalid delivery_mode to fail")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "invalid argument") {
+		t.Fatalf("expected invalid argument for invalid delivery mode, got %v", err)
+	}
+
+	_, err = service.ApplyPreviewRenderUpdate(ctx, ApplyPreviewRenderUpdateInput{
+		PreviewRuntimeID:    queued.Runtime.ID,
+		RenderWorkflowRunID: "workflow-run-stale",
+		RenderStatus:        "running",
+	})
+	if err == nil {
+		t.Fatalf("expected stale workflow run update to fail")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "failed precondition") {
+		t.Fatalf("expected failed precondition for stale workflow run, got %v", err)
+	}
+}
+
 type previewFixture struct {
 	ProjectID           string
 	EpisodeID           string

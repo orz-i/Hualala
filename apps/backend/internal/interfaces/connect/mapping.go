@@ -191,8 +191,36 @@ func mapPreviewRuntime(record projectapp.PreviewRuntimeState) *projectv1.Preview
 		PlaybackAssetId:     record.Runtime.PlaybackAssetID,
 		ExportAssetId:       record.Runtime.ExportAssetID,
 		ResolvedLocale:      record.Runtime.ResolvedLocale,
+		Playback:            mapPreviewPlaybackDelivery(record.Runtime.Playback),
+		ExportOutput:        mapPreviewExportDelivery(record.Runtime.ExportOutput),
+		LastErrorCode:       record.Runtime.LastErrorCode,
+		LastErrorMessage:    record.Runtime.LastErrorMessage,
 		CreatedAt:           timestampOrNil(record.Runtime.CreatedAt),
 		UpdatedAt:           timestampOrNil(record.Runtime.UpdatedAt),
+	}
+}
+
+func mapPreviewPlaybackDelivery(record project.PreviewPlaybackDelivery) *projectv1.PreviewPlaybackDelivery {
+	if record == (project.PreviewPlaybackDelivery{}) {
+		return nil
+	}
+	return &projectv1.PreviewPlaybackDelivery{
+		DeliveryMode: record.DeliveryMode,
+		PlaybackUrl:  record.PlaybackURL,
+		PosterUrl:    record.PosterURL,
+		DurationMs:   uint32(record.DurationMs),
+	}
+}
+
+func mapPreviewExportDelivery(record project.PreviewExportDelivery) *projectv1.PreviewExportDelivery {
+	if record == (project.PreviewExportDelivery{}) {
+		return nil
+	}
+	return &projectv1.PreviewExportDelivery{
+		DownloadUrl: record.DownloadURL,
+		MimeType:    record.MimeType,
+		FileName:    record.FileName,
+		SizeBytes:   record.SizeBytes,
 	}
 }
 

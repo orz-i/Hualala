@@ -63,6 +63,9 @@ const (
 	// ProjectServiceRequestPreviewRenderProcedure is the fully-qualified name of the ProjectService's
 	// RequestPreviewRender RPC.
 	ProjectServiceRequestPreviewRenderProcedure = "/hualala.project.v1.ProjectService/RequestPreviewRender"
+	// ProjectServiceApplyPreviewRenderUpdateProcedure is the fully-qualified name of the
+	// ProjectService's ApplyPreviewRenderUpdate RPC.
+	ProjectServiceApplyPreviewRenderUpdateProcedure = "/hualala.project.v1.ProjectService/ApplyPreviewRenderUpdate"
 	// ProjectServiceGetAudioWorkbenchProcedure is the fully-qualified name of the ProjectService's
 	// GetAudioWorkbench RPC.
 	ProjectServiceGetAudioWorkbenchProcedure = "/hualala.project.v1.ProjectService/GetAudioWorkbench"
@@ -83,6 +86,7 @@ type ProjectServiceClient interface {
 	UpsertPreviewAssembly(context.Context, *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error)
 	GetPreviewRuntime(context.Context, *connect.Request[v1.GetPreviewRuntimeRequest]) (*connect.Response[v1.GetPreviewRuntimeResponse], error)
 	RequestPreviewRender(context.Context, *connect.Request[v1.RequestPreviewRenderRequest]) (*connect.Response[v1.RequestPreviewRenderResponse], error)
+	ApplyPreviewRenderUpdate(context.Context, *connect.Request[v1.ApplyPreviewRenderUpdateRequest]) (*connect.Response[v1.ApplyPreviewRenderUpdateResponse], error)
 	GetAudioWorkbench(context.Context, *connect.Request[v1.GetAudioWorkbenchRequest]) (*connect.Response[v1.GetAudioWorkbenchResponse], error)
 	UpsertAudioTimeline(context.Context, *connect.Request[v1.UpsertAudioTimelineRequest]) (*connect.Response[v1.UpsertAudioTimelineResponse], error)
 }
@@ -158,6 +162,12 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(projectServiceMethods.ByName("RequestPreviewRender")),
 			connect.WithClientOptions(opts...),
 		),
+		applyPreviewRenderUpdate: connect.NewClient[v1.ApplyPreviewRenderUpdateRequest, v1.ApplyPreviewRenderUpdateResponse](
+			httpClient,
+			baseURL+ProjectServiceApplyPreviewRenderUpdateProcedure,
+			connect.WithSchema(projectServiceMethods.ByName("ApplyPreviewRenderUpdate")),
+			connect.WithClientOptions(opts...),
+		),
 		getAudioWorkbench: connect.NewClient[v1.GetAudioWorkbenchRequest, v1.GetAudioWorkbenchResponse](
 			httpClient,
 			baseURL+ProjectServiceGetAudioWorkbenchProcedure,
@@ -175,18 +185,19 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // projectServiceClient implements ProjectServiceClient.
 type projectServiceClient struct {
-	createProject          *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
-	createEpisode          *connect.Client[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse]
-	getProject             *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
-	listProjects           *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
-	listEpisodes           *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
-	getPreviewWorkbench    *connect.Client[v1.GetPreviewWorkbenchRequest, v1.GetPreviewWorkbenchResponse]
-	listPreviewShotOptions *connect.Client[v1.ListPreviewShotOptionsRequest, v1.ListPreviewShotOptionsResponse]
-	upsertPreviewAssembly  *connect.Client[v1.UpsertPreviewAssemblyRequest, v1.UpsertPreviewAssemblyResponse]
-	getPreviewRuntime      *connect.Client[v1.GetPreviewRuntimeRequest, v1.GetPreviewRuntimeResponse]
-	requestPreviewRender   *connect.Client[v1.RequestPreviewRenderRequest, v1.RequestPreviewRenderResponse]
-	getAudioWorkbench      *connect.Client[v1.GetAudioWorkbenchRequest, v1.GetAudioWorkbenchResponse]
-	upsertAudioTimeline    *connect.Client[v1.UpsertAudioTimelineRequest, v1.UpsertAudioTimelineResponse]
+	createProject            *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
+	createEpisode            *connect.Client[v1.CreateEpisodeRequest, v1.CreateEpisodeResponse]
+	getProject               *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
+	listProjects             *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
+	listEpisodes             *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
+	getPreviewWorkbench      *connect.Client[v1.GetPreviewWorkbenchRequest, v1.GetPreviewWorkbenchResponse]
+	listPreviewShotOptions   *connect.Client[v1.ListPreviewShotOptionsRequest, v1.ListPreviewShotOptionsResponse]
+	upsertPreviewAssembly    *connect.Client[v1.UpsertPreviewAssemblyRequest, v1.UpsertPreviewAssemblyResponse]
+	getPreviewRuntime        *connect.Client[v1.GetPreviewRuntimeRequest, v1.GetPreviewRuntimeResponse]
+	requestPreviewRender     *connect.Client[v1.RequestPreviewRenderRequest, v1.RequestPreviewRenderResponse]
+	applyPreviewRenderUpdate *connect.Client[v1.ApplyPreviewRenderUpdateRequest, v1.ApplyPreviewRenderUpdateResponse]
+	getAudioWorkbench        *connect.Client[v1.GetAudioWorkbenchRequest, v1.GetAudioWorkbenchResponse]
+	upsertAudioTimeline      *connect.Client[v1.UpsertAudioTimelineRequest, v1.UpsertAudioTimelineResponse]
 }
 
 // CreateProject calls hualala.project.v1.ProjectService.CreateProject.
@@ -239,6 +250,11 @@ func (c *projectServiceClient) RequestPreviewRender(ctx context.Context, req *co
 	return c.requestPreviewRender.CallUnary(ctx, req)
 }
 
+// ApplyPreviewRenderUpdate calls hualala.project.v1.ProjectService.ApplyPreviewRenderUpdate.
+func (c *projectServiceClient) ApplyPreviewRenderUpdate(ctx context.Context, req *connect.Request[v1.ApplyPreviewRenderUpdateRequest]) (*connect.Response[v1.ApplyPreviewRenderUpdateResponse], error) {
+	return c.applyPreviewRenderUpdate.CallUnary(ctx, req)
+}
+
 // GetAudioWorkbench calls hualala.project.v1.ProjectService.GetAudioWorkbench.
 func (c *projectServiceClient) GetAudioWorkbench(ctx context.Context, req *connect.Request[v1.GetAudioWorkbenchRequest]) (*connect.Response[v1.GetAudioWorkbenchResponse], error) {
 	return c.getAudioWorkbench.CallUnary(ctx, req)
@@ -261,6 +277,7 @@ type ProjectServiceHandler interface {
 	UpsertPreviewAssembly(context.Context, *connect.Request[v1.UpsertPreviewAssemblyRequest]) (*connect.Response[v1.UpsertPreviewAssemblyResponse], error)
 	GetPreviewRuntime(context.Context, *connect.Request[v1.GetPreviewRuntimeRequest]) (*connect.Response[v1.GetPreviewRuntimeResponse], error)
 	RequestPreviewRender(context.Context, *connect.Request[v1.RequestPreviewRenderRequest]) (*connect.Response[v1.RequestPreviewRenderResponse], error)
+	ApplyPreviewRenderUpdate(context.Context, *connect.Request[v1.ApplyPreviewRenderUpdateRequest]) (*connect.Response[v1.ApplyPreviewRenderUpdateResponse], error)
 	GetAudioWorkbench(context.Context, *connect.Request[v1.GetAudioWorkbenchRequest]) (*connect.Response[v1.GetAudioWorkbenchResponse], error)
 	UpsertAudioTimeline(context.Context, *connect.Request[v1.UpsertAudioTimelineRequest]) (*connect.Response[v1.UpsertAudioTimelineResponse], error)
 }
@@ -332,6 +349,12 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		connect.WithSchema(projectServiceMethods.ByName("RequestPreviewRender")),
 		connect.WithHandlerOptions(opts...),
 	)
+	projectServiceApplyPreviewRenderUpdateHandler := connect.NewUnaryHandler(
+		ProjectServiceApplyPreviewRenderUpdateProcedure,
+		svc.ApplyPreviewRenderUpdate,
+		connect.WithSchema(projectServiceMethods.ByName("ApplyPreviewRenderUpdate")),
+		connect.WithHandlerOptions(opts...),
+	)
 	projectServiceGetAudioWorkbenchHandler := connect.NewUnaryHandler(
 		ProjectServiceGetAudioWorkbenchProcedure,
 		svc.GetAudioWorkbench,
@@ -366,6 +389,8 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 			projectServiceGetPreviewRuntimeHandler.ServeHTTP(w, r)
 		case ProjectServiceRequestPreviewRenderProcedure:
 			projectServiceRequestPreviewRenderHandler.ServeHTTP(w, r)
+		case ProjectServiceApplyPreviewRenderUpdateProcedure:
+			projectServiceApplyPreviewRenderUpdateHandler.ServeHTTP(w, r)
 		case ProjectServiceGetAudioWorkbenchProcedure:
 			projectServiceGetAudioWorkbenchHandler.ServeHTTP(w, r)
 		case ProjectServiceUpsertAudioTimelineProcedure:
@@ -417,6 +442,10 @@ func (UnimplementedProjectServiceHandler) GetPreviewRuntime(context.Context, *co
 
 func (UnimplementedProjectServiceHandler) RequestPreviewRender(context.Context, *connect.Request[v1.RequestPreviewRenderRequest]) (*connect.Response[v1.RequestPreviewRenderResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.RequestPreviewRender is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) ApplyPreviewRenderUpdate(context.Context, *connect.Request[v1.ApplyPreviewRenderUpdateRequest]) (*connect.Response[v1.ApplyPreviewRenderUpdateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.ApplyPreviewRenderUpdate is not implemented"))
 }
 
 func (UnimplementedProjectServiceHandler) GetAudioWorkbench(context.Context, *connect.Request[v1.GetAudioWorkbenchRequest]) (*connect.Response[v1.GetAudioWorkbenchResponse], error) {

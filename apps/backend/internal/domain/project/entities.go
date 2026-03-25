@@ -55,8 +55,26 @@ type PreviewRuntime struct {
 	PlaybackAssetID     string
 	ExportAssetID       string
 	ResolvedLocale      string
+	Playback            PreviewPlaybackDelivery
+	ExportOutput        PreviewExportDelivery
+	LastErrorCode       string
+	LastErrorMessage    string
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
+}
+
+type PreviewPlaybackDelivery struct {
+	DeliveryMode string
+	PlaybackURL  string
+	PosterURL    string
+	DurationMs   int
+}
+
+type PreviewExportDelivery struct {
+	DownloadURL string
+	MimeType    string
+	FileName    string
+	SizeBytes   int64
 }
 
 type AudioTimeline struct {

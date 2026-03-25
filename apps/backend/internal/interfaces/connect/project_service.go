@@ -7,6 +7,7 @@ import (
 	projectv1 "github.com/hualala/apps/backend/gen/hualala/project/v1"
 	projectv1connect "github.com/hualala/apps/backend/gen/hualala/project/v1/projectv1connect"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
+	"github.com/hualala/apps/backend/internal/domain/project"
 )
 
 type projectHandler struct {
@@ -165,6 +166,37 @@ func (h *projectHandler) RequestPreviewRender(ctx context.Context, req *connectr
 		return nil, asConnectError(err)
 	}
 	return connectrpc.NewResponse(&projectv1.RequestPreviewRenderResponse{
+		Runtime: mapPreviewRuntime(record),
+	}), nil
+}
+
+func (h *projectHandler) ApplyPreviewRenderUpdate(ctx context.Context, req *connectrpc.Request[projectv1.ApplyPreviewRenderUpdateRequest]) (*connectrpc.Response[projectv1.ApplyPreviewRenderUpdateResponse], error) {
+	record, err := h.service.ApplyPreviewRenderUpdate(ctx, projectapp.ApplyPreviewRenderUpdateInput{
+		PreviewRuntimeID:    req.Msg.GetPreviewRuntimeId(),
+		RenderWorkflowRunID: req.Msg.GetRenderWorkflowRunId(),
+		RenderStatus:        req.Msg.GetRenderStatus(),
+		ResolvedLocale:      req.Msg.GetResolvedLocale(),
+		PlaybackAssetID:     req.Msg.GetPlaybackAssetId(),
+		ExportAssetID:       req.Msg.GetExportAssetId(),
+		Playback: project.PreviewPlaybackDelivery{
+			DeliveryMode: req.Msg.GetPlayback().GetDeliveryMode(),
+			PlaybackURL:  req.Msg.GetPlayback().GetPlaybackUrl(),
+			PosterURL:    req.Msg.GetPlayback().GetPosterUrl(),
+			DurationMs:   int(req.Msg.GetPlayback().GetDurationMs()),
+		},
+		ExportOutput: project.PreviewExportDelivery{
+			DownloadURL: req.Msg.GetExportOutput().GetDownloadUrl(),
+			MimeType:    req.Msg.GetExportOutput().GetMimeType(),
+			FileName:    req.Msg.GetExportOutput().GetFileName(),
+			SizeBytes:   req.Msg.GetExportOutput().GetSizeBytes(),
+		},
+		ErrorCode:    req.Msg.GetErrorCode(),
+		ErrorMessage: req.Msg.GetErrorMessage(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&projectv1.ApplyPreviewRenderUpdateResponse{
 		Runtime: mapPreviewRuntime(record),
 	}), nil
 }

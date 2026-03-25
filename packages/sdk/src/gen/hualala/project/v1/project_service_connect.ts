@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetAudioWorkbenchRequest, GetAudioWorkbenchResponse, GetPreviewRuntimeRequest, GetPreviewRuntimeResponse, GetPreviewWorkbenchRequest, GetPreviewWorkbenchResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListPreviewShotOptionsRequest, ListPreviewShotOptionsResponse, ListProjectsRequest, ListProjectsResponse, RequestPreviewRenderRequest, RequestPreviewRenderResponse, UpsertAudioTimelineRequest, UpsertAudioTimelineResponse, UpsertPreviewAssemblyRequest, UpsertPreviewAssemblyResponse } from "./project_service_pb.js";
+import { ApplyPreviewRenderUpdateRequest, ApplyPreviewRenderUpdateResponse, CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetAudioWorkbenchRequest, GetAudioWorkbenchResponse, GetPreviewRuntimeRequest, GetPreviewRuntimeResponse, GetPreviewWorkbenchRequest, GetPreviewWorkbenchResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListPreviewShotOptionsRequest, ListPreviewShotOptionsResponse, ListProjectsRequest, ListProjectsResponse, RequestPreviewRenderRequest, RequestPreviewRenderResponse, UpsertAudioTimelineRequest, UpsertAudioTimelineResponse, UpsertPreviewAssemblyRequest, UpsertPreviewAssemblyResponse } from "./project_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -100,6 +100,15 @@ export const ProjectService = {
       name: "RequestPreviewRender",
       I: RequestPreviewRenderRequest,
       O: RequestPreviewRenderResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.project.v1.ProjectService.ApplyPreviewRenderUpdate
+     */
+    applyPreviewRenderUpdate: {
+      name: "ApplyPreviewRenderUpdate",
+      I: ApplyPreviewRenderUpdateRequest,
+      O: ApplyPreviewRenderUpdateResponse,
       kind: MethodKind.Unary,
     },
     /**

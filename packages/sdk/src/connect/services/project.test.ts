@@ -151,6 +151,37 @@ describe("createProjectClient", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            runtime: {
+              previewRuntimeId: "preview-runtime-1",
+              projectId: "project-1",
+              episodeId: "episode-1",
+              assemblyId: "assembly-1",
+              status: "ready",
+              renderWorkflowRunId: "workflow-run-preview-1",
+              renderStatus: "completed",
+              playbackAssetId: "playback-asset-1",
+              exportAssetId: "export-asset-1",
+              resolvedLocale: "en-US",
+              playback: {
+                deliveryMode: "manifest",
+                playbackUrl: "https://cdn.example.com/preview-runtime-1.m3u8",
+                posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
+                durationMs: 30000,
+              },
+              exportOutput: {
+                downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
+                mimeType: "video/mp4",
+                fileName: "preview-export-1.mp4",
+                sizeBytes: "4096",
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
             timeline: {
               audioTimelineId: "audio-timeline-1",
               projectId: "project-1",
@@ -252,6 +283,26 @@ describe("createProjectClient", () => {
       episodeId: "episode-1",
       requestedLocale: "en-US",
     });
+    const completedPreviewRuntime = await client.applyPreviewRenderUpdate({
+      previewRuntimeId: "preview-runtime-1",
+      renderWorkflowRunId: "workflow-run-preview-1",
+      renderStatus: "completed",
+      resolvedLocale: "en-US",
+      playbackAssetId: "playback-asset-1",
+      exportAssetId: "export-asset-1",
+      playback: {
+        deliveryMode: "manifest",
+        playbackUrl: "https://cdn.example.com/preview-runtime-1.m3u8",
+        posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
+        durationMs: 30000,
+      },
+      exportOutput: {
+        downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
+        mimeType: "video/mp4",
+        fileName: "preview-export-1.mp4",
+        sizeBytes: 4096,
+      },
+    });
     const audioWorkbench = await client.getAudioWorkbench({
       projectId: "project-1",
       episodeId: "episode-1",
@@ -350,6 +401,32 @@ describe("createProjectClient", () => {
     );
     expect(fetchFn).toHaveBeenNthCalledWith(
       6,
+      "http://127.0.0.1:8080/hualala.project.v1.ProjectService/ApplyPreviewRenderUpdate",
+      expect.objectContaining({
+        body: JSON.stringify({
+          previewRuntimeId: "preview-runtime-1",
+          renderWorkflowRunId: "workflow-run-preview-1",
+          renderStatus: "completed",
+          resolvedLocale: "en-US",
+          playbackAssetId: "playback-asset-1",
+          exportAssetId: "export-asset-1",
+          playback: {
+            deliveryMode: "manifest",
+            playbackUrl: "https://cdn.example.com/preview-runtime-1.m3u8",
+            posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
+            durationMs: 30000,
+          },
+          exportOutput: {
+            downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
+            mimeType: "video/mp4",
+            fileName: "preview-export-1.mp4",
+            sizeBytes: 4096,
+          },
+        }),
+      }),
+    );
+    expect(fetchFn).toHaveBeenNthCalledWith(
+      7,
       "http://127.0.0.1:8080/hualala.project.v1.ProjectService/GetAudioWorkbench",
       expect.objectContaining({
         body: JSON.stringify({
@@ -359,7 +436,7 @@ describe("createProjectClient", () => {
       }),
     );
     expect(fetchFn).toHaveBeenNthCalledWith(
-      7,
+      8,
       "http://127.0.0.1:8080/hualala.project.v1.ProjectService/UpsertAudioTimeline",
       expect.objectContaining({
         body: JSON.stringify({
@@ -395,6 +472,8 @@ describe("createProjectClient", () => {
     expect(previewRuntime.runtime?.previewRuntimeId).toBe("preview-runtime-1");
     expect(queuedPreviewRuntime.runtime?.renderStatus).toBe("queued");
     expect(queuedPreviewRuntime.runtime?.resolvedLocale).toBe("en-US");
+    expect(completedPreviewRuntime.runtime?.playback?.deliveryMode).toBe("manifest");
+    expect(completedPreviewRuntime.runtime?.exportOutput?.downloadUrl).toBe("https://cdn.example.com/preview-export-1.mp4");
     expect(audioWorkbench.timeline?.audioTimelineId).toBe("audio-timeline-1");
     expect(audioWorkbench.timeline?.tracks[0]?.volumePercent).toBe(0);
     expect(audioTimeline.timeline?.tracks[0]?.clips[0]?.durationMs).toBe(12000);
