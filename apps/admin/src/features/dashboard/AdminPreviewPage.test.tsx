@@ -116,9 +116,18 @@ describe("AdminPreviewPage", () => {
     expect(screen.getByText("渲染状态：succeeded")).toBeInTheDocument();
     expect(screen.getByText("交付模式：manifest")).toBeInTheDocument();
     expect(screen.getByText("时长：30000ms")).toBeInTheDocument();
+    expect(
+      screen.getByText("Playback URL：https://cdn.example.com/preview-runtime-1.m3u8"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Poster URL：https://cdn.example.com/preview-runtime-1.jpg"),
+    ).toBeInTheDocument();
     expect(screen.getByText("文件名：preview-export-1.mp4")).toBeInTheDocument();
     expect(screen.getByText("MIME：video/mp4")).toBeInTheDocument();
     expect(screen.getByText("大小：4096 B")).toBeInTheDocument();
+    expect(
+      screen.getByText("Download URL：https://cdn.example.com/preview-export-1.mp4"),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "打开播放输出" })).toHaveAttribute(
       "href",
       "https://cdn.example.com/preview-runtime-1.m3u8",

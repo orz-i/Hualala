@@ -77,6 +77,12 @@ const primaryButtonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
+type OutputLinkProps = {
+  href: string;
+  label: string;
+  style: CSSProperties;
+};
+
 function formatShotIdentity(item: PreviewItemViewModel, t: CreatorTranslator) {
   if (!item.shotSummary) {
     return item.shotId || t("preview.metadata.unavailable");
@@ -149,6 +155,25 @@ function formatRuntimeNumber(value: number, suffix: string, fallback: string) {
     return fallback;
   }
   return `${value}${suffix}`;
+}
+
+function OutputLink({ href, label, style }: OutputLinkProps) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      style={{
+        ...style,
+        textDecoration: "none",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {label}
+    </a>
+  );
 }
 
 export function PreviewWorkbenchPage({
@@ -372,7 +397,9 @@ export function PreviewWorkbenchPage({
                   </p>
                   {previewRuntime.playback.posterUrl ? (
                     <p style={{ margin: 0 }}>
-                      Poster URL：{previewRuntime.playback.posterUrl}
+                      {t("preview.runtime.playback.posterUrlLabel", {
+                        url: previewRuntime.playback.posterUrl,
+                      })}
                     </p>
                   ) : null}
                   {previewRuntime.playback.deliveryMode === "file" &&
@@ -392,20 +419,11 @@ export function PreviewWorkbenchPage({
                           {previewRuntime.playback.playbackUrl}
                         </p>
                       ) : null}
-                      <a
+                      <OutputLink
                         href={previewRuntime.playback.playbackUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{
-                          ...secondaryButtonStyle,
-                          textDecoration: "none",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {t("preview.runtime.playback.open")}
-                      </a>
+                        label={t("preview.runtime.playback.open")}
+                        style={secondaryButtonStyle}
+                      />
                     </div>
                   ) : null}
                 </div>
@@ -440,20 +458,11 @@ export function PreviewWorkbenchPage({
                     })}
                   </p>
                   {previewRuntime.exportOutput.downloadUrl ? (
-                    <a
+                    <OutputLink
                       href={previewRuntime.exportOutput.downloadUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        ...secondaryButtonStyle,
-                        textDecoration: "none",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {t("preview.runtime.export.open")}
-                    </a>
+                      label={t("preview.runtime.export.open")}
+                      style={secondaryButtonStyle}
+                    />
                   ) : null}
                 </div>
               ) : null}

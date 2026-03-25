@@ -212,6 +212,9 @@ describe("PreviewWorkbenchPage", () => {
     expect(screen.getByText("渲染状态：idle")).toBeInTheDocument();
     expect(screen.getByText("交付模式：file")).toBeInTheDocument();
     expect(screen.getByText("时长：30000ms")).toBeInTheDocument();
+    expect(
+      screen.getByText("Poster URL：https://cdn.example.com/preview-runtime-1.jpg"),
+    ).toBeInTheDocument();
     expect(screen.getByText("文件名：preview-export-1.mp4")).toBeInTheDocument();
     expect(screen.getByText("MIME：video/mp4")).toBeInTheDocument();
     expect(screen.getByText("大小：4096 B")).toBeInTheDocument();
@@ -300,6 +303,9 @@ describe("PreviewWorkbenchPage", () => {
     );
 
     expect(screen.queryByTestId("preview-runtime-video")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Poster URL：|Poster URL:/),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "打开播放输出" })).toHaveAttribute(
       "href",
       "https://cdn.example.com/preview-runtime-1.m3u8",

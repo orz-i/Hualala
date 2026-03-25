@@ -80,6 +80,7 @@
   "preview.runtime.playback.title": "播放输出",
   "preview.runtime.playback.deliveryMode": "交付模式：{mode}",
   "preview.runtime.playback.duration": "时长：{duration}",
+  "preview.runtime.playback.posterUrlLabel": "Poster URL：{url}",
   "preview.runtime.playback.open": "打开播放输出",
   "preview.runtime.export.title": "导出输出",
   "preview.runtime.export.fileName": "文件名：{fileName}",

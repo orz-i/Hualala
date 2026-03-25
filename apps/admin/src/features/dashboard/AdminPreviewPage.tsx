@@ -36,6 +36,12 @@ const buttonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
+type OutputLinkProps = {
+  href: string;
+  label: string;
+  style: CSSProperties;
+};
+
 function formatShotIdentity(item: AdminPreviewItemViewModel, t: AdminTranslator) {
   if (!item.shotSummary) {
     return item.shotId || t("preview.item.metadataUnavailable");
@@ -85,6 +91,25 @@ function formatRuntimeNumber(value: number, suffix: string, fallback: string) {
     return fallback;
   }
   return `${value}${suffix}`;
+}
+
+function OutputLink({ href, label, style }: OutputLinkProps) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      style={{
+        ...style,
+        textDecoration: "none",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {label}
+    </a>
+  );
 }
 
 export function AdminPreviewPage({
@@ -216,34 +241,27 @@ export function AdminPreviewPage({
                     })}
                   </p>
                   <p style={{ margin: 0, wordBreak: "break-all" }}>
-                    Playback URL：
-                    {formatRuntimeField(
-                      previewRuntime.playback.playbackUrl,
-                      t("preview.runtime.emptyValue"),
-                    )}
+                    {t("preview.runtime.playback.playbackUrlLabel", {
+                      url: formatRuntimeField(
+                        previewRuntime.playback.playbackUrl,
+                        t("preview.runtime.emptyValue"),
+                      ),
+                    })}
                   </p>
                   <p style={{ margin: 0, wordBreak: "break-all" }}>
-                    Poster URL：
-                    {formatRuntimeField(
-                      previewRuntime.playback.posterUrl,
-                      t("preview.runtime.emptyValue"),
-                    )}
+                    {t("preview.runtime.playback.posterUrlLabel", {
+                      url: formatRuntimeField(
+                        previewRuntime.playback.posterUrl,
+                        t("preview.runtime.emptyValue"),
+                      ),
+                    })}
                   </p>
                   {previewRuntime.playback.playbackUrl ? (
-                    <a
+                    <OutputLink
                       href={previewRuntime.playback.playbackUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        ...buttonStyle,
-                        textDecoration: "none",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {t("preview.runtime.playback.open")}
-                    </a>
+                      label={t("preview.runtime.playback.open")}
+                      style={buttonStyle}
+                    />
                   ) : null}
                 </div>
               ) : null}
@@ -277,27 +295,19 @@ export function AdminPreviewPage({
                     })}
                   </p>
                   <p style={{ margin: 0, wordBreak: "break-all" }}>
-                    Download URL：
-                    {formatRuntimeField(
-                      previewRuntime.exportOutput.downloadUrl,
-                      t("preview.runtime.emptyValue"),
-                    )}
+                    {t("preview.runtime.export.downloadUrlLabel", {
+                      url: formatRuntimeField(
+                        previewRuntime.exportOutput.downloadUrl,
+                        t("preview.runtime.emptyValue"),
+                      ),
+                    })}
                   </p>
                   {previewRuntime.exportOutput.downloadUrl ? (
-                    <a
+                    <OutputLink
                       href={previewRuntime.exportOutput.downloadUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        ...buttonStyle,
-                        textDecoration: "none",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {t("preview.runtime.export.open")}
-                    </a>
+                      label={t("preview.runtime.export.open")}
+                      style={buttonStyle}
+                    />
                   ) : null}
                 </div>
               ) : null}
