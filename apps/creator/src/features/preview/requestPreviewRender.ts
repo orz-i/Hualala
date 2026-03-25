@@ -21,11 +21,25 @@ type RequestPreviewRenderResponse = {
     renderWorkflowRunId?: string;
     renderStatus?: string;
     playbackAssetId?: string;
-    exportAssetId?: string;
-    resolvedLocale?: string;
-    createdAt?: string;
-    updatedAt?: string;
-  };
+        exportAssetId?: string;
+        resolvedLocale?: string;
+        createdAt?: string;
+        updatedAt?: string;
+        playback?: {
+          deliveryMode?: string;
+          playbackUrl?: string;
+          posterUrl?: string;
+          durationMs?: number;
+        };
+        exportOutput?: {
+          downloadUrl?: string;
+          mimeType?: string;
+          fileName?: string;
+          sizeBytes?: number;
+        };
+        lastErrorCode?: string;
+        lastErrorMessage?: string;
+      };
 };
 
 export async function requestPreviewRender({

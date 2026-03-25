@@ -1,7 +1,7 @@
 export type AdminMode = "success" | "failure";
 export type CreatorShotMode = "success" | "failure";
 export type CreatorImportMode = "success" | "failure";
-export type PreviewMode = "success";
+export type PreviewMode = "success" | "failure";
 export type AudioMode = "success";
 export type ReuseMode = "success";
 export type CollaborationMode = "success";
@@ -228,6 +228,20 @@ export type PreviewRuntimeState = {
   resolvedLocale: string;
   createdAt: string;
   updatedAt: string;
+  playback: {
+    deliveryMode: string;
+    playbackUrl: string;
+    posterUrl: string;
+    durationMs: number;
+  } | null;
+  exportOutput: {
+    downloadUrl: string;
+    mimeType: string;
+    fileName: string;
+    sizeBytes: number;
+  } | null;
+  lastErrorCode: string;
+  lastErrorMessage: string;
 };
 
 export type AudioClipState = {

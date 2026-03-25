@@ -8,7 +8,7 @@
 - admin `/preview?projectId=<id>&shotExecutionId=<id>`
 - 已冻结 contract 见 [`phase3-preview-contract-freeze.md`](./phase3-preview-contract-freeze.md)
 
-本轮不包含播放器、导出执行和音频联动增强。
+本轮不包含独立播放器页、导出页和音频联动增强。
 
 runtime shared truth 已冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-preview-runtime-freeze.md)，播放/导出 delivery payload 与 worker callback 已冻结在 [`phase3-preview-playback-export-freeze.md`](./phase3-preview-playback-export-freeze.md)。
 
@@ -36,11 +36,16 @@ runtime shared truth 已冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-
    - `resolved_locale`
    - `playback_asset_id`
    - `export_asset_id`
+   - playback delivery：`delivery_mode / playback_url / poster_url / duration_ms`
+   - export delivery：`download_url / mime_type / file_name / size_bytes`
+   - failed runtime 时的 `last_error_code / last_error_message`
 7. 点击 `请求预演渲染` 后：
    - 当 assembly 非空且当前没有 `queued/running` render 时，请求会使用当前 app locale 作为 `requested_locale`
    - 页面会先看到 `queued` 态
    - 随后由 `project.preview.runtime.updated` 事件触发 runtime 刷新
    - runtime 区块会被动更新到最新状态，但不会清空未保存的 assembly 草稿、chooser 选中项或手动 `shotId`
+   - `delivery_mode=file` 时，creator 会直接在 runtime 面板内渲染原生 `<video controls>`
+   - `delivery_mode=manifest` 时，creator 不引入新播放器依赖，只展示 manifest URL 和显式“打开播放输出”动作
 8. 允许继续做：
    - 上移 / 下移
    - 删除
@@ -68,7 +73,11 @@ runtime shared truth 已冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-
    - `primary_asset` 摘要
    - `source_run` 摘要
 5. admin `Runtime` 摘要区会跟 creator 使用同一份 preview runtime truth，并通过相同的 `project.preview.runtime.updated` 事件做刷新。
-6. admin 保持只读，只能查看 provenance，不允许改 assembly，也不提供 render 按钮
+6. admin 只做 delivery audit：
+   - 展示 playback/export delivery 摘要和失败信息
+   - 提供“打开播放输出 / 打开导出输出”动作
+   - 不嵌入原生播放器
+7. admin 保持只读，只能查看 provenance，不允许改 assembly，也不提供 render 按钮
 
 ## 验证命令
 
@@ -80,6 +89,8 @@ runtime shared truth 已冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-
 - `corepack pnpm run test:tooling`
 - `corepack pnpm run test:e2e:phase2:preview`
 - `corepack pnpm run test:e2e:phase3:preview-runtime`
+- `corepack pnpm run test:e2e:phase3:preview-playback-export`
+- `corepack pnpm run test:e2e:phase2:real`
 
 ## 已知边界
 
@@ -88,5 +99,5 @@ runtime shared truth 已冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-
 - 只有 `scene / shot` 标题会跟随 locale 变化；`project_title / episode_title` 继续保持当前存储值
 - 若缺少 `snapshot_kind=title` 翻译快照，后端会回退到源标题，页面不额外报错
 - `UpsertPreviewAssembly` 写入 shape 不变，仍只保存 `shotId / primaryAssetId / sourceRunId / sequence`
-- 当前 UI 仍只展示 runtime 摘要与素材引用，不直接消费 playback/export delivery payload
-- 播放器 / 导出执行后续会直接消费 preview runtime output contract，而不是复用 assembly metadata shape
+- creator 只在 `delivery_mode=file` 时用原生内联 `<video>`；`manifest` 仍然退回显式打开动作
+- admin 只展示 delivery audit，不嵌入播放器

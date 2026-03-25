@@ -107,6 +107,10 @@ function buildPreviewRuntime(overrides: Record<string, unknown> = {}) {
     resolvedLocale: "",
     createdAt: "2026-03-24T09:00:00.000Z",
     updatedAt: "2026-03-24T09:05:00.000Z",
+    playback: null,
+    exportOutput: null,
+    lastErrorCode: "",
+    lastErrorMessage: "",
     ...overrides,
   };
 }
@@ -264,10 +268,22 @@ describe("useAdminPreviewController", () => {
         buildPreviewRuntime({
           status: "ready",
           renderWorkflowRunId: "workflow-preview-1",
-          renderStatus: "succeeded",
+          renderStatus: "completed",
           playbackAssetId: "asset-playback-1",
           exportAssetId: "asset-export-1",
           resolvedLocale: "en-US",
+          playback: {
+            deliveryMode: "manifest",
+            playbackUrl: "https://cdn.example.com/preview-runtime-1.m3u8",
+            posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
+            durationMs: 30000,
+          },
+          exportOutput: {
+            downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
+            mimeType: "video/mp4",
+            fileName: "preview-export-1.mp4",
+            sizeBytes: 4096,
+          },
         }),
       );
 
@@ -296,8 +312,12 @@ describe("useAdminPreviewController", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.previewRuntime?.renderStatus).toBe("succeeded");
+      expect(result.current.previewRuntime?.renderStatus).toBe("completed");
     });
     expect(result.current.previewWorkbench?.summary.itemCount).toBe(2);
+    expect(result.current.previewRuntime?.playback?.deliveryMode).toBe("manifest");
+    expect(result.current.previewRuntime?.exportOutput?.downloadUrl).toBe(
+      "https://cdn.example.com/preview-export-1.mp4",
+    );
   });
 });
