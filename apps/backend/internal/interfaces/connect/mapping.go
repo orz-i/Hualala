@@ -269,6 +269,54 @@ func mapPreviewExportDelivery(record project.PreviewExportDelivery) *projectv1.P
 	}
 }
 
+func mapAudioRuntime(record projectapp.AudioRuntimeState) *projectv1.AudioRuntime {
+	waveforms := make([]*projectv1.AudioWaveformReference, 0, len(record.Runtime.Waveforms))
+	for _, waveform := range record.Runtime.Waveforms {
+		waveforms = append(waveforms, mapAudioWaveformReference(waveform))
+	}
+	return &projectv1.AudioRuntime{
+		AudioRuntimeId:      record.Runtime.ID,
+		ProjectId:           record.Runtime.ProjectID,
+		EpisodeId:           record.Runtime.EpisodeID,
+		AudioTimelineId:     record.Runtime.AudioTimelineID,
+		Status:              record.Runtime.Status,
+		RenderWorkflowRunId: record.Runtime.RenderWorkflowRunID,
+		RenderStatus:        record.Runtime.RenderStatus,
+		MixAssetId:          record.Runtime.MixAssetID,
+		MixOutput:           mapAudioMixDelivery(record.Runtime.MixOutput),
+		Waveforms:           waveforms,
+		LastErrorCode:       record.Runtime.LastErrorCode,
+		LastErrorMessage:    record.Runtime.LastErrorMessage,
+		CreatedAt:           timestampOrNil(record.Runtime.CreatedAt),
+		UpdatedAt:           timestampOrNil(record.Runtime.UpdatedAt),
+	}
+}
+
+func mapAudioMixDelivery(record project.AudioMixDelivery) *projectv1.AudioMixDelivery {
+	if record == (project.AudioMixDelivery{}) {
+		return nil
+	}
+	return &projectv1.AudioMixDelivery{
+		DeliveryMode: record.DeliveryMode,
+		PlaybackUrl:  record.PlaybackURL,
+		DownloadUrl:  record.DownloadURL,
+		MimeType:     record.MimeType,
+		FileName:     record.FileName,
+		SizeBytes:    record.SizeBytes,
+		DurationMs:   uint32(record.DurationMs),
+	}
+}
+
+func mapAudioWaveformReference(record project.AudioWaveformReference) *projectv1.AudioWaveformReference {
+	return &projectv1.AudioWaveformReference{
+		AssetId:     record.AssetID,
+		VariantId:   record.VariantID,
+		WaveformUrl: record.WaveformURL,
+		MimeType:    record.MimeType,
+		DurationMs:  uint32(record.DurationMs),
+	}
+}
+
 func mapAudioClip(record project.AudioClip) *projectv1.AudioClip {
 	return &projectv1.AudioClip{
 		ClipId:      record.ID,

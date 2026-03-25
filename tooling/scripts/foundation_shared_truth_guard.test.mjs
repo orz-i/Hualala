@@ -504,3 +504,89 @@ test("phase3 preview timeline spine shared truth stays on project proto, sdk, ru
   assert.match(outputFreezeDoc, /timeline spine/);
   assert.match(demoDoc, /timeline spine/);
 });
+
+test("phase3 audio runtime waveform shared truth stays on project proto, sdk, audio runtime app, db, events, and freeze entry points", () => {
+  const projectProto = readFileSync(
+    join(repoRoot, "proto", "hualala", "project", "v1", "project_service.proto"),
+    "utf8",
+  );
+  const assetProto = readFileSync(join(repoRoot, "proto", "hualala", "asset", "v1", "asset.proto"), "utf8");
+  const workflowProto = readFileSync(join(repoRoot, "proto", "hualala", "workflow", "v1", "workflow.proto"), "utf8");
+  const projectService = readFileSync(
+    join(repoRoot, "packages", "sdk", "src", "connect", "services", "project.ts"),
+    "utf8",
+  );
+  const audioRuntimeService = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "application", "projectapp", "service_audio_runtime.go"),
+    "utf8",
+  );
+  const audioEvents = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "platform", "events", "events.go"),
+    "utf8",
+  );
+  const audioStore = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "platform", "db", "postgres_store_audio_runtime.go"),
+    "utf8",
+  );
+  const audioRelational = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "platform", "db", "postgres_relational_audio_runtime.go"),
+    "utf8",
+  );
+  const freezeDoc = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase3-audio-runtime-waveform-freeze.md"),
+    "utf8",
+  );
+  const audioDemoDoc = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase2-audio-demo.md"),
+    "utf8",
+  );
+
+  const expectedFiles = [
+    "proto/hualala/project/v1/project_service.proto",
+    "packages/sdk/src/connect/services/project.ts",
+    "apps/backend/internal/application/projectapp/service_audio_runtime.go",
+    "apps/backend/internal/platform/db/postgres_store_audio_runtime.go",
+    "apps/backend/internal/platform/db/postgres_relational_audio_runtime.go",
+    "apps/backend/internal/platform/events/events.go",
+    "infra/migrations/0020_phase3_audio_runtime_waveform_shared_truth.sql",
+    "docs/runbooks/phase3-audio-runtime-waveform-freeze.md",
+  ];
+  for (const relativePath of expectedFiles) {
+    assert.equal(existsSync(join(repoRoot, ...relativePath.split("/"))), true, `${relativePath} should exist`);
+  }
+
+  assert.match(projectProto, /rpc GetAudioRuntime/);
+  assert.match(projectProto, /rpc RequestAudioRender/);
+  assert.match(projectProto, /rpc ApplyAudioRenderUpdate/);
+  assert.match(projectProto, /message AudioRuntime/);
+  assert.match(projectProto, /message AudioMixDelivery/);
+  assert.match(projectProto, /message AudioWaveformReference/);
+  assert.match(projectProto, /string mix_asset_id =/);
+  assert.match(projectProto, /AudioMixDelivery mix_output =/);
+  assert.match(projectProto, /repeated AudioWaveformReference waveforms =/);
+
+  assert.match(projectService, /getAudioRuntime/);
+  assert.match(projectService, /requestAudioRender/);
+  assert.match(projectService, /applyAudioRenderUpdate/);
+  assert.match(audioRuntimeService, /GetAudioRuntime/);
+  assert.match(audioRuntimeService, /RequestAudioRender/);
+  assert.match(audioRuntimeService, /ApplyAudioRenderUpdate/);
+  assert.match(audioRuntimeService, /audio\.render_mix/);
+  assert.match(audioEvents, /project\.audio\.runtime\.updated/);
+  assert.match(audioEvents, /audio_runtime_id/);
+  assert.doesNotMatch(audioEvents, /waveforms|waveform_url|playback_url|download_url/);
+  assert.match(audioStore, /audio_runtimes/);
+  assert.match(audioRelational, /audio_runtimes/);
+
+  assert.match(freezeDoc, /AudioRuntime/);
+  assert.match(freezeDoc, /AudioMixDelivery/);
+  assert.match(freezeDoc, /AudioWaveformReference/);
+  assert.match(freezeDoc, /project\.audio\.runtime\.updated/);
+  assert.match(freezeDoc, /waveform_url/);
+  assert.match(freezeDoc, /audio\.render_mix/);
+  assert.match(audioDemoDoc, /runtime foundation patch/i);
+  assert.match(audioDemoDoc, /waveform/i);
+
+  assert.doesNotMatch(assetProto, /GetAudioRuntime|RequestAudioRender|AudioRuntime/);
+  assert.doesNotMatch(workflowProto, /GetAudioRuntime|RequestAudioRender|AudioRuntime/);
+});

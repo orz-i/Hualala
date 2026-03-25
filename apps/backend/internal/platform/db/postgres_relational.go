@@ -243,6 +243,9 @@ func (p *PostgresPersister) loadRelationalSnapshot(ctx context.Context, snapshot
 	if err := p.loadAudioTimelines(ctx, snapshot); err != nil {
 		return err
 	}
+	if err := p.loadAudioRuntimes(ctx, snapshot); err != nil {
+		return err
+	}
 	if err := p.loadBillingAndReview(ctx, snapshot, runExecutionMap); err != nil {
 		return err
 	}
@@ -1038,6 +1041,9 @@ func (p *PostgresPersister) saveRelationalSnapshot(ctx context.Context, tx *sql.
 	if err := p.saveAudioTimelines(ctx, tx, snapshot); err != nil {
 		return err
 	}
+	if err := p.saveAudioRuntimes(ctx, tx, snapshot); err != nil {
+		return err
+	}
 	if err := p.saveBillingEvents(ctx, tx, snapshot, usageIDsByRun, budgetIDsByProject); err != nil {
 		return err
 	}
@@ -1129,6 +1135,7 @@ func clearMainTables(ctx context.Context, tx *sql.Tx) error {
 	statements := []string{
 		`DELETE FROM billing_events`,
 		`DELETE FROM usage_records`,
+		`DELETE FROM audio_runtimes`,
 		`DELETE FROM audio_clips`,
 		`DELETE FROM audio_tracks`,
 		`DELETE FROM audio_timelines`,

@@ -72,6 +72,15 @@ const (
 	// ProjectServiceUpsertAudioTimelineProcedure is the fully-qualified name of the ProjectService's
 	// UpsertAudioTimeline RPC.
 	ProjectServiceUpsertAudioTimelineProcedure = "/hualala.project.v1.ProjectService/UpsertAudioTimeline"
+	// ProjectServiceGetAudioRuntimeProcedure is the fully-qualified name of the ProjectService's
+	// GetAudioRuntime RPC.
+	ProjectServiceGetAudioRuntimeProcedure = "/hualala.project.v1.ProjectService/GetAudioRuntime"
+	// ProjectServiceRequestAudioRenderProcedure is the fully-qualified name of the ProjectService's
+	// RequestAudioRender RPC.
+	ProjectServiceRequestAudioRenderProcedure = "/hualala.project.v1.ProjectService/RequestAudioRender"
+	// ProjectServiceApplyAudioRenderUpdateProcedure is the fully-qualified name of the ProjectService's
+	// ApplyAudioRenderUpdate RPC.
+	ProjectServiceApplyAudioRenderUpdateProcedure = "/hualala.project.v1.ProjectService/ApplyAudioRenderUpdate"
 )
 
 // ProjectServiceClient is a client for the hualala.project.v1.ProjectService service.
@@ -89,6 +98,9 @@ type ProjectServiceClient interface {
 	ApplyPreviewRenderUpdate(context.Context, *connect.Request[v1.ApplyPreviewRenderUpdateRequest]) (*connect.Response[v1.ApplyPreviewRenderUpdateResponse], error)
 	GetAudioWorkbench(context.Context, *connect.Request[v1.GetAudioWorkbenchRequest]) (*connect.Response[v1.GetAudioWorkbenchResponse], error)
 	UpsertAudioTimeline(context.Context, *connect.Request[v1.UpsertAudioTimelineRequest]) (*connect.Response[v1.UpsertAudioTimelineResponse], error)
+	GetAudioRuntime(context.Context, *connect.Request[v1.GetAudioRuntimeRequest]) (*connect.Response[v1.GetAudioRuntimeResponse], error)
+	RequestAudioRender(context.Context, *connect.Request[v1.RequestAudioRenderRequest]) (*connect.Response[v1.RequestAudioRenderResponse], error)
+	ApplyAudioRenderUpdate(context.Context, *connect.Request[v1.ApplyAudioRenderUpdateRequest]) (*connect.Response[v1.ApplyAudioRenderUpdateResponse], error)
 }
 
 // NewProjectServiceClient constructs a client for the hualala.project.v1.ProjectService service. By
@@ -180,6 +192,24 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(projectServiceMethods.ByName("UpsertAudioTimeline")),
 			connect.WithClientOptions(opts...),
 		),
+		getAudioRuntime: connect.NewClient[v1.GetAudioRuntimeRequest, v1.GetAudioRuntimeResponse](
+			httpClient,
+			baseURL+ProjectServiceGetAudioRuntimeProcedure,
+			connect.WithSchema(projectServiceMethods.ByName("GetAudioRuntime")),
+			connect.WithClientOptions(opts...),
+		),
+		requestAudioRender: connect.NewClient[v1.RequestAudioRenderRequest, v1.RequestAudioRenderResponse](
+			httpClient,
+			baseURL+ProjectServiceRequestAudioRenderProcedure,
+			connect.WithSchema(projectServiceMethods.ByName("RequestAudioRender")),
+			connect.WithClientOptions(opts...),
+		),
+		applyAudioRenderUpdate: connect.NewClient[v1.ApplyAudioRenderUpdateRequest, v1.ApplyAudioRenderUpdateResponse](
+			httpClient,
+			baseURL+ProjectServiceApplyAudioRenderUpdateProcedure,
+			connect.WithSchema(projectServiceMethods.ByName("ApplyAudioRenderUpdate")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -198,6 +228,9 @@ type projectServiceClient struct {
 	applyPreviewRenderUpdate *connect.Client[v1.ApplyPreviewRenderUpdateRequest, v1.ApplyPreviewRenderUpdateResponse]
 	getAudioWorkbench        *connect.Client[v1.GetAudioWorkbenchRequest, v1.GetAudioWorkbenchResponse]
 	upsertAudioTimeline      *connect.Client[v1.UpsertAudioTimelineRequest, v1.UpsertAudioTimelineResponse]
+	getAudioRuntime          *connect.Client[v1.GetAudioRuntimeRequest, v1.GetAudioRuntimeResponse]
+	requestAudioRender       *connect.Client[v1.RequestAudioRenderRequest, v1.RequestAudioRenderResponse]
+	applyAudioRenderUpdate   *connect.Client[v1.ApplyAudioRenderUpdateRequest, v1.ApplyAudioRenderUpdateResponse]
 }
 
 // CreateProject calls hualala.project.v1.ProjectService.CreateProject.
@@ -265,6 +298,21 @@ func (c *projectServiceClient) UpsertAudioTimeline(ctx context.Context, req *con
 	return c.upsertAudioTimeline.CallUnary(ctx, req)
 }
 
+// GetAudioRuntime calls hualala.project.v1.ProjectService.GetAudioRuntime.
+func (c *projectServiceClient) GetAudioRuntime(ctx context.Context, req *connect.Request[v1.GetAudioRuntimeRequest]) (*connect.Response[v1.GetAudioRuntimeResponse], error) {
+	return c.getAudioRuntime.CallUnary(ctx, req)
+}
+
+// RequestAudioRender calls hualala.project.v1.ProjectService.RequestAudioRender.
+func (c *projectServiceClient) RequestAudioRender(ctx context.Context, req *connect.Request[v1.RequestAudioRenderRequest]) (*connect.Response[v1.RequestAudioRenderResponse], error) {
+	return c.requestAudioRender.CallUnary(ctx, req)
+}
+
+// ApplyAudioRenderUpdate calls hualala.project.v1.ProjectService.ApplyAudioRenderUpdate.
+func (c *projectServiceClient) ApplyAudioRenderUpdate(ctx context.Context, req *connect.Request[v1.ApplyAudioRenderUpdateRequest]) (*connect.Response[v1.ApplyAudioRenderUpdateResponse], error) {
+	return c.applyAudioRenderUpdate.CallUnary(ctx, req)
+}
+
 // ProjectServiceHandler is an implementation of the hualala.project.v1.ProjectService service.
 type ProjectServiceHandler interface {
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
@@ -280,6 +328,9 @@ type ProjectServiceHandler interface {
 	ApplyPreviewRenderUpdate(context.Context, *connect.Request[v1.ApplyPreviewRenderUpdateRequest]) (*connect.Response[v1.ApplyPreviewRenderUpdateResponse], error)
 	GetAudioWorkbench(context.Context, *connect.Request[v1.GetAudioWorkbenchRequest]) (*connect.Response[v1.GetAudioWorkbenchResponse], error)
 	UpsertAudioTimeline(context.Context, *connect.Request[v1.UpsertAudioTimelineRequest]) (*connect.Response[v1.UpsertAudioTimelineResponse], error)
+	GetAudioRuntime(context.Context, *connect.Request[v1.GetAudioRuntimeRequest]) (*connect.Response[v1.GetAudioRuntimeResponse], error)
+	RequestAudioRender(context.Context, *connect.Request[v1.RequestAudioRenderRequest]) (*connect.Response[v1.RequestAudioRenderResponse], error)
+	ApplyAudioRenderUpdate(context.Context, *connect.Request[v1.ApplyAudioRenderUpdateRequest]) (*connect.Response[v1.ApplyAudioRenderUpdateResponse], error)
 }
 
 // NewProjectServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -367,6 +418,24 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		connect.WithSchema(projectServiceMethods.ByName("UpsertAudioTimeline")),
 		connect.WithHandlerOptions(opts...),
 	)
+	projectServiceGetAudioRuntimeHandler := connect.NewUnaryHandler(
+		ProjectServiceGetAudioRuntimeProcedure,
+		svc.GetAudioRuntime,
+		connect.WithSchema(projectServiceMethods.ByName("GetAudioRuntime")),
+		connect.WithHandlerOptions(opts...),
+	)
+	projectServiceRequestAudioRenderHandler := connect.NewUnaryHandler(
+		ProjectServiceRequestAudioRenderProcedure,
+		svc.RequestAudioRender,
+		connect.WithSchema(projectServiceMethods.ByName("RequestAudioRender")),
+		connect.WithHandlerOptions(opts...),
+	)
+	projectServiceApplyAudioRenderUpdateHandler := connect.NewUnaryHandler(
+		ProjectServiceApplyAudioRenderUpdateProcedure,
+		svc.ApplyAudioRenderUpdate,
+		connect.WithSchema(projectServiceMethods.ByName("ApplyAudioRenderUpdate")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hualala.project.v1.ProjectService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProjectServiceCreateProjectProcedure:
@@ -395,6 +464,12 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 			projectServiceGetAudioWorkbenchHandler.ServeHTTP(w, r)
 		case ProjectServiceUpsertAudioTimelineProcedure:
 			projectServiceUpsertAudioTimelineHandler.ServeHTTP(w, r)
+		case ProjectServiceGetAudioRuntimeProcedure:
+			projectServiceGetAudioRuntimeHandler.ServeHTTP(w, r)
+		case ProjectServiceRequestAudioRenderProcedure:
+			projectServiceRequestAudioRenderHandler.ServeHTTP(w, r)
+		case ProjectServiceApplyAudioRenderUpdateProcedure:
+			projectServiceApplyAudioRenderUpdateHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -454,4 +529,16 @@ func (UnimplementedProjectServiceHandler) GetAudioWorkbench(context.Context, *co
 
 func (UnimplementedProjectServiceHandler) UpsertAudioTimeline(context.Context, *connect.Request[v1.UpsertAudioTimelineRequest]) (*connect.Response[v1.UpsertAudioTimelineResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.UpsertAudioTimeline is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) GetAudioRuntime(context.Context, *connect.Request[v1.GetAudioRuntimeRequest]) (*connect.Response[v1.GetAudioRuntimeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.GetAudioRuntime is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) RequestAudioRender(context.Context, *connect.Request[v1.RequestAudioRenderRequest]) (*connect.Response[v1.RequestAudioRenderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.RequestAudioRender is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) ApplyAudioRenderUpdate(context.Context, *connect.Request[v1.ApplyAudioRenderUpdateRequest]) (*connect.Response[v1.ApplyAudioRenderUpdateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hualala.project.v1.ProjectService.ApplyAudioRenderUpdate is not implemented"))
 }

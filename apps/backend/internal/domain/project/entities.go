@@ -112,6 +112,41 @@ type AudioTimeline struct {
 	UpdatedAt           time.Time
 }
 
+type AudioRuntime struct {
+	ID                  string
+	ProjectID           string
+	EpisodeID           string
+	AudioTimelineID     string
+	Status              string
+	RenderWorkflowRunID string
+	RenderStatus        string
+	MixAssetID          string
+	MixOutput           AudioMixDelivery
+	Waveforms           []AudioWaveformReference
+	LastErrorCode       string
+	LastErrorMessage    string
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+}
+
+type AudioMixDelivery struct {
+	DeliveryMode string
+	PlaybackURL  string
+	DownloadURL  string
+	MimeType     string
+	FileName     string
+	SizeBytes    int64
+	DurationMs   int
+}
+
+type AudioWaveformReference struct {
+	AssetID     string
+	VariantID   string
+	WaveformURL string
+	MimeType    string
+	DurationMs  int
+}
+
 type AudioTrack struct {
 	ID            string
 	TimelineID    string

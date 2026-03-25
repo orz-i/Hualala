@@ -68,6 +68,7 @@ type workflowJobPayload struct {
 
 var defaultProviderByWorkflowType = map[string]string{
 	"asset.import":            "seedance",
+	"audio.render_mix":        "seedance",
 	"shot_pipeline":           "seedance",
 	"preview.render_assembly": "seedance",
 }

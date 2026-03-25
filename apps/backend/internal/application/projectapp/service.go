@@ -66,6 +66,10 @@ type PreviewRuntimeState struct {
 	Runtime project.PreviewRuntime
 }
 
+type AudioRuntimeState struct {
+	Runtime project.AudioRuntime
+}
+
 type GetPreviewWorkbenchInput struct {
 	ProjectID     string
 	EpisodeID     string
@@ -92,6 +96,27 @@ type ApplyPreviewRenderUpdateInput struct {
 	ExportAssetID       string
 	Playback            project.PreviewPlaybackDelivery
 	ExportOutput        project.PreviewExportDelivery
+	ErrorCode           string
+	ErrorMessage        string
+}
+
+type GetAudioRuntimeInput struct {
+	ProjectID string
+	EpisodeID string
+}
+
+type RequestAudioRenderInput struct {
+	ProjectID string
+	EpisodeID string
+}
+
+type ApplyAudioRenderUpdateInput struct {
+	AudioRuntimeID      string
+	RenderWorkflowRunID string
+	RenderStatus        string
+	MixAssetID          string
+	MixOutput           project.AudioMixDelivery
+	Waveforms           []project.AudioWaveformReference
 	ErrorCode           string
 	ErrorMessage        string
 }

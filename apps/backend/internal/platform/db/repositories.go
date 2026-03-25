@@ -106,6 +106,11 @@ type ProjectContentRepository interface {
 	GetPreviewRuntime(projectID string, episodeID string) (project.PreviewRuntime, bool)
 	GetPreviewRuntimeByID(previewRuntimeID string) (project.PreviewRuntime, bool)
 
+	GenerateAudioRuntimeID() string
+	SaveAudioRuntime(ctx context.Context, record project.AudioRuntime) error
+	GetAudioRuntime(projectID string, episodeID string) (project.AudioRuntime, bool)
+	GetAudioRuntimeByID(audioRuntimeID string) (project.AudioRuntime, bool)
+
 	GenerateAudioTimelineID() string
 	SaveAudioTimeline(ctx context.Context, record project.AudioTimeline) error
 	GetAudioTimeline(projectID string, episodeID string) (project.AudioTimeline, bool)
@@ -254,6 +259,7 @@ func (s *MemoryStore) GeneratePreviewAssemblyItemID() string {
 	return s.NextPreviewAssemblyItemID()
 }
 func (s *MemoryStore) GeneratePreviewRuntimeID() string    { return s.NextPreviewRuntimeID() }
+func (s *MemoryStore) GenerateAudioRuntimeID() string      { return s.NextAudioRuntimeID() }
 func (s *MemoryStore) GenerateAudioTimelineID() string     { return s.NextAudioTimelineID() }
 func (s *MemoryStore) GenerateAudioTrackID() string        { return s.NextAudioTrackID() }
 func (s *MemoryStore) GenerateAudioClipID() string         { return s.NextAudioClipID() }
@@ -701,6 +707,27 @@ func (s *MemoryStore) GetPreviewRuntime(projectID string, episodeID string) (pro
 func (s *MemoryStore) GetPreviewRuntimeByID(previewRuntimeID string) (project.PreviewRuntime, bool) {
 	record, ok := s.PreviewRuntimes[previewRuntimeID]
 	return record, ok
+}
+
+func (s *MemoryStore) SaveAudioRuntime(ctx context.Context, record project.AudioRuntime) error {
+	return s.save(ctx, func() { s.AudioRuntimes[record.ID] = cloneAudioRuntime(record) })
+}
+
+func (s *MemoryStore) GetAudioRuntime(projectID string, episodeID string) (project.AudioRuntime, bool) {
+	for _, record := range s.AudioRuntimes {
+		if record.ProjectID == projectID && record.EpisodeID == episodeID {
+			return cloneAudioRuntime(record), true
+		}
+	}
+	return project.AudioRuntime{}, false
+}
+
+func (s *MemoryStore) GetAudioRuntimeByID(audioRuntimeID string) (project.AudioRuntime, bool) {
+	record, ok := s.AudioRuntimes[audioRuntimeID]
+	if !ok {
+		return project.AudioRuntime{}, false
+	}
+	return cloneAudioRuntime(record), true
 }
 
 func (s *MemoryStore) SaveAudioTimeline(ctx context.Context, record project.AudioTimeline) error {

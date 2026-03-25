@@ -1,21 +1,27 @@
 import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { createHualalaClient, type HualalaClientOptions } from "../transport";
 import type {
+  ApplyAudioRenderUpdateResponse,
   ApplyPreviewRenderUpdateResponse,
+  GetAudioRuntimeResponse,
   GetAudioWorkbenchResponse,
   GetPreviewRuntimeResponse,
   GetPreviewWorkbenchResponse,
   ListPreviewShotOptionsResponse,
+  RequestAudioRenderResponse,
   RequestPreviewRenderResponse,
   UpsertAudioTimelineResponse,
   UpsertPreviewAssemblyResponse,
 } from "../../gen/hualala/project/v1/project_service_pb";
 import {
+  ApplyAudioRenderUpdateResponseSchema,
   ApplyPreviewRenderUpdateResponseSchema,
+  GetAudioRuntimeResponseSchema,
   GetAudioWorkbenchResponseSchema,
   GetPreviewRuntimeResponseSchema,
   GetPreviewWorkbenchResponseSchema,
   ListPreviewShotOptionsResponseSchema,
+  RequestAudioRenderResponseSchema,
   RequestPreviewRenderResponseSchema,
   UpsertAudioTimelineResponseSchema,
   UpsertPreviewAssemblyResponseSchema,
@@ -163,6 +169,17 @@ export function createProjectClient(options: HualalaClientOptions = {}) {
         "sdk: failed to get audio workbench",
       );
     },
+    getAudioRuntime(body: {
+      projectId: string;
+      episodeId?: string;
+    }): Promise<GetAudioRuntimeResponse> {
+      return unaryWithSchema<GetAudioRuntimeResponse>(
+        GetAudioRuntimeResponseSchema,
+        "/hualala.project.v1.ProjectService/GetAudioRuntime",
+        body,
+        "sdk: failed to get audio runtime",
+      );
+    },
     upsertAudioTimeline(body: {
       projectId: string;
       episodeId?: string;
@@ -198,6 +215,48 @@ export function createProjectClient(options: HualalaClientOptions = {}) {
         "sdk: failed to upsert audio timeline",
       );
     },
+    requestAudioRender(body: {
+      projectId: string;
+      episodeId?: string;
+    }): Promise<RequestAudioRenderResponse> {
+      return unaryWithSchema<RequestAudioRenderResponse>(
+        RequestAudioRenderResponseSchema,
+        "/hualala.project.v1.ProjectService/RequestAudioRender",
+        body,
+        "sdk: failed to request audio render",
+      );
+    },
+    applyAudioRenderUpdate(body: {
+      audioRuntimeId: string;
+      renderWorkflowRunId: string;
+      renderStatus: string;
+      mixAssetId?: string;
+      mixOutput?: {
+        deliveryMode?: string;
+        playbackUrl?: string;
+        downloadUrl?: string;
+        mimeType?: string;
+        fileName?: string;
+        sizeBytes?: number;
+        durationMs?: number;
+      };
+      waveforms?: Array<{
+        assetId?: string;
+        variantId?: string;
+        waveformUrl?: string;
+        mimeType?: string;
+        durationMs?: number;
+      }>;
+      errorCode?: string;
+      errorMessage?: string;
+    }): Promise<ApplyAudioRenderUpdateResponse> {
+      return unaryWithSchema<ApplyAudioRenderUpdateResponse>(
+        ApplyAudioRenderUpdateResponseSchema,
+        "/hualala.project.v1.ProjectService/ApplyAudioRenderUpdate",
+        body,
+        "sdk: failed to apply audio render update",
+      );
+    },
   };
 }
 
@@ -211,5 +270,8 @@ export type ProjectUnaryResponses = {
   requestPreviewRender: RequestPreviewRenderResponse;
   applyPreviewRenderUpdate: ApplyPreviewRenderUpdateResponse;
   getAudioWorkbench: GetAudioWorkbenchResponse;
+  getAudioRuntime: GetAudioRuntimeResponse;
   upsertAudioTimeline: UpsertAudioTimelineResponse;
+  requestAudioRender: RequestAudioRenderResponse;
+  applyAudioRenderUpdate: ApplyAudioRenderUpdateResponse;
 };

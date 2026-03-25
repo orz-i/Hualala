@@ -306,6 +306,86 @@ func TestMemoryStorePersistsAndReloadsAudioTimelineSnapshot(t *testing.T) {
 	}
 }
 
+func TestMemoryStorePersistsAndReloadsAudioRuntimeSnapshot(t *testing.T) {
+	ctx := context.Background()
+	persister := &fakePersister{}
+
+	store, err := NewPersistentMemoryStore(ctx, persister)
+	if err != nil {
+		t.Fatalf("NewPersistentMemoryStore returned error: %v", err)
+	}
+
+	now := time.Now().UTC().Round(time.Second)
+	runtimeID := store.NextAudioRuntimeID()
+	store.AudioRuntimes[runtimeID] = project.AudioRuntime{
+		ID:                  runtimeID,
+		ProjectID:           "project-audio-runtime-1",
+		EpisodeID:           "episode-audio-runtime-1",
+		AudioTimelineID:     "audio-timeline-1",
+		Status:              "queued",
+		RenderWorkflowRunID: "workflow-run-audio-1",
+		RenderStatus:        "queued",
+		MixAssetID:          "mix-asset-1",
+		MixOutput: project.AudioMixDelivery{
+			DeliveryMode: "file",
+			PlaybackURL:  "https://cdn.example.com/audio-runtime.mp3",
+			DownloadURL:  "https://cdn.example.com/audio-runtime-download.mp3",
+			MimeType:     "audio/mpeg",
+			FileName:     "audio-runtime.mp3",
+			SizeBytes:    2048,
+			DurationMs:   12000,
+		},
+		Waveforms: []project.AudioWaveformReference{
+			{
+				AssetID:     "asset-1",
+				VariantID:   "variant-1",
+				WaveformURL: "https://cdn.example.com/audio-runtime-waveform.json",
+				MimeType:    "application/json",
+				DurationMs:  12000,
+			},
+		},
+		LastErrorCode:    "audio_render_failed",
+		LastErrorMessage: "stale failure",
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+
+	if err := store.Save(ctx); err != nil {
+		t.Fatalf("Save returned error: %v", err)
+	}
+
+	reloaded, err := NewPersistentMemoryStore(ctx, persister)
+	if err != nil {
+		t.Fatalf("NewPersistentMemoryStore reload returned error: %v", err)
+	}
+
+	record, ok := reloaded.AudioRuntimes[runtimeID]
+	if !ok {
+		t.Fatalf("expected audio runtime %q to be restored", runtimeID)
+	}
+	if got := record.RenderStatus; got != "queued" {
+		t.Fatalf("expected restored render status %q, got %q", "queued", got)
+	}
+	if got := record.AudioTimelineID; got != "audio-timeline-1" {
+		t.Fatalf("expected restored audio timeline id %q, got %q", "audio-timeline-1", got)
+	}
+	if got := record.MixOutput.PlaybackURL; got != "https://cdn.example.com/audio-runtime.mp3" {
+		t.Fatalf("expected restored playback url %q, got %q", "https://cdn.example.com/audio-runtime.mp3", got)
+	}
+	if got := len(record.Waveforms); got != 1 {
+		t.Fatalf("expected 1 restored waveform reference, got %d", got)
+	}
+	if got := record.Waveforms[0].WaveformURL; got != "https://cdn.example.com/audio-runtime-waveform.json" {
+		t.Fatalf("expected restored waveform url %q, got %q", "https://cdn.example.com/audio-runtime-waveform.json", got)
+	}
+	if got := record.LastErrorCode; got != "audio_render_failed" {
+		t.Fatalf("expected restored last_error_code %q, got %q", "audio_render_failed", got)
+	}
+	if got := record.LastErrorMessage; got != "stale failure" {
+		t.Fatalf("expected restored last_error_message %q, got %q", "stale failure", got)
+	}
+}
+
 func TestMemoryStorePersistsAndReloadsPreviewRuntimeSnapshot(t *testing.T) {
 	ctx := context.Background()
 	persister := &fakePersister{}
