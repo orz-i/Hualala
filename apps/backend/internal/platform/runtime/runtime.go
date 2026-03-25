@@ -3,6 +3,7 @@ package runtime
 import (
 	"github.com/hualala/apps/backend/internal/application/assetapp"
 	"github.com/hualala/apps/backend/internal/application/authapp"
+	"github.com/hualala/apps/backend/internal/application/backupapp"
 	"github.com/hualala/apps/backend/internal/application/billingapp"
 	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/executionapp"
@@ -28,6 +29,7 @@ type RepositorySet struct {
 	PolicyReader   db.PolicyReader
 	GatewayStore   db.GatewayResultStore
 	WorkflowRepo   db.WorkflowRepository
+	BackupRepo     db.BackupRepository
 	EventPublisher *events.Publisher
 }
 
@@ -35,6 +37,7 @@ type ServiceSet struct {
 	AuthService      *authapp.Service
 	OrgService       *orgapp.Service
 	Authorizer       authz.Authorizer
+	BackupService    *backupapp.Service
 	ExecutionService *executionapp.Service
 	AssetService     *assetapp.Service
 	ReviewService    *reviewapp.Service
@@ -69,6 +72,7 @@ func (f Factory) Repositories() RepositorySet {
 		PolicyReader:   f.store,
 		GatewayStore:   f.store,
 		WorkflowRepo:   f.store,
+		BackupRepo:     f.store,
 		EventPublisher: f.store.Publisher(),
 	}
 }
@@ -94,6 +98,7 @@ func (f Factory) services(workflowExecutor temporal.Executor) ServiceSet {
 		AuthService:      authapp.NewService(repos.AuthOrg, authorizer),
 		OrgService:       orgapp.NewService(repos.AuthOrg, authorizer),
 		Authorizer:       authorizer,
+		BackupService:    backupapp.NewService(repos.BackupRepo, authorizer),
 		ExecutionService: executionapp.NewService(repos.Executions, repos.ProjectContent, repos.Assets, repos.ReviewBilling, repos.EventPublisher),
 		AssetService:     assetapp.NewService(repos.Assets, repos.Executions, repos.EventPublisher),
 		ReviewService:    reviewapp.NewService(repos.Executions, repos.ReviewBilling, repos.EventPublisher),

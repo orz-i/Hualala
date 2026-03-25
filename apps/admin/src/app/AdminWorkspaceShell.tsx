@@ -19,6 +19,7 @@ const navItems: Array<{
   route: AdminRoute;
   key:
     | "nav.overview"
+    | "nav.backup"
     | "nav.workflow"
     | "nav.assets"
     | "nav.audio"
@@ -28,6 +29,7 @@ const navItems: Array<{
     | "nav.governance";
 }> = [
   { route: "overview", key: "nav.overview" },
+  { route: "backup", key: "nav.backup" },
   { route: "workflow", key: "nav.workflow" },
   { route: "assets", key: "nav.assets" },
   { route: "audio", key: "nav.audio" },

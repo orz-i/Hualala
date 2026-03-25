@@ -442,6 +442,12 @@ test("mock connect routes wire all phase2 fixture modules", async () => {
     "utf8",
   );
 
+  assert.match(source, /mock-connect\/backup\.ts/);
+  assert.match(source, /CreateBackupPackage/);
+  assert.match(source, /ListBackupPackages/);
+  assert.match(source, /GetBackupPackage/);
+  assert.match(source, /PreflightRestoreBackupPackage/);
+  assert.match(source, /ApplyBackupPackage/);
   assert.match(source, /mock-connect\/collaboration\.ts/);
   assert.match(source, /scenario\.collaboration/);
   assert.match(source, /GetCollaborationSession/);

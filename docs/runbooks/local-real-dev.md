@@ -122,6 +122,47 @@ corepack pnpm run dev:real:seed
 - `DATABASE_URL` 是否指到了错误库
 - 启动脚本是否还是旧的 snapshot-backed 运行方式
 
+## Admin Backup Restore 操作流
+
+`backup/restore` 现在是 Admin 顶级受控运维入口，只支持“从当前环境生成的备份包执行整运行时恢复”。
+
+访问入口：
+
+- `http://127.0.0.1:4173/backup?projectId=...&shotExecutionId=...&orgId=...`
+
+执行前提：
+
+- backend 必须运行在真实 Postgres runtime：
+  - `DB_DRIVER=postgres`
+  - `DATABASE_URL` 指向当前本地真实库
+- 当前会话需要 `org.settings.write`
+- v1 不支持上传外部备份文件，也不承诺跨环境兼容
+
+如果 backend 跑在 `memory` / mock runtime，或缺少数据库配置，`BackupService` 会直接返回 `failed_precondition`。这不是 UI 故障，而是服务端按设计拒绝执行 destructive restore。
+
+标准操作顺序：
+
+1. 执行 `corepack pnpm run dev:real`
+2. 如需一套可复现数据，再执行 `corepack pnpm run dev:real:seed`
+3. 打开 Admin `backup` 页，点击 `生成备份`
+4. 如需留档，点击 `下载 JSON`
+5. 先点击 `恢复前校验`，确认 warnings、项目范围和 destructive 标记
+6. 只有在确认当前库允许被整体替换后，再点击 `执行恢复`
+
+风险提示：
+
+- `执行恢复` 会整包替换当前 runtime truth，而不是导入到新 project scope
+- restore 会清理 transient 的 `gateway_results*` 命名空间，避免旧幂等缓存被带回新运行时
+- `backup_package:*` 历史记录会保留，因此恢复后仍然可以继续查看和下载旧备份包
+
+恢复后 smoke 检查：
+
+1. 刷新 `backup` 页，确认备份包历史仍可见，且没有直接报 `failed_precondition`
+2. 打开 `workflow` 页，确认工作流列表还能正常加载
+3. 打开 `assets` 页，确认 import batch / provenance 弹层还能正常打开
+4. 如当前库有 preview / audio 数据，再分别打开对应页面确认 runtime summary 仍能读回
+5. 重新触发一条新的 workflow，确认 worker 还能继续消费，而不是卡在旧的 transient 状态
+
 ## Backend 容器化基线
 
 当前仓库已经提供最小 backend/worker 容器入口：

@@ -29,6 +29,7 @@ type RuntimeStore interface {
 	PolicyReader
 	GatewayResultStore
 	WorkflowRepository
+	BackupRepository
 	SaveAudioRuntimeAndWorkflowRun(ctx context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun) error
 	SaveAudioRuntimeAndWorkflowDispatch(ctx context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun, workflowStep workflow.WorkflowStep, job workflow.Job, transition workflow.StateTransition) error
 	Publisher() *events.Publisher

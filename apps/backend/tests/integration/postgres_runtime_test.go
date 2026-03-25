@@ -179,6 +179,175 @@ func TestPostgresGatewayResultsPersistConcurrentKeys(t *testing.T) {
 	}
 }
 
+func TestPostgresPersisterRoundTripRestoresWorkflowRuntimeTruth(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	const suffix = "workflow-roundtrip"
+	storeKey := fmt.Sprintf("integration-%s-%s", t.Name(), suffix)
+	ctx := context.Background()
+	now := publishedAt()
+
+	resetNativeIntegrationRuntimeStore(t)
+	runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, suffix)
+
+	projectID := runtimeStore.GenerateProjectID()
+	if err := runtimeStore.SaveProject(ctx, project.Project{
+		ID:                   projectID,
+		OrganizationID:       db.DefaultDevOrganizationID,
+		OwnerUserID:          db.DefaultDevUserID,
+		Title:                "Workflow Runtime Roundtrip",
+		Status:               "draft",
+		CurrentStage:         "planning",
+		PrimaryContentLocale: "zh-CN",
+		CreatedAt:            now,
+		UpdatedAt:            now,
+	}); err != nil {
+		t.Fatalf("SaveProject returned error: %v", err)
+	}
+
+	workflowRun := workflow.WorkflowRun{
+		ID:                runtimeStore.GenerateWorkflowRunID(),
+		OrgID:             db.DefaultDevOrganizationID,
+		ProjectID:         projectID,
+		WorkflowType:      "shot_execution",
+		ResourceID:        projectID,
+		Status:            workflow.StatusRunning,
+		LastError:         "temporary-timeout",
+		CurrentStep:       "dispatch",
+		AttemptCount:      2,
+		Provider:          "seedance",
+		IdempotencyKey:    "idem-workflow-roundtrip",
+		ExternalRequestID: "external-workflow-roundtrip",
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := runtimeStore.SaveWorkflowRun(ctx, workflowRun); err != nil {
+		t.Fatalf("SaveWorkflowRun returned error: %v", err)
+	}
+
+	workflowStep := workflow.WorkflowStep{
+		ID:            runtimeStore.GenerateWorkflowStepID(),
+		WorkflowRunID: workflowRun.ID,
+		StepKey:       "dispatch",
+		StepOrder:     1,
+		Status:        workflow.StatusCompleted,
+		StartedAt:     now,
+		CompletedAt:   now.Add(2 * time.Second),
+		CreatedAt:     now,
+		UpdatedAt:     now.Add(2 * time.Second),
+	}
+	if err := runtimeStore.SaveWorkflowStep(ctx, workflowStep); err != nil {
+		t.Fatalf("SaveWorkflowStep returned error: %v", err)
+	}
+
+	job := workflow.Job{
+		ID:           runtimeStore.GenerateJobID(),
+		OrgID:        db.DefaultDevOrganizationID,
+		ProjectID:    projectID,
+		ResourceType: "project",
+		ResourceID:   projectID,
+		JobType:      workflow.JobTypeWorkflowDispatch,
+		Status:       workflow.StatusCompleted,
+		Priority:     8,
+		Payload:      `{"workflow_run_id":"` + workflowRun.ID + `"}`,
+		ScheduledAt:  now,
+		StartedAt:    now.Add(500 * time.Millisecond),
+		CompletedAt:  now.Add(1500 * time.Millisecond),
+		CreatedAt:    now,
+		UpdatedAt:    now.Add(1500 * time.Millisecond),
+	}
+	if err := runtimeStore.SaveJob(ctx, job); err != nil {
+		t.Fatalf("SaveJob returned error: %v", err)
+	}
+
+	transition := workflow.StateTransition{
+		ID:           runtimeStore.GenerateStateTransitionID(),
+		OrgID:        db.DefaultDevOrganizationID,
+		ProjectID:    projectID,
+		ResourceType: "project",
+		ResourceID:   projectID,
+		FromState:    "queued",
+		ToState:      "running",
+		Reason:       "workflow dispatch accepted",
+		CreatedAt:    now.Add(250 * time.Millisecond),
+	}
+	if err := runtimeStore.SaveStateTransition(ctx, transition); err != nil {
+		t.Fatalf("SaveStateTransition returned error: %v", err)
+	}
+
+	closeFn()
+
+	handle := openNativeIntegrationHandle(t)
+	defer handle.Close()
+
+	persister := db.NewPostgresPersister(handle, storeKey)
+	snapshot, err := persister.Load(ctx)
+	if err != nil {
+		t.Fatalf("PostgresPersister.Load returned error: %v", err)
+	}
+	if got := len(snapshot.WorkflowRuns); got != 1 {
+		t.Fatalf("expected 1 workflow run in snapshot, got %d", got)
+	}
+	if got := len(snapshot.WorkflowSteps); got != 1 {
+		t.Fatalf("expected 1 workflow step in snapshot, got %d", got)
+	}
+	if got := len(snapshot.Jobs); got != 1 {
+		t.Fatalf("expected 1 job in snapshot, got %d", got)
+	}
+	if got := len(snapshot.StateTransitions); got != 1 {
+		t.Fatalf("expected 1 state transition in snapshot, got %d", got)
+	}
+
+	resetNativeIntegrationRuntimeStore(t)
+	if err := persister.Save(ctx, *snapshot); err != nil {
+		t.Fatalf("PostgresPersister.Save returned error: %v", err)
+	}
+
+	restoredStore, restoreCloseFn := openNativeIntegrationRuntimeStore(t, suffix)
+	defer restoreCloseFn()
+
+	restoredRun, ok := restoredStore.GetWorkflowRun(workflowRun.ID)
+	if !ok {
+		t.Fatalf("expected workflow run %q after restore", workflowRun.ID)
+	}
+	if restoredRun.CurrentStep != workflowRun.CurrentStep {
+		t.Fatalf("expected restored workflow current_step %q, got %q", workflowRun.CurrentStep, restoredRun.CurrentStep)
+	}
+	if restoredRun.Provider != workflowRun.Provider {
+		t.Fatalf("expected restored workflow provider %q, got %q", workflowRun.Provider, restoredRun.Provider)
+	}
+	if restoredRun.ExternalRequestID != workflowRun.ExternalRequestID {
+		t.Fatalf("expected restored workflow external_request_id %q, got %q", workflowRun.ExternalRequestID, restoredRun.ExternalRequestID)
+	}
+
+	restoredSteps := restoredStore.ListWorkflowSteps(workflowRun.ID)
+	if len(restoredSteps) != 1 {
+		t.Fatalf("expected 1 restored workflow step, got %d", len(restoredSteps))
+	}
+	if restoredSteps[0].StepKey != workflowStep.StepKey {
+		t.Fatalf("expected restored workflow step key %q, got %q", workflowStep.StepKey, restoredSteps[0].StepKey)
+	}
+
+	restoredJobs := restoredStore.ListJobs(job.ResourceType, job.ResourceID, job.JobType, "")
+	if len(restoredJobs) != 1 {
+		t.Fatalf("expected 1 restored job, got %d", len(restoredJobs))
+	}
+	if !equalJSONPayloadStrings(restoredJobs[0].Payload, job.Payload) {
+		t.Fatalf("expected restored job payload %q, got %q", job.Payload, restoredJobs[0].Payload)
+	}
+
+	restoredTransitions := restoredStore.ListStateTransitions(transition.ResourceType, transition.ResourceID)
+	if len(restoredTransitions) != 1 {
+		t.Fatalf("expected 1 restored state transition, got %d", len(restoredTransitions))
+	}
+	if restoredTransitions[0].Reason != transition.Reason {
+		t.Fatalf("expected restored transition reason %q, got %q", transition.Reason, restoredTransitions[0].Reason)
+	}
+}
+
 func TestPostgresStorePersistsCollaborationAndPreviewSharedTruth(t *testing.T) {
 	cfg := config.Load()
 	if cfg.DBDriver != "postgres" {
@@ -1636,6 +1805,37 @@ func openNativeIntegrationRuntimeStore(t *testing.T, suffix string) (db.RuntimeS
 			}
 		}
 	}
+}
+
+func openNativeIntegrationHandle(t *testing.T) *sql.DB {
+	t.Helper()
+
+	cfg := config.Load()
+	handle, err := sql.Open("postgres", cfg.DatabaseURL)
+	if err != nil {
+		t.Fatalf("sql.Open returned error: %v", err)
+	}
+	if err := handle.PingContext(context.Background()); err != nil {
+		_ = handle.Close()
+		t.Fatalf("PingContext returned error: %v", err)
+	}
+	return handle
+}
+
+func equalJSONPayloadStrings(left string, right string) bool {
+	normalize := func(raw string) string {
+		var value any
+		if err := json.Unmarshal([]byte(raw), &value); err != nil {
+			return raw
+		}
+		normalized, err := json.Marshal(value)
+		if err != nil {
+			return raw
+		}
+		return string(normalized)
+	}
+
+	return normalize(left) == normalize(right)
 }
 
 func newUploadIntegrationHTTPServer(t *testing.T, runtimeStore db.RuntimeStore) (*httptest.Server, runtime.ServiceSet) {

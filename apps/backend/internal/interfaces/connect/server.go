@@ -7,6 +7,7 @@ import (
 
 	assetv1connect "github.com/hualala/apps/backend/gen/hualala/asset/v1/assetv1connect"
 	authv1connect "github.com/hualala/apps/backend/gen/hualala/auth/v1/authv1connect"
+	backupv1connect "github.com/hualala/apps/backend/gen/hualala/backup/v1/backupv1connect"
 	billingv1connect "github.com/hualala/apps/backend/gen/hualala/billing/v1/billingv1connect"
 	contentv1connect "github.com/hualala/apps/backend/gen/hualala/content/v1/contentv1connect"
 	executionv1connect "github.com/hualala/apps/backend/gen/hualala/execution/v1/executionv1connect"
@@ -16,6 +17,7 @@ import (
 	workflowv1connect "github.com/hualala/apps/backend/gen/hualala/workflow/v1/workflowv1connect"
 	"github.com/hualala/apps/backend/internal/application/assetapp"
 	"github.com/hualala/apps/backend/internal/application/authapp"
+	"github.com/hualala/apps/backend/internal/application/backupapp"
 	"github.com/hualala/apps/backend/internal/application/billingapp"
 	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/executionapp"
@@ -36,6 +38,7 @@ type RouteDependencies struct {
 	AuthService      *authapp.Service
 	OrgService       *orgapp.Service
 	Authorizer       authz.Authorizer
+	BackupService    *backupapp.Service
 	ExecutionService *executionapp.Service
 	AssetService     *assetapp.Service
 	ReviewService    *reviewapp.Service
@@ -52,6 +55,7 @@ func NewRouteDependencies(services runtime.ServiceSet) RouteDependencies {
 		AuthService:      services.AuthService,
 		OrgService:       services.OrgService,
 		Authorizer:       services.Authorizer,
+		BackupService:    services.BackupService,
 		ExecutionService: services.ExecutionService,
 		AssetService:     services.AssetService,
 		ReviewService:    services.ReviewService,
@@ -84,6 +88,10 @@ func RegisterRoutes(mux *http.ServeMux, deps RouteDependencies) {
 	}
 	if deps.OrgService != nil {
 		path, handler := orgv1connect.NewOrgServiceHandler(&orgHandler{service: deps.OrgService})
+		mux.Handle(path, handler)
+	}
+	if deps.BackupService != nil {
+		path, handler := backupv1connect.NewBackupServiceHandler(&backupHandler{service: deps.BackupService})
 		mux.Handle(path, handler)
 	}
 	if deps.AssetService != nil {

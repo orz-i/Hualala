@@ -237,6 +237,9 @@ func (p *PostgresPersister) loadRelationalSnapshot(ctx context.Context, snapshot
 	if err != nil {
 		return err
 	}
+	if err := p.loadWorkflowRuntime(ctx, snapshot); err != nil {
+		return err
+	}
 	if err := p.loadAssets(ctx, snapshot); err != nil {
 		return err
 	}
@@ -1036,6 +1039,9 @@ func (p *PostgresPersister) saveRelationalSnapshot(ctx context.Context, tx *sql.
 	}
 	usageIDsByRun, budgetIDsByProject, err := p.saveExecutionsAssetsReviewBilling(ctx, tx, snapshot)
 	if err != nil {
+		return err
+	}
+	if err := p.saveWorkflowRuntime(ctx, tx, snapshot); err != nil {
 		return err
 	}
 	if err := p.saveAudioTimelines(ctx, tx, snapshot); err != nil {
