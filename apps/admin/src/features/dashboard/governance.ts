@@ -59,3 +59,71 @@ export type AdminGovernanceViewModel = {
 	orgLocaleSettings: OrgLocaleSettingsViewModel;
 	capabilities: GovernanceCapabilitiesViewModel;
 };
+
+export type ModelGovernanceCapabilitiesViewModel = {
+	canReadModelGovernance: boolean;
+	canWriteModelGovernance: boolean;
+};
+
+export type ModelGovernanceFiltersViewModel = {
+	projectId: string;
+	shotId: string;
+	shotExecutionId: string;
+};
+
+export type ModelProfileViewModel = {
+	id: string;
+	orgId: string;
+	provider: string;
+	modelName: string;
+	capabilityType: string;
+	region: string;
+	supportedInputLocales: string[];
+	supportedOutputLocales: string[];
+	pricingSnapshotJson: string;
+	rateLimitPolicyJson: string;
+	status: string;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type PromptTemplateViewModel = {
+	id: string;
+	orgId: string;
+	templateFamily: string;
+	templateKey: string;
+	locale: string;
+	version: number;
+	content: string;
+	inputSchemaJson: string;
+	outputSchemaJson: string;
+	status: string;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type ContextBundleViewModel = {
+	id: string;
+	orgId: string;
+	projectId: string;
+	shotId: string;
+	shotExecutionId: string;
+	modelProfileId: string;
+	promptTemplateId: string;
+	inputLocale: string;
+	outputLocale: string;
+	resolvedPromptVersion: number;
+	sourceSnapshotIds: string[];
+	referencedAssetIds: string[];
+	payloadJson: string;
+	createdByUserId: string;
+	createdAt: string;
+};
+
+export type ModelGovernancePanelViewModel = {
+	filters: ModelGovernanceFiltersViewModel;
+	capabilities: ModelGovernanceCapabilitiesViewModel;
+	modelProfiles: ModelProfileViewModel[];
+	promptTemplates: PromptTemplateViewModel[];
+	contextBundles: ContextBundleViewModel[];
+};
