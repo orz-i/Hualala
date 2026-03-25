@@ -12,6 +12,7 @@ import (
 	"github.com/hualala/apps/backend/internal/domain/content"
 	"github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/domain/gateway"
+	"github.com/hualala/apps/backend/internal/domain/modelgovernance"
 	"github.com/hualala/apps/backend/internal/domain/org"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/review"
@@ -99,6 +100,9 @@ type Snapshot struct {
 	Budgets                map[string]billing.ProjectBudget
 	UsageRecords           map[string]billing.UsageRecord
 	BillingEvents          map[string]billing.BillingEvent
+	ModelProfiles          map[string]modelgovernance.ModelProfile
+	PromptTemplates        map[string]modelgovernance.PromptTemplate
+	ContextBundles         map[string]modelgovernance.ContextBundle
 	WorkflowRuns           map[string]workflow.WorkflowRun
 	WorkflowSteps          map[string]workflow.WorkflowStep
 	Jobs                   map[string]workflow.Job
@@ -177,6 +181,9 @@ type MemoryStore struct {
 	Budgets                map[string]billing.ProjectBudget
 	UsageRecords           map[string]billing.UsageRecord
 	BillingEvents          map[string]billing.BillingEvent
+	ModelProfiles          map[string]modelgovernance.ModelProfile
+	PromptTemplates        map[string]modelgovernance.PromptTemplate
+	ContextBundles         map[string]modelgovernance.ContextBundle
 	WorkflowRuns           map[string]workflow.WorkflowRun
 	WorkflowSteps          map[string]workflow.WorkflowStep
 	Jobs                   map[string]workflow.Job
@@ -222,6 +229,9 @@ func NewMemoryStore() *MemoryStore {
 		Budgets:                make(map[string]billing.ProjectBudget),
 		UsageRecords:           make(map[string]billing.UsageRecord),
 		BillingEvents:          make(map[string]billing.BillingEvent),
+		ModelProfiles:          make(map[string]modelgovernance.ModelProfile),
+		PromptTemplates:        make(map[string]modelgovernance.PromptTemplate),
+		ContextBundles:         make(map[string]modelgovernance.ContextBundle),
 		WorkflowRuns:           make(map[string]workflow.WorkflowRun),
 		WorkflowSteps:          make(map[string]workflow.WorkflowStep),
 		Jobs:                   make(map[string]workflow.Job),
@@ -347,6 +357,9 @@ func (s *MemoryStore) snapshot() Snapshot {
 		Budgets:                cloneMap(s.Budgets),
 		UsageRecords:           cloneMap(s.UsageRecords),
 		BillingEvents:          cloneMap(s.BillingEvents),
+		ModelProfiles:          cloneMap(s.ModelProfiles),
+		PromptTemplates:        cloneMap(s.PromptTemplates),
+		ContextBundles:         cloneMap(s.ContextBundles),
 		WorkflowRuns:           cloneMap(s.WorkflowRuns),
 		WorkflowSteps:          cloneMap(s.WorkflowSteps),
 		Jobs:                   cloneMap(s.Jobs),
@@ -427,6 +440,9 @@ func (s *MemoryStore) applySnapshot(snapshot Snapshot) {
 	s.Budgets = cloneMap(snapshot.Budgets)
 	s.UsageRecords = cloneMap(snapshot.UsageRecords)
 	s.BillingEvents = cloneMap(snapshot.BillingEvents)
+	s.ModelProfiles = cloneMap(snapshot.ModelProfiles)
+	s.PromptTemplates = cloneMap(snapshot.PromptTemplates)
+	s.ContextBundles = cloneMap(snapshot.ContextBundles)
 	s.WorkflowRuns = cloneMap(snapshot.WorkflowRuns)
 	s.WorkflowSteps = cloneMap(snapshot.WorkflowSteps)
 	s.Jobs = cloneMap(snapshot.Jobs)

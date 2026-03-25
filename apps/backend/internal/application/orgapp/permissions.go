@@ -15,6 +15,8 @@ const (
 	governancePermissionOrgMembersWrite      = "org.members.write"
 	governancePermissionOrgSettingsWrite     = "org.settings.write"
 	governancePermissionOrgRolesWrite        = "org.roles.write"
+	governancePermissionModelGovernanceRead  = "org.model_governance.read"
+	governancePermissionModelGovernanceWrite = "org.model_governance.write"
 )
 
 func availablePermissions() []org.AvailablePermission {
@@ -26,6 +28,8 @@ func availablePermissions() []org.AvailablePermission {
 		{Code: governancePermissionOrgMembersWrite, DisplayName: "Update member roles", Group: "governance"},
 		{Code: governancePermissionOrgSettingsWrite, DisplayName: "Update organization locale", Group: "governance"},
 		{Code: governancePermissionOrgRolesWrite, DisplayName: "Manage roles and permissions", Group: "governance"},
+		{Code: governancePermissionModelGovernanceRead, DisplayName: "Read model governance resources", Group: "governance"},
+		{Code: governancePermissionModelGovernanceWrite, DisplayName: "Manage model governance resources", Group: "governance"},
 	}
 }
 

@@ -222,5 +222,7 @@ func seedAuthOrgRuntimeStore(store *db.MemoryStore) {
 		"org.members.write",
 		"org.settings.write",
 		"org.roles.write",
+		"org.model_governance.read",
+		"org.model_governance.write",
 	}
 }

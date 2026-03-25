@@ -24,6 +24,16 @@ import {
   withRecentChanges,
 } from "./mock-connect/governance.ts";
 import {
+  createModelProfileState,
+  createPromptTemplateVersionState,
+  getContextBundleState,
+  listContextBundlesState,
+  setModelProfileStatusState,
+  setPromptTemplateStatusState,
+  updateModelProfileState,
+  updatePromptTemplateDraftState,
+} from "./mock-connect/model-governance.ts";
+import {
   buildCollaborationSessionPayload,
   createCollaborationState,
   releaseCollaborationLeaseState,
@@ -527,6 +537,255 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
               limitCents: adminState.budgetSnapshot.limitCents,
               reservedCents: adminState.budgetSnapshot.reservedCents,
             },
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.model.v1.ModelGovernanceService/ListModelProfiles") {
+        const body = route.request().postDataJSON() as {
+          capabilityType?: string;
+          status?: string;
+        };
+        await route.fulfill(
+          jsonResponse(200, {
+            modelProfiles: adminState.modelGovernance.modelProfiles.filter((profile) => {
+              if (body.capabilityType && profile.capabilityType !== body.capabilityType) {
+                return false;
+              }
+              if (body.status && profile.status !== body.status) {
+                return false;
+              }
+              return true;
+            }),
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.model.v1.ModelGovernanceService/CreateModelProfile") {
+        await delay(120);
+        adminState = withRecentChanges({
+          ...clone(adminState),
+          modelGovernance: createModelProfileState(
+            adminState.modelGovernance,
+            route.request().postDataJSON() as {
+              provider?: string;
+              modelName?: string;
+              capabilityType?: string;
+              region?: string;
+              supportedInputLocales?: string[];
+              supportedOutputLocales?: string[];
+              pricingSnapshotJson?: string;
+              rateLimitPolicyJson?: string;
+            },
+          ),
+        });
+        await route.fulfill(
+          jsonResponse(200, {
+            modelProfile: adminState.modelGovernance.modelProfiles.at(-1),
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.model.v1.ModelGovernanceService/UpdateModelProfile") {
+        await delay(120);
+        const body = route.request().postDataJSON() as {
+          modelProfileId?: string;
+          supportedInputLocales?: string[];
+          supportedOutputLocales?: string[];
+          pricingSnapshotJson?: string;
+          rateLimitPolicyJson?: string;
+        };
+        adminState = withRecentChanges({
+          ...clone(adminState),
+          modelGovernance: updateModelProfileState(adminState.modelGovernance, {
+            modelProfileId: body.modelProfileId ?? "",
+            supportedInputLocales: body.supportedInputLocales,
+            supportedOutputLocales: body.supportedOutputLocales,
+            pricingSnapshotJson: body.pricingSnapshotJson,
+            rateLimitPolicyJson: body.rateLimitPolicyJson,
+          }),
+        });
+        await route.fulfill(
+          jsonResponse(200, {
+            modelProfile: adminState.modelGovernance.modelProfiles.find(
+              (profile) => profile.id === body.modelProfileId,
+            ),
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.model.v1.ModelGovernanceService/SetModelProfileStatus") {
+        await delay(120);
+        const body = route.request().postDataJSON() as {
+          modelProfileId?: string;
+          status?: string;
+        };
+        adminState = withRecentChanges({
+          ...clone(adminState),
+          modelGovernance: setModelProfileStatusState(adminState.modelGovernance, {
+            modelProfileId: body.modelProfileId ?? "",
+            status: body.status ?? "paused",
+          }),
+        });
+        await route.fulfill(
+          jsonResponse(200, {
+            modelProfile: adminState.modelGovernance.modelProfiles.find(
+              (profile) => profile.id === body.modelProfileId,
+            ),
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.model.v1.ModelGovernanceService/ListPromptTemplates") {
+        const body = route.request().postDataJSON() as {
+          templateKey?: string;
+          locale?: string;
+          status?: string;
+        };
+        await route.fulfill(
+          jsonResponse(200, {
+            promptTemplates: adminState.modelGovernance.promptTemplates.filter((template) => {
+              if (body.templateKey && template.templateKey !== body.templateKey) {
+                return false;
+              }
+              if (body.locale && template.locale !== body.locale) {
+                return false;
+              }
+              if (body.status && template.status !== body.status) {
+                return false;
+              }
+              return true;
+            }),
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.model.v1.ModelGovernanceService/GetPromptTemplate") {
+        const body = route.request().postDataJSON() as { promptTemplateId?: string };
+        await route.fulfill(
+          jsonResponse(200, {
+            promptTemplate:
+              adminState.modelGovernance.promptTemplates.find(
+                (template) => template.id === body.promptTemplateId,
+              ) ?? null,
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.model.v1.ModelGovernanceService/CreatePromptTemplateVersion") {
+        await delay(120);
+        adminState = withRecentChanges({
+          ...clone(adminState),
+          modelGovernance: createPromptTemplateVersionState(
+            adminState.modelGovernance,
+            route.request().postDataJSON() as {
+              templateFamily?: string;
+              templateKey?: string;
+              locale?: string;
+              content?: string;
+              inputSchemaJson?: string;
+              outputSchemaJson?: string;
+            },
+          ),
+        });
+        await route.fulfill(
+          jsonResponse(200, {
+            promptTemplate: adminState.modelGovernance.promptTemplates.at(-1),
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.model.v1.ModelGovernanceService/UpdatePromptTemplateDraft") {
+        await delay(120);
+        const body = route.request().postDataJSON() as {
+          promptTemplateId?: string;
+          content?: string;
+          inputSchemaJson?: string;
+          outputSchemaJson?: string;
+        };
+        try {
+          adminState = withRecentChanges({
+            ...clone(adminState),
+            modelGovernance: updatePromptTemplateDraftState(adminState.modelGovernance, {
+              promptTemplateId: body.promptTemplateId ?? "",
+              content: body.content,
+              inputSchemaJson: body.inputSchemaJson,
+              outputSchemaJson: body.outputSchemaJson,
+            }),
+          });
+        } catch (error) {
+          await route.fulfill(
+            jsonResponse(412, {
+              error: error instanceof Error ? error.message : "prompt template update failed",
+            }),
+          );
+          return;
+        }
+        await route.fulfill(
+          jsonResponse(200, {
+            promptTemplate: adminState.modelGovernance.promptTemplates.find(
+              (template) => template.id === body.promptTemplateId,
+            ),
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.model.v1.ModelGovernanceService/SetPromptTemplateStatus") {
+        await delay(120);
+        const body = route.request().postDataJSON() as {
+          promptTemplateId?: string;
+          status?: string;
+        };
+        adminState = withRecentChanges({
+          ...clone(adminState),
+          modelGovernance: setPromptTemplateStatusState(adminState.modelGovernance, {
+            promptTemplateId: body.promptTemplateId ?? "",
+            status: body.status ?? "active",
+          }),
+        });
+        await route.fulfill(
+          jsonResponse(200, {
+            promptTemplate: adminState.modelGovernance.promptTemplates.find(
+              (template) => template.id === body.promptTemplateId,
+            ),
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.model.v1.ModelGovernanceService/ListContextBundles") {
+        const body = route.request().postDataJSON() as {
+          projectId?: string;
+          shotId?: string;
+          shotExecutionId?: string;
+          modelProfileId?: string;
+          promptTemplateId?: string;
+        };
+        await route.fulfill(
+          jsonResponse(200, {
+            contextBundles: listContextBundlesState(adminState.modelGovernance, body),
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.model.v1.ModelGovernanceService/GetContextBundle") {
+        const body = route.request().postDataJSON() as { contextBundleId?: string };
+        await route.fulfill(
+          jsonResponse(200, {
+            contextBundle: getContextBundleState(
+              adminState.modelGovernance,
+              body.contextBundleId ?? "",
+            ),
           }),
         );
         return;
