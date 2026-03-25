@@ -3,6 +3,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -1940,6 +1941,136 @@ func verifyImportWorkbenchExecutionReopenState(t *testing.T, storeKey string, sc
 	}
 }
 
+func TestPostgresStoreAudioRuntimeWorkflowSaveIsAtomic(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	resetNativeIntegrationRuntimeStore(t)
+	runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, "audio-runtime-atomic")
+	defer closeFn()
+
+	ctx := context.Background()
+	now := publishedAt()
+	projectID, episodeID, timelineID := seedAudioRuntimeIntegrationScope(t, ctx, runtimeStore, now)
+	runtimeRecord := project.AudioRuntime{
+		ID:              runtimeStore.GenerateAudioRuntimeID(),
+		ProjectID:       projectID,
+		EpisodeID:       episodeID,
+		AudioTimelineID: timelineID,
+		Status:          "draft",
+		RenderStatus:    "idle",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+
+	err := runtimeStore.SaveAudioRuntimeAndWorkflowRun(ctx, runtimeRecord, workflow.WorkflowRun{
+		ID:           "",
+		OrgID:        db.DefaultDevOrganizationID,
+		ProjectID:    projectID,
+		ResourceID:   runtimeRecord.ID,
+		WorkflowType: "audio.render_mix",
+		Status:       workflow.StatusRunning,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err == nil {
+		t.Fatalf("expected SaveAudioRuntimeAndWorkflowRun to fail when workflow run is invalid")
+	}
+
+	stored, ok, lookupErr := runtimeStore.GetAudioRuntime(projectID, episodeID)
+	if lookupErr != nil {
+		t.Fatalf("GetAudioRuntime returned error: %v", lookupErr)
+	}
+	if ok {
+		t.Fatalf("expected transaction rollback to prevent partial audio runtime save, got %+v", stored)
+	}
+}
+
+func TestPostgresStoreAudioRuntimeLookupReturnsDecodeErrors(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	resetNativeIntegrationRuntimeStore(t)
+	runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, "audio-runtime-decode")
+	defer closeFn()
+
+	ctx := context.Background()
+	now := publishedAt()
+	projectID, episodeID, timelineID := seedAudioRuntimeIntegrationScope(t, ctx, runtimeStore, now)
+	mixAssetID := runtimeStore.GenerateMediaAssetID()
+	if err := runtimeStore.SaveMediaAsset(ctx, assetdomain.MediaAsset{
+		ID:         mixAssetID,
+		OrgID:      db.DefaultDevOrganizationID,
+		ProjectID:  projectID,
+		MediaType:  "audio",
+		SourceType: "workflow_import",
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}); err != nil {
+		t.Fatalf("SaveMediaAsset returned error: %v", err)
+	}
+	runtimeRecord := project.AudioRuntime{
+		ID:              runtimeStore.GenerateAudioRuntimeID(),
+		ProjectID:       projectID,
+		EpisodeID:       episodeID,
+		AudioTimelineID: timelineID,
+		Status:          "ready",
+		RenderStatus:    "completed",
+		MixAssetID:      mixAssetID,
+		MixOutput: project.AudioMixDelivery{
+			DeliveryMode: "file",
+			PlaybackURL:  "https://cdn.example.com/audio-runtime.mp3",
+			DownloadURL:  "https://cdn.example.com/audio-runtime-download.mp3",
+			MimeType:     "audio/mpeg",
+			FileName:     "audio-runtime.mp3",
+			SizeBytes:    2048,
+			DurationMs:   12000,
+		},
+		Waveforms: []project.AudioWaveformReference{
+			{
+				AssetID:     "asset-1",
+				VariantID:   "variant-1",
+				WaveformURL: "https://cdn.example.com/audio-runtime-waveform.json",
+				MimeType:    "application/json",
+				DurationMs:  12000,
+			},
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := runtimeStore.SaveAudioRuntime(ctx, runtimeRecord); err != nil {
+		t.Fatalf("SaveAudioRuntime returned error: %v", err)
+	}
+
+	handle, err := sql.Open("postgres", cfg.DatabaseURL)
+	if err != nil {
+		t.Fatalf("sql.Open returned error: %v", err)
+	}
+	defer handle.Close()
+	if _, err := handle.ExecContext(ctx, `
+		UPDATE audio_runtimes
+		SET waveforms = $1::jsonb
+		WHERE id = $2
+	`, `[{"asset_id":123}]`, runtimeRecord.ID); err != nil {
+		t.Fatalf("UPDATE audio_runtimes returned error: %v", err)
+	}
+
+	if _, ok, err := runtimeStore.GetAudioRuntime(projectID, episodeID); err == nil {
+		t.Fatalf("expected GetAudioRuntime to surface waveform decode corruption")
+	} else if ok {
+		t.Fatalf("expected corrupt runtime lookup to return ok=false")
+	}
+	if _, ok, err := runtimeStore.GetAudioRuntimeByID(runtimeRecord.ID); err == nil {
+		t.Fatalf("expected GetAudioRuntimeByID to surface waveform decode corruption")
+	} else if ok {
+		t.Fatalf("expected corrupt runtime lookup by id to return ok=false")
+	}
+}
+
 func createUploadIntegrationProject(t *testing.T, services runtime.ServiceSet, title string) project.Project {
 	t.Helper()
 
@@ -1954,6 +2085,51 @@ func createUploadIntegrationProject(t *testing.T, services runtime.ServiceSet, t
 		t.Fatalf("CreateProject returned error: %v", err)
 	}
 	return projectRecord
+}
+
+func seedAudioRuntimeIntegrationScope(t *testing.T, ctx context.Context, runtimeStore db.RuntimeStore, now time.Time) (string, string, string) {
+	t.Helper()
+
+	projectID := runtimeStore.GenerateProjectID()
+	if err := runtimeStore.SaveProject(ctx, project.Project{
+		ID:                   projectID,
+		OrganizationID:       db.DefaultDevOrganizationID,
+		OwnerUserID:          db.DefaultDevUserID,
+		Title:                "Audio Runtime Integration",
+		Status:               "draft",
+		CurrentStage:         "audio",
+		PrimaryContentLocale: "zh-CN",
+		CreatedAt:            now,
+		UpdatedAt:            now,
+	}); err != nil {
+		t.Fatalf("SaveProject returned error: %v", err)
+	}
+
+	episodeID := runtimeStore.GenerateEpisodeID()
+	if err := runtimeStore.SaveEpisode(ctx, project.Episode{
+		ID:        episodeID,
+		ProjectID: projectID,
+		EpisodeNo: 1,
+		Title:     "Episode 1",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}); err != nil {
+		t.Fatalf("SaveEpisode returned error: %v", err)
+	}
+
+	timelineID := runtimeStore.GenerateAudioTimelineID()
+	if err := runtimeStore.SaveAudioTimeline(ctx, project.AudioTimeline{
+		ID:        timelineID,
+		ProjectID: projectID,
+		EpisodeID: episodeID,
+		Status:    "ready",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}); err != nil {
+		t.Fatalf("SaveAudioTimeline returned error: %v", err)
+	}
+
+	return projectID, episodeID, timelineID
 }
 
 func createShotWorkbenchIntegrationProject(t *testing.T, services runtime.ServiceSet, title string) (project.Project, contentdomain.Shot) {

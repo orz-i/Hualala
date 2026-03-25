@@ -131,7 +131,10 @@ func (s *Service) ApplyAudioRenderUpdate(ctx context.Context, input ApplyAudioRe
 	if !isValidAudioRenderUpdateStatus(renderStatus) {
 		return AudioRuntimeState{}, errors.New("projectapp: invalid argument: render_status must be running, completed, or failed")
 	}
-	record, ok := s.repo.GetAudioRuntimeByID(audioRuntimeID)
+	record, ok, err := s.repo.GetAudioRuntimeByID(audioRuntimeID)
+	if err != nil {
+		return AudioRuntimeState{}, err
+	}
 	if !ok {
 		return AudioRuntimeState{}, errors.New("projectapp: audio runtime not found")
 	}
@@ -183,10 +186,7 @@ func (s *Service) ApplyAudioRenderUpdate(ctx context.Context, input ApplyAudioRe
 	}
 
 	workflowRun.UpdatedAt = now
-	if err := s.repo.SaveAudioRuntime(ctx, record); err != nil {
-		return AudioRuntimeState{}, err
-	}
-	if err := s.repo.SaveWorkflowRun(ctx, workflowRun); err != nil {
+	if err := s.repo.SaveAudioRuntimeAndWorkflowRun(ctx, record, workflowRun); err != nil {
 		return AudioRuntimeState{}, err
 	}
 
@@ -209,7 +209,11 @@ func (s *Service) ApplyAudioRenderUpdate(ctx context.Context, input ApplyAudioRe
 }
 
 func (s *Service) ensureAudioRuntime(ctx context.Context, projectID string, episodeID string, audioTimelineID string) (project.AudioRuntime, error) {
-	if record, ok := s.repo.GetAudioRuntime(projectID, episodeID); ok {
+	record, ok, err := s.repo.GetAudioRuntime(projectID, episodeID)
+	if err != nil {
+		return project.AudioRuntime{}, err
+	}
+	if ok {
 		if strings.TrimSpace(record.AudioTimelineID) == "" && strings.TrimSpace(audioTimelineID) != "" {
 			record.AudioTimelineID = strings.TrimSpace(audioTimelineID)
 			record.UpdatedAt = time.Now().UTC()
@@ -221,7 +225,7 @@ func (s *Service) ensureAudioRuntime(ctx context.Context, projectID string, epis
 	}
 
 	now := time.Now().UTC()
-	record := project.AudioRuntime{
+	record = project.AudioRuntime{
 		ID:              s.repo.GenerateAudioRuntimeID(),
 		ProjectID:       projectID,
 		EpisodeID:       episodeID,
@@ -233,7 +237,11 @@ func (s *Service) ensureAudioRuntime(ctx context.Context, projectID string, epis
 	}
 	if err := s.repo.SaveAudioRuntime(ctx, record); err != nil {
 		if db.IsUniqueViolation(err) {
-			if existing, ok := s.repo.GetAudioRuntime(projectID, episodeID); ok {
+			existing, ok, lookupErr := s.repo.GetAudioRuntime(projectID, episodeID)
+			if lookupErr != nil {
+				return project.AudioRuntime{}, lookupErr
+			}
+			if ok {
 				return existing, nil
 			}
 		}

@@ -2,11 +2,13 @@ package projectapp
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/hualala/apps/backend/internal/domain/project"
+	"github.com/hualala/apps/backend/internal/domain/workflow"
 	"github.com/hualala/apps/backend/internal/platform/db"
 )
 
@@ -37,7 +39,9 @@ func TestGetAudioRuntimeAutoCreatesProjectScopedRuntime(t *testing.T) {
 	if got := runtimeState.Runtime.AudioTimelineID; got == "" {
 		t.Fatalf("expected audio timeline id to be populated")
 	}
-	if _, ok := store.GetAudioRuntime(projectID, ""); !ok {
+	if _, ok, err := store.GetAudioRuntime(projectID, ""); err != nil {
+		t.Fatalf("GetAudioRuntime returned error: %v", err)
+	} else if !ok {
 		t.Fatalf("expected project-scoped audio runtime to be persisted")
 	}
 }
@@ -528,4 +532,151 @@ func TestApplyAudioRenderUpdateRejectsInvalidWaveformReferences(t *testing.T) {
 	if !strings.Contains(strings.ToLower(err.Error()), "invalid argument") {
 		t.Fatalf("expected invalid argument error, got %v", err)
 	}
+}
+
+func TestApplyAudioRenderUpdateUsesAtomicAudioRuntimeWorkflowSave(t *testing.T) {
+	ctx := context.Background()
+	store := &audioRuntimeRepoDouble{MemoryStore: db.NewMemoryStore()}
+	projectID, episodeID, _, _ := seedAudioProject(t, ctx, store.MemoryStore)
+	service := NewService(store)
+
+	now := time.Now().UTC()
+	runtimeRecord := project.AudioRuntime{
+		ID:                  store.GenerateAudioRuntimeID(),
+		ProjectID:           projectID,
+		EpisodeID:           episodeID,
+		AudioTimelineID:     store.GenerateAudioTimelineID(),
+		Status:              "queued",
+		RenderWorkflowRunID: store.GenerateWorkflowRunID(),
+		RenderStatus:        "queued",
+		CreatedAt:           now,
+		UpdatedAt:           now,
+	}
+	if err := store.MemoryStore.SaveAudioRuntime(ctx, runtimeRecord); err != nil {
+		t.Fatalf("SaveAudioRuntime returned error: %v", err)
+	}
+	workflowRun := workflow.WorkflowRun{
+		ID:           runtimeRecord.RenderWorkflowRunID,
+		OrgID:        db.DefaultDevOrganizationID,
+		ProjectID:    projectID,
+		ResourceID:   runtimeRecord.ID,
+		WorkflowType: "audio.render_mix",
+		Status:       workflow.StatusPending,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+	if err := store.MemoryStore.SaveWorkflowRun(ctx, workflowRun); err != nil {
+		t.Fatalf("SaveWorkflowRun returned error: %v", err)
+	}
+
+	store.disallowDirectRuntimeSave = true
+	store.disallowDirectWorkflowSave = true
+
+	updated, err := service.ApplyAudioRenderUpdate(ctx, ApplyAudioRenderUpdateInput{
+		AudioRuntimeID:      runtimeRecord.ID,
+		RenderWorkflowRunID: runtimeRecord.RenderWorkflowRunID,
+		RenderStatus:        "running",
+	})
+	if err != nil {
+		t.Fatalf("ApplyAudioRenderUpdate returned error: %v", err)
+	}
+	if !store.atomicSaveCalled {
+		t.Fatalf("expected ApplyAudioRenderUpdate to use atomic audio runtime + workflow save")
+	}
+	if got := updated.Runtime.Status; got != "running" {
+		t.Fatalf("expected runtime status %q, got %q", "running", got)
+	}
+
+	storedRuntime, ok, err := store.GetAudioRuntimeByID(runtimeRecord.ID)
+	if err != nil {
+		t.Fatalf("GetAudioRuntimeByID returned error: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected runtime %q to remain persisted", runtimeRecord.ID)
+	}
+	if got := storedRuntime.RenderStatus; got != "running" {
+		t.Fatalf("expected stored render status %q, got %q", "running", got)
+	}
+
+	storedRun, ok := store.GetWorkflowRun(runtimeRecord.RenderWorkflowRunID)
+	if !ok {
+		t.Fatalf("expected workflow run %q to remain persisted", runtimeRecord.RenderWorkflowRunID)
+	}
+	if got := storedRun.Status; got != workflow.StatusRunning {
+		t.Fatalf("expected stored workflow status %q, got %q", workflow.StatusRunning, got)
+	}
+}
+
+func TestGetAudioRuntimePropagatesLookupErrorsWithoutAutoCreate(t *testing.T) {
+	ctx := context.Background()
+	store := &audioRuntimeRepoDouble{
+		MemoryStore: db.NewMemoryStore(),
+		lookupErr:   errors.New("db: decode audio runtime waveforms: invalid character"),
+	}
+	projectID, episodeID, _, _ := seedAudioProject(t, ctx, store.MemoryStore)
+	service := NewService(store)
+
+	_, err := service.GetAudioRuntime(ctx, GetAudioRuntimeInput{
+		ProjectID: projectID,
+		EpisodeID: episodeID,
+	})
+	if err == nil {
+		t.Fatalf("expected GetAudioRuntime to surface lookup error")
+	}
+	if !strings.Contains(err.Error(), "decode audio runtime waveforms") {
+		t.Fatalf("expected lookup error to be preserved, got %v", err)
+	}
+
+	store.lookupErr = nil
+	_, ok, err := store.GetAudioRuntime(projectID, episodeID)
+	if err != nil {
+		t.Fatalf("GetAudioRuntime returned error after clearing lookupErr: %v", err)
+	}
+	if ok {
+		t.Fatalf("expected runtime not to be auto-created when lookup fails")
+	}
+}
+
+type audioRuntimeRepoDouble struct {
+	*db.MemoryStore
+	lookupErr                  error
+	lookupByIDErr              error
+	disallowDirectRuntimeSave  bool
+	disallowDirectWorkflowSave bool
+	atomicSaveCalled           bool
+}
+
+func (s *audioRuntimeRepoDouble) GetAudioRuntime(projectID string, episodeID string) (project.AudioRuntime, bool, error) {
+	if s.lookupErr != nil {
+		return project.AudioRuntime{}, false, s.lookupErr
+	}
+	return s.MemoryStore.GetAudioRuntime(projectID, episodeID)
+}
+
+func (s *audioRuntimeRepoDouble) GetAudioRuntimeByID(audioRuntimeID string) (project.AudioRuntime, bool, error) {
+	if s.lookupByIDErr != nil {
+		return project.AudioRuntime{}, false, s.lookupByIDErr
+	}
+	return s.MemoryStore.GetAudioRuntimeByID(audioRuntimeID)
+}
+
+func (s *audioRuntimeRepoDouble) SaveAudioRuntime(ctx context.Context, record project.AudioRuntime) error {
+	if s.disallowDirectRuntimeSave {
+		return errors.New("direct SaveAudioRuntime should not be used in ApplyAudioRenderUpdate")
+	}
+	return s.MemoryStore.SaveAudioRuntime(ctx, record)
+}
+
+func (s *audioRuntimeRepoDouble) SaveWorkflowRun(ctx context.Context, record workflow.WorkflowRun) error {
+	if s.disallowDirectWorkflowSave {
+		return errors.New("direct SaveWorkflowRun should not be used in ApplyAudioRenderUpdate")
+	}
+	return s.MemoryStore.SaveWorkflowRun(ctx, record)
+}
+
+func (s *audioRuntimeRepoDouble) SaveAudioRuntimeAndWorkflowRun(_ context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun) error {
+	s.atomicSaveCalled = true
+	s.AudioRuntimes[runtimeRecord.ID] = runtimeRecord
+	s.WorkflowRuns[workflowRun.ID] = workflowRun
+	return nil
 }

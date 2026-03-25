@@ -2,19 +2,48 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/hualala/apps/backend/internal/domain/project"
+	"github.com/hualala/apps/backend/internal/domain/workflow"
 )
 
 func (s *PostgresStore) SaveAudioRuntime(ctx context.Context, record project.AudioRuntime) error {
+	return saveAudioRuntimeExec(ctx, s.db, record)
+}
+
+func (s *PostgresStore) SaveAudioRuntimeAndWorkflowRun(ctx context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun) error {
+	if s == nil || s.db == nil {
+		return errors.New("db: postgres store requires database handle")
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("db: begin audio runtime/workflow tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	if err := saveAudioRuntimeExec(ctx, tx, runtimeRecord); err != nil {
+		return err
+	}
+	if err := saveWorkflowRunExec(ctx, tx, workflowRun); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("db: commit audio runtime/workflow tx: %w", err)
+	}
+	return nil
+}
+
+func saveAudioRuntimeExec(ctx context.Context, execer sqlContextExecutor, record project.AudioRuntime) error {
 	waveforms, err := encodeAudioWaveformReferences(record.Waveforms)
 	if err != nil {
 		return fmt.Errorf("db: encode audio waveform references: %w", err)
 	}
-	_, err = s.db.ExecContext(ctx, `
+	_, err = execer.ExecContext(ctx, `
 		INSERT INTO audio_runtimes (
 			id, project_id, episode_id, audio_timeline_id, status, render_workflow_run_id, render_status,
 			mix_asset_id, mix_delivery_mode, mix_playback_url, mix_download_url, mix_mime_type,
@@ -47,13 +76,11 @@ func (s *PostgresStore) SaveAudioRuntime(ctx context.Context, record project.Aud
 	return nil
 }
 
-func (s *PostgresStore) GetAudioRuntime(projectID string, episodeID string) (project.AudioRuntime, bool) {
+func (s *PostgresStore) GetAudioRuntime(projectID string, episodeID string) (project.AudioRuntime, bool, error) {
 	if s == nil || s.db == nil {
-		return project.AudioRuntime{}, false
+		return project.AudioRuntime{}, false, nil
 	}
-	record := project.AudioRuntime{}
-	var waveformsText string
-	err := s.db.QueryRowContext(context.Background(), `
+	return s.queryAudioRuntime("project/episode scope", `
 		SELECT id, project_id::text, COALESCE(episode_id::text, ''), audio_timeline_id::text, status,
 		       COALESCE(render_workflow_run_id::text, ''), render_status,
 		       COALESCE(mix_asset_id::text, ''), COALESCE(mix_delivery_mode, ''), COALESCE(mix_playback_url, ''),
@@ -63,48 +90,14 @@ func (s *PostgresStore) GetAudioRuntime(projectID string, episodeID string) (pro
 		FROM audio_runtimes
 		WHERE project_id = $1 AND COALESCE(episode_id::text, '') = $2
 		LIMIT 1
-	`, strings.TrimSpace(projectID), strings.TrimSpace(episodeID)).Scan(
-		&record.ID,
-		&record.ProjectID,
-		&record.EpisodeID,
-		&record.AudioTimelineID,
-		&record.Status,
-		&record.RenderWorkflowRunID,
-		&record.RenderStatus,
-		&record.MixAssetID,
-		&record.MixOutput.DeliveryMode,
-		&record.MixOutput.PlaybackURL,
-		&record.MixOutput.DownloadURL,
-		&record.MixOutput.MimeType,
-		&record.MixOutput.FileName,
-		&record.MixOutput.SizeBytes,
-		&record.MixOutput.DurationMs,
-		&waveformsText,
-		&record.LastErrorCode,
-		&record.LastErrorMessage,
-		&record.CreatedAt,
-		&record.UpdatedAt,
-	)
-	if err != nil {
-		return project.AudioRuntime{}, false
-	}
-	record.Waveforms, err = decodeAudioWaveformReferences(waveformsText)
-	if err != nil {
-		log.Printf("db: failed to decode audio runtime waveforms for project=%s episode=%s runtime=%s: %v", record.ProjectID, record.EpisodeID, record.ID, err)
-		return project.AudioRuntime{}, false
-	}
-	record.CreatedAt = record.CreatedAt.UTC()
-	record.UpdatedAt = record.UpdatedAt.UTC()
-	return record, true
+	`, strings.TrimSpace(projectID), strings.TrimSpace(episodeID))
 }
 
-func (s *PostgresStore) GetAudioRuntimeByID(audioRuntimeID string) (project.AudioRuntime, bool) {
+func (s *PostgresStore) GetAudioRuntimeByID(audioRuntimeID string) (project.AudioRuntime, bool, error) {
 	if s == nil || s.db == nil {
-		return project.AudioRuntime{}, false
+		return project.AudioRuntime{}, false, nil
 	}
-	record := project.AudioRuntime{}
-	var waveformsText string
-	err := s.db.QueryRowContext(context.Background(), `
+	return s.queryAudioRuntime("runtime id", `
 		SELECT id, project_id::text, COALESCE(episode_id::text, ''), audio_timeline_id::text, status,
 		       COALESCE(render_workflow_run_id::text, ''), render_status,
 		       COALESCE(mix_asset_id::text, ''), COALESCE(mix_delivery_mode, ''), COALESCE(mix_playback_url, ''),
@@ -114,7 +107,13 @@ func (s *PostgresStore) GetAudioRuntimeByID(audioRuntimeID string) (project.Audi
 		FROM audio_runtimes
 		WHERE id = $1
 		LIMIT 1
-	`, strings.TrimSpace(audioRuntimeID)).Scan(
+	`, strings.TrimSpace(audioRuntimeID))
+}
+
+func (s *PostgresStore) queryAudioRuntime(scope string, query string, args ...any) (project.AudioRuntime, bool, error) {
+	record := project.AudioRuntime{}
+	var waveformsText string
+	err := s.db.QueryRowContext(context.Background(), query, args...).Scan(
 		&record.ID,
 		&record.ProjectID,
 		&record.EpisodeID,
@@ -136,15 +135,21 @@ func (s *PostgresStore) GetAudioRuntimeByID(audioRuntimeID string) (project.Audi
 		&record.CreatedAt,
 		&record.UpdatedAt,
 	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return project.AudioRuntime{}, false, nil
+	}
 	if err != nil {
-		return project.AudioRuntime{}, false
+		return project.AudioRuntime{}, false, fmt.Errorf("db: query audio runtime by %s: %w", scope, err)
 	}
 	record.Waveforms, err = decodeAudioWaveformReferences(waveformsText)
 	if err != nil {
-		log.Printf("db: failed to decode audio runtime waveforms by id for runtime=%s: %v", record.ID, err)
-		return project.AudioRuntime{}, false
+		return project.AudioRuntime{}, false, fmt.Errorf("db: decode audio runtime waveforms by %s for runtime %s: %w", scope, record.ID, err)
 	}
 	record.CreatedAt = record.CreatedAt.UTC()
 	record.UpdatedAt = record.UpdatedAt.UTC()
-	return record, true
+	return record, true, nil
+}
+
+type sqlContextExecutor interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }

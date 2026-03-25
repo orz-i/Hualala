@@ -322,6 +322,10 @@ func (s *PostgresStore) ListBillingEventsByProject(projectID string) []billing.B
 }
 
 func (s *PostgresStore) SaveWorkflowRun(ctx context.Context, record workflow.WorkflowRun) error {
+	return saveWorkflowRunExec(ctx, s.db, record)
+}
+
+func saveWorkflowRunExec(ctx context.Context, execer sqlContextExecutor, record workflow.WorkflowRun) error {
 	metadata, err := jsonString(workflowRunMetadata{
 		ResourceID:        record.ResourceID,
 		CurrentStep:       record.CurrentStep,
@@ -332,7 +336,7 @@ func (s *PostgresStore) SaveWorkflowRun(ctx context.Context, record workflow.Wor
 	if err != nil {
 		return fmt.Errorf("db: encode workflow run %s metadata: %w", record.ID, err)
 	}
-	_, err = s.db.ExecContext(ctx, `
+	_, err = execer.ExecContext(ctx, `
 		INSERT INTO workflow_runs (
 			id, organization_id, project_id, workflow_type, status, trigger_source,
 			idempotency_key, failure_reason, metadata, created_at, updated_at

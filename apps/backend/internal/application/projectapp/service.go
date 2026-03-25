@@ -26,6 +26,7 @@ type repository interface {
 	db.AssetRepository
 	db.WorkflowRepository
 	db.PolicyReader
+	SaveAudioRuntimeAndWorkflowRun(ctx context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun) error
 	Publisher() *events.Publisher
 }
 
