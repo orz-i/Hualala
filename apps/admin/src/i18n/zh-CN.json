@@ -30,6 +30,8 @@
   "backup.packages.title": "备份包历史",
   "backup.packages.subtitle": "当前共有 {count} 个可用备份包",
   "backup.capability.missing": "当前账号没有 org.settings.write，无法执行备份或恢复。",
+  "backup.runtime.unavailable": "当前环境没有可用的 Postgres runtime，备份与恢复不可执行。",
+  "backup.runtime.unavailable.detail": "服务端原因：{message}",
   "backup.empty": "还没有备份包，先生成一个新的备份。",
   "backup.action.create.label": "生成备份",
   "backup.action.create.pending": "正在生成备份包…",

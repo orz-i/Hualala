@@ -63,6 +63,8 @@ function createBackupViewModel(): AdminBackupViewModel {
     ],
     capabilities: {
       canManageBackup: true,
+      isRuntimeAvailable: true,
+      unavailableReason: "",
     },
   };
 }

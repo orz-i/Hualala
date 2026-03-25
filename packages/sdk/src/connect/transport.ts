@@ -35,7 +35,26 @@ async function assertConnectOk(response: Response, label: string) {
   if (response.ok) {
     return;
   }
-  throw new Error(`${label} (${response.status})`);
+  let detail = "";
+  const text = await response.text();
+  if (text.trim() !== "") {
+    try {
+      const payload = JSON.parse(text) as {
+        code?: string;
+        message?: string;
+        error?: {
+          code?: string;
+          message?: string;
+        };
+      };
+      const code = payload.code ?? payload.error?.code ?? "";
+      const message = payload.message ?? payload.error?.message ?? "";
+      detail = [code, message].filter((value) => value && value.trim() !== "").join(" ");
+    } catch {
+      detail = text.trim();
+    }
+  }
+  throw new Error(detail ? `${label} (${response.status}) ${detail}` : `${label} (${response.status})`);
 }
 
 export type HualalaClient = {

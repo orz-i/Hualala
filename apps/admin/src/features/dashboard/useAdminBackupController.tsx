@@ -91,7 +91,12 @@ export function useAdminBackupController({
       successMessage: string;
       execute: (input: { orgId: string; userId: string }) => Promise<void>;
     }) => {
-      if (!enabled || backupActionPending || !backup?.capabilities.canManageBackup) {
+      if (
+        !enabled ||
+        backupActionPending ||
+        !backup?.capabilities.canManageBackup ||
+        !backup.capabilities.isRuntimeAvailable
+      ) {
         return;
       }
 
@@ -127,7 +132,15 @@ export function useAdminBackupController({
         });
       }
     },
-    [backup?.capabilities.canManageBackup, backupActionPending, effectiveOrgId, effectiveUserId, enabled, t],
+    [
+      backup?.capabilities.canManageBackup,
+      backup?.capabilities.isRuntimeAvailable,
+      backupActionPending,
+      effectiveOrgId,
+      effectiveUserId,
+      enabled,
+      t,
+    ],
   );
 
   useEffect(() => {

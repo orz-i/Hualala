@@ -19,6 +19,7 @@ type LoadBackupPanelOptions = {
 };
 
 const backupPermissionOrgSettingsWrite = "org.settings.write";
+const backupRuntimeUnavailableNeedle = "backup restore requires postgres runtime";
 
 export async function loadBackupPanel({
   orgId,
@@ -52,9 +53,13 @@ export async function loadBackupPanel({
 
   const permissionCodes = [...(session.permissionCodes ?? [])];
   const canManageBackup = permissionCodes.includes(backupPermissionOrgSettingsWrite);
-  const packagesPayload = canManageBackup
-    ? await backupClient.listBackupPackages({ orgId: session.orgId })
-    : { backupPackages: [] };
+  const { backupPackages, isRuntimeAvailable, unavailableReason } = canManageBackup
+    ? await loadBackupPackages(backupClient, session.orgId)
+    : {
+        backupPackages: [] as BackupPackagePayload[],
+        isRuntimeAvailable: true,
+        unavailableReason: "",
+      };
 
   return {
     currentSession: {
@@ -67,11 +72,57 @@ export async function loadBackupPanel({
       permissionCodes,
       timezone: session.timezone ?? "",
     },
-    backupPackages: (packagesPayload.backupPackages ?? []).map(mapBackupPackage),
+    backupPackages: backupPackages.map(mapBackupPackage),
     capabilities: {
       canManageBackup,
+      isRuntimeAvailable,
+      unavailableReason,
     },
   };
+}
+
+async function loadBackupPackages(
+  backupClient: ReturnType<typeof createBackupClient>,
+  orgId: string,
+): Promise<{
+  backupPackages: BackupPackagePayload[];
+  isRuntimeAvailable: boolean;
+  unavailableReason: string;
+}> {
+  try {
+    const packagesPayload = await backupClient.listBackupPackages({ orgId });
+    return {
+      backupPackages: [...(packagesPayload.backupPackages ?? [])],
+      isRuntimeAvailable: true,
+      unavailableReason: "",
+    };
+  } catch (error: unknown) {
+    if (isBackupRuntimeUnavailableError(error)) {
+      return {
+        backupPackages: [],
+        isRuntimeAvailable: false,
+        unavailableReason: extractBackupRuntimeUnavailableReason(error),
+      };
+    }
+    throw error;
+  }
+}
+
+function isBackupRuntimeUnavailableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.toLowerCase();
+  return normalized.includes("failed_precondition") ||
+    normalized.includes("failed precondition") ||
+    normalized.includes(backupRuntimeUnavailableNeedle);
+}
+
+function extractBackupRuntimeUnavailableReason(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.toLowerCase();
+  if (normalized.includes(backupRuntimeUnavailableNeedle)) {
+    return backupRuntimeUnavailableNeedle;
+  }
+  return message;
 }
 
 function mapBackupPackage(record: BackupPackagePayload): BackupPackageViewModel {

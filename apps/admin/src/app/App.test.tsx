@@ -433,6 +433,8 @@ function buildBackupController(overrides: Record<string, unknown> = {}) {
       ],
       capabilities: {
         canManageBackup: true,
+        isRuntimeAvailable: true,
+        unavailableReason: "",
       },
     },
     selectedPackageId: "package-1",

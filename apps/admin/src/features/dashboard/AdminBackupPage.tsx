@@ -43,12 +43,14 @@ export function AdminBackupPage({
   const selectedPackage =
     backup.backupPackages.find((item) => item.packageId === selectedPackageId) ?? null;
   const canManageBackup = backup.capabilities.canManageBackup;
+  const isRuntimeAvailable = backup.capabilities.isRuntimeAvailable;
+  const canRunBackupActions = canManageBackup && isRuntimeAvailable;
   const canApplySelectedPackage =
     Boolean(selectedPackage) &&
     Boolean(restorePreflight) &&
     restorePreflight?.packageId === selectedPackageId &&
     !backupActionPending &&
-    canManageBackup;
+    canRunBackupActions;
 
   return (
     <>
@@ -71,7 +73,7 @@ export function AdminBackupPage({
           </div>
           <button
             type="button"
-            disabled={!canManageBackup || backupActionPending}
+            disabled={!canRunBackupActions || backupActionPending}
             onClick={onCreateBackupPackage}
             style={{
               ...actionButtonBaseStyle,
@@ -86,6 +88,19 @@ export function AdminBackupPage({
 
         {!canManageBackup ? (
           <p style={{ ...metricStyle, color: "#991b1b" }}>{t("backup.capability.missing")}</p>
+        ) : !isRuntimeAvailable ? (
+          <div style={{ display: "grid", gap: "8px" }}>
+            <p style={{ ...metricStyle, margin: 0, color: "#991b1b" }}>
+              {t("backup.runtime.unavailable")}
+            </p>
+            {backup.capabilities.unavailableReason ? (
+              <p style={{ ...metricStyle, margin: 0, color: "#9a3412" }}>
+                {t("backup.runtime.unavailable.detail", {
+                  message: backup.capabilities.unavailableReason,
+                })}
+              </p>
+            ) : null}
+          </div>
         ) : null}
 
         {backupActionFeedback ? (
@@ -94,7 +109,7 @@ export function AdminBackupPage({
           </p>
         ) : null}
 
-        {backup.backupPackages.length === 0 && canManageBackup ? (
+        {backup.backupPackages.length === 0 && canRunBackupActions ? (
           <p style={{ ...metricStyle, margin: 0 }}>{t("backup.empty")}</p>
         ) : backup.backupPackages.length > 0 ? (
           <div style={{ display: "grid", gap: "12px" }}>
@@ -168,7 +183,7 @@ export function AdminBackupPage({
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
             <button
               type="button"
-              disabled={!canManageBackup || backupActionPending}
+              disabled={!canRunBackupActions || backupActionPending}
               onClick={onDownloadBackupPackage}
               style={{
                 ...actionButtonBaseStyle,
@@ -181,7 +196,7 @@ export function AdminBackupPage({
             </button>
             <button
               type="button"
-              disabled={!canManageBackup || backupActionPending}
+              disabled={!canRunBackupActions || backupActionPending}
               onClick={onPreflightRestoreBackupPackage}
               style={{
                 ...actionButtonBaseStyle,

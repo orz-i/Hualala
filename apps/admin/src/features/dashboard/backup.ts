@@ -34,6 +34,8 @@ export type BackupPreflightViewModel = {
 
 export type BackupCapabilitiesViewModel = {
   canManageBackup: boolean;
+  isRuntimeAvailable: boolean;
+  unavailableReason: string;
 };
 
 export type AdminBackupViewModel = {

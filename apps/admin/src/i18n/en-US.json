@@ -30,6 +30,8 @@
   "backup.packages.title": "Backup Package History",
   "backup.packages.subtitle": "{count} backup packages are currently available",
   "backup.capability.missing": "The current account does not have org.settings.write, so backup and restore are unavailable.",
+  "backup.runtime.unavailable": "The current environment does not have a usable Postgres runtime, so backup and restore are unavailable.",
+  "backup.runtime.unavailable.detail": "Server reason: {message}",
   "backup.empty": "No backup packages yet. Create the first backup package.",
   "backup.action.create.label": "Create Backup",
   "backup.action.create.pending": "Creating backup package…",

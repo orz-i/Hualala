@@ -1141,6 +1141,7 @@ func clearMainTables(ctx context.Context, tx *sql.Tx) error {
 	statements := []string{
 		`DELETE FROM billing_events`,
 		`DELETE FROM usage_records`,
+		`DELETE FROM budget_policies`,
 		`DELETE FROM audio_runtimes`,
 		`DELETE FROM audio_clips`,
 		`DELETE FROM audio_tracks`,
@@ -1171,6 +1172,11 @@ func clearMainTables(ctx context.Context, tx *sql.Tx) error {
 		`DELETE FROM scenes`,
 		`DELETE FROM episodes`,
 		`DELETE FROM projects`,
+		`DELETE FROM role_permissions`,
+		`DELETE FROM memberships`,
+		`DELETE FROM roles`,
+		`DELETE FROM users`,
+		`DELETE FROM organizations`,
 	}
 	for _, statement := range statements {
 		if _, err := tx.ExecContext(ctx, statement); err != nil {

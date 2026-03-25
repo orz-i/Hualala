@@ -27,9 +27,12 @@ import (
 	"github.com/hualala/apps/backend/internal/application/contentapp"
 	"github.com/hualala/apps/backend/internal/application/projectapp"
 	assetdomain "github.com/hualala/apps/backend/internal/domain/asset"
+	authdomain "github.com/hualala/apps/backend/internal/domain/auth"
+	billingdomain "github.com/hualala/apps/backend/internal/domain/billing"
 	contentdomain "github.com/hualala/apps/backend/internal/domain/content"
 	executiondomain "github.com/hualala/apps/backend/internal/domain/execution"
 	"github.com/hualala/apps/backend/internal/domain/gateway"
+	orgdomain "github.com/hualala/apps/backend/internal/domain/org"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/workflow"
 	connectiface "github.com/hualala/apps/backend/internal/interfaces/connect"
@@ -345,6 +348,138 @@ func TestPostgresPersisterRoundTripRestoresWorkflowRuntimeTruth(t *testing.T) {
 	}
 	if restoredTransitions[0].Reason != transition.Reason {
 		t.Fatalf("expected restored transition reason %q, got %q", transition.Reason, restoredTransitions[0].Reason)
+	}
+}
+
+func TestPostgresBackupApplyReplacesGovernanceBudgetAndTransientState(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	const suffix = "backup-apply-full-replace"
+	ctx := context.Background()
+	now := publishedAt()
+
+	resetNativeIntegrationRuntimeStore(t)
+	runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, suffix)
+	defer closeFn()
+
+	projectID := runtimeStore.GenerateProjectID()
+	if err := runtimeStore.SaveProject(ctx, project.Project{
+		ID:                   projectID,
+		OrganizationID:       db.DefaultDevOrganizationID,
+		OwnerUserID:          db.DefaultDevUserID,
+		Title:                "Backup Restore Replace",
+		Status:               "draft",
+		CurrentStage:         "planning",
+		PrimaryContentLocale: "zh-CN",
+		CreatedAt:            now,
+		UpdatedAt:            now,
+	}); err != nil {
+		t.Fatalf("SaveProject returned error: %v", err)
+	}
+
+	budgetID := runtimeStore.GenerateBudgetID()
+	if err := runtimeStore.SaveBudget(ctx, billingdomain.ProjectBudget{
+		ID:         budgetID,
+		OrgID:      db.DefaultDevOrganizationID,
+		ProjectID:  projectID,
+		LimitCents: 1500,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}); err != nil {
+		t.Fatalf("SaveBudget returned error: %v", err)
+	}
+
+	backupRecord, err := runtimeStore.CreateBackupPackage(ctx, db.DefaultDevUserID)
+	if err != nil {
+		t.Fatalf("CreateBackupPackage returned error: %v", err)
+	}
+
+	staleUserID := "33333333-3333-3333-3333-333333333333"
+	if err := runtimeStore.SaveUser(ctx, authdomain.User{
+		ID:                staleUserID,
+		Email:             "stale-user@hualala.local",
+		DisplayName:       "Stale User",
+		PreferredUILocale: "zh-CN",
+		Timezone:          "Asia/Shanghai",
+	}); err != nil {
+		t.Fatalf("SaveUser returned error: %v", err)
+	}
+
+	staleRoleID := "44444444-4444-4444-4444-444444444444"
+	if err := runtimeStore.SaveRole(ctx, orgdomain.Role{
+		ID:          staleRoleID,
+		OrgID:       db.DefaultDevOrganizationID,
+		Code:        "stale-role",
+		DisplayName: "Stale Role",
+	}); err != nil {
+		t.Fatalf("SaveRole returned error: %v", err)
+	}
+	if err := runtimeStore.ReplaceRolePermissions(ctx, staleRoleID, []string{"org.members.read"}); err != nil {
+		t.Fatalf("ReplaceRolePermissions returned error: %v", err)
+	}
+
+	if err := runtimeStore.SaveMembership(ctx, orgdomain.Member{
+		ID:     "55555555-5555-5555-5555-555555555555",
+		OrgID:  db.DefaultDevOrganizationID,
+		UserID: staleUserID,
+		RoleID: staleRoleID,
+		Status: "active",
+	}); err != nil {
+		t.Fatalf("SaveMembership returned error: %v", err)
+	}
+
+	if err := runtimeStore.SaveBudget(ctx, billingdomain.ProjectBudget{
+		ID:         budgetID,
+		OrgID:      db.DefaultDevOrganizationID,
+		ProjectID:  projectID,
+		LimitCents: 9900,
+		CreatedAt:  now,
+		UpdatedAt:  now.Add(time.Minute),
+	}); err != nil {
+		t.Fatalf("SaveBudget second pass returned error: %v", err)
+	}
+
+	if err := runtimeStore.SaveGatewayResult(ctx, "stale-idem", gateway.GatewayResult{
+		Provider:          "seedance",
+		ExternalRequestID: "external-stale",
+	}); err != nil {
+		t.Fatalf("SaveGatewayResult returned error: %v", err)
+	}
+
+	if _, err := runtimeStore.ApplyBackupPackage(ctx, backupRecord.Metadata.PackageID); err != nil {
+		t.Fatalf("ApplyBackupPackage returned error: %v", err)
+	}
+
+	restoredBudget, ok := runtimeStore.GetBudgetByProject(projectID)
+	if !ok {
+		t.Fatalf("expected restored budget for project %q", projectID)
+	}
+	if restoredBudget.LimitCents != 1500 {
+		t.Fatalf("expected restored budget limit %d, got %d", 1500, restoredBudget.LimitCents)
+	}
+
+	if _, ok := runtimeStore.GetUser(staleUserID); ok {
+		t.Fatalf("expected stale user %q to be removed by restore", staleUserID)
+	}
+	if _, ok := runtimeStore.GetRole(staleRoleID); ok {
+		t.Fatalf("expected stale role %q to be removed by restore", staleRoleID)
+	}
+	if _, ok := runtimeStore.FindMembership(db.DefaultDevOrganizationID, staleUserID); ok {
+		t.Fatalf("expected stale membership for user %q to be removed by restore", staleUserID)
+	}
+	if permissions := runtimeStore.ListRolePermissions(staleRoleID); len(permissions) > 0 {
+		t.Fatalf("expected stale role permissions to be removed, got %v", permissions)
+	}
+	if _, ok := runtimeStore.GetGatewayResult("stale-idem"); ok {
+		t.Fatalf("expected stale gateway result to be cleared by restore")
+	}
+	if _, ok, err := runtimeStore.GetBackupPackage(ctx, backupRecord.Metadata.PackageID); err != nil {
+		t.Fatalf("GetBackupPackage returned error: %v", err)
+	} else if !ok {
+		t.Fatalf("expected backup package %q to remain after restore", backupRecord.Metadata.PackageID)
 	}
 }
 
