@@ -17,6 +17,7 @@
     "test:e2e:phase2": "node tooling/scripts/run-playwright-suite.mjs all test tests/e2e/phase2-collaboration.spec.ts tests/e2e/phase2-preview.spec.ts tests/e2e/phase2-audio.spec.ts tests/e2e/phase2-asset-reuse.spec.ts",
     "test:e2e:phase3:preview-runtime": "node tooling/scripts/run-playwright-suite.mjs all test tests/e2e/phase3-preview-runtime.spec.ts",
     "test:e2e:phase3:preview-timeline": "node tooling/scripts/run-playwright-suite.mjs all test tests/e2e/phase3-preview-timeline.spec.ts",
+    "test:e2e:phase3:audio-runtime": "node tooling/scripts/run-playwright-suite.mjs all test tests/e2e/phase3-audio-runtime.spec.ts",
     "test:e2e:admin:real": "node tooling/scripts/run-playwright-suite.mjs admin-real test tests/e2e/admin-real-smoke.spec.ts",
     "test:e2e:creator:real": "node tooling/scripts/run-playwright-suite.mjs creator-real test tests/e2e/creator-real-smoke.spec.ts",
     "test:e2e:phase1:real": "node tooling/scripts/run-playwright-suite.mjs all-real test tests/e2e/phase1-real-acceptance.spec.ts",

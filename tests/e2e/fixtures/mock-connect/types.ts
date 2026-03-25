@@ -2,7 +2,7 @@ export type AdminMode = "success" | "failure";
 export type CreatorShotMode = "success" | "failure";
 export type CreatorImportMode = "success" | "failure";
 export type PreviewMode = "success" | "failure";
-export type AudioMode = "success";
+export type AudioMode = "success" | "failure";
 export type ReuseMode = "success";
 export type CollaborationMode = "success";
 
@@ -296,6 +296,37 @@ export type AudioTimelineState = {
   createdAt: string;
   updatedAt: string;
   tracks: AudioTrackState[];
+};
+
+export type AudioRuntimeState = {
+  audioRuntimeId: string;
+  projectId: string;
+  episodeId: string;
+  audioTimelineId: string;
+  status: string;
+  renderWorkflowRunId: string;
+  renderStatus: string;
+  mixAssetId: string;
+  mixOutput: {
+    deliveryMode: string;
+    playbackUrl: string;
+    downloadUrl: string;
+    mimeType: string;
+    fileName: string;
+    sizeBytes: number;
+    durationMs: number;
+  } | null;
+  waveforms: Array<{
+    assetId: string;
+    variantId: string;
+    waveformUrl: string;
+    mimeType: string;
+    durationMs: number;
+  }>;
+  lastErrorCode: string;
+  lastErrorMessage: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type CollaborationPresenceState = {

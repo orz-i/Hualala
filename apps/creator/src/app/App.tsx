@@ -715,6 +715,10 @@ export function App() {
           draftTracks={audioWorkbenchController.draftTracks}
           audioAssetPool={audioWorkbenchController.audioAssetPool}
           audioAssetPoolErrorMessage={audioWorkbenchController.audioAssetPoolErrorMessage}
+          audioRuntime={audioWorkbenchController.audioRuntime}
+          runtimeErrorMessage={audioWorkbenchController.runtimeErrorMessage}
+          requestRenderDisabledReason={audioWorkbenchController.requestRenderDisabledReason}
+          requestRenderPending={audioWorkbenchController.requestRenderPending}
           assetProvenanceDetail={audioWorkbenchController.assetProvenanceDetail}
         assetProvenancePending={audioWorkbenchController.assetProvenancePending}
         assetProvenanceErrorMessage={audioWorkbenchController.assetProvenanceErrorMessage}
@@ -756,6 +760,9 @@ export function App() {
         onClipFieldChange={audioWorkbenchController.handleClipFieldChange}
         onSaveTimeline={() => {
           void audioWorkbenchController.handleSaveTimeline();
+        }}
+        onRequestAudioRender={() => {
+          void audioWorkbenchController.handleRequestAudioRender();
         }}
         onOpenAssetProvenance={(assetId) => {
           void audioWorkbenchController.handleOpenAssetProvenance(assetId);

@@ -1,9 +1,22 @@
-import { startTransition, useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import type { AdminTranslator } from "../../i18n";
 import type { AssetProvenanceDetailViewModel } from "./assetMonitor";
 import type { AdminAudioWorkbenchViewModel } from "./adminAudio";
+import type { AdminAudioRuntimeViewModel } from "./adminAudioRuntime";
+import { loadAdminAudioRuntime } from "./loadAdminAudioRuntime";
 import { loadAdminAudioWorkbench } from "./loadAdminAudioWorkbench";
 import { loadAssetProvenanceDetails } from "./loadAssetProvenanceDetails";
+import { subscribeAdminAudioRuntime } from "./subscribeAdminAudioRuntime";
+
+function formatActionError(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+  return fallback;
+}
 
 export function useAdminAudioController({
   sessionState,
@@ -21,20 +34,30 @@ export function useAdminAudioController({
   t: AdminTranslator;
 }) {
   const [audioWorkbench, setAudioWorkbench] = useState<AdminAudioWorkbenchViewModel | null>(null);
+  const [audioRuntime, setAudioRuntime] = useState<AdminAudioRuntimeViewModel | null>(null);
   const [assetProvenanceDetail, setAssetProvenanceDetail] =
     useState<AssetProvenanceDetailViewModel | null>(null);
   const [assetProvenancePending, setAssetProvenancePending] = useState(false);
   const [assetProvenanceErrorMessage, setAssetProvenanceErrorMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [runtimeErrorMessage, setRuntimeErrorMessage] = useState("");
+  const audioRuntimeRef = useRef<AdminAudioRuntimeViewModel | null>(null);
+  const audioEpisodeId = audioWorkbench?.timeline.episodeId ?? "";
+
+  useEffect(() => {
+    audioRuntimeRef.current = audioRuntime;
+  }, [audioRuntime]);
 
   useEffect(() => {
     if (!enabled || sessionState !== "ready") {
       startTransition(() => {
         setAudioWorkbench(null);
+        setAudioRuntime(null);
         setAssetProvenanceDetail(null);
         setAssetProvenancePending(false);
         setAssetProvenanceErrorMessage("");
         setErrorMessage("");
+        setRuntimeErrorMessage("");
       });
       return;
     }
@@ -59,8 +82,7 @@ export function useAdminAudioController({
         if (cancelled) {
           return;
         }
-        const message =
-          error instanceof Error ? error.message : "admin: unknown audio workbench error";
+        const message = formatActionError(error, "admin: unknown audio workbench error");
         startTransition(() => {
           setAudioWorkbench(null);
           setErrorMessage(message);
@@ -71,6 +93,92 @@ export function useAdminAudioController({
       cancelled = true;
     };
   }, [effectiveOrgId, effectiveUserId, enabled, projectId, sessionState, t]);
+
+  const refreshAudioRuntime = useCallback(async () => {
+    try {
+      const nextRuntime = await loadAdminAudioRuntime({
+        projectId,
+        episodeId: audioEpisodeId || undefined,
+        orgId: effectiveOrgId,
+        userId: effectiveUserId,
+      });
+      startTransition(() => {
+        setAudioRuntime(nextRuntime);
+        setRuntimeErrorMessage("");
+      });
+      return nextRuntime;
+    } catch (error: unknown) {
+      const message = formatActionError(error, "admin: unknown audio runtime error");
+      startTransition(() => {
+        setRuntimeErrorMessage(message);
+        if (!audioRuntimeRef.current) {
+          setAudioRuntime(null);
+        }
+      });
+      throw error;
+    }
+  }, [audioEpisodeId, effectiveOrgId, effectiveUserId, projectId]);
+
+  useEffect(() => {
+    if (!enabled || sessionState !== "ready") {
+      startTransition(() => {
+        setAudioRuntime(null);
+        setRuntimeErrorMessage("");
+      });
+      return;
+    }
+
+    let cancelled = false;
+
+    refreshAudioRuntime().catch((error: unknown) => {
+      if (cancelled) {
+        return;
+      }
+      const message = formatActionError(error, "admin: unknown audio runtime error");
+      startTransition(() => {
+        setRuntimeErrorMessage(message);
+        if (!audioRuntimeRef.current) {
+          setAudioRuntime(null);
+        }
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, refreshAudioRuntime, sessionState]);
+
+  useEffect(() => {
+    if (!enabled || sessionState !== "ready" || !effectiveOrgId || !projectId) {
+      return;
+    }
+
+    return subscribeAdminAudioRuntime({
+      organizationId: effectiveOrgId,
+      projectId,
+      episodeId: audioEpisodeId,
+      orgId: effectiveOrgId,
+      userId: effectiveUserId,
+      onRefreshNeeded: () => {
+        void refreshAudioRuntime().catch(() => {
+          // refreshAudioRuntime 已负责设置错误消息，这里只负责吞掉未处理的 Promise rejection。
+        });
+      },
+      onError: (error) => {
+        startTransition(() => {
+          setRuntimeErrorMessage(error.message);
+        });
+      },
+    });
+  }, [
+    audioEpisodeId,
+    effectiveOrgId,
+    effectiveUserId,
+    enabled,
+    projectId,
+    refreshAudioRuntime,
+    sessionState,
+  ]);
 
   const handleOpenAssetProvenance = useCallback(
     async (assetId: string) => {
@@ -96,8 +204,7 @@ export function useAdminAudioController({
           setAssetProvenanceErrorMessage("");
         });
       } catch (error: unknown) {
-        const message =
-          error instanceof Error ? error.message : "admin: unknown asset provenance error";
+        const message = formatActionError(error, "admin: unknown asset provenance error");
         startTransition(() => {
           setAssetProvenanceDetail(null);
           setAssetProvenancePending(false);
@@ -118,6 +225,8 @@ export function useAdminAudioController({
 
   return {
     audioWorkbench,
+    audioRuntime,
+    runtimeErrorMessage,
     assetProvenanceDetail,
     assetProvenancePending,
     assetProvenanceErrorMessage,

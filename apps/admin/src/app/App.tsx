@@ -462,6 +462,8 @@ export function App() {
     routeContent = (
       <AdminAudioPage
         audioWorkbench={audio.audioWorkbench}
+        audioRuntime={audio.audioRuntime}
+        runtimeErrorMessage={audio.runtimeErrorMessage}
         assetProvenanceDetail={audio.assetProvenanceDetail}
         assetProvenancePending={audio.assetProvenancePending}
         assetProvenanceErrorMessage={audio.assetProvenanceErrorMessage}

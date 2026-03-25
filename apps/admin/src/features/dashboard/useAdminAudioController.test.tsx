@@ -1,22 +1,54 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createTranslator } from "../../i18n";
+import { loadAdminAudioRuntime } from "./loadAdminAudioRuntime";
 import { loadAdminAudioWorkbench } from "./loadAdminAudioWorkbench";
 import { loadAssetProvenanceDetails } from "./loadAssetProvenanceDetails";
+import { subscribeAdminAudioRuntime } from "./subscribeAdminAudioRuntime";
 import { useAdminAudioController } from "./useAdminAudioController";
 
 vi.mock("./loadAdminAudioWorkbench", () => ({
   loadAdminAudioWorkbench: vi.fn(),
 }));
 
+vi.mock("./loadAdminAudioRuntime", () => ({
+  loadAdminAudioRuntime: vi.fn(),
+}));
+
 vi.mock("./loadAssetProvenanceDetails", () => ({
   loadAssetProvenanceDetails: vi.fn(),
 }));
 
+vi.mock("./subscribeAdminAudioRuntime", () => ({
+  subscribeAdminAudioRuntime: vi.fn(),
+}));
+
 const loadAdminAudioWorkbenchMock = vi.mocked(loadAdminAudioWorkbench);
+const loadAdminAudioRuntimeMock = vi.mocked(loadAdminAudioRuntime);
 const loadAssetProvenanceDetailsMock = vi.mocked(loadAssetProvenanceDetails);
+const subscribeAdminAudioRuntimeMock = vi.mocked(subscribeAdminAudioRuntime);
 
 describe("useAdminAudioController", () => {
   const t = createTranslator("zh-CN");
+
+  function buildAudioRuntime(overrides: Record<string, unknown> = {}) {
+    return {
+      audioRuntimeId: "audio-runtime-project-1",
+      projectId: "project-1",
+      episodeId: "",
+      audioTimelineId: "timeline-project-1",
+      status: "idle",
+      renderWorkflowRunId: "",
+      renderStatus: "idle",
+      mixAssetId: "",
+      createdAt: "2026-03-25T09:00:00.000Z",
+      updatedAt: "2026-03-25T09:05:00.000Z",
+      mixOutput: null,
+      waveforms: [],
+      lastErrorCode: "",
+      lastErrorMessage: "",
+      ...overrides,
+    };
+  }
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,6 +96,7 @@ describe("useAdminAudioController", () => {
         tracksByType: [{ trackType: "dialogue", count: 1 }],
       },
     });
+    loadAdminAudioRuntimeMock.mockResolvedValue(buildAudioRuntime());
     loadAssetProvenanceDetailsMock.mockResolvedValue({
       asset: {
         id: "asset-audio-1",
@@ -81,6 +114,7 @@ describe("useAdminAudioController", () => {
       importBatchId: "batch-1",
       variantCount: 1,
     });
+    subscribeAdminAudioRuntimeMock.mockReturnValue(vi.fn());
   });
 
   it("loads audio workbench only when enabled and the session is ready", async () => {
@@ -112,6 +146,7 @@ describe("useAdminAudioController", () => {
     await waitFor(() => {
       expect(result.current.audioWorkbench?.summary.trackCount).toBe(1);
     });
+    expect(result.current.audioRuntime?.audioRuntimeId).toBe("audio-runtime-project-1");
   });
 
   it("opens asset provenance details for audio clips", async () => {
@@ -140,5 +175,89 @@ describe("useAdminAudioController", () => {
       userId: "user-1",
     });
     expect(result.current.assetProvenanceDetail?.asset.id).toBe("asset-audio-1");
+  });
+
+  it("keeps the audio workbench visible when the runtime load fails", async () => {
+    loadAdminAudioRuntimeMock.mockRejectedValueOnce(new Error("admin: audio runtime unavailable"));
+
+    const { result } = renderHook(() =>
+      useAdminAudioController({
+        sessionState: "ready",
+        enabled: true,
+        projectId: "project-1",
+        effectiveOrgId: "org-1",
+        effectiveUserId: "user-1",
+        t,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.audioWorkbench?.summary.trackCount).toBe(1);
+    });
+    await waitFor(() => {
+      expect(result.current.runtimeErrorMessage).toBe("admin: audio runtime unavailable");
+    });
+
+    expect(result.current.audioWorkbench?.tracks[0]?.trackId).toBe("track-dialogue");
+  });
+
+  it("refreshes audio runtime on sse invalidation without clearing the audio workbench", async () => {
+    let onRefreshNeeded: (() => void) | undefined;
+    subscribeAdminAudioRuntimeMock.mockImplementation((options) => {
+      onRefreshNeeded = options.onRefreshNeeded;
+      return vi.fn();
+    });
+    loadAdminAudioRuntimeMock
+      .mockResolvedValueOnce(buildAudioRuntime())
+      .mockResolvedValueOnce(
+        buildAudioRuntime({
+          status: "ready",
+          renderWorkflowRunId: "workflow-audio-1",
+          renderStatus: "completed",
+          mixAssetId: "asset-mix-1",
+          mixOutput: {
+            deliveryMode: "file",
+            playbackUrl: "https://cdn.example.com/audio/project-1/mix.mp3",
+            downloadUrl: "https://cdn.example.com/audio/project-1/mix-download.mp3",
+            mimeType: "audio/mpeg",
+            fileName: "mix-project-1.mp3",
+            sizeBytes: 4096,
+            durationMs: 18000,
+          },
+          waveforms: [
+            {
+              assetId: "asset-audio-1",
+              variantId: "variant-audio-1",
+              waveformUrl: "https://cdn.example.com/audio/project-1/waveform-1.json",
+              mimeType: "application/json",
+              durationMs: 12000,
+            },
+          ],
+        }),
+      );
+
+    const { result } = renderHook(() =>
+      useAdminAudioController({
+        sessionState: "ready",
+        enabled: true,
+        projectId: "project-1",
+        effectiveOrgId: "org-1",
+        effectiveUserId: "user-1",
+        t,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.audioRuntime?.renderStatus).toBe("idle");
+    });
+
+    await act(async () => {
+      onRefreshNeeded?.();
+    });
+
+    await waitFor(() => {
+      expect(result.current.audioRuntime?.renderStatus).toBe("completed");
+    });
+    expect(result.current.audioWorkbench?.summary.trackCount).toBe(1);
   });
 });

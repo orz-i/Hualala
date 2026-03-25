@@ -1,5 +1,14 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { CreatorTranslator } from "../../i18n";
+import type {
+  AudioMixOutputViewModel,
+  AudioRuntimeViewModel,
+  AudioWaveformReferenceViewModel,
+} from "../../../../shared/audio/audioRuntime";
+import {
+  formatRuntimeField,
+  formatRuntimeNumber,
+} from "../../../../shared/audio/audioRuntimeFormatting";
 import type { AssetProvenanceDetailViewModel } from "../shared/assetProvenance";
 import { AssetProvenanceDialog } from "../shared/AssetProvenanceDialog";
 import type {
@@ -43,11 +52,21 @@ const primaryButtonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
+type OutputLinkProps = {
+  href: string;
+  label: string;
+  style?: CSSProperties;
+};
+
 type AudioWorkbenchPageProps = {
   audioWorkbench: AudioWorkbenchViewModel;
   draftTracks: AudioTrackViewModel[];
   audioAssetPool: AudioAssetPoolItemViewModel[];
   audioAssetPoolErrorMessage: string;
+  audioRuntime: AudioRuntimeViewModel | null;
+  runtimeErrorMessage: string;
+  requestRenderDisabledReason: string;
+  requestRenderPending: boolean;
   assetProvenanceDetail: AssetProvenanceDetailViewModel | null;
   assetProvenancePending: boolean;
   assetProvenanceErrorMessage: string;
@@ -66,15 +85,171 @@ type AudioWorkbenchPageProps = {
     value: number,
   ) => void;
   onSaveTimeline: () => void;
+  onRequestAudioRender: () => void;
   onOpenAssetProvenance: (assetId: string) => void;
   onCloseAssetProvenance: () => void;
 };
+
+function OutputLink({ href, label, style }: OutputLinkProps) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      style={{
+        ...style,
+        textDecoration: "none",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {label}
+    </a>
+  );
+}
+
+function buildDraftClipCount(draftTracks: AudioTrackViewModel[]) {
+  return draftTracks.reduce((total, track) => total + track.clips.length, 0);
+}
+
+function renderMixOutput(
+  mixOutput: AudioMixOutputViewModel | null,
+  t: CreatorTranslator,
+) {
+  if (!mixOutput) {
+    return <p style={{ margin: 0, color: "#64748b" }}>{t("audio.runtime.emptyOutput")}</p>;
+  }
+
+  return (
+    <div style={{ display: "grid", gap: "6px", color: "#475569" }}>
+      <p style={{ margin: 0 }}>
+        {t("audio.runtime.mix.deliveryMode", {
+          mode: formatRuntimeField(mixOutput.deliveryMode, t("audio.runtime.emptyValue")),
+        })}
+      </p>
+      <p style={{ margin: 0, wordBreak: "break-all" }}>
+        {t("audio.runtime.mix.playbackUrl", {
+          url: formatRuntimeField(mixOutput.playbackUrl, t("audio.runtime.emptyValue")),
+        })}
+      </p>
+      <p style={{ margin: 0, wordBreak: "break-all" }}>
+        {t("audio.runtime.mix.downloadUrl", {
+          url: formatRuntimeField(mixOutput.downloadUrl, t("audio.runtime.emptyValue")),
+        })}
+      </p>
+      <p style={{ margin: 0 }}>
+        {t("audio.runtime.mix.mimeType", {
+          mimeType: formatRuntimeField(mixOutput.mimeType, t("audio.runtime.emptyValue")),
+        })}
+      </p>
+      <p style={{ margin: 0 }}>
+        {t("audio.runtime.mix.fileName", {
+          fileName: formatRuntimeField(mixOutput.fileName, t("audio.runtime.emptyValue")),
+        })}
+      </p>
+      <p style={{ margin: 0 }}>
+        {t("audio.runtime.mix.sizeBytes", {
+          sizeBytes: formatRuntimeNumber(mixOutput.sizeBytes, " B", t("audio.runtime.emptyValue")),
+        })}
+      </p>
+      <p style={{ margin: 0 }}>
+        {t("audio.runtime.mix.duration", {
+          duration: formatRuntimeNumber(mixOutput.durationMs, "ms", t("audio.runtime.emptyValue")),
+        })}
+      </p>
+      {mixOutput.deliveryMode === "file" && mixOutput.playbackUrl ? (
+        <audio
+          data-testid="audio-runtime-player"
+          controls
+          src={mixOutput.playbackUrl}
+          style={{ width: "100%", maxWidth: "640px" }}
+        />
+      ) : null}
+      {mixOutput.downloadUrl ? (
+        <OutputLink
+          href={mixOutput.downloadUrl}
+          label={t("audio.runtime.mix.open")}
+          style={secondaryButtonStyle}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function renderWaveforms(
+  waveforms: AudioWaveformReferenceViewModel[],
+  t: CreatorTranslator,
+) {
+  if (waveforms.length === 0) {
+    return <p style={{ margin: 0, color: "#64748b" }}>{t("audio.runtime.waveforms.empty")}</p>;
+  }
+
+  return (
+    <div style={{ display: "grid", gap: "10px" }}>
+      {waveforms.map((waveform) => (
+        <article
+          key={`${waveform.assetId}:${waveform.variantId}`}
+          style={{
+            borderRadius: "14px",
+            padding: "12px 14px",
+            background: "rgba(241, 245, 249, 0.9)",
+            display: "grid",
+            gap: "6px",
+            color: "#475569",
+          }}
+        >
+          <p style={{ margin: 0 }}>
+            {t("audio.runtime.waveforms.assetId", {
+              assetId: formatRuntimeField(waveform.assetId, t("audio.runtime.emptyValue")),
+            })}
+          </p>
+          <p style={{ margin: 0 }}>
+            {t("audio.runtime.waveforms.variantId", {
+              variantId: formatRuntimeField(waveform.variantId, t("audio.runtime.emptyValue")),
+            })}
+          </p>
+          <p style={{ margin: 0, wordBreak: "break-all" }}>
+            {t("audio.runtime.waveforms.waveformUrl", {
+              url: formatRuntimeField(waveform.waveformUrl, t("audio.runtime.emptyValue")),
+            })}
+          </p>
+          <p style={{ margin: 0 }}>
+            {t("audio.runtime.waveforms.mimeType", {
+              mimeType: formatRuntimeField(waveform.mimeType, t("audio.runtime.emptyValue")),
+            })}
+          </p>
+          <p style={{ margin: 0 }}>
+            {t("audio.runtime.waveforms.duration", {
+              duration: formatRuntimeNumber(
+                waveform.durationMs,
+                "ms",
+                t("audio.runtime.emptyValue"),
+              ),
+            })}
+          </p>
+          {waveform.waveformUrl ? (
+            <OutputLink
+              href={waveform.waveformUrl}
+              label={t("audio.runtime.waveforms.open")}
+              style={secondaryButtonStyle}
+            />
+          ) : null}
+        </article>
+      ))}
+    </div>
+  );
+}
 
 export function AudioWorkbenchPage({
   audioWorkbench,
   draftTracks,
   audioAssetPool,
   audioAssetPoolErrorMessage,
+  audioRuntime,
+  runtimeErrorMessage,
+  requestRenderDisabledReason,
+  requestRenderPending,
   assetProvenanceDetail,
   assetProvenancePending,
   assetProvenanceErrorMessage,
@@ -88,6 +263,7 @@ export function AudioWorkbenchPage({
   onTrackSoloChange,
   onClipFieldChange,
   onSaveTimeline,
+  onRequestAudioRender,
   onOpenAssetProvenance,
   onCloseAssetProvenance,
 }: AudioWorkbenchPageProps) {
@@ -105,6 +281,8 @@ export function AudioWorkbenchPage({
     });
   }, [audioAssetPool, draftTracks]);
 
+  const draftClipCount = buildDraftClipCount(draftTracks);
+
   return (
     <main style={{ display: "grid", gap: "24px", padding: "0 24px 40px" }}>
       {shellHeader}
@@ -118,18 +296,97 @@ export function AudioWorkbenchPage({
           {t("audio.summary.trackCount", { count: draftTracks.length })}
         </p>
         <p style={{ margin: 0, color: "#475569" }}>
-          {t("audio.summary.clipCount", { count: audioWorkbench.summary.clipCount })}
-        </p>
-        <p style={{ margin: 0, color: "#475569" }}>
-          {t("audio.summary.renderStatus", {
-            status: audioWorkbench.timeline.renderStatus || "unknown",
-          })}
+          {t("audio.summary.clipCount", { count: draftClipCount })}
         </p>
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
           <button type="button" onClick={onSaveTimeline} style={primaryButtonStyle}>
             {t("audio.actions.saveTimeline")}
           </button>
         </div>
+      </section>
+
+      <section style={panelStyle}>
+        <div style={{ display: "grid", gap: "8px" }}>
+          <h2 style={{ margin: 0 }}>{t("audio.runtime.title")}</h2>
+          <p style={{ margin: 0, color: "#475569" }}>{t("audio.runtime.description")}</p>
+        </div>
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={onRequestAudioRender}
+            disabled={Boolean(requestRenderDisabledReason)}
+            style={{
+              ...primaryButtonStyle,
+              opacity: requestRenderDisabledReason ? 0.45 : 1,
+              cursor: requestRenderDisabledReason ? "not-allowed" : "pointer",
+            }}
+          >
+            {requestRenderPending ? t("audio.actions.requestRenderPending") : t("audio.actions.requestRender")}
+          </button>
+        </div>
+        {requestRenderDisabledReason ? (
+          <p style={{ margin: 0, color: "#7c2d12" }}>{requestRenderDisabledReason}</p>
+        ) : null}
+        {runtimeErrorMessage ? (
+          <p style={{ margin: 0, color: "#991b1b" }}>{runtimeErrorMessage}</p>
+        ) : null}
+        {audioRuntime ? (
+          <div style={{ display: "grid", gap: "16px" }}>
+            <div style={{ display: "grid", gap: "6px", color: "#475569" }}>
+              <p style={{ margin: 0 }}>
+                {t("audio.runtime.status", {
+                  status: formatRuntimeField(audioRuntime.status, t("audio.runtime.emptyValue")),
+                })}
+              </p>
+              <p style={{ margin: 0 }}>
+                {t("audio.runtime.renderStatus", {
+                  status: formatRuntimeField(audioRuntime.renderStatus, t("audio.runtime.emptyValue")),
+                })}
+              </p>
+              <p style={{ margin: 0 }}>
+                {t("audio.runtime.workflowRunId", {
+                  workflowRunId: formatRuntimeField(
+                    audioRuntime.renderWorkflowRunId,
+                    t("audio.runtime.emptyValue"),
+                  ),
+                })}
+              </p>
+              <p style={{ margin: 0 }}>
+                {t("audio.runtime.mixAssetId", {
+                  assetId: formatRuntimeField(audioRuntime.mixAssetId, t("audio.runtime.emptyValue")),
+                })}
+              </p>
+              <p style={{ margin: 0 }}>
+                {t("audio.runtime.updatedAt", {
+                  updatedAt: formatRuntimeField(audioRuntime.updatedAt, t("audio.runtime.emptyValue")),
+                })}
+              </p>
+            </div>
+
+            <div style={{ display: "grid", gap: "10px" }}>
+              <strong>{t("audio.runtime.mix.title")}</strong>
+              {renderMixOutput(audioRuntime.mixOutput, t)}
+            </div>
+
+            <div style={{ display: "grid", gap: "10px" }}>
+              <strong>{t("audio.runtime.waveforms.title")}</strong>
+              {renderWaveforms(audioRuntime.waveforms, t)}
+            </div>
+
+            {audioRuntime.lastErrorCode ? (
+              <p style={{ margin: 0, color: "#991b1b" }}>
+                {t("audio.runtime.lastErrorCode", { code: audioRuntime.lastErrorCode })}
+              </p>
+            ) : null}
+            {audioRuntime.lastErrorMessage ? (
+              <p style={{ margin: 0, color: "#991b1b" }}>
+                {t("audio.runtime.lastErrorMessage", { message: audioRuntime.lastErrorMessage })}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p style={{ margin: 0, color: "#64748b" }}>{t("audio.runtime.empty")}</p>
+        )}
       </section>
 
       <section style={panelStyle}>
