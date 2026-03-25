@@ -41,7 +41,7 @@ import (
 	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/events"
 	"github.com/hualala/apps/backend/internal/platform/runtime"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 const (
@@ -480,6 +480,249 @@ func TestPostgresBackupApplyReplacesGovernanceBudgetAndTransientState(t *testing
 		t.Fatalf("GetBackupPackage returned error: %v", err)
 	} else if !ok {
 		t.Fatalf("expected backup package %q to remain after restore", backupRecord.Metadata.PackageID)
+	}
+}
+
+func TestPostgresBackupApplyRestoresModelGovernanceState(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	const suffix = "backup-apply-model-governance"
+	ctx := context.Background()
+	now := publishedAt()
+
+	resetNativeIntegrationRuntimeStore(t)
+	runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, suffix)
+	defer closeFn()
+	handle := openNativeIntegrationHandle(t)
+	defer func() {
+		_ = handle.Close()
+	}()
+
+	projectID := runtimeStore.GenerateProjectID()
+	if err := runtimeStore.SaveProject(ctx, project.Project{
+		ID:                   projectID,
+		OrganizationID:       db.DefaultDevOrganizationID,
+		OwnerUserID:          db.DefaultDevUserID,
+		Title:                "Backup Restore Model Governance",
+		Status:               "draft",
+		CurrentStage:         "planning",
+		PrimaryContentLocale: "zh-CN",
+		CreatedAt:            now,
+		UpdatedAt:            now,
+	}); err != nil {
+		t.Fatalf("SaveProject returned error: %v", err)
+	}
+
+	modelProfileID := runtimeStore.GenerateModelProfileID()
+	originalModelName := "gpt-4.1-" + modelProfileID
+	mutatedModelName := "gpt-4.1-mini-" + modelProfileID
+	insertIntegrationModelProfile(t, ctx, handle, integrationModelProfileRow{
+		ID:                     modelProfileID,
+		Provider:               "openai",
+		ModelName:              originalModelName,
+		CapabilityType:         "text",
+		Region:                 "global",
+		SupportedInputLocales:  []string{"zh-CN"},
+		SupportedOutputLocales: []string{"zh-CN", "en-US"},
+		PricingSnapshotJSON:    `{"input":"0.001"}`,
+		RateLimitPolicyJSON:    `{"rpm":120}`,
+		Status:                 "active",
+		CreatedAt:              now,
+		UpdatedAt:              now,
+	})
+
+	promptTemplateID := runtimeStore.GeneratePromptTemplateID()
+	originalTemplateKey := "shot.generate.default." + promptTemplateID
+	insertIntegrationPromptTemplate(t, ctx, handle, integrationPromptTemplateRow{
+		ID:               promptTemplateID,
+		TemplateFamily:   "shot.generate",
+		TemplateKey:      originalTemplateKey,
+		Locale:           "zh-CN",
+		Version:          1,
+		Content:          "初始提示词",
+		InputSchemaJSON:  `{"type":"object"}`,
+		OutputSchemaJSON: `{"type":"object"}`,
+		Status:           "active",
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	})
+
+	contextBundleID := runtimeStore.GenerateContextBundleID()
+	insertIntegrationContextBundle(t, ctx, handle, integrationContextBundleRow{
+		ID:                    contextBundleID,
+		OrganizationID:        db.DefaultDevOrganizationID,
+		ProjectID:             projectID,
+		ModelProfileID:        modelProfileID,
+		PromptTemplateID:      promptTemplateID,
+		InputLocale:           "zh-CN",
+		OutputLocale:          "en-US",
+		ResolvedPromptVersion: 1,
+		SourceSnapshotIDs:     []string{"88888888-8888-8888-8888-888888888888"},
+		ReferencedAssetIDs:    []string{"99999999-9999-9999-9999-999999999999"},
+		PayloadJSON:           `{"temperature":0.2}`,
+		CreatedByUserID:       db.DefaultDevUserID,
+		CreatedAt:             now,
+	})
+
+	backupRecord, err := runtimeStore.CreateBackupPackage(ctx, db.DefaultDevUserID)
+	if err != nil {
+		t.Fatalf("CreateBackupPackage returned error: %v", err)
+	}
+	if got := backupRecord.Metadata.Counts["model_profiles"]; got != 1 {
+		t.Fatalf("expected backup model profile count 1, got %d", got)
+	}
+	if got := backupRecord.Metadata.Counts["prompt_templates"]; got != 1 {
+		t.Fatalf("expected backup prompt template count 1, got %d", got)
+	}
+	if got := backupRecord.Metadata.Counts["context_bundles"]; got != 1 {
+		t.Fatalf("expected backup context bundle count 1, got %d", got)
+	}
+
+	insertIntegrationModelProfile(t, ctx, handle, integrationModelProfileRow{
+		ID:                     modelProfileID,
+		Provider:               "openai",
+		ModelName:              mutatedModelName,
+		CapabilityType:         "text",
+		Region:                 "global",
+		SupportedInputLocales:  []string{"en-US"},
+		SupportedOutputLocales: []string{"en-US"},
+		PricingSnapshotJSON:    `{"input":"0.123"}`,
+		RateLimitPolicyJSON:    `{"rpm":12}`,
+		Status:                 "paused",
+		CreatedAt:              now,
+		UpdatedAt:              now.Add(time.Minute),
+	})
+
+	insertIntegrationPromptTemplate(t, ctx, handle, integrationPromptTemplateRow{
+		ID:               promptTemplateID,
+		TemplateFamily:   "shot.generate",
+		TemplateKey:      originalTemplateKey,
+		Locale:           "zh-CN",
+		Version:          1,
+		Content:          "被污染的提示词",
+		InputSchemaJSON:  `{"type":"object","required":["goal"]}`,
+		OutputSchemaJSON: `{"type":"object"}`,
+		Status:           "archived",
+		CreatedAt:        now,
+		UpdatedAt:        now.Add(time.Minute),
+	})
+
+	insertIntegrationContextBundle(t, ctx, handle, integrationContextBundleRow{
+		ID:                    contextBundleID,
+		OrganizationID:        db.DefaultDevOrganizationID,
+		ProjectID:             projectID,
+		ModelProfileID:        modelProfileID,
+		PromptTemplateID:      promptTemplateID,
+		InputLocale:           "zh-CN",
+		OutputLocale:          "zh-CN",
+		ResolvedPromptVersion: 7,
+		SourceSnapshotIDs:     []string{"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"},
+		ReferencedAssetIDs:    []string{"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"},
+		PayloadJSON:           `{"temperature":0.9}`,
+		CreatedByUserID:       db.DefaultDevUserID,
+		CreatedAt:             now.Add(time.Minute),
+	})
+
+	staleProfileID := runtimeStore.GenerateModelProfileID()
+	staleModelName := "claude-3-7-sonnet-" + staleProfileID
+	insertIntegrationModelProfile(t, ctx, handle, integrationModelProfileRow{
+		ID:                     staleProfileID,
+		Provider:               "anthropic",
+		ModelName:              staleModelName,
+		CapabilityType:         "text",
+		Region:                 "global",
+		SupportedInputLocales:  []string{"zh-CN"},
+		SupportedOutputLocales: []string{"zh-CN"},
+		PricingSnapshotJSON:    `{"input":"0.2"}`,
+		RateLimitPolicyJSON:    `{"rpm":5}`,
+		Status:                 "active",
+		CreatedAt:              now.Add(time.Minute),
+		UpdatedAt:              now.Add(time.Minute),
+	})
+
+	stalePromptTemplateID := runtimeStore.GeneratePromptTemplateID()
+	staleTemplateKey := "shot.generate.stale." + stalePromptTemplateID
+	insertIntegrationPromptTemplate(t, ctx, handle, integrationPromptTemplateRow{
+		ID:               stalePromptTemplateID,
+		TemplateFamily:   "shot.generate",
+		TemplateKey:      staleTemplateKey,
+		Locale:           "zh-CN",
+		Version:          1,
+		Content:          "陈旧提示词",
+		InputSchemaJSON:  `{"type":"object"}`,
+		OutputSchemaJSON: `{"type":"object"}`,
+		Status:           "draft",
+		CreatedAt:        now.Add(time.Minute),
+		UpdatedAt:        now.Add(time.Minute),
+	})
+
+	staleContextBundleID := runtimeStore.GenerateContextBundleID()
+	insertIntegrationContextBundle(t, ctx, handle, integrationContextBundleRow{
+		ID:                    staleContextBundleID,
+		OrganizationID:        db.DefaultDevOrganizationID,
+		ProjectID:             projectID,
+		ModelProfileID:        staleProfileID,
+		PromptTemplateID:      stalePromptTemplateID,
+		InputLocale:           "zh-CN",
+		OutputLocale:          "en-US",
+		ResolvedPromptVersion: 3,
+		SourceSnapshotIDs:     []string{"cccccccc-cccc-cccc-cccc-cccccccccccc"},
+		ReferencedAssetIDs:    []string{"dddddddd-dddd-dddd-dddd-dddddddddddd"},
+		PayloadJSON:           `{"temperature":0.5}`,
+		CreatedByUserID:       db.DefaultDevUserID,
+		CreatedAt:             now.Add(time.Minute),
+	})
+
+	if _, err := runtimeStore.ApplyBackupPackage(ctx, backupRecord.Metadata.PackageID); err != nil {
+		t.Fatalf("ApplyBackupPackage returned error: %v", err)
+	}
+
+	restoredProfile, ok := getIntegrationModelProfile(t, ctx, handle, modelProfileID)
+	if !ok {
+		t.Fatalf("expected restored model profile %q", modelProfileID)
+	}
+	if restoredProfile.ModelName != originalModelName {
+		t.Fatalf("expected restored model profile name %q, got %q", originalModelName, restoredProfile.ModelName)
+	}
+	if restoredProfile.Status != "active" {
+		t.Fatalf("expected restored model profile status %q, got %q", "active", restoredProfile.Status)
+	}
+	if _, ok := getIntegrationModelProfile(t, ctx, handle, staleProfileID); ok {
+		t.Fatalf("expected stale model profile %q to be removed by restore", staleProfileID)
+	}
+
+	restoredPromptTemplate, ok := getIntegrationPromptTemplate(t, ctx, handle, promptTemplateID)
+	if !ok {
+		t.Fatalf("expected restored prompt template %q", promptTemplateID)
+	}
+	if restoredPromptTemplate.Content != "初始提示词" {
+		t.Fatalf("expected restored prompt template content %q, got %q", "初始提示词", restoredPromptTemplate.Content)
+	}
+	if restoredPromptTemplate.Status != "active" {
+		t.Fatalf("expected restored prompt template status %q, got %q", "active", restoredPromptTemplate.Status)
+	}
+	if _, ok := getIntegrationPromptTemplate(t, ctx, handle, stalePromptTemplateID); ok {
+		t.Fatalf("expected stale prompt template %q to be removed by restore", stalePromptTemplateID)
+	}
+
+	restoredContextBundle, ok := getIntegrationContextBundle(t, ctx, handle, contextBundleID)
+	if !ok {
+		t.Fatalf("expected restored context bundle %q", contextBundleID)
+	}
+	if restoredContextBundle.ResolvedPromptVersion != 1 {
+		t.Fatalf("expected restored context bundle prompt version %d, got %d", 1, restoredContextBundle.ResolvedPromptVersion)
+	}
+	if !equalJSONPayloadStrings(restoredContextBundle.PayloadJSON, `{"temperature":0.2}`) {
+		t.Fatalf("expected restored context bundle payload %q, got %q", `{"temperature":0.2}`, restoredContextBundle.PayloadJSON)
+	}
+	if len(restoredContextBundle.ReferencedAssetIDs) != 1 || restoredContextBundle.ReferencedAssetIDs[0] != "99999999-9999-9999-9999-999999999999" {
+		t.Fatalf("expected restored context bundle referenced asset ids to be preserved, got %v", restoredContextBundle.ReferencedAssetIDs)
+	}
+	if _, ok := getIntegrationContextBundle(t, ctx, handle, staleContextBundleID); ok {
+		t.Fatalf("expected stale context bundle %q to be removed by restore", staleContextBundleID)
 	}
 }
 
@@ -1955,6 +2198,226 @@ func openNativeIntegrationHandle(t *testing.T) *sql.DB {
 		t.Fatalf("PingContext returned error: %v", err)
 	}
 	return handle
+}
+
+type integrationModelProfileRow struct {
+	ID                     string
+	Provider               string
+	ModelName              string
+	CapabilityType         string
+	Region                 string
+	SupportedInputLocales  []string
+	SupportedOutputLocales []string
+	PricingSnapshotJSON    string
+	RateLimitPolicyJSON    string
+	Status                 string
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+}
+
+type integrationPromptTemplateRow struct {
+	ID               string
+	TemplateFamily   string
+	TemplateKey      string
+	Locale           string
+	Version          int
+	Content          string
+	InputSchemaJSON  string
+	OutputSchemaJSON string
+	Status           string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type integrationContextBundleRow struct {
+	ID                    string
+	OrganizationID        string
+	ProjectID             string
+	ShotID                string
+	ShotExecutionID       string
+	ModelProfileID        string
+	PromptTemplateID      string
+	InputLocale           string
+	OutputLocale          string
+	ResolvedPromptVersion int
+	SourceSnapshotIDs     []string
+	ReferencedAssetIDs    []string
+	PayloadJSON           string
+	CreatedByUserID       string
+	CreatedAt             time.Time
+}
+
+func insertIntegrationModelProfile(t *testing.T, ctx context.Context, handle *sql.DB, record integrationModelProfileRow) {
+	t.Helper()
+
+	if _, err := handle.ExecContext(ctx, `
+		INSERT INTO model_profiles (
+			id, provider, model_name, capability_type, region,
+			supported_input_locales, supported_output_locales, pricing_snapshot,
+			rate_limit_policy, status, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, $11, $12)
+		ON CONFLICT (id) DO UPDATE
+		SET provider = EXCLUDED.provider,
+		    model_name = EXCLUDED.model_name,
+		    capability_type = EXCLUDED.capability_type,
+		    region = EXCLUDED.region,
+		    supported_input_locales = EXCLUDED.supported_input_locales,
+		    supported_output_locales = EXCLUDED.supported_output_locales,
+		    pricing_snapshot = EXCLUDED.pricing_snapshot,
+		    rate_limit_policy = EXCLUDED.rate_limit_policy,
+		    status = EXCLUDED.status,
+		    updated_at = EXCLUDED.updated_at
+	`, record.ID, record.Provider, record.ModelName, record.CapabilityType, record.Region, pq.Array(record.SupportedInputLocales), pq.Array(record.SupportedOutputLocales), record.PricingSnapshotJSON, record.RateLimitPolicyJSON, record.Status, record.CreatedAt, record.UpdatedAt); err != nil {
+		t.Fatalf("insertIntegrationModelProfile returned error: %v", err)
+	}
+}
+
+func insertIntegrationPromptTemplate(t *testing.T, ctx context.Context, handle *sql.DB, record integrationPromptTemplateRow) {
+	t.Helper()
+
+	if _, err := handle.ExecContext(ctx, `
+		INSERT INTO prompt_templates (
+			id, template_family, template_key, locale, version, content,
+			input_schema, output_schema, status, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10, $11)
+		ON CONFLICT (id) DO UPDATE
+		SET template_family = EXCLUDED.template_family,
+		    template_key = EXCLUDED.template_key,
+		    locale = EXCLUDED.locale,
+		    version = EXCLUDED.version,
+		    content = EXCLUDED.content,
+		    input_schema = EXCLUDED.input_schema,
+		    output_schema = EXCLUDED.output_schema,
+		    status = EXCLUDED.status,
+		    updated_at = EXCLUDED.updated_at
+	`, record.ID, record.TemplateFamily, record.TemplateKey, record.Locale, record.Version, record.Content, record.InputSchemaJSON, record.OutputSchemaJSON, record.Status, record.CreatedAt, record.UpdatedAt); err != nil {
+		t.Fatalf("insertIntegrationPromptTemplate returned error: %v", err)
+	}
+}
+
+func insertIntegrationContextBundle(t *testing.T, ctx context.Context, handle *sql.DB, record integrationContextBundleRow) {
+	t.Helper()
+
+	nullableUUID := func(value string) any {
+		if strings.TrimSpace(value) == "" {
+			return nil
+		}
+		return value
+	}
+	nullableInt := func(value int) any {
+		if value <= 0 {
+			return nil
+		}
+		return value
+	}
+
+	if _, err := handle.ExecContext(ctx, `
+		INSERT INTO context_bundles (
+			id, organization_id, project_id, shot_id, model_profile_id,
+			prompt_template_id, input_locale, output_locale, resolved_prompt_version,
+			source_snapshot_ids, referenced_asset_ids, payload, created_by_user_id, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $14)
+		ON CONFLICT (id) DO UPDATE
+		SET organization_id = EXCLUDED.organization_id,
+		    project_id = EXCLUDED.project_id,
+		    shot_id = EXCLUDED.shot_id,
+		    model_profile_id = EXCLUDED.model_profile_id,
+		    prompt_template_id = EXCLUDED.prompt_template_id,
+		    input_locale = EXCLUDED.input_locale,
+		    output_locale = EXCLUDED.output_locale,
+		    resolved_prompt_version = EXCLUDED.resolved_prompt_version,
+		    source_snapshot_ids = EXCLUDED.source_snapshot_ids,
+		    referenced_asset_ids = EXCLUDED.referenced_asset_ids,
+		    payload = EXCLUDED.payload,
+		    created_by_user_id = EXCLUDED.created_by_user_id,
+		    updated_at = EXCLUDED.updated_at
+	`, record.ID, record.OrganizationID, record.ProjectID, nullableUUID(record.ShotID), nullableUUID(record.ModelProfileID), nullableUUID(record.PromptTemplateID), record.InputLocale, record.OutputLocale, nullableInt(record.ResolvedPromptVersion), pq.Array(record.SourceSnapshotIDs), pq.Array(record.ReferencedAssetIDs), record.PayloadJSON, nullableUUID(record.CreatedByUserID), record.CreatedAt); err != nil {
+		t.Fatalf("insertIntegrationContextBundle returned error: %v", err)
+	}
+}
+
+func getIntegrationModelProfile(t *testing.T, ctx context.Context, handle *sql.DB, id string) (integrationModelProfileRow, bool) {
+	t.Helper()
+
+	var (
+		record                 integrationModelProfileRow
+		supportedInputLocales  pq.StringArray
+		supportedOutputLocales pq.StringArray
+	)
+	err := handle.QueryRowContext(ctx, `
+		SELECT id::text, provider, model_name, capability_type, region,
+		       COALESCE(supported_input_locales, ARRAY[]::text[]),
+		       COALESCE(supported_output_locales, ARRAY[]::text[]),
+		       COALESCE(pricing_snapshot::text, '{}'),
+		       COALESCE(rate_limit_policy::text, '{}'),
+		       status, created_at, updated_at
+		FROM model_profiles
+		WHERE id = $1
+	`, id).Scan(&record.ID, &record.Provider, &record.ModelName, &record.CapabilityType, &record.Region, &supportedInputLocales, &supportedOutputLocales, &record.PricingSnapshotJSON, &record.RateLimitPolicyJSON, &record.Status, &record.CreatedAt, &record.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return integrationModelProfileRow{}, false
+	}
+	if err != nil {
+		t.Fatalf("getIntegrationModelProfile returned error: %v", err)
+	}
+	record.SupportedInputLocales = append([]string(nil), supportedInputLocales...)
+	record.SupportedOutputLocales = append([]string(nil), supportedOutputLocales...)
+	record.CreatedAt = record.CreatedAt.UTC()
+	record.UpdatedAt = record.UpdatedAt.UTC()
+	return record, true
+}
+
+func getIntegrationPromptTemplate(t *testing.T, ctx context.Context, handle *sql.DB, id string) (integrationPromptTemplateRow, bool) {
+	t.Helper()
+
+	var record integrationPromptTemplateRow
+	err := handle.QueryRowContext(ctx, `
+		SELECT id::text, template_family, template_key, locale, version, content,
+		       COALESCE(input_schema::text, '{}'), COALESCE(output_schema::text, '{}'),
+		       status, created_at, updated_at
+		FROM prompt_templates
+		WHERE id = $1
+	`, id).Scan(&record.ID, &record.TemplateFamily, &record.TemplateKey, &record.Locale, &record.Version, &record.Content, &record.InputSchemaJSON, &record.OutputSchemaJSON, &record.Status, &record.CreatedAt, &record.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return integrationPromptTemplateRow{}, false
+	}
+	if err != nil {
+		t.Fatalf("getIntegrationPromptTemplate returned error: %v", err)
+	}
+	record.CreatedAt = record.CreatedAt.UTC()
+	record.UpdatedAt = record.UpdatedAt.UTC()
+	return record, true
+}
+
+func getIntegrationContextBundle(t *testing.T, ctx context.Context, handle *sql.DB, id string) (integrationContextBundleRow, bool) {
+	t.Helper()
+
+	var (
+		record             integrationContextBundleRow
+		sourceSnapshotIDs  pq.StringArray
+		referencedAssetIDs pq.StringArray
+	)
+	err := handle.QueryRowContext(ctx, `
+		SELECT id::text, organization_id::text, project_id::text, COALESCE(shot_id::text, ''),
+		       COALESCE(model_profile_id::text, ''),
+		       COALESCE(prompt_template_id::text, ''), input_locale, output_locale,
+		       COALESCE(resolved_prompt_version, 0),
+		       ARRAY(SELECT unnest(COALESCE(source_snapshot_ids, ARRAY[]::uuid[]))::text),
+		       ARRAY(SELECT unnest(COALESCE(referenced_asset_ids, ARRAY[]::uuid[]))::text),
+		       COALESCE(payload::text, '{}'), COALESCE(created_by_user_id::text, ''), created_at
+		FROM context_bundles
+		WHERE id = $1
+	`, id).Scan(&record.ID, &record.OrganizationID, &record.ProjectID, &record.ShotID, &record.ModelProfileID, &record.PromptTemplateID, &record.InputLocale, &record.OutputLocale, &record.ResolvedPromptVersion, &sourceSnapshotIDs, &referencedAssetIDs, &record.PayloadJSON, &record.CreatedByUserID, &record.CreatedAt)
+	if err == sql.ErrNoRows {
+		return integrationContextBundleRow{}, false
+	}
+	if err != nil {
+		t.Fatalf("getIntegrationContextBundle returned error: %v", err)
+	}
+	record.SourceSnapshotIDs = append([]string(nil), sourceSnapshotIDs...)
+	record.ReferencedAssetIDs = append([]string(nil), referencedAssetIDs...)
+	record.CreatedAt = record.CreatedAt.UTC()
+	return record, true
 }
 
 func equalJSONPayloadStrings(left string, right string) bool {

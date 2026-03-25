@@ -227,6 +227,9 @@ func (p *PostgresPersister) loadRelationalSnapshot(ctx context.Context, snapshot
 	if err := p.loadProjectsEpisodesScenesShotsSnapshots(ctx, snapshot); err != nil {
 		return err
 	}
+	if err := p.loadModelGovernance(ctx, snapshot); err != nil {
+		return err
+	}
 	if err := p.loadCollaborationAndPreview(ctx, snapshot); err != nil {
 		return err
 	}
@@ -1032,6 +1035,9 @@ func (p *PostgresPersister) saveRelationalSnapshot(ctx context.Context, tx *sql.
 	if err := p.saveProjectsEpisodesScenesShotsSnapshots(ctx, tx, snapshot); err != nil {
 		return err
 	}
+	if err := p.saveModelGovernance(ctx, tx, snapshot); err != nil {
+		return err
+	}
 	if err := p.saveCollaborationAndPreview(ctx, tx, snapshot); err != nil {
 		return err
 	}
@@ -1165,7 +1171,10 @@ func clearMainTables(ctx context.Context, tx *sql.Tx) error {
 		`DELETE FROM upload_sessions`,
 		`DELETE FROM import_batches`,
 		`DELETE FROM shot_execution_runs`,
+		`DELETE FROM context_bundles`,
 		`DELETE FROM shot_executions`,
+		`DELETE FROM prompt_templates`,
+		`DELETE FROM model_profiles`,
 		`DELETE FROM collaboration_presences`,
 		`DELETE FROM collaboration_sessions`,
 		`DELETE FROM content_snapshots`,
