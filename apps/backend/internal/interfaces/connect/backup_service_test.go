@@ -161,6 +161,51 @@ func TestBackupRoutesReportFailedPreconditionWhenUnavailable(t *testing.T) {
 	}
 }
 
+func TestBackupRoutesReportFailedPreconditionForMultiOrgRuntimeScope(t *testing.T) {
+	const secondOrgID = "org-2"
+	repo := &connectFakeBackupRepository{
+		currentSnapshot: db.Snapshot{
+			Organizations: map[string]orgdomain.Organization{
+				db.DefaultDevOrganizationID: {ID: db.DefaultDevOrganizationID},
+				secondOrgID:                 {ID: secondOrgID},
+			},
+			Projects: map[string]projectdomain.Project{
+				"project-1": {
+					ID:                   "project-1",
+					OrganizationID:       db.DefaultDevOrganizationID,
+					OwnerUserID:          db.DefaultDevUserID,
+					Title:                "Project 1",
+					Status:               "draft",
+					CurrentStage:         "planning",
+					PrimaryContentLocale: "zh-CN",
+				},
+				"project-2": {
+					ID:                   "project-2",
+					OrganizationID:       secondOrgID,
+					OwnerUserID:          "user-2",
+					Title:                "Project 2",
+					Status:               "draft",
+					CurrentStage:         "planning",
+					PrimaryContentLocale: "zh-CN",
+				},
+			},
+		},
+	}
+	service := backupapp.NewService(repo, authz.NewAuthorizer(newBackupTestAuthStore([]string{"org.settings.write"})))
+	client, server := newBackupTestClient(t, service)
+	defer server.Close()
+
+	_, err := client.ListBackupPackages(context.Background(), connectBackupRequest(&backupv1.ListBackupPackagesRequest{
+		OrgId: db.DefaultDevOrganizationID,
+	}))
+	if err == nil {
+		t.Fatalf("expected failed precondition error")
+	}
+	if connectrpc.CodeOf(err) != connectrpc.CodeFailedPrecondition {
+		t.Fatalf("expected failed precondition code, got %v", connectrpc.CodeOf(err))
+	}
+}
+
 type connectFakeBackupRepository struct {
 	currentSnapshot      db.Snapshot
 	packages             map[string]db.BackupPackageRecord

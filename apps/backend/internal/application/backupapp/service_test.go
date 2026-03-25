@@ -149,7 +149,8 @@ func TestBackupServiceGetRejectsMissingPackage(t *testing.T) {
 	t.Parallel()
 
 	service := newTestBackupService(&fakeBackupRepository{
-		packages: map[string]db.BackupPackageRecord{},
+		currentSnapshot: singleOrgRuntimeSnapshot(),
+		packages:        map[string]db.BackupPackageRecord{},
 	}, []string{backupPermissionOrgSettingsWrite})
 
 	_, err := service.GetBackupPackage(context.Background(), GetBackupPackageInput{
@@ -172,6 +173,7 @@ func TestBackupServiceApplyRequiresConfirmation(t *testing.T) {
 		},
 	}, time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC))
 	service := newTestBackupService(&fakeBackupRepository{
+		currentSnapshot: singleOrgRuntimeSnapshot(),
 		packages: map[string]db.BackupPackageRecord{
 			record.Metadata.PackageID: record,
 		},
@@ -201,6 +203,7 @@ func TestBackupServicePreflightRejectsEmptyPackage(t *testing.T) {
 		Snapshot: db.Snapshot{},
 	}
 	service := newTestBackupService(&fakeBackupRepository{
+		currentSnapshot: singleOrgRuntimeSnapshot(),
 		packages: map[string]db.BackupPackageRecord{
 			emptyRecord.Metadata.PackageID: emptyRecord,
 		},
@@ -229,6 +232,167 @@ func TestBackupServiceRequiresPermission(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "permission denied") {
 		t.Fatalf("expected permission denied, got %v", err)
+	}
+}
+
+func TestBackupServiceRejectsMultiOrgRuntimeScope(t *testing.T) {
+	t.Parallel()
+
+	const secondOrgID = "org-2"
+	multiOrgSnapshot := db.Snapshot{
+		Organizations: map[string]orgdomain.Organization{
+			db.DefaultDevOrganizationID: {ID: db.DefaultDevOrganizationID},
+			secondOrgID:                 {ID: secondOrgID},
+		},
+		Projects: map[string]projectdomain.Project{
+			"project-1": {
+				ID:                   "project-1",
+				OrganizationID:       db.DefaultDevOrganizationID,
+				OwnerUserID:          db.DefaultDevUserID,
+				Title:                "Project 1",
+				Status:               "draft",
+				CurrentStage:         "planning",
+				PrimaryContentLocale: "zh-CN",
+			},
+			"project-2": {
+				ID:                   "project-2",
+				OrganizationID:       secondOrgID,
+				OwnerUserID:          "user-2",
+				Title:                "Project 2",
+				Status:               "draft",
+				CurrentStage:         "planning",
+				PrimaryContentLocale: "zh-CN",
+			},
+		},
+	}
+	record := mustBuildBackupPackageRecord(t, "package-multi-org-runtime", multiOrgSnapshot, time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC))
+	repo := &fakeBackupRepository{
+		currentSnapshot: multiOrgSnapshot,
+		createRecord:    record,
+		packages: map[string]db.BackupPackageRecord{
+			record.Metadata.PackageID: record,
+		},
+	}
+	service := newTestBackupService(repo, []string{backupPermissionOrgSettingsWrite})
+
+	_, err := service.CreateBackupPackage(context.Background(), CreateBackupPackageInput{
+		ActorOrgID:  db.DefaultDevOrganizationID,
+		ActorUserID: db.DefaultDevUserID,
+		OrgID:       db.DefaultDevOrganizationID,
+	})
+	if err == nil || !strings.Contains(err.Error(), "single-org runtime scope") {
+		t.Fatalf("expected single-org runtime scope error on create, got %v", err)
+	}
+	if repo.lastCreatedByUserID != "" {
+		t.Fatalf("expected create repository to remain untouched, got %q", repo.lastCreatedByUserID)
+	}
+
+	_, err = service.ListBackupPackages(context.Background(), ListBackupPackagesInput{
+		ActorOrgID:  db.DefaultDevOrganizationID,
+		ActorUserID: db.DefaultDevUserID,
+		OrgID:       db.DefaultDevOrganizationID,
+	})
+	if err == nil || !strings.Contains(err.Error(), "single-org runtime scope") {
+		t.Fatalf("expected single-org runtime scope error on list, got %v", err)
+	}
+}
+
+func TestBackupServiceHidesMultiOrgBackupPackage(t *testing.T) {
+	t.Parallel()
+
+	const secondOrgID = "org-2"
+	currentSnapshot := db.Snapshot{
+		Organizations: map[string]orgdomain.Organization{
+			db.DefaultDevOrganizationID: {ID: db.DefaultDevOrganizationID},
+		},
+		Projects: map[string]projectdomain.Project{
+			"project-1": {
+				ID:                   "project-1",
+				OrganizationID:       db.DefaultDevOrganizationID,
+				OwnerUserID:          db.DefaultDevUserID,
+				Title:                "Project 1",
+				Status:               "draft",
+				CurrentStage:         "planning",
+				PrimaryContentLocale: "zh-CN",
+			},
+		},
+	}
+	multiOrgPackageSnapshot := db.Snapshot{
+		Organizations: map[string]orgdomain.Organization{
+			db.DefaultDevOrganizationID: {ID: db.DefaultDevOrganizationID},
+			secondOrgID:                 {ID: secondOrgID},
+		},
+		Projects: map[string]projectdomain.Project{
+			"project-1": {
+				ID:                   "project-1",
+				OrganizationID:       db.DefaultDevOrganizationID,
+				OwnerUserID:          db.DefaultDevUserID,
+				Title:                "Project 1",
+				Status:               "draft",
+				CurrentStage:         "planning",
+				PrimaryContentLocale: "zh-CN",
+			},
+			"project-2": {
+				ID:                   "project-2",
+				OrganizationID:       secondOrgID,
+				OwnerUserID:          "user-2",
+				Title:                "Project 2",
+				Status:               "draft",
+				CurrentStage:         "planning",
+				PrimaryContentLocale: "zh-CN",
+			},
+		},
+	}
+	record := mustBuildBackupPackageRecord(t, "package-hidden-multi-org", multiOrgPackageSnapshot, time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC))
+	repo := &fakeBackupRepository{
+		currentSnapshot: currentSnapshot,
+		packages: map[string]db.BackupPackageRecord{
+			record.Metadata.PackageID: record,
+		},
+	}
+	service := newTestBackupService(repo, []string{backupPermissionOrgSettingsWrite})
+
+	listed, err := service.ListBackupPackages(context.Background(), ListBackupPackagesInput{
+		ActorOrgID:  db.DefaultDevOrganizationID,
+		ActorUserID: db.DefaultDevUserID,
+		OrgID:       db.DefaultDevOrganizationID,
+	})
+	if err != nil {
+		t.Fatalf("ListBackupPackages returned error: %v", err)
+	}
+	if len(listed) != 0 {
+		t.Fatalf("expected multi-org package to be hidden, got %d items", len(listed))
+	}
+
+	_, err = service.GetBackupPackage(context.Background(), GetBackupPackageInput{
+		ActorOrgID:  db.DefaultDevOrganizationID,
+		ActorUserID: db.DefaultDevUserID,
+		OrgID:       db.DefaultDevOrganizationID,
+		PackageID:   record.Metadata.PackageID,
+	})
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("expected multi-org package get to be rejected as not found, got %v", err)
+	}
+
+	_, err = service.PreflightRestoreBackupPackage(context.Background(), PreflightRestoreBackupPackageInput{
+		ActorOrgID:  db.DefaultDevOrganizationID,
+		ActorUserID: db.DefaultDevUserID,
+		OrgID:       db.DefaultDevOrganizationID,
+		PackageID:   record.Metadata.PackageID,
+	})
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("expected multi-org package preflight to be rejected as not found, got %v", err)
+	}
+
+	_, err = service.ApplyBackupPackage(context.Background(), ApplyBackupPackageInput{
+		ActorOrgID:            db.DefaultDevOrganizationID,
+		ActorUserID:           db.DefaultDevUserID,
+		OrgID:                 db.DefaultDevOrganizationID,
+		PackageID:             record.Metadata.PackageID,
+		ConfirmReplaceRuntime: true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("expected multi-org package apply to be rejected as not found, got %v", err)
 	}
 }
 
@@ -365,5 +529,13 @@ func mustBuildBackupPackageRecord(t *testing.T, packageID string, snapshot db.Sn
 			PayloadBytes:    summary.PayloadBytes,
 		},
 		Snapshot: snapshot,
+	}
+}
+
+func singleOrgRuntimeSnapshot() db.Snapshot {
+	return db.Snapshot{
+		Organizations: map[string]orgdomain.Organization{
+			db.DefaultDevOrganizationID: {ID: db.DefaultDevOrganizationID},
+		},
 	}
 }

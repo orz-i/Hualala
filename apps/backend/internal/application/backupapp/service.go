@@ -15,6 +15,8 @@ import (
 
 const backupPermissionOrgSettingsWrite = "org.settings.write"
 
+const backupSingleOrgRuntimeScopeError = "backupapp: failed precondition: whole-runtime backup requires single-org runtime scope matching target org"
+
 type Service struct {
 	repo       db.BackupRepository
 	authorizer authz.Authorizer
@@ -51,12 +53,12 @@ type PreflightRestoreBackupPackageInput struct {
 }
 
 type ApplyBackupPackageInput struct {
-	ActorOrgID              string
-	ActorUserID             string
-	CookieHeader            string
-	OrgID                   string
-	PackageID               string
-	ConfirmReplaceRuntime   bool
+	ActorOrgID            string
+	ActorUserID           string
+	CookieHeader          string
+	OrgID                 string
+	PackageID             string
+	ConfirmReplaceRuntime bool
 }
 
 type GetBackupPackageOutput struct {
@@ -80,6 +82,9 @@ func (s *Service) CreateBackupPackage(ctx context.Context, input CreateBackupPac
 	if err != nil {
 		return db.BackupPackageMetadata{}, err
 	}
+	if err := s.requireSingleOrgRuntimeScope(ctx, principal.OrgID); err != nil {
+		return db.BackupPackageMetadata{}, err
+	}
 	record, err := s.repo.CreateBackupPackage(ctx, principal.UserID)
 	if err != nil {
 		return db.BackupPackageMetadata{}, err
@@ -88,8 +93,8 @@ func (s *Service) CreateBackupPackage(ctx context.Context, input CreateBackupPac
 	if err != nil {
 		return db.BackupPackageMetadata{}, err
 	}
-	if !backupPackageContainsOrg(record.Metadata, principal.OrgID) {
-		return db.BackupPackageMetadata{}, errors.New("backupapp: failed precondition: current runtime does not include target org")
+	if !backupPackageMatchesSingleOrgScope(record.Metadata, principal.OrgID) {
+		return db.BackupPackageMetadata{}, errors.New(backupSingleOrgRuntimeScopeError)
 	}
 	return record.Metadata, nil
 }
@@ -99,13 +104,16 @@ func (s *Service) ListBackupPackages(ctx context.Context, input ListBackupPackag
 	if err != nil {
 		return nil, err
 	}
+	if err := s.requireSingleOrgRuntimeScope(ctx, principal.OrgID); err != nil {
+		return nil, err
+	}
 	items, err := s.repo.ListBackupPackages(ctx)
 	if err != nil {
 		return nil, err
 	}
 	filtered := make([]db.BackupPackageMetadata, 0, len(items))
 	for _, item := range items {
-		if len(item.OrgIDs) == 0 || slices.Contains(item.OrgIDs, principal.OrgID) {
+		if backupPackageMatchesSingleOrgScope(item, principal.OrgID) {
 			filtered = append(filtered, item)
 		}
 	}
@@ -115,6 +123,9 @@ func (s *Service) ListBackupPackages(ctx context.Context, input ListBackupPackag
 func (s *Service) GetBackupPackage(ctx context.Context, input GetBackupPackageInput) (GetBackupPackageOutput, error) {
 	principal, err := s.resolvePrincipal(ctx, input.ActorOrgID, input.ActorUserID, input.CookieHeader, input.OrgID)
 	if err != nil {
+		return GetBackupPackageOutput{}, err
+	}
+	if err := s.requireSingleOrgRuntimeScope(ctx, principal.OrgID); err != nil {
 		return GetBackupPackageOutput{}, err
 	}
 	record, err := s.loadPackageForOrg(ctx, principal.OrgID, input.PackageID)
@@ -134,6 +145,9 @@ func (s *Service) GetBackupPackage(ctx context.Context, input GetBackupPackageIn
 func (s *Service) PreflightRestoreBackupPackage(ctx context.Context, input PreflightRestoreBackupPackageInput) (PreflightRestoreBackupPackageOutput, error) {
 	principal, err := s.resolvePrincipal(ctx, input.ActorOrgID, input.ActorUserID, input.CookieHeader, input.OrgID)
 	if err != nil {
+		return PreflightRestoreBackupPackageOutput{}, err
+	}
+	if err := s.requireSingleOrgRuntimeScope(ctx, principal.OrgID); err != nil {
 		return PreflightRestoreBackupPackageOutput{}, err
 	}
 	record, err := s.loadPackageForOrg(ctx, principal.OrgID, input.PackageID)
@@ -164,6 +178,9 @@ func (s *Service) ApplyBackupPackage(ctx context.Context, input ApplyBackupPacka
 	}
 	if !input.ConfirmReplaceRuntime {
 		return db.BackupPackageMetadata{}, errors.New("backupapp: confirm_replace_runtime is required")
+	}
+	if err := s.requireSingleOrgRuntimeScope(ctx, principal.OrgID); err != nil {
+		return db.BackupPackageMetadata{}, err
 	}
 	record, err := s.loadPackageForOrg(ctx, principal.OrgID, input.PackageID)
 	if err != nil {
@@ -196,10 +213,25 @@ func (s *Service) loadPackageForOrg(ctx context.Context, orgID string, packageID
 	if err != nil {
 		return db.BackupPackageRecord{}, err
 	}
-	if !backupPackageContainsOrg(record.Metadata, orgID) {
+	if !backupPackageMatchesSingleOrgScope(record.Metadata, orgID) {
 		return db.BackupPackageRecord{}, errors.New("backupapp: backup package not found")
 	}
 	return record, nil
+}
+
+func (s *Service) requireSingleOrgRuntimeScope(ctx context.Context, orgID string) error {
+	snapshot, err := s.repo.LoadCurrentBackupSnapshot(ctx)
+	if err != nil {
+		return err
+	}
+	summary, err := db.SummarizeBackupSnapshot(snapshot)
+	if err != nil {
+		return fmt.Errorf("backupapp: summarize current runtime scope: %w", err)
+	}
+	if !backupSummaryMatchesSingleOrgScope(summary, orgID) {
+		return errors.New(backupSingleOrgRuntimeScopeError)
+	}
+	return nil
 }
 
 func (s *Service) resolvePrincipal(ctx context.Context, actorOrgID string, actorUserID string, cookieHeader string, orgID string) (authz.Principal, error) {
@@ -281,12 +313,16 @@ func buildPreflightWarnings(packageSummary db.BackupSummary, currentSummary db.B
 	return warnings
 }
 
-func backupPackageContainsOrg(metadata db.BackupPackageMetadata, orgID string) bool {
+func backupPackageMatchesSingleOrgScope(metadata db.BackupPackageMetadata, orgID string) bool {
+	return backupSummaryMatchesSingleOrgScope(summaryFromMetadata(metadata), orgID)
+}
+
+func backupSummaryMatchesSingleOrgScope(summary db.BackupSummary, orgID string) bool {
 	targetOrgID := strings.TrimSpace(orgID)
 	if targetOrgID == "" {
 		return false
 	}
-	return slices.Contains(metadata.OrgIDs, targetOrgID)
+	return len(summary.OrgIDs) == 1 && strings.TrimSpace(summary.OrgIDs[0]) == targetOrgID
 }
 
 func summaryFromMetadata(metadata db.BackupPackageMetadata) db.BackupSummary {
