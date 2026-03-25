@@ -332,7 +332,7 @@ export function requestPreviewRenderState(
       : {
           ...queuedRuntime,
           status: "ready",
-          renderStatus: "succeeded",
+          renderStatus: "completed",
           playbackAssetId: buildPreviewPlaybackAssetId(previewState.projectId),
           exportAssetId: buildPreviewExportAssetId(previewState.projectId),
           playback: buildPreviewPlaybackDelivery(previewState.projectId),

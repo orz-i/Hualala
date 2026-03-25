@@ -241,9 +241,9 @@ test("preview helpers preserve assembly order and provenance scope", async () =>
   const runtimePayload = buildPreviewRuntimePayload(queuedRuntime);
   assert.equal(runtimePayload.runtime?.renderStatus, "queued");
   assert.equal(runtimePayload.runtime?.resolvedLocale, "en-US");
-  assert.equal(settledRuntime.renderStatus, "succeeded");
+  assert.equal(settledRuntime.renderStatus, "completed");
   assert.equal(settledRuntime.playbackAssetId, "asset-preview-playback-project-1");
-  assert.equal(eventPayload.render_status, "succeeded");
+  assert.equal(eventPayload.render_status, "completed");
   assert.equal(eventPayload.resolved_locale, "en-US");
 
   const provenance = buildPreviewAssetProvenancePayload(updated, "asset-preview-2");

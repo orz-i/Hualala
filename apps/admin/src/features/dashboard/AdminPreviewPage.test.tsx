@@ -77,7 +77,7 @@ describe("AdminPreviewPage", () => {
           assemblyId: "assembly-project-1",
           status: "ready",
           renderWorkflowRunId: "workflow-preview-1",
-          renderStatus: "succeeded",
+          renderStatus: "completed",
           playbackAssetId: "asset-playback-1",
           exportAssetId: "asset-export-1",
           resolvedLocale: "zh-CN",
@@ -113,7 +113,7 @@ describe("AdminPreviewPage", () => {
 
     expect(screen.getByText("缺失来源运行摘要的条目：1")).toBeInTheDocument();
     expect(screen.getByText("运行态：ready")).toBeInTheDocument();
-    expect(screen.getByText("渲染状态：succeeded")).toBeInTheDocument();
+    expect(screen.getByText("渲染状态：completed")).toBeInTheDocument();
     expect(screen.getByText("交付模式：manifest")).toBeInTheDocument();
     expect(screen.getByText("时长：30000ms")).toBeInTheDocument();
     expect(

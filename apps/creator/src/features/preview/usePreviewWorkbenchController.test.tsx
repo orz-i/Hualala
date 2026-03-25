@@ -344,7 +344,7 @@ describe("usePreviewWorkbenchController", () => {
       buildPreviewRuntime({
         status: "ready",
         renderWorkflowRunId: "workflow-preview-old",
-        renderStatus: "succeeded",
+        renderStatus: "completed",
         playbackAssetId: "asset-playback-old",
         exportAssetId: "asset-export-old",
         resolvedLocale: "en-US",
@@ -391,7 +391,7 @@ describe("usePreviewWorkbenchController", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.previewRuntime?.renderStatus).toBe("succeeded");
+      expect(result.current.previewRuntime?.renderStatus).toBe("completed");
     });
 
     await act(async () => {
@@ -815,7 +815,7 @@ describe("usePreviewWorkbenchController", () => {
         buildPreviewRuntime({
           status: "ready",
           renderWorkflowRunId: "workflow-preview-1",
-          renderStatus: "succeeded",
+          renderStatus: "completed",
           playbackAssetId: "asset-playback-1",
           exportAssetId: "asset-export-1",
           resolvedLocale: "en-US",
@@ -863,7 +863,7 @@ describe("usePreviewWorkbenchController", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.previewRuntime?.renderStatus).toBe("succeeded");
+      expect(result.current.previewRuntime?.renderStatus).toBe("completed");
     });
 
     expect(result.current.draftItems.map((item) => item.shotId)).toEqual(["shot-1", "shot-2"]);

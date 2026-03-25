@@ -15,7 +15,7 @@ test("phase3 preview playback/export: creator consumes delivery payload and admi
   await page.getByRole("button", { name: "请求预演渲染" }).click();
 
   await expect(page.getByText("渲染状态：queued")).toBeVisible();
-  await expect(page.getByText("渲染状态：succeeded")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText("渲染状态：completed")).toBeVisible({ timeout: 5000 });
   await expect(page.getByText("交付模式：file")).toBeVisible();
   await expect(page.getByText("时长：31000ms")).toBeVisible();
   await expect(page.getByText("文件名：preview-export-project-live-1.mp4")).toBeVisible();

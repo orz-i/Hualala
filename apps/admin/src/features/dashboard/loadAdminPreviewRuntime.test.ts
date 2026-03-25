@@ -21,7 +21,7 @@ describe("loadAdminPreviewRuntime", () => {
         assemblyId: "assembly-project-1",
         status: "ready",
         renderWorkflowRunId: "workflow-preview-1",
-        renderStatus: "succeeded",
+        renderStatus: "completed",
         playbackAssetId: "asset-playback-1",
         exportAssetId: "asset-export-1",
         resolvedLocale: "zh-CN",
@@ -59,7 +59,7 @@ describe("loadAdminPreviewRuntime", () => {
     expect(result).toEqual(
       expect.objectContaining({
         previewRuntimeId: "runtime-project-1",
-        renderStatus: "succeeded",
+        renderStatus: "completed",
         resolvedLocale: "zh-CN",
         playbackAssetId: "asset-playback-1",
         exportAssetId: "asset-export-1",

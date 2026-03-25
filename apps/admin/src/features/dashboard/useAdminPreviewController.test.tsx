@@ -268,7 +268,7 @@ describe("useAdminPreviewController", () => {
         buildPreviewRuntime({
           status: "ready",
           renderWorkflowRunId: "workflow-preview-1",
-          renderStatus: "succeeded",
+          renderStatus: "completed",
           playbackAssetId: "asset-playback-1",
           exportAssetId: "asset-export-1",
           resolvedLocale: "en-US",
@@ -312,7 +312,7 @@ describe("useAdminPreviewController", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.previewRuntime?.renderStatus).toBe("succeeded");
+      expect(result.current.previewRuntime?.renderStatus).toBe("completed");
     });
     expect(result.current.previewWorkbench?.summary.itemCount).toBe(2);
     expect(result.current.previewRuntime?.playback?.deliveryMode).toBe("manifest");
