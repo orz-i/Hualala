@@ -116,6 +116,7 @@ describe("AdminPreviewPage", () => {
                   sourceRunId: "run-segment-2",
                   startMs: 12000,
                   durationMs: 18000,
+                  transitionToNext: null,
                 },
               ],
             },

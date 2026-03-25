@@ -119,11 +119,7 @@ function normalizeTransition(
 }
 
 function normalizeTimeline(
-  timeline: PreviewRuntimePayload["playback"] extends infer Playback
-    ? Playback extends { timeline?: infer Timeline }
-      ? Timeline
-      : never
-    : never,
+  timeline: NonNullable<PreviewRuntimePayload["playback"]>["timeline"] | undefined,
 ): PreviewTimelineSpineViewModel | null {
   if (!timeline) {
     return null;
