@@ -215,6 +215,21 @@ export type PreviewAssemblyState = {
   items: PreviewAssemblyItemState[];
 };
 
+export type PreviewRuntimeState = {
+  previewRuntimeId: string;
+  projectId: string;
+  episodeId: string;
+  assemblyId: string;
+  status: string;
+  renderWorkflowRunId: string;
+  renderStatus: string;
+  playbackAssetId: string;
+  exportAssetId: string;
+  resolvedLocale: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AudioClipState = {
   clipId: string;
   trackId: string;

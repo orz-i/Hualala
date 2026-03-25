@@ -17,6 +17,7 @@ runtime shared truth 已单独冻结在 [`phase3-preview-runtime-freeze.md`](./p
 1. 打开 creator 预演页：`/preview?projectId=project-live-1`
 2. 进入开发会话后，页面顶部会展示：
    - 当前 assembly 状态
+   - `Runtime` 面板
    - 音频摘要卡
    - `Shot Chooser`
 3. 页面不会新增 preview 专属 locale picker，而是直接跟随 app 全局 locale。
@@ -28,13 +29,28 @@ runtime shared truth 已单独冻结在 [`phase3-preview-runtime-freeze.md`](./p
    - `scene_title / shot_title`
    - `primary_asset` 摘要
    - `source_run` 摘要
-6. 允许继续做：
+6. `Runtime` 面板现在会显示：
+   - `status`
+   - `render_status`
+   - `render_workflow_run_id`
+   - `resolved_locale`
+   - `playback_asset_id`
+   - `export_asset_id`
+7. 点击 `请求预演渲染` 后：
+   - 当 assembly 非空且当前没有 `queued/running` render 时，请求会使用当前 app locale 作为 `requested_locale`
+   - 页面会先看到 `queued` 态
+   - 随后由 `project.preview.runtime.updated` 事件触发 runtime 刷新
+   - runtime 区块会被动更新到最新状态，但不会清空未保存的 assembly 草稿、chooser 选中项或手动 `shotId`
+8. 允许继续做：
    - 上移 / 下移
    - 删除
    - 保存预演装配
    - 打开镜头工作台
    - 查看素材来源
-7. 如果 chooser 暂时失败，页面仍会保留已有 assembly，并显示独立 chooser 错误；次级路径可手动输入 `shotId`
+9. 如果 chooser 暂时失败，页面仍会保留已有 assembly，并显示独立 chooser 错误；次级路径可手动输入 `shotId`
+10. 如果 runtime 请求失败、render 失败或 SSE 刷新失败：
+   - 错误只留在 runtime 区块
+   - assembly 编辑面、metadata 展示和音频摘要不会被拖垮
 
 ## Admin 路径
 
@@ -44,13 +60,15 @@ runtime shared truth 已单独冻结在 [`phase3-preview-runtime-freeze.md`](./p
    - 预演条目数
    - 缺失主素材的条目数
    - 缺失来源运行摘要的条目数
+   - 只读 `Runtime` 摘要区
 3. admin 也直接跟随 app 全局 locale；切换后只刷新 `scene_title / shot_title` 等 locale-sensitive 摘要，不改变只读审计语义。
 4. 每个条目都按 metadata-first 方式展示：
    - `scene_code / shot_code`
    - `scene_title / shot_title`
    - `primary_asset` 摘要
    - `source_run` 摘要
-5. admin 保持只读，只能查看 provenance，不允许改 assembly
+5. admin `Runtime` 摘要区会跟 creator 使用同一份 preview runtime truth，并通过相同的 `project.preview.runtime.updated` 事件做刷新。
+6. admin 保持只读，只能查看 provenance，不允许改 assembly，也不提供 render 按钮
 
 ## 验证命令
 
@@ -61,6 +79,7 @@ runtime shared truth 已单独冻结在 [`phase3-preview-runtime-freeze.md`](./p
 - `corepack pnpm run build`
 - `corepack pnpm run test:tooling`
 - `corepack pnpm run test:e2e:phase2:preview`
+- `corepack pnpm run test:e2e:phase3:preview-runtime`
 
 ## 已知边界
 
@@ -69,4 +88,5 @@ runtime shared truth 已单独冻结在 [`phase3-preview-runtime-freeze.md`](./p
 - 只有 `scene / shot` 标题会跟随 locale 变化；`project_title / episode_title` 继续保持当前存储值
 - 若缺少 `snapshot_kind=title` 翻译快照，后端会回退到源标题，页面不额外报错
 - `UpsertPreviewAssembly` 写入 shape 不变，仍只保存 `shotId / primaryAssetId / sourceRunId / sequence`
+- runtime 只暴露素材引用，不暴露播放 URL、manifest、字幕轨、时间轴段落或下载动作
 - 播放器 / 导出执行后续会直接消费 preview runtime contract，而不是复用 assembly metadata shape

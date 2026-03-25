@@ -2,10 +2,13 @@ import type { CSSProperties } from "react";
 import type { AdminTranslator } from "../../i18n";
 import type { AssetProvenanceDetailViewModel } from "./assetMonitor";
 import type { AdminPreviewItemViewModel, AdminPreviewWorkbenchViewModel } from "./adminPreview";
+import type { AdminPreviewRuntimeViewModel } from "./adminPreviewRuntime";
 import { AssetProvenanceDialog } from "./overview-page/AssetProvenanceDialog";
 
 type AdminPreviewPageProps = {
   previewWorkbench: AdminPreviewWorkbenchViewModel;
+  previewRuntime: AdminPreviewRuntimeViewModel | null;
+  runtimeErrorMessage: string;
   assetProvenanceDetail: AssetProvenanceDetailViewModel | null;
   assetProvenancePending: boolean;
   assetProvenanceErrorMessage: string;
@@ -73,8 +76,14 @@ function formatSourceRunSummary(item: AdminPreviewItemViewModel, t: AdminTransla
   return t("preview.item.metadataUnavailable");
 }
 
+function formatRuntimeField(value: string, fallback: string) {
+  return value || fallback;
+}
+
 export function AdminPreviewPage({
   previewWorkbench,
+  previewRuntime,
+  runtimeErrorMessage,
   assetProvenanceDetail,
   assetProvenancePending,
   assetProvenanceErrorMessage,
@@ -109,6 +118,78 @@ export function AdminPreviewPage({
         ) : null}
         {assetProvenanceErrorMessage ? (
           <p style={{ margin: 0, color: "#991b1b" }}>{assetProvenanceErrorMessage}</p>
+        ) : null}
+      </article>
+
+      <article style={panelStyle}>
+        <div style={{ display: "grid", gap: "8px" }}>
+          <h2 style={{ margin: 0 }}>{t("preview.runtime.title")}</h2>
+          <p style={{ margin: 0, color: "#475569" }}>{t("preview.runtime.description")}</p>
+        </div>
+        {previewRuntime ? (
+          <div style={{ display: "grid", gap: "6px", color: "#475569" }}>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.status", {
+                status: formatRuntimeField(
+                  previewRuntime.status,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.renderStatus", {
+                status: formatRuntimeField(
+                  previewRuntime.renderStatus,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.workflowRunId", {
+                workflowRunId: formatRuntimeField(
+                  previewRuntime.renderWorkflowRunId,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.resolvedLocale", {
+                locale: formatRuntimeField(
+                  previewRuntime.resolvedLocale,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.playbackAssetId", {
+                assetId: formatRuntimeField(
+                  previewRuntime.playbackAssetId,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.exportAssetId", {
+                assetId: formatRuntimeField(
+                  previewRuntime.exportAssetId,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t("preview.runtime.updatedAt", {
+                updatedAt: formatRuntimeField(
+                  previewRuntime.updatedAt,
+                  t("preview.runtime.emptyValue"),
+                ),
+              })}
+            </p>
+          </div>
+        ) : (
+          <p style={{ margin: 0, color: "#64748b" }}>{t("preview.runtime.empty")}</p>
+        )}
+        {runtimeErrorMessage ? (
+          <p style={{ margin: 0, color: "#991b1b" }}>{runtimeErrorMessage}</p>
         ) : null}
       </article>
 

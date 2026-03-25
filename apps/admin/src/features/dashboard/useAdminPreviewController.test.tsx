@@ -1,7 +1,9 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createTranslator } from "../../i18n";
+import { loadAdminPreviewRuntime } from "./loadAdminPreviewRuntime";
 import { loadAssetProvenanceDetails } from "./loadAssetProvenanceDetails";
 import { loadAdminPreviewWorkbench } from "./loadAdminPreviewWorkbench";
+import { subscribeAdminPreviewRuntime } from "./subscribeAdminPreviewRuntime";
 import { useAdminPreviewController } from "./useAdminPreviewController";
 
 vi.mock("./loadAdminPreviewWorkbench", () => ({
@@ -12,8 +14,18 @@ vi.mock("./loadAssetProvenanceDetails", () => ({
   loadAssetProvenanceDetails: vi.fn(),
 }));
 
+vi.mock("./loadAdminPreviewRuntime", () => ({
+  loadAdminPreviewRuntime: vi.fn(),
+}));
+
+vi.mock("./subscribeAdminPreviewRuntime", () => ({
+  subscribeAdminPreviewRuntime: vi.fn(),
+}));
+
 const loadAdminPreviewWorkbenchMock = vi.mocked(loadAdminPreviewWorkbench);
 const loadAssetProvenanceDetailsMock = vi.mocked(loadAssetProvenanceDetails);
+const loadAdminPreviewRuntimeMock = vi.mocked(loadAdminPreviewRuntime);
+const subscribeAdminPreviewRuntimeMock = vi.mocked(subscribeAdminPreviewRuntime);
 
 function buildShotSummary(shotId: string, shotCode: string, shotTitle: string) {
   return {
@@ -81,12 +93,31 @@ function buildPreviewWorkbench() {
   };
 }
 
+function buildPreviewRuntime(overrides: Record<string, unknown> = {}) {
+  return {
+    previewRuntimeId: "runtime-project-1",
+    projectId: "project-1",
+    episodeId: "",
+    assemblyId: "assembly-project-1",
+    status: "idle",
+    renderWorkflowRunId: "",
+    renderStatus: "idle",
+    playbackAssetId: "",
+    exportAssetId: "",
+    resolvedLocale: "",
+    createdAt: "2026-03-24T09:00:00.000Z",
+    updatedAt: "2026-03-24T09:05:00.000Z",
+    ...overrides,
+  };
+}
+
 describe("useAdminPreviewController", () => {
   const t = createTranslator("zh-CN");
 
   beforeEach(() => {
     vi.clearAllMocks();
     loadAdminPreviewWorkbenchMock.mockResolvedValue(buildPreviewWorkbench());
+    loadAdminPreviewRuntimeMock.mockResolvedValue(buildPreviewRuntime());
     loadAssetProvenanceDetailsMock.mockResolvedValue({
       asset: {
         id: "asset-2",
@@ -104,6 +135,7 @@ describe("useAdminPreviewController", () => {
       importBatchId: "batch-1",
       variantCount: 2,
     });
+    subscribeAdminPreviewRuntimeMock.mockReturnValue(vi.fn());
   });
 
   it("loads preview data only when enabled and the session is ready", async () => {
@@ -136,6 +168,12 @@ describe("useAdminPreviewController", () => {
     await waitFor(() => {
       expect(result.current.previewWorkbench?.summary.itemCount).toBe(2);
     });
+    expect(result.current.previewRuntime).toEqual(
+      expect.objectContaining({
+        previewRuntimeId: "runtime-project-1",
+        renderStatus: "idle",
+      }),
+    );
   });
 
   it("opens asset provenance details for preview items", async () => {
@@ -217,5 +255,49 @@ describe("useAdminPreviewController", () => {
     await waitFor(() => {
       expect(result.current.previewWorkbench?.items[0]?.shotSummary?.shotTitle).toBe("First Shot");
     });
+  });
+
+  it("refreshes preview runtime from SSE without clearing admin preview state", async () => {
+    loadAdminPreviewRuntimeMock
+      .mockResolvedValueOnce(buildPreviewRuntime())
+      .mockResolvedValueOnce(
+        buildPreviewRuntime({
+          status: "ready",
+          renderWorkflowRunId: "workflow-preview-1",
+          renderStatus: "succeeded",
+          playbackAssetId: "asset-playback-1",
+          exportAssetId: "asset-export-1",
+          resolvedLocale: "en-US",
+        }),
+      );
+
+    const { result } = renderHook(() =>
+      useAdminPreviewController({
+        sessionState: "ready",
+        enabled: true,
+        projectId: "project-1",
+        locale: "en-US",
+        effectiveOrgId: "org-1",
+        effectiveUserId: "user-1",
+        t,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.previewRuntime?.renderStatus).toBe("idle");
+    });
+
+    const subscriptionOptions = subscribeAdminPreviewRuntimeMock.mock.calls[0]?.[0] as {
+      onRefreshNeeded: () => void;
+    };
+    await act(async () => {
+      subscriptionOptions.onRefreshNeeded();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.previewRuntime?.renderStatus).toBe("succeeded");
+    });
+    expect(result.current.previewWorkbench?.summary.itemCount).toBe(2);
   });
 });

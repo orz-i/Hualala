@@ -184,10 +184,13 @@ test("scenario initializer keeps admin workflow scope and mock session defaults 
 test("preview helpers preserve assembly order and provenance scope", async () => {
   const {
     createPreviewAssemblyState,
+    createPreviewRuntimeState,
     upsertPreviewAssemblyState,
     buildPreviewWorkbenchPayload,
+    buildPreviewRuntimePayload,
     buildPreviewShotOptionsPayload,
     buildPreviewAssetProvenancePayload,
+    requestPreviewRenderState,
   } = await import("../../tests/e2e/fixtures/mock-connect/preview.ts");
 
   const initial = createPreviewAssemblyState("project-1");
@@ -225,6 +228,23 @@ test("preview helpers preserve assembly order and provenance scope", async () =>
   const optionsPayload = buildPreviewShotOptionsPayload(updated);
   assert.equal(optionsPayload.options[0]?.shot?.shotCode, "SHOT-001");
   assert.equal(optionsPayload.options[1]?.currentPrimaryAsset?.assetId, "asset-preview-2");
+
+  const initialRuntime = createPreviewRuntimeState(updated);
+  assert.equal(initialRuntime.renderStatus, "idle");
+
+  const { queuedRuntime, settledRuntime, eventPayload } = requestPreviewRenderState(
+    initialRuntime,
+    updated,
+    { requestedLocale: "en-US" },
+    1,
+  );
+  const runtimePayload = buildPreviewRuntimePayload(queuedRuntime);
+  assert.equal(runtimePayload.runtime?.renderStatus, "queued");
+  assert.equal(runtimePayload.runtime?.resolvedLocale, "en-US");
+  assert.equal(settledRuntime.renderStatus, "succeeded");
+  assert.equal(settledRuntime.playbackAssetId, "asset-preview-playback-project-1");
+  assert.equal(eventPayload.render_status, "succeeded");
+  assert.equal(eventPayload.resolved_locale, "en-US");
 
   const provenance = buildPreviewAssetProvenancePayload(updated, "asset-preview-2");
   assert.equal(provenance?.asset.projectId, "project-1");

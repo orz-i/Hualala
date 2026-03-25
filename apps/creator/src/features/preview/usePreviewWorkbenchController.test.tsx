@@ -2,9 +2,12 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { loadAudioWorkbench } from "../audio/loadAudioWorkbench";
 import { createTranslator } from "../../i18n";
 import { useAssetProvenanceState } from "../shared/useAssetProvenanceState";
+import { loadPreviewRuntime } from "./loadPreviewRuntime";
 import { loadPreviewWorkbench } from "./loadPreviewWorkbench";
 import { loadPreviewShotOptions } from "./loadPreviewShotOptions";
 import { savePreviewWorkbench } from "./mutatePreviewWorkbench";
+import { requestPreviewRender } from "./requestPreviewRender";
+import { subscribePreviewRuntime } from "./subscribePreviewRuntime";
 import { usePreviewWorkbenchController } from "./usePreviewWorkbenchController";
 
 vi.mock("../shared/useAssetProvenanceState", () => ({
@@ -19,6 +22,10 @@ vi.mock("./loadPreviewShotOptions", () => ({
   loadPreviewShotOptions: vi.fn(),
 }));
 
+vi.mock("./loadPreviewRuntime", () => ({
+  loadPreviewRuntime: vi.fn(),
+}));
+
 vi.mock("../audio/loadAudioWorkbench", () => ({
   loadAudioWorkbench: vi.fn(),
 }));
@@ -27,11 +34,22 @@ vi.mock("./mutatePreviewWorkbench", () => ({
   savePreviewWorkbench: vi.fn(),
 }));
 
+vi.mock("./requestPreviewRender", () => ({
+  requestPreviewRender: vi.fn(),
+}));
+
+vi.mock("./subscribePreviewRuntime", () => ({
+  subscribePreviewRuntime: vi.fn(),
+}));
+
 const useAssetProvenanceStateMock = vi.mocked(useAssetProvenanceState);
 const loadPreviewWorkbenchMock = vi.mocked(loadPreviewWorkbench);
 const loadPreviewShotOptionsMock = vi.mocked(loadPreviewShotOptions);
+const loadPreviewRuntimeMock = vi.mocked(loadPreviewRuntime);
 const loadAudioWorkbenchMock = vi.mocked(loadAudioWorkbench);
 const savePreviewWorkbenchMock = vi.mocked(savePreviewWorkbench);
+const requestPreviewRenderMock = vi.mocked(requestPreviewRender);
+const subscribePreviewRuntimeMock = vi.mocked(subscribePreviewRuntime);
 
 function buildPreviewWorkbench() {
   return {
@@ -85,6 +103,24 @@ function buildShotSummary(shotId: string, shotCode: string, shotTitle: string) {
   };
 }
 
+function buildPreviewRuntime(overrides: Record<string, unknown> = {}) {
+  return {
+    previewRuntimeId: "runtime-project-1",
+    projectId: "project-1",
+    episodeId: "",
+    assemblyId: "assembly-project-1",
+    status: "idle",
+    renderWorkflowRunId: "",
+    renderStatus: "idle",
+    playbackAssetId: "",
+    exportAssetId: "",
+    resolvedLocale: "",
+    createdAt: "2026-03-24T09:00:00.000Z",
+    updatedAt: "2026-03-24T09:05:00.000Z",
+    ...overrides,
+  };
+}
+
 describe("usePreviewWorkbenchController", () => {
   const t = createTranslator("zh-CN");
 
@@ -132,6 +168,7 @@ describe("usePreviewWorkbenchController", () => {
         },
       },
     ]);
+    loadPreviewRuntimeMock.mockResolvedValue(buildPreviewRuntime());
     loadAudioWorkbenchMock.mockResolvedValue({
       timeline: {
         audioTimelineId: "timeline-project-1",
@@ -193,6 +230,15 @@ describe("usePreviewWorkbenchController", () => {
         },
       ],
     });
+    requestPreviewRenderMock.mockResolvedValue(
+      buildPreviewRuntime({
+        status: "queued",
+        renderWorkflowRunId: "workflow-preview-1",
+        renderStatus: "queued",
+        resolvedLocale: "zh-CN",
+      }),
+    );
+    subscribePreviewRuntimeMock.mockReturnValue(vi.fn());
   });
 
   it("loads preview state only when enabled", async () => {
@@ -237,6 +283,12 @@ describe("usePreviewWorkbenchController", () => {
       renderStatus: "queued",
       missingAssetCount: 0,
     });
+    expect(result.current.previewRuntime).toEqual(
+      expect.objectContaining({
+        previewRuntimeId: "runtime-project-1",
+        renderStatus: "idle",
+      }),
+    );
     expect(result.current.shotOptions).toEqual([
       expect.objectContaining({
         shotId: "shot-2",
@@ -244,6 +296,41 @@ describe("usePreviewWorkbenchController", () => {
       }),
     ]);
     expect(result.current.selectedShotOptionId).toBe("shot-2");
+  });
+
+  it("requests preview render with the current locale and updates runtime state", async () => {
+    const { result } = renderHook(() =>
+      usePreviewWorkbenchController({
+        enabled: true,
+        projectId: "project-1",
+        locale: "zh-CN",
+        t,
+        orgId: "org-1",
+        userId: "user-1",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.previewRuntime?.renderStatus).toBe("idle");
+    });
+
+    await act(async () => {
+      await result.current.handleRequestPreviewRender();
+    });
+
+    expect(requestPreviewRenderMock).toHaveBeenCalledWith({
+      projectId: "project-1",
+      requestedLocale: "zh-CN",
+      orgId: "org-1",
+      userId: "user-1",
+    });
+    expect(result.current.previewRuntime).toEqual(
+      expect.objectContaining({
+        renderStatus: "queued",
+        renderWorkflowRunId: "workflow-preview-1",
+        resolvedLocale: "zh-CN",
+      }),
+    );
   });
 
   it("adds items from the chooser, reorders them, and saves only the stable write shape", async () => {
@@ -640,5 +727,94 @@ describe("usePreviewWorkbenchController", () => {
 
     expect(result.current.draftItems[0]?.shotSummary?.shotTitle).toBe("Second Shot");
     expect(result.current.draftItems[1]?.shotSummary?.shotTitle).toBe("First Shot");
+  });
+
+  it("refreshes preview runtime from SSE without overwriting unsaved draft state", async () => {
+    loadPreviewRuntimeMock
+      .mockResolvedValueOnce(buildPreviewRuntime())
+      .mockResolvedValueOnce(
+        buildPreviewRuntime({
+          status: "ready",
+          renderWorkflowRunId: "workflow-preview-1",
+          renderStatus: "succeeded",
+          playbackAssetId: "asset-playback-1",
+          exportAssetId: "asset-export-1",
+          resolvedLocale: "en-US",
+        }),
+      );
+
+    const { result } = renderHook(() =>
+      usePreviewWorkbenchController({
+        enabled: true,
+        projectId: "project-1",
+        locale: "en-US",
+        t,
+        orgId: "org-1",
+        userId: "user-1",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.previewRuntime?.renderStatus).toBe("idle");
+    });
+
+    act(() => {
+      result.current.handleAddItemFromChooser();
+      result.current.setManualShotIdInput("shot-manual-9");
+    });
+
+    const subscriptionOptions = subscribePreviewRuntimeMock.mock.calls[0]?.[0] as {
+      onRefreshNeeded: () => void;
+    };
+    await act(async () => {
+      subscriptionOptions.onRefreshNeeded();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.previewRuntime?.renderStatus).toBe("succeeded");
+    });
+
+    expect(result.current.draftItems.map((item) => item.shotId)).toEqual(["shot-1", "shot-2"]);
+    expect(result.current.manualShotIdInput).toBe("shot-manual-9");
+  });
+
+  it("keeps preview drafts when runtime refresh fails after subscription", async () => {
+    loadPreviewRuntimeMock
+      .mockResolvedValueOnce(buildPreviewRuntime())
+      .mockRejectedValueOnce(new Error("runtime exploded"));
+
+    const { result } = renderHook(() =>
+      usePreviewWorkbenchController({
+        enabled: true,
+        projectId: "project-1",
+        locale: "zh-CN",
+        t,
+        orgId: "org-1",
+        userId: "user-1",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.previewRuntime?.renderStatus).toBe("idle");
+    });
+
+    act(() => {
+      result.current.handleAddItemFromChooser();
+      result.current.setManualShotIdInput("shot-manual-9");
+    });
+
+    const subscriptionOptions = subscribePreviewRuntimeMock.mock.calls[0]?.[0] as {
+      onRefreshNeeded: () => void;
+    };
+    await act(async () => {
+      subscriptionOptions.onRefreshNeeded();
+      await Promise.resolve();
+    });
+
+    expect(result.current.previewRuntime?.renderStatus).toBe("idle");
+    expect(result.current.runtimeErrorMessage).toBe("runtime exploded");
+    expect(result.current.draftItems.map((item) => item.shotId)).toEqual(["shot-1", "shot-2"]);
+    expect(result.current.manualShotIdInput).toBe("shot-manual-9");
   });
 });

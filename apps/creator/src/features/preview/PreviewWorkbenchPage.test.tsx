@@ -22,6 +22,7 @@ describe("PreviewWorkbenchPage", () => {
     const onOpenShotWorkbench = vi.fn();
     const onOpenAudioWorkbench = vi.fn();
     const onAddItemFromChooser = vi.fn();
+    const onRequestPreviewRender = vi.fn();
     const onManualShotIdInputChange = vi.fn();
     const onAddManualItem = vi.fn();
 
@@ -125,6 +126,23 @@ describe("PreviewWorkbenchPage", () => {
         ]}
         selectedShotOptionId="shot-2"
         shotOptionsErrorMessage=""
+        previewRuntime={{
+          previewRuntimeId: "runtime-project-1",
+          projectId: "project-1",
+          episodeId: "",
+          assemblyId: "assembly-project-1",
+          status: "idle",
+          renderWorkflowRunId: "",
+          renderStatus: "idle",
+          playbackAssetId: "",
+          exportAssetId: "",
+          resolvedLocale: "zh-CN",
+          createdAt: "2026-03-24T09:00:00.000Z",
+          updatedAt: "2026-03-24T09:05:00.000Z",
+        }}
+        runtimeErrorMessage=""
+        requestRenderDisabledReason=""
+        requestRenderPending={false}
         manualShotIdInput=""
         assetProvenanceDetail={null}
         assetProvenancePending={false}
@@ -141,6 +159,7 @@ describe("PreviewWorkbenchPage", () => {
         onAddItemFromChooser={onAddItemFromChooser}
         onManualShotIdInputChange={onManualShotIdInputChange}
         onAddManualItem={onAddManualItem}
+        onRequestPreviewRender={onRequestPreviewRender}
         onRemoveItem={vi.fn()}
         onMoveItem={vi.fn()}
         onSaveAssembly={vi.fn()}
@@ -162,16 +181,20 @@ describe("PreviewWorkbenchPage", () => {
     fireEvent.click(within(secondItem).getByRole("button", { name: "打开镜头工作台" }));
     fireEvent.click(screen.getByRole("button", { name: "打开音频工作台" }));
     fireEvent.click(screen.getByRole("button", { name: "从镜头目录追加" }));
+    fireEvent.click(screen.getByRole("button", { name: "请求预演渲染" }));
 
     expect(onOpenAssetProvenance).toHaveBeenCalledWith("asset-2");
     expect(onOpenShotWorkbench).toHaveBeenCalledWith("shot-2");
     expect(onOpenAudioWorkbench).toHaveBeenCalledTimes(1);
     expect(onAddItemFromChooser).toHaveBeenCalledTimes(1);
+    expect(onRequestPreviewRender).toHaveBeenCalledTimes(1);
     expect(within(firstItem).getByText("SCENE-001 / SHOT-001")).toBeInTheDocument();
     expect(within(firstItem).getByText("开场 / 第一镜")).toBeInTheDocument();
     expect(within(secondItem).getByText("image · cleared · AI annotated")).toBeInTheDocument();
     expect(within(secondItem).getByText("completed · manual")).toBeInTheDocument();
     expect(screen.getByText("音频轨道数：3")).toBeInTheDocument();
     expect(screen.getByText("音频片段数：2")).toBeInTheDocument();
+    expect(screen.getByText("运行态：idle")).toBeInTheDocument();
+    expect(screen.getByText("渲染状态：idle")).toBeInTheDocument();
   });
 });

@@ -613,6 +613,10 @@ export function App() {
         shotOptions={previewWorkbenchController.shotOptions}
         selectedShotOptionId={previewWorkbenchController.selectedShotOptionId}
         shotOptionsErrorMessage={previewWorkbenchController.shotOptionsErrorMessage}
+        previewRuntime={previewWorkbenchController.previewRuntime}
+        runtimeErrorMessage={previewWorkbenchController.runtimeErrorMessage}
+        requestRenderDisabledReason={previewWorkbenchController.requestRenderDisabledReason}
+        requestRenderPending={previewWorkbenchController.requestRenderPending}
         manualShotIdInput={previewWorkbenchController.manualShotIdInput}
         assetProvenanceDetail={previewWorkbenchController.assetProvenanceDetail}
         assetProvenancePending={previewWorkbenchController.assetProvenancePending}
@@ -652,6 +656,9 @@ export function App() {
         onAddItemFromChooser={previewWorkbenchController.handleAddItemFromChooser}
         onManualShotIdInputChange={previewWorkbenchController.setManualShotIdInput}
         onAddManualItem={previewWorkbenchController.handleAddManualItem}
+        onRequestPreviewRender={() => {
+          void previewWorkbenchController.handleRequestPreviewRender();
+        }}
         onRemoveItem={previewWorkbenchController.handleRemoveItem}
         onMoveItem={previewWorkbenchController.handleMoveItem}
         onSaveAssembly={() => {
