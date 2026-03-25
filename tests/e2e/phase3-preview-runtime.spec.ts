@@ -31,6 +31,9 @@ test("phase3 preview runtime: creator requests render and admin observes the sam
   await expect(
     page.getByText("Export asset ID: asset-preview-export-project-live-1"),
   ).toBeVisible();
+  await expect(page.getByText("Segments: 2")).toBeVisible();
+  await expect(page.getByText("Total duration: 31000ms")).toBeVisible();
+  await expect(page.getByText("Shot: SHOT-001 / First Shot")).toBeVisible();
 
   await page.goto(
     "http://127.0.0.1:4173/preview?projectId=project-live-1&shotExecutionId=shot-exec-live-1",
@@ -41,6 +44,8 @@ test("phase3 preview runtime: creator requests render and admin observes the sam
   await expect(page.getByText("Preview Runtime")).toBeVisible();
   await expect(page.getByText("Render status: completed")).toBeVisible();
   await expect(page.getByText("Resolved locale: en-US")).toBeVisible();
+  await expect(page.getByText("Segments: 2")).toBeVisible();
+  await expect(page.getByText("Shot: SHOT-001 / First Shot")).toBeVisible();
   await expect(
     page.getByText("Playback asset ID: asset-preview-playback-project-live-1"),
   ).toBeVisible();

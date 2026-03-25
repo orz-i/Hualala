@@ -4,6 +4,12 @@ import type { AssetProvenanceDetailViewModel } from "./assetMonitor";
 import type { AdminPreviewItemViewModel, AdminPreviewWorkbenchViewModel } from "./adminPreview";
 import type { AdminPreviewRuntimeViewModel } from "./adminPreviewRuntime";
 import { AssetProvenanceDialog } from "./overview-page/AssetProvenanceDialog";
+import {
+  formatRuntimeField,
+  formatRuntimeNumber,
+  formatTimelineShot,
+  formatTimelineTransition,
+} from "../../../../shared/preview/previewRuntimeFormatting";
 
 type AdminPreviewPageProps = {
   previewWorkbench: AdminPreviewWorkbenchViewModel;
@@ -80,17 +86,6 @@ function formatSourceRunSummary(item: AdminPreviewItemViewModel, t: AdminTransla
     return t("preview.item.sourceRunId", { sourceRunId: item.sourceRunId });
   }
   return t("preview.item.metadataUnavailable");
-}
-
-function formatRuntimeField(value: string, fallback: string) {
-  return value || fallback;
-}
-
-function formatRuntimeNumber(value: number, suffix: string, fallback: string) {
-  if (!Number.isFinite(value) || value <= 0) {
-    return fallback;
-  }
-  return `${value}${suffix}`;
 }
 
 function OutputLink({ href, label, style }: OutputLinkProps) {
@@ -264,6 +259,106 @@ export function AdminPreviewPage({
                     />
                   ) : null}
                 </div>
+              ) : null}
+
+              <strong>{t("preview.runtime.timeline.title")}</strong>
+              {previewRuntime.playback ? (
+                previewRuntime.playback.timeline ? (
+                  <div style={{ display: "grid", gap: "10px", color: "#475569" }}>
+                    <p style={{ margin: 0 }}>
+                      {t("preview.runtime.timeline.segmentCount", {
+                        count: previewRuntime.playback.timeline.segments.length,
+                      })}
+                    </p>
+                    <p style={{ margin: 0 }}>
+                      {t("preview.runtime.timeline.totalDuration", {
+                        duration: formatRuntimeNumber(
+                          previewRuntime.playback.timeline.totalDurationMs,
+                          "ms",
+                          t("preview.runtime.emptyValue"),
+                        ),
+                      })}
+                    </p>
+                    <div style={{ display: "grid", gap: "10px" }}>
+                      {previewRuntime.playback.timeline.segments.map((segment) => (
+                        <article
+                          key={segment.segmentId || `${segment.sequence}-${segment.shotId}`}
+                          style={{
+                            borderRadius: "14px",
+                            padding: "12px 14px",
+                            background: "rgba(241, 245, 249, 0.9)",
+                            display: "grid",
+                            gap: "4px",
+                          }}
+                        >
+                          <p style={{ margin: 0 }}>
+                            {t("preview.runtime.timeline.sequence", {
+                              sequence: String(segment.sequence || 0),
+                            })}
+                          </p>
+                          <p style={{ margin: 0 }}>
+                            {t("preview.runtime.timeline.shot", {
+                              shot: formatTimelineShot(
+                                segment.shotCode,
+                                segment.shotTitle,
+                                t("preview.runtime.emptyValue"),
+                              ),
+                            })}
+                          </p>
+                          <p style={{ margin: 0 }}>
+                            {t("preview.runtime.timeline.start", {
+                              start: formatRuntimeNumber(
+                                segment.startMs,
+                                "ms",
+                                t("preview.runtime.emptyValue"),
+                                { allowZero: true },
+                              ),
+                            })}
+                          </p>
+                          <p style={{ margin: 0 }}>
+                            {t("preview.runtime.timeline.duration", {
+                              duration: formatRuntimeNumber(
+                                segment.durationMs,
+                                "ms",
+                                t("preview.runtime.emptyValue"),
+                              ),
+                            })}
+                          </p>
+                          <p style={{ margin: 0 }}>
+                            {t("preview.runtime.timeline.playbackAssetId", {
+                              assetId: formatRuntimeField(
+                                segment.playbackAssetId,
+                                t("preview.runtime.emptyValue"),
+                              ),
+                            })}
+                          </p>
+                          <p style={{ margin: 0 }}>
+                            {t("preview.runtime.timeline.sourceRunId", {
+                              sourceRunId: formatRuntimeField(
+                                segment.sourceRunId,
+                                t("preview.runtime.emptyValue"),
+                              ),
+                            })}
+                          </p>
+                          {segment.transitionToNext ? (
+                            <p style={{ margin: 0 }}>
+                              {t("preview.runtime.timeline.transition", {
+                                transition: formatTimelineTransition(
+                                  segment.transitionToNext,
+                                  t("preview.runtime.emptyValue"),
+                                ),
+                              })}
+                            </p>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ margin: 0, color: "#64748b" }}>
+                    {t("preview.runtime.timeline.empty")}
+                  </p>
+                )
               ) : null}
 
               <strong>{t("preview.runtime.export.title")}</strong>

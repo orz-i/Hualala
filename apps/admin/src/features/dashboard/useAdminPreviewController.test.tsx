@@ -277,6 +277,26 @@ describe("useAdminPreviewController", () => {
             playbackUrl: "https://cdn.example.com/preview-runtime-1.m3u8",
             posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
             durationMs: 30000,
+            timeline: {
+              totalDurationMs: 30000,
+              segments: [
+                {
+                  segmentId: "segment-1",
+                  sequence: 1,
+                  shotId: "shot-1",
+                  shotCode: "SHOT-001",
+                  shotTitle: "First Shot",
+                  playbackAssetId: "asset-playback-segment-1",
+                  sourceRunId: "run-segment-1",
+                  startMs: 0,
+                  durationMs: 12000,
+                  transitionToNext: {
+                    transitionType: "crossfade",
+                    durationMs: 300,
+                  },
+                },
+              ],
+            },
           },
           exportOutput: {
             downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
@@ -316,6 +336,10 @@ describe("useAdminPreviewController", () => {
     });
     expect(result.current.previewWorkbench?.summary.itemCount).toBe(2);
     expect(result.current.previewRuntime?.playback?.deliveryMode).toBe("manifest");
+    expect(result.current.previewRuntime?.playback?.timeline?.segments).toHaveLength(1);
+    expect(result.current.previewRuntime?.playback?.timeline?.segments[0]?.shotTitle).toBe(
+      "First Shot",
+    );
     expect(result.current.previewRuntime?.exportOutput?.downloadUrl).toBe(
       "https://cdn.example.com/preview-export-1.mp4",
     );

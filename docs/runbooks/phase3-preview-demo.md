@@ -88,7 +88,7 @@ runtime shared truth 已冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-
 - `corepack pnpm --filter @hualala/admin test`
 - `corepack pnpm run build`
 - `corepack pnpm run test:tooling`
-- `corepack pnpm run test:e2e:phase2:preview`
+- `corepack pnpm run test:e2e:phase3:preview-timeline`
 - `corepack pnpm run test:e2e:phase3:preview-runtime`
 - `corepack pnpm run test:e2e:phase3:preview-playback-export`
 - `corepack pnpm run test:e2e:phase2:real`
