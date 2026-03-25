@@ -1,5 +1,3 @@
-import type { CSSProperties } from "react";
-
 export function formatRuntimeField(value: string, fallback: string) {
   return value || fallback;
 }
@@ -22,7 +20,7 @@ export function formatRuntimeNumber(
   return `${value}${suffix}`;
 }
 
-export function buildRuntimeOutputLinkStyle(style?: CSSProperties): CSSProperties {
+export function buildRuntimeOutputLinkStyle<T extends object | undefined>(style?: T) {
   return {
     ...style,
     textDecoration: "none",
