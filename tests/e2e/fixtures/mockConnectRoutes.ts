@@ -274,6 +274,7 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         previewState,
         body,
         previewRuntimeAttempt,
+        scenario.preview ?? "success",
       );
       previewRuntimeState = settledRuntime;
       pendingSseEvents.push({

@@ -144,6 +144,13 @@ function formatRuntimeField(value: string, fallback: string) {
   return value || fallback;
 }
 
+function formatRuntimeNumber(value: number, suffix: string, fallback: string) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return fallback;
+  }
+  return `${value}${suffix}`;
+}
+
 export function PreviewWorkbenchPage({
   previewWorkbench,
   draftItems,
@@ -282,63 +289,201 @@ export function PreviewWorkbenchPage({
           <p style={{ margin: 0, color: "#475569" }}>{t("preview.runtime.description")}</p>
         </div>
         {previewRuntime ? (
-          <div style={{ display: "grid", gap: "6px", color: "#475569" }}>
-            <p style={{ margin: 0 }}>
-              {t("preview.runtime.status", {
-                status: formatRuntimeField(
-                  previewRuntime.status,
-                  t("preview.runtime.emptyValue"),
-                ),
-              })}
-            </p>
-            <p style={{ margin: 0 }}>
-              {t("preview.runtime.renderStatus", {
-                status: formatRuntimeField(
-                  previewRuntime.renderStatus,
-                  t("preview.runtime.emptyValue"),
-                ),
-              })}
-            </p>
-            <p style={{ margin: 0 }}>
-              {t("preview.runtime.workflowRunId", {
-                workflowRunId: formatRuntimeField(
-                  previewRuntime.renderWorkflowRunId,
-                  t("preview.runtime.emptyValue"),
-                ),
-              })}
-            </p>
-            <p style={{ margin: 0 }}>
-              {t("preview.runtime.resolvedLocale", {
-                locale: formatRuntimeField(
-                  previewRuntime.resolvedLocale,
-                  t("preview.runtime.emptyValue"),
-                ),
-              })}
-            </p>
-            <p style={{ margin: 0 }}>
-              {t("preview.runtime.playbackAssetId", {
-                assetId: formatRuntimeField(
-                  previewRuntime.playbackAssetId,
-                  t("preview.runtime.emptyValue"),
-                ),
-              })}
-            </p>
-            <p style={{ margin: 0 }}>
-              {t("preview.runtime.exportAssetId", {
-                assetId: formatRuntimeField(
-                  previewRuntime.exportAssetId,
-                  t("preview.runtime.emptyValue"),
-                ),
-              })}
-            </p>
-            <p style={{ margin: 0 }}>
-              {t("preview.runtime.updatedAt", {
-                updatedAt: formatRuntimeField(
-                  previewRuntime.updatedAt,
-                  t("preview.runtime.emptyValue"),
-                ),
-              })}
-            </p>
+          <div style={{ display: "grid", gap: "16px" }}>
+            <div style={{ display: "grid", gap: "6px", color: "#475569" }}>
+              <p style={{ margin: 0 }}>
+                {t("preview.runtime.status", {
+                  status: formatRuntimeField(
+                    previewRuntime.status,
+                    t("preview.runtime.emptyValue"),
+                  ),
+                })}
+              </p>
+              <p style={{ margin: 0 }}>
+                {t("preview.runtime.renderStatus", {
+                  status: formatRuntimeField(
+                    previewRuntime.renderStatus,
+                    t("preview.runtime.emptyValue"),
+                  ),
+                })}
+              </p>
+              <p style={{ margin: 0 }}>
+                {t("preview.runtime.workflowRunId", {
+                  workflowRunId: formatRuntimeField(
+                    previewRuntime.renderWorkflowRunId,
+                    t("preview.runtime.emptyValue"),
+                  ),
+                })}
+              </p>
+              <p style={{ margin: 0 }}>
+                {t("preview.runtime.resolvedLocale", {
+                  locale: formatRuntimeField(
+                    previewRuntime.resolvedLocale,
+                    t("preview.runtime.emptyValue"),
+                  ),
+                })}
+              </p>
+              <p style={{ margin: 0 }}>
+                {t("preview.runtime.playbackAssetId", {
+                  assetId: formatRuntimeField(
+                    previewRuntime.playbackAssetId,
+                    t("preview.runtime.emptyValue"),
+                  ),
+                })}
+              </p>
+              <p style={{ margin: 0 }}>
+                {t("preview.runtime.exportAssetId", {
+                  assetId: formatRuntimeField(
+                    previewRuntime.exportAssetId,
+                    t("preview.runtime.emptyValue"),
+                  ),
+                })}
+              </p>
+              <p style={{ margin: 0 }}>
+                {t("preview.runtime.updatedAt", {
+                  updatedAt: formatRuntimeField(
+                    previewRuntime.updatedAt,
+                    t("preview.runtime.emptyValue"),
+                  ),
+                })}
+              </p>
+            </div>
+
+            <div style={{ display: "grid", gap: "10px" }}>
+              <strong>{t("preview.runtime.playback.title")}</strong>
+              {previewRuntime.playback ? (
+                <div style={{ display: "grid", gap: "6px", color: "#475569" }}>
+                  <p style={{ margin: 0 }}>
+                    {t("preview.runtime.playback.deliveryMode", {
+                      mode: formatRuntimeField(
+                        previewRuntime.playback.deliveryMode,
+                        t("preview.runtime.emptyValue"),
+                      ),
+                    })}
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    {t("preview.runtime.playback.duration", {
+                      duration: formatRuntimeNumber(
+                        previewRuntime.playback.durationMs,
+                        "ms",
+                        t("preview.runtime.emptyValue"),
+                      ),
+                    })}
+                  </p>
+                  {previewRuntime.playback.posterUrl ? (
+                    <p style={{ margin: 0 }}>
+                      Poster URL：{previewRuntime.playback.posterUrl}
+                    </p>
+                  ) : null}
+                  {previewRuntime.playback.deliveryMode === "file" &&
+                  previewRuntime.playback.playbackUrl ? (
+                    <video
+                      data-testid="preview-runtime-video"
+                      controls
+                      src={previewRuntime.playback.playbackUrl}
+                      poster={previewRuntime.playback.posterUrl || undefined}
+                      style={{ width: "100%", maxWidth: "640px", borderRadius: "14px" }}
+                    />
+                  ) : null}
+                  {previewRuntime.playback.playbackUrl ? (
+                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                      {previewRuntime.playback.deliveryMode === "manifest" ? (
+                        <p style={{ margin: 0, wordBreak: "break-all" }}>
+                          {previewRuntime.playback.playbackUrl}
+                        </p>
+                      ) : null}
+                      <a
+                        href={previewRuntime.playback.playbackUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          ...secondaryButtonStyle,
+                          textDecoration: "none",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {t("preview.runtime.playback.open")}
+                      </a>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <strong>{t("preview.runtime.export.title")}</strong>
+              {previewRuntime.exportOutput ? (
+                <div style={{ display: "grid", gap: "6px", color: "#475569" }}>
+                  <p style={{ margin: 0 }}>
+                    {t("preview.runtime.export.fileName", {
+                      fileName: formatRuntimeField(
+                        previewRuntime.exportOutput.fileName,
+                        t("preview.runtime.emptyValue"),
+                      ),
+                    })}
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    {t("preview.runtime.export.mimeType", {
+                      mimeType: formatRuntimeField(
+                        previewRuntime.exportOutput.mimeType,
+                        t("preview.runtime.emptyValue"),
+                      ),
+                    })}
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    {t("preview.runtime.export.sizeBytes", {
+                      sizeBytes: formatRuntimeNumber(
+                        previewRuntime.exportOutput.sizeBytes,
+                        " B",
+                        t("preview.runtime.emptyValue"),
+                      ),
+                    })}
+                  </p>
+                  {previewRuntime.exportOutput.downloadUrl ? (
+                    <a
+                      href={previewRuntime.exportOutput.downloadUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        ...secondaryButtonStyle,
+                        textDecoration: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {t("preview.runtime.export.open")}
+                    </a>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {!previewRuntime.playback && !previewRuntime.exportOutput ? (
+                <p style={{ margin: 0, color: "#64748b" }}>
+                  {t("preview.runtime.emptyOutput")}
+                </p>
+              ) : null}
+
+              {(previewRuntime.status === "failed" || previewRuntime.renderStatus === "failed") &&
+              (previewRuntime.lastErrorCode || previewRuntime.lastErrorMessage) ? (
+                <div style={{ display: "grid", gap: "6px", color: "#991b1b" }}>
+                  {previewRuntime.lastErrorCode ? (
+                    <p style={{ margin: 0 }}>
+                      {t("preview.runtime.lastErrorCode", {
+                        code: previewRuntime.lastErrorCode,
+                      })}
+                    </p>
+                  ) : null}
+                  {previewRuntime.lastErrorMessage ? (
+                    <p style={{ margin: 0 }}>
+                      {t("preview.runtime.lastErrorMessage", {
+                        message: previewRuntime.lastErrorMessage,
+                      })}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : (
           <p style={{ margin: 0, color: "#64748b" }}>{t("preview.runtime.empty")}</p>

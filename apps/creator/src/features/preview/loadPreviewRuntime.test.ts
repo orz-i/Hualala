@@ -27,6 +27,20 @@ describe("loadPreviewRuntime", () => {
         resolvedLocale: "en-US",
         createdAt: "2026-03-24T10:00:00.000Z",
         updatedAt: "2026-03-24T10:05:00.000Z",
+        playback: {
+          deliveryMode: "file",
+          playbackUrl: "https://cdn.example.com/preview-runtime-1.mp4",
+          posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
+          durationMs: 30000,
+        },
+        exportOutput: {
+          downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
+          mimeType: "video/mp4",
+          fileName: "preview-export-1.mp4",
+          sizeBytes: 4096,
+        },
+        lastErrorCode: "",
+        lastErrorMessage: "",
       },
     });
     createProjectClientMock.mockReturnValue({
@@ -60,6 +74,18 @@ describe("loadPreviewRuntime", () => {
         resolvedLocale: "en-US",
         playbackAssetId: "asset-playback-1",
         exportAssetId: "asset-export-1",
+        playback: {
+          deliveryMode: "file",
+          playbackUrl: "https://cdn.example.com/preview-runtime-1.mp4",
+          posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
+          durationMs: 30000,
+        },
+        exportOutput: {
+          downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
+          mimeType: "video/mp4",
+          fileName: "preview-export-1.mp4",
+          sizeBytes: 4096,
+        },
       }),
     );
   });

@@ -1,4 +1,4 @@
-import type { PreviewAssemblyState, PreviewRuntimeState } from "./types.ts";
+import type { PreviewAssemblyState, PreviewMode, PreviewRuntimeState } from "./types.ts";
 
 type UpsertPreviewAssemblyBody = {
   projectId?: string;
@@ -204,6 +204,28 @@ export function createPreviewRuntimeState(previewState: PreviewAssemblyState): P
     resolvedLocale: "",
     createdAt: "2026-03-24T09:10:00.000Z",
     updatedAt: "2026-03-24T09:10:00.000Z",
+    playback: null,
+    exportOutput: null,
+    lastErrorCode: "",
+    lastErrorMessage: "",
+  };
+}
+
+function buildPreviewPlaybackDelivery(projectId: string) {
+  return {
+    deliveryMode: "file",
+    playbackUrl: `https://cdn.example.com/${projectId}/preview-runtime.mp4`,
+    posterUrl: `https://cdn.example.com/${projectId}/preview-runtime.jpg`,
+    durationMs: 31000,
+  };
+}
+
+function buildPreviewExportOutput(projectId: string) {
+  return {
+    downloadUrl: `https://cdn.example.com/${projectId}/preview-export.mp4`,
+    mimeType: "video/mp4",
+    fileName: `preview-export-${projectId}.mp4`,
+    sizeBytes: 8192,
   };
 }
 
@@ -252,6 +274,10 @@ export function buildPreviewRuntimePayload(previewRuntimeState: PreviewRuntimeSt
       resolvedLocale: previewRuntimeState.resolvedLocale,
       createdAt: previewRuntimeState.createdAt,
       updatedAt: previewRuntimeState.updatedAt,
+      playback: previewRuntimeState.playback,
+      exportOutput: previewRuntimeState.exportOutput,
+      lastErrorCode: previewRuntimeState.lastErrorCode,
+      lastErrorMessage: previewRuntimeState.lastErrorMessage,
     },
   };
 }
@@ -276,6 +302,7 @@ export function requestPreviewRenderState(
   previewState: PreviewAssemblyState,
   body: RequestPreviewRenderBody,
   attempt: number,
+  mode: PreviewMode = "success",
 ) {
   const requestedLocale = body.requestedLocale ?? previewRuntimeState.resolvedLocale ?? "zh-CN";
   const queuedRuntime: PreviewRuntimeState = {
@@ -284,16 +311,34 @@ export function requestPreviewRenderState(
     renderWorkflowRunId: `workflow-preview-${attempt}`,
     renderStatus: "queued",
     resolvedLocale: requestedLocale,
+    playbackAssetId: "",
+    exportAssetId: "",
+    playback: null,
+    exportOutput: null,
+    lastErrorCode: "",
+    lastErrorMessage: "",
     updatedAt: "2026-03-24T09:11:00.000Z",
   };
-  const settledRuntime: PreviewRuntimeState = {
-    ...queuedRuntime,
-    status: "ready",
-    renderStatus: "succeeded",
-    playbackAssetId: buildPreviewPlaybackAssetId(previewState.projectId),
-    exportAssetId: buildPreviewExportAssetId(previewState.projectId),
-    updatedAt: "2026-03-24T09:12:00.000Z",
-  };
+  const settledRuntime: PreviewRuntimeState =
+    mode === "failure"
+      ? {
+          ...queuedRuntime,
+          status: "failed",
+          renderStatus: "failed",
+          lastErrorCode: "preview_render_failed",
+          lastErrorMessage: "worker callback timeout",
+          updatedAt: "2026-03-24T09:12:00.000Z",
+        }
+      : {
+          ...queuedRuntime,
+          status: "ready",
+          renderStatus: "succeeded",
+          playbackAssetId: buildPreviewPlaybackAssetId(previewState.projectId),
+          exportAssetId: buildPreviewExportAssetId(previewState.projectId),
+          playback: buildPreviewPlaybackDelivery(previewState.projectId),
+          exportOutput: buildPreviewExportOutput(previewState.projectId),
+          updatedAt: "2026-03-24T09:12:00.000Z",
+        };
 
   return {
     queuedRuntime,

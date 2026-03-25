@@ -139,6 +139,20 @@ describe("PreviewWorkbenchPage", () => {
           resolvedLocale: "zh-CN",
           createdAt: "2026-03-24T09:00:00.000Z",
           updatedAt: "2026-03-24T09:05:00.000Z",
+          playback: {
+            deliveryMode: "file",
+            playbackUrl: "https://cdn.example.com/preview-runtime-1.mp4",
+            posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
+            durationMs: 30000,
+          },
+          exportOutput: {
+            downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
+            mimeType: "video/mp4",
+            fileName: "preview-export-1.mp4",
+            sizeBytes: 4096,
+          },
+          lastErrorCode: "",
+          lastErrorMessage: "",
         }}
         runtimeErrorMessage=""
         requestRenderDisabledReason=""
@@ -196,5 +210,101 @@ describe("PreviewWorkbenchPage", () => {
     expect(screen.getByText("音频片段数：2")).toBeInTheDocument();
     expect(screen.getByText("运行态：idle")).toBeInTheDocument();
     expect(screen.getByText("渲染状态：idle")).toBeInTheDocument();
+    expect(screen.getByText("交付模式：file")).toBeInTheDocument();
+    expect(screen.getByText("时长：30000ms")).toBeInTheDocument();
+    expect(screen.getByText("文件名：preview-export-1.mp4")).toBeInTheDocument();
+    expect(screen.getByText("MIME：video/mp4")).toBeInTheDocument();
+    expect(screen.getByText("大小：4096 B")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "打开播放输出" })).toHaveAttribute(
+      "href",
+      "https://cdn.example.com/preview-runtime-1.mp4",
+    );
+    expect(screen.getByRole("link", { name: "打开导出输出" })).toHaveAttribute(
+      "href",
+      "https://cdn.example.com/preview-export-1.mp4",
+    );
+    expect(screen.getByTestId("preview-runtime-video")).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/preview-runtime-1.mp4",
+    );
+    expect(screen.getByTestId("preview-runtime-video")).toHaveAttribute(
+      "poster",
+      "https://cdn.example.com/preview-runtime-1.jpg",
+    );
+  });
+
+  it("falls back to a link-only playback action for manifest delivery and surfaces runtime failures", () => {
+    render(
+      <PreviewWorkbenchPage
+        previewWorkbench={{
+          assembly: {
+            assemblyId: "assembly-project-1",
+            projectId: "project-1",
+            episodeId: "",
+            status: "draft",
+            createdAt: "2026-03-23T09:00:00.000Z",
+            updatedAt: "2026-03-23T09:05:00.000Z",
+          },
+          items: [],
+        }}
+        draftItems={[]}
+        shotOptions={[]}
+        selectedShotOptionId=""
+        shotOptionsErrorMessage=""
+        previewRuntime={{
+          previewRuntimeId: "runtime-project-1",
+          projectId: "project-1",
+          episodeId: "",
+          assemblyId: "assembly-project-1",
+          status: "failed",
+          renderWorkflowRunId: "workflow-preview-2",
+          renderStatus: "failed",
+          playbackAssetId: "",
+          exportAssetId: "",
+          resolvedLocale: "en-US",
+          createdAt: "2026-03-24T09:00:00.000Z",
+          updatedAt: "2026-03-24T09:10:00.000Z",
+          playback: {
+            deliveryMode: "manifest",
+            playbackUrl: "https://cdn.example.com/preview-runtime-1.m3u8",
+            posterUrl: "",
+            durationMs: 31000,
+          },
+          exportOutput: null,
+          lastErrorCode: "render_failed",
+          lastErrorMessage: "worker callback timeout",
+        }}
+        runtimeErrorMessage=""
+        requestRenderDisabledReason=""
+        requestRenderPending={false}
+        manualShotIdInput=""
+        assetProvenanceDetail={null}
+        assetProvenancePending={false}
+        assetProvenanceErrorMessage=""
+        audioSummary={null}
+        audioSummaryErrorMessage=""
+        t={t}
+        onSelectedShotOptionIdChange={vi.fn()}
+        onAddItemFromChooser={vi.fn()}
+        onManualShotIdInputChange={vi.fn()}
+        onAddManualItem={vi.fn()}
+        onRequestPreviewRender={vi.fn()}
+        onRemoveItem={vi.fn()}
+        onMoveItem={vi.fn()}
+        onSaveAssembly={vi.fn()}
+        onOpenShotWorkbench={vi.fn()}
+        onOpenAudioWorkbench={vi.fn()}
+        onOpenAssetProvenance={vi.fn()}
+        onCloseAssetProvenance={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("preview-runtime-video")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "打开播放输出" })).toHaveAttribute(
+      "href",
+      "https://cdn.example.com/preview-runtime-1.m3u8",
+    );
+    expect(screen.getByText("最后错误码：render_failed")).toBeInTheDocument();
+    expect(screen.getByText("最后错误信息：worker callback timeout")).toBeInTheDocument();
   });
 });

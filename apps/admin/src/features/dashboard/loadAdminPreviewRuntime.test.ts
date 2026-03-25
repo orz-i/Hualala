@@ -27,6 +27,20 @@ describe("loadAdminPreviewRuntime", () => {
         resolvedLocale: "zh-CN",
         createdAt: "2026-03-24T10:00:00.000Z",
         updatedAt: "2026-03-24T10:06:00.000Z",
+        playback: {
+          deliveryMode: "manifest",
+          playbackUrl: "https://cdn.example.com/preview-runtime-1.m3u8",
+          posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
+          durationMs: 30000,
+        },
+        exportOutput: {
+          downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
+          mimeType: "video/mp4",
+          fileName: "preview-export-1.mp4",
+          sizeBytes: 8192,
+        },
+        lastErrorCode: "preview_runtime_ready_with_warning",
+        lastErrorMessage: "stale poster fallback",
       },
     });
     createProjectClientMock.mockReturnValue({
@@ -49,6 +63,20 @@ describe("loadAdminPreviewRuntime", () => {
         resolvedLocale: "zh-CN",
         playbackAssetId: "asset-playback-1",
         exportAssetId: "asset-export-1",
+        playback: {
+          deliveryMode: "manifest",
+          playbackUrl: "https://cdn.example.com/preview-runtime-1.m3u8",
+          posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
+          durationMs: 30000,
+        },
+        exportOutput: {
+          downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
+          mimeType: "video/mp4",
+          fileName: "preview-export-1.mp4",
+          sizeBytes: 8192,
+        },
+        lastErrorCode: "preview_runtime_ready_with_warning",
+        lastErrorMessage: "stale poster fallback",
       }),
     );
   });

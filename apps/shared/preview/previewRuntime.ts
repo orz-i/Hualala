@@ -1,3 +1,17 @@
+export type PreviewPlaybackDeliveryViewModel = {
+  deliveryMode: string;
+  playbackUrl: string;
+  posterUrl: string;
+  durationMs: number;
+};
+
+export type PreviewExportDeliveryViewModel = {
+  downloadUrl: string;
+  mimeType: string;
+  fileName: string;
+  sizeBytes: number;
+};
+
 export type PreviewRuntimeViewModel = {
   previewRuntimeId: string;
   projectId: string;
@@ -11,6 +25,10 @@ export type PreviewRuntimeViewModel = {
   resolvedLocale: string;
   createdAt: string;
   updatedAt: string;
+  playback: PreviewPlaybackDeliveryViewModel | null;
+  exportOutput: PreviewExportDeliveryViewModel | null;
+  lastErrorCode: string;
+  lastErrorMessage: string;
 };
 
 export type PreviewRuntimePayload = {
@@ -26,7 +44,49 @@ export type PreviewRuntimePayload = {
   resolvedLocale?: string;
   createdAt?: string;
   updatedAt?: string;
+  playback?: {
+    deliveryMode?: string;
+    playbackUrl?: string;
+    posterUrl?: string;
+    durationMs?: number;
+  };
+  exportOutput?: {
+    downloadUrl?: string;
+    mimeType?: string;
+    fileName?: string;
+    sizeBytes?: number;
+  };
+  lastErrorCode?: string;
+  lastErrorMessage?: string;
 };
+
+function normalizePlayback(
+  playback: PreviewRuntimePayload["playback"],
+): PreviewPlaybackDeliveryViewModel | null {
+  if (!playback) {
+    return null;
+  }
+  return {
+    deliveryMode: playback.deliveryMode ?? "",
+    playbackUrl: playback.playbackUrl ?? "",
+    posterUrl: playback.posterUrl ?? "",
+    durationMs: playback.durationMs ?? 0,
+  };
+}
+
+function normalizeExportOutput(
+  exportOutput: PreviewRuntimePayload["exportOutput"],
+): PreviewExportDeliveryViewModel | null {
+  if (!exportOutput) {
+    return null;
+  }
+  return {
+    downloadUrl: exportOutput.downloadUrl ?? "",
+    mimeType: exportOutput.mimeType ?? "",
+    fileName: exportOutput.fileName ?? "",
+    sizeBytes: exportOutput.sizeBytes ?? 0,
+  };
+}
 
 export function normalizePreviewRuntime(
   payload: PreviewRuntimePayload | undefined,
@@ -49,5 +109,9 @@ export function normalizePreviewRuntime(
     resolvedLocale: payload.resolvedLocale ?? "",
     createdAt: payload.createdAt ?? "",
     updatedAt: payload.updatedAt ?? "",
+    playback: normalizePlayback(payload.playback),
+    exportOutput: normalizeExportOutput(payload.exportOutput),
+    lastErrorCode: payload.lastErrorCode ?? "",
+    lastErrorMessage: payload.lastErrorMessage ?? "",
   };
 }

@@ -83,6 +83,20 @@ describe("AdminPreviewPage", () => {
           resolvedLocale: "zh-CN",
           createdAt: "2026-03-24T09:00:00.000Z",
           updatedAt: "2026-03-24T09:05:00.000Z",
+          playback: {
+            deliveryMode: "manifest",
+            playbackUrl: "https://cdn.example.com/preview-runtime-1.m3u8",
+            posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
+            durationMs: 30000,
+          },
+          exportOutput: {
+            downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
+            mimeType: "video/mp4",
+            fileName: "preview-export-1.mp4",
+            sizeBytes: 4096,
+          },
+          lastErrorCode: "",
+          lastErrorMessage: "",
         }}
         runtimeErrorMessage=""
         assetProvenanceDetail={null}
@@ -100,6 +114,20 @@ describe("AdminPreviewPage", () => {
     expect(screen.getByText("缺失来源运行摘要的条目：1")).toBeInTheDocument();
     expect(screen.getByText("运行态：ready")).toBeInTheDocument();
     expect(screen.getByText("渲染状态：succeeded")).toBeInTheDocument();
+    expect(screen.getByText("交付模式：manifest")).toBeInTheDocument();
+    expect(screen.getByText("时长：30000ms")).toBeInTheDocument();
+    expect(screen.getByText("文件名：preview-export-1.mp4")).toBeInTheDocument();
+    expect(screen.getByText("MIME：video/mp4")).toBeInTheDocument();
+    expect(screen.getByText("大小：4096 B")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "打开播放输出" })).toHaveAttribute(
+      "href",
+      "https://cdn.example.com/preview-runtime-1.m3u8",
+    );
+    expect(screen.getByRole("link", { name: "打开导出输出" })).toHaveAttribute(
+      "href",
+      "https://cdn.example.com/preview-export-1.mp4",
+    );
+    expect(document.querySelector("video")).toBeNull();
     expect(within(firstItem).getByText("SCENE-001 / SHOT-001")).toBeInTheDocument();
     expect(within(firstItem).getByText("开场 / 第一镜")).toBeInTheDocument();
     expect(within(firstItem).getByRole("button", { name: "查看来源" })).toBeDisabled();
@@ -110,5 +138,58 @@ describe("AdminPreviewPage", () => {
 
     fireEvent.click(within(secondItem).getByRole("button", { name: "查看来源" }));
     expect(onOpenAssetProvenance).toHaveBeenCalledWith("asset-2");
+  });
+
+  it("renders runtime failure details without embedding a player", () => {
+    render(
+      <AdminPreviewPage
+        previewWorkbench={{
+          assembly: {
+            assemblyId: "assembly-project-1",
+            projectId: "project-1",
+            episodeId: "",
+            status: "draft",
+            createdAt: "2026-03-23T09:00:00.000Z",
+            updatedAt: "2026-03-23T09:05:00.000Z",
+          },
+          items: [],
+          summary: {
+            itemCount: 0,
+            missingPrimaryAssetCount: 0,
+            missingSourceRunCount: 0,
+          },
+        }}
+        previewRuntime={{
+          previewRuntimeId: "runtime-project-1",
+          projectId: "project-1",
+          episodeId: "",
+          assemblyId: "assembly-project-1",
+          status: "failed",
+          renderWorkflowRunId: "workflow-preview-2",
+          renderStatus: "failed",
+          playbackAssetId: "",
+          exportAssetId: "",
+          resolvedLocale: "en-US",
+          createdAt: "2026-03-24T09:00:00.000Z",
+          updatedAt: "2026-03-24T09:12:00.000Z",
+          playback: null,
+          exportOutput: null,
+          lastErrorCode: "render_failed",
+          lastErrorMessage: "worker callback timeout",
+        }}
+        runtimeErrorMessage=""
+        assetProvenanceDetail={null}
+        assetProvenancePending={false}
+        assetProvenanceErrorMessage=""
+        t={t}
+        onOpenAssetProvenance={vi.fn()}
+        onCloseAssetProvenance={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("最后错误码：render_failed")).toBeInTheDocument();
+    expect(screen.getByText("最后错误信息：worker callback timeout")).toBeInTheDocument();
+    expect(screen.getByText("当前还没有可消费的播放 / 导出输出。")).toBeInTheDocument();
+    expect(document.querySelector("video")).toBeNull();
   });
 });

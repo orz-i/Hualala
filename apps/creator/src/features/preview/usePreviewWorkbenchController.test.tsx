@@ -117,6 +117,10 @@ function buildPreviewRuntime(overrides: Record<string, unknown> = {}) {
     resolvedLocale: "",
     createdAt: "2026-03-24T09:00:00.000Z",
     updatedAt: "2026-03-24T09:05:00.000Z",
+    playback: null,
+    exportOutput: null,
+    lastErrorCode: "",
+    lastErrorMessage: "",
     ...overrides,
   };
 }
@@ -329,6 +333,81 @@ describe("usePreviewWorkbenchController", () => {
         renderStatus: "queued",
         renderWorkflowRunId: "workflow-preview-1",
         resolvedLocale: "zh-CN",
+        playback: null,
+        exportOutput: null,
+      }),
+    );
+  });
+
+  it("clears stale playback, export output, and previous runtime errors when a new render request is queued", async () => {
+    loadPreviewRuntimeMock.mockResolvedValueOnce(
+      buildPreviewRuntime({
+        status: "ready",
+        renderWorkflowRunId: "workflow-preview-old",
+        renderStatus: "succeeded",
+        playbackAssetId: "asset-playback-old",
+        exportAssetId: "asset-export-old",
+        resolvedLocale: "en-US",
+        playback: {
+          deliveryMode: "file",
+          playbackUrl: "https://cdn.example.com/preview-runtime-old.mp4",
+          posterUrl: "https://cdn.example.com/preview-runtime-old.jpg",
+          durationMs: 28000,
+        },
+        exportOutput: {
+          downloadUrl: "https://cdn.example.com/preview-export-old.mp4",
+          mimeType: "video/mp4",
+          fileName: "preview-export-old.mp4",
+          sizeBytes: 2048,
+        },
+        lastErrorCode: "preview_runtime_stale",
+        lastErrorMessage: "stale output",
+      }),
+    );
+    requestPreviewRenderMock.mockResolvedValueOnce(
+      buildPreviewRuntime({
+        status: "queued",
+        renderWorkflowRunId: "workflow-preview-2",
+        renderStatus: "queued",
+        resolvedLocale: "zh-CN",
+        playbackAssetId: "",
+        exportAssetId: "",
+        playback: null,
+        exportOutput: null,
+        lastErrorCode: "",
+        lastErrorMessage: "",
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      usePreviewWorkbenchController({
+        enabled: true,
+        projectId: "project-1",
+        locale: "zh-CN",
+        t,
+        orgId: "org-1",
+        userId: "user-1",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.previewRuntime?.renderStatus).toBe("succeeded");
+    });
+
+    await act(async () => {
+      await result.current.handleRequestPreviewRender();
+    });
+
+    expect(result.current.previewRuntime).toEqual(
+      expect.objectContaining({
+        renderStatus: "queued",
+        renderWorkflowRunId: "workflow-preview-2",
+        playbackAssetId: "",
+        exportAssetId: "",
+        playback: null,
+        exportOutput: null,
+        lastErrorCode: "",
+        lastErrorMessage: "",
       }),
     );
   });
@@ -740,6 +819,18 @@ describe("usePreviewWorkbenchController", () => {
           playbackAssetId: "asset-playback-1",
           exportAssetId: "asset-export-1",
           resolvedLocale: "en-US",
+          playback: {
+            deliveryMode: "file",
+            playbackUrl: "https://cdn.example.com/preview-runtime-1.mp4",
+            posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
+            durationMs: 30000,
+          },
+          exportOutput: {
+            downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
+            mimeType: "video/mp4",
+            fileName: "preview-export-1.mp4",
+            sizeBytes: 4096,
+          },
         }),
       );
 
@@ -777,6 +868,10 @@ describe("usePreviewWorkbenchController", () => {
 
     expect(result.current.draftItems.map((item) => item.shotId)).toEqual(["shot-1", "shot-2"]);
     expect(result.current.manualShotIdInput).toBe("shot-manual-9");
+    expect(result.current.previewRuntime?.playback?.deliveryMode).toBe("file");
+    expect(result.current.previewRuntime?.exportOutput?.downloadUrl).toBe(
+      "https://cdn.example.com/preview-export-1.mp4",
+    );
   });
 
   it("keeps preview drafts when runtime refresh fails after subscription", async () => {
