@@ -8,6 +8,7 @@
 - 从 Phase 3 audio runtime foundation patch 开始，creator `/audio` 现在已经直接消费 `AudioRuntime`：运行态区会展示真实混音输出、内联 `<audio controls>` 和 waveform 引用。
 - admin `/audio` 现在已经直接消费同一份 `AudioRuntime`：运行态区只读展示 mix output / waveform audit，不嵌播放器。
 - waveform 当前仍是引用级 consumer，只展示稳定 `waveform_url` 和元数据，不绘制图形波形图。
+- 从 Phase 3 audio waveform document foundation patch 开始，`waveform_url` 背后的 JSON body 已冻结为 waveform document v1：`audio_waveform_v1 + duration_ms + peaks`。
 
 ## 本地验证
 
@@ -37,6 +38,7 @@ corepack pnpm run test:tooling
 
 - 如果 creator `/audio` 为空，先检查 `AssetService/ListImportBatches` 和 `AssetService/GetImportBatchWorkbench` 是否返回 `media_type=audio` 且 `duration_ms > 0`。
 - 如果 creator `/audio` 的运行态区一直停在 `idle` 或 `queued`，先检查 `ProjectService/GetAudioRuntime`、`RequestAudioRender` 和 `project.audio.runtime.updated` 是否按当前 project scope 连通；runtime consumer 只把 SSE 当 invalidation signal。
+- 如果 waveform URL 打开后是 404 或返回非预期 JSON，先检查对应 worker 或 mock 是否返回了 `audio_waveform_v1`，并确认 `duration_ms > 0` 且 `peaks` 非空。
 - 如果 preview 没有音频摘要，先检查 `ProjectService/GetAudioWorkbench` 是否返回空 timeline 还是错误；当前 preview 对音频摘要是 fail-closed，不会让整页白屏。
 - 如果 admin 看不到 provenance，先查 `AssetService/GetAssetProvenanceSummary` 是否为对应 `assetId` 返回了 `source_run_id` 和 `import_batch_id`。
 - 如果 real smoke 打开 `/audio` 后素材池为空，先检查 `tooling/scripts/backend_seed.mjs` 是否已为目标 project 注入 `audio/wav` 或 `audio/mpeg` 资产，并确认 `duration_ms > 0`。

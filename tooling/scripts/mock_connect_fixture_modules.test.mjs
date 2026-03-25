@@ -260,6 +260,7 @@ test("audio helpers preserve timeline order and audio asset scope", async () => 
   const {
     createAudioTimelineState,
     createAudioRuntimeState,
+    buildAudioWaveformDocumentForUrl,
     buildAudioRuntimePayload,
     requestAudioRenderState,
     upsertAudioTimelineState,
@@ -319,6 +320,21 @@ test("audio helpers preserve timeline order and audio asset scope", async () => 
   assert.equal(settledRuntime.waveforms[0]?.assetId, "asset-audio-dialogue-1");
   assert.equal(eventPayload.render_status, "completed");
   assert.equal(eventPayload.mix_asset_id, "asset-mix-project-1");
+  assert.deepEqual(
+    buildAudioWaveformDocumentForUrl(updated, settledRuntime.waveforms[0]?.waveformUrl ?? ""),
+    {
+      version: "audio_waveform_v1",
+      duration_ms: 12000,
+      peaks: [0.08, 0.28, 0.48, 0.68, 0.88, 0.68, 0.48, 0.28],
+    },
+  );
+  assert.equal(
+    buildAudioWaveformDocumentForUrl(
+      updated,
+      "https://cdn.example.com/audio/project-1/missing-waveform.json",
+    ),
+    null,
+  );
 
   const summary = buildAudioImportBatchSummary("project-1");
   assert.equal(summary.projectId, "project-1");
@@ -434,4 +450,8 @@ test("mock connect routes wire all phase2 fixture modules", async () => {
   assert.match(source, /GetAudioRuntime/);
   assert.match(source, /RequestAudioRender/);
   assert.match(source, /project\.audio\.runtime\.updated/);
+  assert.match(source, /buildAudioWaveformDocumentForUrl/);
+  assert.match(source, /cdn\\\.example\\\.com/);
+  assert.match(source, /page\.context\(\)\.route/);
+  assert.match(source, /application\/json/);
 });

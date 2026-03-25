@@ -590,3 +590,61 @@ test("phase3 audio runtime waveform shared truth stays on project proto, sdk, au
   assert.doesNotMatch(assetProto, /GetAudioRuntime|RequestAudioRender|AudioRuntime/);
   assert.doesNotMatch(workflowProto, /GetAudioRuntime|RequestAudioRender|AudioRuntime/);
 });
+
+test("phase3 audio waveform document shared truth stays on freeze doc, shared parser, and mock CDN entry points", () => {
+  const waveformFreezeDoc = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase3-audio-waveform-document-freeze.md"),
+    "utf8",
+  );
+  const runtimeFreezeDoc = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase3-audio-runtime-waveform-freeze.md"),
+    "utf8",
+  );
+  const audioDemoDoc = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase2-audio-demo.md"),
+    "utf8",
+  );
+  const waveformDocument = readFileSync(
+    join(repoRoot, "apps", "shared", "audio", "audioWaveformDocument.ts"),
+    "utf8",
+  );
+  const audioFixture = readFileSync(
+    join(repoRoot, "tests", "e2e", "fixtures", "mock-connect", "audio.ts"),
+    "utf8",
+  );
+  const mockRoutes = readFileSync(
+    join(repoRoot, "tests", "e2e", "fixtures", "mockConnectRoutes.ts"),
+    "utf8",
+  );
+
+  const expectedFiles = [
+    "docs/runbooks/phase3-audio-waveform-document-freeze.md",
+    "apps/shared/audio/audioWaveformDocument.ts",
+    "tests/e2e/fixtures/mock-connect/audio.ts",
+    "tests/e2e/fixtures/mockConnectRoutes.ts",
+  ];
+  for (const relativePath of expectedFiles) {
+    assert.equal(existsSync(join(repoRoot, ...relativePath.split("/"))), true, `${relativePath} should exist`);
+  }
+
+  assert.match(waveformFreezeDoc, /audio_waveform_v1/);
+  assert.match(waveformFreezeDoc, /duration_ms/);
+  assert.match(waveformFreezeDoc, /peaks/);
+  assert.match(waveformFreezeDoc, /waveform_url/);
+  assert.match(waveformFreezeDoc, /单通道/);
+
+  assert.match(runtimeFreezeDoc, /phase3-audio-waveform-document-freeze\.md/);
+  assert.match(runtimeFreezeDoc, /waveform document v1/i);
+  assert.match(audioDemoDoc, /waveform document v1/i);
+
+  assert.match(waveformDocument, /parseAudioWaveformDocument/);
+  assert.match(waveformDocument, /audio_waveform_v1/);
+  assert.match(waveformDocument, /duration_ms/);
+  assert.match(waveformDocument, /peaks/);
+
+  assert.match(audioFixture, /buildAudioWaveformDocumentForUrl/);
+  assert.match(audioFixture, /AUDIO_WAVEFORM_DOCUMENT_VERSION/);
+  assert.match(mockRoutes, /page\.context\(\)\.route/);
+  assert.match(mockRoutes, /buildAudioWaveformDocumentForUrl/);
+  assert.match(mockRoutes, /application\/json/);
+});

@@ -4,6 +4,7 @@ import {
   buildAudioAssetProvenancePayload,
   buildAudioImportBatchSummary,
   buildAudioImportBatchWorkbenchPayload,
+  buildAudioWaveformDocumentForUrl,
   buildAudioRuntimePayload,
   buildAudioWorkbenchPayload,
   createAudioRuntimeState,
@@ -107,14 +108,25 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     eventType: string;
     data: unknown;
   }> = [];
+  let latestSseRequestId = 0;
 
-  async function readPendingSseEvents(timeoutMs = 1500) {
+  async function readPendingSseEvents(requestId: number, timeoutMs = 5000) {
     const deadline = Date.now() + timeoutMs;
-    while (pendingSseEvents.length === 0 && Date.now() < deadline) {
+    while (
+      requestId === latestSseRequestId &&
+      pendingSseEvents.length === 0 &&
+      Date.now() < deadline
+    ) {
       await delay(50);
+    }
+    if (requestId !== latestSseRequestId) {
+      return [];
     }
     if (pendingSseEvents.length > 0) {
       await delay(250);
+    }
+    if (requestId !== latestSseRequestId) {
+      return [];
     }
     return pendingSseEvents.splice(0, pendingSseEvents.length);
   }
@@ -151,6 +163,8 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
   }
 
   await page.route(/\/sse\/events(?:\?.*)?$/, async (route: Route) => {
+    const requestId = ++latestSseRequestId;
+    const events = await readPendingSseEvents(requestId);
     await route.fulfill({
       status: 200,
       contentType: "text/event-stream",
@@ -158,8 +172,17 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
       },
-      body: encodeSseEvents(await readPendingSseEvents()),
+      body: encodeSseEvents(events),
     });
+  });
+
+  await page.context().route(/^https:\/\/cdn\.example\.com\/audio\/.+-waveform\.json$/, async (route) => {
+    const payload = buildAudioWaveformDocumentForUrl(audioState, route.request().url());
+    if (!payload) {
+      await route.fulfill(jsonResponse(404, { error: "waveform document not found" }));
+      return;
+    }
+    await route.fulfill(jsonResponse(200, payload));
   });
 
   await page.route(/\/hualala\..+/, async (route: Route) => {

@@ -74,6 +74,12 @@
 
 - waveform 先冻结为引用协议，不在 proto 里塞采样数组
 - consumer 后续只应消费 `waveform_url`
+- `waveform_url` 指向内容的唯一 v1 shape 已冻结在 `phase3-audio-waveform-document-freeze.md`
+- 后续 waveform document v1 consumer 必须直接消费这份冻结协议，不能在产品线里私扩 body shape
+- v1 waveform document 只允许：
+  - `version=audio_waveform_v1`
+  - `duration_ms`
+  - `peaks`
 - 若 worker 回写 waveform，则每条都必须包含 `asset_id`、`variant_id` 和 `waveform_url`
 
 ## Render 规则
@@ -115,5 +121,7 @@ payload 只允许包含最小 runtime 摘要：
 - 音频播放器 UI
 - 波形图 consumer
 - 波形点数组或采样明细
+- 多声道 waveform document
+- min/max 包络或播放联动字段
 - 音轨级混音段落 richer payload
 - 新的音频 SSE payload shape
