@@ -224,18 +224,26 @@ export function setPromptTemplateStatusState(
   },
 ): ModelGovernanceState {
   const target = state.promptTemplates.find((template) => template.id === input.promptTemplateId);
+  const nextStatus = input.status;
+  if (
+    target &&
+    target.status !== "draft" &&
+    nextStatus === "draft"
+  ) {
+    throw new Error("cannot reopen published prompt template as draft");
+  }
   return {
     ...clone(state),
     promptTemplates: state.promptTemplates.map((template) => {
       if (template.id === input.promptTemplateId) {
         return {
           ...template,
-          status: input.status,
+          status: nextStatus,
           updatedAt: nextTimestamp(61),
         };
       }
       if (
-        input.status === "active" &&
+        nextStatus === "active" &&
         target &&
         template.templateKey === target.templateKey &&
         template.locale === target.locale &&

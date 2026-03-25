@@ -249,7 +249,31 @@ test("model governance helpers preserve profile and prompt lifecycle transitions
   });
   assert.equal(activatedDraft.promptTemplates.at(-1)?.status, "active");
 
-  const projectBundles = listContextBundlesState(activatedDraft, {
+  assert.throws(
+    () =>
+      setPromptTemplateStatusState(activatedDraft, {
+        promptTemplateId: activatedDraft.promptTemplates.at(-1)?.id ?? "",
+        status: "draft",
+      }),
+    /cannot reopen published prompt template as draft/,
+  );
+
+  const archivedDraft = setPromptTemplateStatusState(activatedDraft, {
+    promptTemplateId: activatedDraft.promptTemplates.at(-1)?.id ?? "",
+    status: "archived",
+  });
+  assert.equal(archivedDraft.promptTemplates.at(-1)?.status, "archived");
+
+  assert.throws(
+    () =>
+      setPromptTemplateStatusState(archivedDraft, {
+        promptTemplateId: archivedDraft.promptTemplates.at(-1)?.id ?? "",
+        status: "draft",
+      }),
+    /cannot reopen published prompt template as draft/,
+  );
+
+  const projectBundles = listContextBundlesState(archivedDraft, {
     projectId: "project-live-1",
   });
   assert.ok(projectBundles.length >= 1);

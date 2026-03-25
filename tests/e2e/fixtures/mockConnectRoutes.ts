@@ -745,13 +745,22 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
           promptTemplateId?: string;
           status?: string;
         };
-        adminState = withRecentChanges({
-          ...clone(adminState),
-          modelGovernance: setPromptTemplateStatusState(adminState.modelGovernance, {
-            promptTemplateId: body.promptTemplateId ?? "",
-            status: body.status ?? "active",
-          }),
-        });
+        try {
+          adminState = withRecentChanges({
+            ...clone(adminState),
+            modelGovernance: setPromptTemplateStatusState(adminState.modelGovernance, {
+              promptTemplateId: body.promptTemplateId ?? "",
+              status: body.status ?? "active",
+            }),
+          });
+        } catch (error) {
+          await route.fulfill(
+            jsonResponse(412, {
+              error: error instanceof Error ? error.message : "prompt template status update failed",
+            }),
+          );
+          return;
+        }
         await route.fulfill(
           jsonResponse(200, {
             promptTemplate: adminState.modelGovernance.promptTemplates.find(

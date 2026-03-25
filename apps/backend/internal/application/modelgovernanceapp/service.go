@@ -314,6 +314,9 @@ func (s *Service) SetPromptTemplateStatus(ctx context.Context, input SetPromptTe
 	if !isAllowedPromptTemplateStatus(status) {
 		return modelgovernance.PromptTemplate{}, errors.New("modelgovernanceapp: invalid argument status")
 	}
+	if !isAllowedPromptTemplateTransition(record.Status, status) {
+		return modelgovernance.PromptTemplate{}, errors.New("modelgovernanceapp: cannot reopen published prompt template as draft")
+	}
 	if status == promptTemplateStatusActive {
 		for _, existing := range s.repo.ListPromptTemplates(orgID, record.TemplateKey, record.Locale, promptTemplateStatusActive) {
 			if existing.ID == record.ID {
@@ -481,4 +484,9 @@ func isAllowedPromptTemplateStatus(status string) bool {
 	default:
 		return false
 	}
+}
+
+func isAllowedPromptTemplateTransition(currentStatus string, nextStatus string) bool {
+	return !(strings.TrimSpace(currentStatus) != promptTemplateStatusDraft &&
+		strings.TrimSpace(nextStatus) == promptTemplateStatusDraft)
 }

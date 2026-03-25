@@ -262,6 +262,40 @@ func TestModelGovernanceServiceMutatesProfilesAndPromptTemplates(t *testing.T) {
 		t.Fatalf("expected active prompt template, got %q", got)
 	}
 
+	reopenActiveReq := connectrpc.NewRequest(&modelv1.SetPromptTemplateStatusRequest{
+		PromptTemplateId: templateID,
+		Status:           "draft",
+	})
+	reopenActiveReq.Header().Set("X-Hualala-Org-Id", connectTestOrgID)
+	reopenActiveReq.Header().Set("X-Hualala-User-Id", connectTestUserID)
+	if _, err := client.SetPromptTemplateStatus(ctx, reopenActiveReq); err == nil {
+		t.Fatalf("expected reopening an active prompt template as draft to fail")
+	}
+
+	archivePromptReq := connectrpc.NewRequest(&modelv1.SetPromptTemplateStatusRequest{
+		PromptTemplateId: templateID,
+		Status:           "archived",
+	})
+	archivePromptReq.Header().Set("X-Hualala-Org-Id", connectTestOrgID)
+	archivePromptReq.Header().Set("X-Hualala-User-Id", connectTestUserID)
+	archivePromptResp, err := client.SetPromptTemplateStatus(ctx, archivePromptReq)
+	if err != nil {
+		t.Fatalf("SetPromptTemplateStatus archive returned error: %v", err)
+	}
+	if got := archivePromptResp.Msg.GetPromptTemplate().GetStatus(); got != "archived" {
+		t.Fatalf("expected archived prompt template, got %q", got)
+	}
+
+	reopenArchivedReq := connectrpc.NewRequest(&modelv1.SetPromptTemplateStatusRequest{
+		PromptTemplateId: templateID,
+		Status:           "draft",
+	})
+	reopenArchivedReq.Header().Set("X-Hualala-Org-Id", connectTestOrgID)
+	reopenArchivedReq.Header().Set("X-Hualala-User-Id", connectTestUserID)
+	if _, err := client.SetPromptTemplateStatus(ctx, reopenArchivedReq); err == nil {
+		t.Fatalf("expected reopening an archived prompt template as draft to fail")
+	}
+
 	rejectedUpdateReq := connectrpc.NewRequest(&modelv1.UpdatePromptTemplateDraftRequest{
 		PromptTemplateId: templateID,
 		Content:          "不允许修改 active 版本",
