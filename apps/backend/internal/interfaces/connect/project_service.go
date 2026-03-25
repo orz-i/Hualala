@@ -183,6 +183,7 @@ func (h *projectHandler) ApplyPreviewRenderUpdate(ctx context.Context, req *conn
 			PlaybackURL:  req.Msg.GetPlayback().GetPlaybackUrl(),
 			PosterURL:    req.Msg.GetPlayback().GetPosterUrl(),
 			DurationMs:   int(req.Msg.GetPlayback().GetDurationMs()),
+			Timeline:     mapPreviewTimelineSpineInput(req.Msg.GetPlayback().GetTimeline()),
 		},
 		ExportOutput: project.PreviewExportDelivery{
 			DownloadURL: req.Msg.GetExportOutput().GetDownloadUrl(),
@@ -199,6 +200,37 @@ func (h *projectHandler) ApplyPreviewRenderUpdate(ctx context.Context, req *conn
 	return connectrpc.NewResponse(&projectv1.ApplyPreviewRenderUpdateResponse{
 		Runtime: mapPreviewRuntime(record),
 	}), nil
+}
+
+func mapPreviewTimelineSpineInput(record *projectv1.PreviewTimelineSpine) project.PreviewTimelineSpine {
+	if record == nil {
+		return project.PreviewTimelineSpine{}
+	}
+	segments := make([]project.PreviewTimelineSegment, 0, len(record.GetSegments()))
+	for _, segment := range record.GetSegments() {
+		mapped := project.PreviewTimelineSegment{
+			SegmentID:       segment.GetSegmentId(),
+			Sequence:        int(segment.GetSequence()),
+			ShotID:          segment.GetShotId(),
+			ShotCode:        segment.GetShotCode(),
+			ShotTitle:       segment.GetShotTitle(),
+			PlaybackAssetID: segment.GetPlaybackAssetId(),
+			SourceRunID:     segment.GetSourceRunId(),
+			StartMs:         int(segment.GetStartMs()),
+			DurationMs:      int(segment.GetDurationMs()),
+		}
+		if transition := segment.GetTransitionToNext(); transition != nil {
+			mapped.TransitionToNext = &project.PreviewTransition{
+				TransitionType: transition.GetTransitionType(),
+				DurationMs:     int(transition.GetDurationMs()),
+			}
+		}
+		segments = append(segments, mapped)
+	}
+	return project.PreviewTimelineSpine{
+		Segments:        segments,
+		TotalDurationMs: int(record.GetTotalDurationMs()),
+	}
 }
 
 func (h *projectHandler) GetAudioWorkbench(ctx context.Context, req *connectrpc.Request[projectv1.GetAudioWorkbenchRequest]) (*connectrpc.Response[projectv1.GetAudioWorkbenchResponse], error) {

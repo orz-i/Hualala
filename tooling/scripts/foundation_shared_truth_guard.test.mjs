@@ -429,3 +429,78 @@ test("phase3 preview runtime shared truth stays on project proto, sdk, runtime a
 
   assert.doesNotMatch(workflowProto, /GetPreviewRuntime|RequestPreviewRender|PreviewRuntime/);
 });
+
+test("phase3 preview timeline spine shared truth stays on project proto, sdk, runtime app, db, and freeze entry points", () => {
+  const projectProto = readFileSync(
+    join(repoRoot, "proto", "hualala", "project", "v1", "project_service.proto"),
+    "utf8",
+  );
+  const projectService = readFileSync(
+    join(repoRoot, "packages", "sdk", "src", "connect", "services", "project.ts"),
+    "utf8",
+  );
+  const previewRuntimeService = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "application", "projectapp", "service_preview_runtime.go"),
+    "utf8",
+  );
+  const previewStore = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "platform", "db", "postgres_store_preview_runtime.go"),
+    "utf8",
+  );
+  const previewRelational = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "platform", "db", "postgres_relational_preview_runtime.go"),
+    "utf8",
+  );
+  const previewEvents = readFileSync(
+    join(repoRoot, "apps", "backend", "internal", "platform", "events", "events.go"),
+    "utf8",
+  );
+  const freezeDoc = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase3-preview-timeline-spine-freeze.md"),
+    "utf8",
+  );
+  const outputFreezeDoc = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase3-preview-playback-export-freeze.md"),
+    "utf8",
+  );
+  const demoDoc = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase3-preview-demo.md"),
+    "utf8",
+  );
+
+  const expectedFiles = [
+    "proto/hualala/project/v1/project_service.proto",
+    "packages/sdk/src/connect/services/project.ts",
+    "apps/backend/internal/application/projectapp/service_preview_runtime.go",
+    "apps/backend/internal/platform/db/postgres_store_preview_runtime.go",
+    "apps/backend/internal/platform/db/postgres_relational_preview_runtime.go",
+    "apps/backend/internal/platform/events/events.go",
+    "infra/migrations/0019_phase3_preview_timeline_spine.sql",
+    "docs/runbooks/phase3-preview-timeline-spine-freeze.md",
+  ];
+  for (const relativePath of expectedFiles) {
+    assert.equal(existsSync(join(repoRoot, ...relativePath.split("/"))), true, `${relativePath} should exist`);
+  }
+
+  assert.match(projectProto, /message PreviewTimelineSpine/);
+  assert.match(projectProto, /message PreviewTimelineSegment/);
+  assert.match(projectProto, /message PreviewTransition/);
+  assert.match(projectProto, /PreviewTimelineSpine timeline = 5;/);
+  assert.match(projectProto, /PreviewTransition transition_to_next = 10;/);
+
+  assert.match(projectService, /timeline\?:/);
+  assert.match(previewRuntimeService, /validatePreviewTimelineSpine/);
+  assert.match(previewRuntimeService, /normalizePreviewTimelineSpine/);
+  assert.match(previewStore, /playback_timeline/);
+  assert.match(previewRelational, /playback_timeline/);
+  assert.match(previewEvents, /project\.preview\.runtime\.updated/);
+  assert.doesNotMatch(previewEvents, /timeline|segments|transition_type/);
+
+  assert.match(freezeDoc, /playback\.timeline/);
+  assert.match(freezeDoc, /ordered shot segments/);
+  assert.match(freezeDoc, /optional transition summary/);
+  assert.match(freezeDoc, /ApplyPreviewRenderUpdate/);
+  assert.match(outputFreezeDoc, /phase3-preview-timeline-spine-freeze\.md/);
+  assert.match(outputFreezeDoc, /timeline spine/);
+  assert.match(demoDoc, /timeline spine/);
+});

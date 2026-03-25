@@ -333,6 +333,26 @@ func TestMemoryStorePersistsAndReloadsPreviewRuntimeSnapshot(t *testing.T) {
 			PlaybackURL:  "https://cdn.example.com/playback.mp4",
 			PosterURL:    "https://cdn.example.com/playback.jpg",
 			DurationMs:   32000,
+			Timeline: project.PreviewTimelineSpine{
+				Segments: []project.PreviewTimelineSegment{
+					{
+						SegmentID:       "segment-1",
+						Sequence:        1,
+						ShotID:          "shot-1",
+						ShotCode:        "SHOT-001",
+						ShotTitle:       "第一镜",
+						PlaybackAssetID: "playback-asset-1",
+						SourceRunID:     "run-1",
+						StartMs:         0,
+						DurationMs:      32000,
+						TransitionToNext: &project.PreviewTransition{
+							TransitionType: "cut",
+							DurationMs:     300,
+						},
+					},
+				},
+				TotalDurationMs: 32000,
+			},
 		},
 		ExportOutput: project.PreviewExportDelivery{
 			DownloadURL: "https://cdn.example.com/export.mp4",
@@ -342,8 +362,8 @@ func TestMemoryStorePersistsAndReloadsPreviewRuntimeSnapshot(t *testing.T) {
 		},
 		LastErrorCode:    "preview_render_failed",
 		LastErrorMessage: "stale failure",
-		CreatedAt:           now,
-		UpdatedAt:           now,
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}
 
 	if err := store.Save(ctx); err != nil {
@@ -370,6 +390,15 @@ func TestMemoryStorePersistsAndReloadsPreviewRuntimeSnapshot(t *testing.T) {
 	}
 	if got := record.Playback.PlaybackURL; got != "https://cdn.example.com/playback.mp4" {
 		t.Fatalf("expected restored playback url %q, got %q", "https://cdn.example.com/playback.mp4", got)
+	}
+	if got := record.Playback.Timeline.TotalDurationMs; got != 32000 {
+		t.Fatalf("expected restored playback timeline total duration %d, got %d", 32000, got)
+	}
+	if got := len(record.Playback.Timeline.Segments); got != 1 {
+		t.Fatalf("expected 1 restored playback timeline segment, got %d", got)
+	}
+	if got := record.Playback.Timeline.Segments[0].TransitionToNext.TransitionType; got != "cut" {
+		t.Fatalf("expected restored timeline transition type %q, got %q", "cut", got)
 	}
 	if got := record.ExportOutput.DownloadURL; got != "https://cdn.example.com/export.mp4" {
 		t.Fatalf("expected restored export download url %q, got %q", "https://cdn.example.com/export.mp4", got)

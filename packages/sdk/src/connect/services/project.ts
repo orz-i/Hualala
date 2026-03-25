@@ -117,6 +117,24 @@ export function createProjectClient(options: HualalaClientOptions = {}) {
         playbackUrl?: string;
         posterUrl?: string;
         durationMs?: number;
+        timeline?: {
+          segments?: Array<{
+            segmentId?: string;
+            sequence?: number;
+            shotId?: string;
+            shotCode?: string;
+            shotTitle?: string;
+            playbackAssetId?: string;
+            sourceRunId?: string;
+            startMs?: number;
+            durationMs?: number;
+            transitionToNext?: {
+              transitionType?: string;
+              durationMs?: number;
+            };
+          }>;
+          totalDurationMs?: number;
+        };
       };
       exportOutput?: {
         downloadUrl?: string;

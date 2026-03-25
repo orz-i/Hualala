@@ -116,6 +116,30 @@ message PreviewPlaybackDelivery {
   string playback_url = 2;
   string poster_url = 3;
   uint32 duration_ms = 4;
+  PreviewTimelineSpine timeline = 5;
+}
+
+message PreviewTimelineSpine {
+  repeated PreviewTimelineSegment segments = 1;
+  uint32 total_duration_ms = 2;
+}
+
+message PreviewTimelineSegment {
+  string segment_id = 1;
+  uint32 sequence = 2;
+  string shot_id = 3;
+  string shot_code = 4;
+  string shot_title = 5;
+  string playback_asset_id = 6;
+  string source_run_id = 7;
+  uint32 start_ms = 8;
+  uint32 duration_ms = 9;
+  PreviewTransition transition_to_next = 10;
+}
+
+message PreviewTransition {
+  string transition_type = 1;
+  uint32 duration_ms = 2;
 }
 
 message PreviewExportDelivery {

@@ -848,6 +848,7 @@ type PreviewPlaybackDelivery struct {
 	PlaybackUrl   string                 `protobuf:"bytes,2,opt,name=playback_url,json=playbackUrl,proto3" json:"playback_url,omitempty"`
 	PosterUrl     string                 `protobuf:"bytes,3,opt,name=poster_url,json=posterUrl,proto3" json:"poster_url,omitempty"`
 	DurationMs    uint32                 `protobuf:"varint,4,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	Timeline      *PreviewTimelineSpine  `protobuf:"bytes,5,opt,name=timeline,proto3" json:"timeline,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -910,6 +911,233 @@ func (x *PreviewPlaybackDelivery) GetDurationMs() uint32 {
 	return 0
 }
 
+func (x *PreviewPlaybackDelivery) GetTimeline() *PreviewTimelineSpine {
+	if x != nil {
+		return x.Timeline
+	}
+	return nil
+}
+
+type PreviewTimelineSpine struct {
+	state           protoimpl.MessageState    `protogen:"open.v1"`
+	Segments        []*PreviewTimelineSegment `protobuf:"bytes,1,rep,name=segments,proto3" json:"segments,omitempty"`
+	TotalDurationMs uint32                    `protobuf:"varint,2,opt,name=total_duration_ms,json=totalDurationMs,proto3" json:"total_duration_ms,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *PreviewTimelineSpine) Reset() {
+	*x = PreviewTimelineSpine{}
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewTimelineSpine) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewTimelineSpine) ProtoMessage() {}
+
+func (x *PreviewTimelineSpine) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewTimelineSpine.ProtoReflect.Descriptor instead.
+func (*PreviewTimelineSpine) Descriptor() ([]byte, []int) {
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *PreviewTimelineSpine) GetSegments() []*PreviewTimelineSegment {
+	if x != nil {
+		return x.Segments
+	}
+	return nil
+}
+
+func (x *PreviewTimelineSpine) GetTotalDurationMs() uint32 {
+	if x != nil {
+		return x.TotalDurationMs
+	}
+	return 0
+}
+
+type PreviewTimelineSegment struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	SegmentId        string                 `protobuf:"bytes,1,opt,name=segment_id,json=segmentId,proto3" json:"segment_id,omitempty"`
+	Sequence         uint32                 `protobuf:"varint,2,opt,name=sequence,proto3" json:"sequence,omitempty"`
+	ShotId           string                 `protobuf:"bytes,3,opt,name=shot_id,json=shotId,proto3" json:"shot_id,omitempty"`
+	ShotCode         string                 `protobuf:"bytes,4,opt,name=shot_code,json=shotCode,proto3" json:"shot_code,omitempty"`
+	ShotTitle        string                 `protobuf:"bytes,5,opt,name=shot_title,json=shotTitle,proto3" json:"shot_title,omitempty"`
+	PlaybackAssetId  string                 `protobuf:"bytes,6,opt,name=playback_asset_id,json=playbackAssetId,proto3" json:"playback_asset_id,omitempty"`
+	SourceRunId      string                 `protobuf:"bytes,7,opt,name=source_run_id,json=sourceRunId,proto3" json:"source_run_id,omitempty"`
+	StartMs          uint32                 `protobuf:"varint,8,opt,name=start_ms,json=startMs,proto3" json:"start_ms,omitempty"`
+	DurationMs       uint32                 `protobuf:"varint,9,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	TransitionToNext *PreviewTransition     `protobuf:"bytes,10,opt,name=transition_to_next,json=transitionToNext,proto3" json:"transition_to_next,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *PreviewTimelineSegment) Reset() {
+	*x = PreviewTimelineSegment{}
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewTimelineSegment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewTimelineSegment) ProtoMessage() {}
+
+func (x *PreviewTimelineSegment) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewTimelineSegment.ProtoReflect.Descriptor instead.
+func (*PreviewTimelineSegment) Descriptor() ([]byte, []int) {
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *PreviewTimelineSegment) GetSegmentId() string {
+	if x != nil {
+		return x.SegmentId
+	}
+	return ""
+}
+
+func (x *PreviewTimelineSegment) GetSequence() uint32 {
+	if x != nil {
+		return x.Sequence
+	}
+	return 0
+}
+
+func (x *PreviewTimelineSegment) GetShotId() string {
+	if x != nil {
+		return x.ShotId
+	}
+	return ""
+}
+
+func (x *PreviewTimelineSegment) GetShotCode() string {
+	if x != nil {
+		return x.ShotCode
+	}
+	return ""
+}
+
+func (x *PreviewTimelineSegment) GetShotTitle() string {
+	if x != nil {
+		return x.ShotTitle
+	}
+	return ""
+}
+
+func (x *PreviewTimelineSegment) GetPlaybackAssetId() string {
+	if x != nil {
+		return x.PlaybackAssetId
+	}
+	return ""
+}
+
+func (x *PreviewTimelineSegment) GetSourceRunId() string {
+	if x != nil {
+		return x.SourceRunId
+	}
+	return ""
+}
+
+func (x *PreviewTimelineSegment) GetStartMs() uint32 {
+	if x != nil {
+		return x.StartMs
+	}
+	return 0
+}
+
+func (x *PreviewTimelineSegment) GetDurationMs() uint32 {
+	if x != nil {
+		return x.DurationMs
+	}
+	return 0
+}
+
+func (x *PreviewTimelineSegment) GetTransitionToNext() *PreviewTransition {
+	if x != nil {
+		return x.TransitionToNext
+	}
+	return nil
+}
+
+type PreviewTransition struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TransitionType string                 `protobuf:"bytes,1,opt,name=transition_type,json=transitionType,proto3" json:"transition_type,omitempty"`
+	DurationMs     uint32                 `protobuf:"varint,2,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *PreviewTransition) Reset() {
+	*x = PreviewTransition{}
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewTransition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewTransition) ProtoMessage() {}
+
+func (x *PreviewTransition) ProtoReflect() protoreflect.Message {
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewTransition.ProtoReflect.Descriptor instead.
+func (*PreviewTransition) Descriptor() ([]byte, []int) {
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *PreviewTransition) GetTransitionType() string {
+	if x != nil {
+		return x.TransitionType
+	}
+	return ""
+}
+
+func (x *PreviewTransition) GetDurationMs() uint32 {
+	if x != nil {
+		return x.DurationMs
+	}
+	return 0
+}
+
 type PreviewExportDelivery struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	DownloadUrl   string                 `protobuf:"bytes,1,opt,name=download_url,json=downloadUrl,proto3" json:"download_url,omitempty"`
@@ -922,7 +1150,7 @@ type PreviewExportDelivery struct {
 
 func (x *PreviewExportDelivery) Reset() {
 	*x = PreviewExportDelivery{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[10]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -934,7 +1162,7 @@ func (x *PreviewExportDelivery) String() string {
 func (*PreviewExportDelivery) ProtoMessage() {}
 
 func (x *PreviewExportDelivery) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[10]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -947,7 +1175,7 @@ func (x *PreviewExportDelivery) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewExportDelivery.ProtoReflect.Descriptor instead.
 func (*PreviewExportDelivery) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{10}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *PreviewExportDelivery) GetDownloadUrl() string {
@@ -995,7 +1223,7 @@ type AudioClip struct {
 
 func (x *AudioClip) Reset() {
 	*x = AudioClip{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[11]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1007,7 +1235,7 @@ func (x *AudioClip) String() string {
 func (*AudioClip) ProtoMessage() {}
 
 func (x *AudioClip) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[11]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1020,7 +1248,7 @@ func (x *AudioClip) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AudioClip.ProtoReflect.Descriptor instead.
 func (*AudioClip) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{11}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AudioClip) GetClipId() string {
@@ -1103,7 +1331,7 @@ type AudioTrack struct {
 
 func (x *AudioTrack) Reset() {
 	*x = AudioTrack{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[12]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1115,7 +1343,7 @@ func (x *AudioTrack) String() string {
 func (*AudioTrack) ProtoMessage() {}
 
 func (x *AudioTrack) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[12]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1128,7 +1356,7 @@ func (x *AudioTrack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AudioTrack.ProtoReflect.Descriptor instead.
 func (*AudioTrack) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{12}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AudioTrack) GetTrackId() string {
@@ -1211,7 +1439,7 @@ type AudioTimeline struct {
 
 func (x *AudioTimeline) Reset() {
 	*x = AudioTimeline{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[13]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1223,7 +1451,7 @@ func (x *AudioTimeline) String() string {
 func (*AudioTimeline) ProtoMessage() {}
 
 func (x *AudioTimeline) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[13]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1236,7 +1464,7 @@ func (x *AudioTimeline) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AudioTimeline.ProtoReflect.Descriptor instead.
 func (*AudioTimeline) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{13}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *AudioTimeline) GetAudioTimelineId() string {
@@ -1313,7 +1541,7 @@ type CreateProjectRequest struct {
 
 func (x *CreateProjectRequest) Reset() {
 	*x = CreateProjectRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[14]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1325,7 +1553,7 @@ func (x *CreateProjectRequest) String() string {
 func (*CreateProjectRequest) ProtoMessage() {}
 
 func (x *CreateProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[14]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1338,7 +1566,7 @@ func (x *CreateProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateProjectRequest.ProtoReflect.Descriptor instead.
 func (*CreateProjectRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{14}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CreateProjectRequest) GetOrgId() string {
@@ -1371,7 +1599,7 @@ type CreateProjectResponse struct {
 
 func (x *CreateProjectResponse) Reset() {
 	*x = CreateProjectResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[15]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1383,7 +1611,7 @@ func (x *CreateProjectResponse) String() string {
 func (*CreateProjectResponse) ProtoMessage() {}
 
 func (x *CreateProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[15]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1396,7 +1624,7 @@ func (x *CreateProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateProjectResponse.ProtoReflect.Descriptor instead.
 func (*CreateProjectResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{15}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CreateProjectResponse) GetProject() *Project {
@@ -1417,7 +1645,7 @@ type CreateEpisodeRequest struct {
 
 func (x *CreateEpisodeRequest) Reset() {
 	*x = CreateEpisodeRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[16]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1429,7 +1657,7 @@ func (x *CreateEpisodeRequest) String() string {
 func (*CreateEpisodeRequest) ProtoMessage() {}
 
 func (x *CreateEpisodeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[16]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1442,7 +1670,7 @@ func (x *CreateEpisodeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateEpisodeRequest.ProtoReflect.Descriptor instead.
 func (*CreateEpisodeRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{16}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CreateEpisodeRequest) GetProjectId() string {
@@ -1475,7 +1703,7 @@ type CreateEpisodeResponse struct {
 
 func (x *CreateEpisodeResponse) Reset() {
 	*x = CreateEpisodeResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[17]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1487,7 +1715,7 @@ func (x *CreateEpisodeResponse) String() string {
 func (*CreateEpisodeResponse) ProtoMessage() {}
 
 func (x *CreateEpisodeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[17]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1500,7 +1728,7 @@ func (x *CreateEpisodeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateEpisodeResponse.ProtoReflect.Descriptor instead.
 func (*CreateEpisodeResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{17}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CreateEpisodeResponse) GetEpisode() *Episode {
@@ -1519,7 +1747,7 @@ type GetProjectRequest struct {
 
 func (x *GetProjectRequest) Reset() {
 	*x = GetProjectRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[18]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1531,7 +1759,7 @@ func (x *GetProjectRequest) String() string {
 func (*GetProjectRequest) ProtoMessage() {}
 
 func (x *GetProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[18]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1544,7 +1772,7 @@ func (x *GetProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProjectRequest.ProtoReflect.Descriptor instead.
 func (*GetProjectRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{18}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetProjectRequest) GetProjectId() string {
@@ -1563,7 +1791,7 @@ type GetProjectResponse struct {
 
 func (x *GetProjectResponse) Reset() {
 	*x = GetProjectResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[19]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1575,7 +1803,7 @@ func (x *GetProjectResponse) String() string {
 func (*GetProjectResponse) ProtoMessage() {}
 
 func (x *GetProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[19]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1588,7 +1816,7 @@ func (x *GetProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProjectResponse.ProtoReflect.Descriptor instead.
 func (*GetProjectResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{19}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *GetProjectResponse) GetProject() *Project {
@@ -1607,7 +1835,7 @@ type ListProjectsRequest struct {
 
 func (x *ListProjectsRequest) Reset() {
 	*x = ListProjectsRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[20]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1619,7 +1847,7 @@ func (x *ListProjectsRequest) String() string {
 func (*ListProjectsRequest) ProtoMessage() {}
 
 func (x *ListProjectsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[20]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1632,7 +1860,7 @@ func (x *ListProjectsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProjectsRequest.ProtoReflect.Descriptor instead.
 func (*ListProjectsRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{20}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ListProjectsRequest) GetOrgId() string {
@@ -1651,7 +1879,7 @@ type ListProjectsResponse struct {
 
 func (x *ListProjectsResponse) Reset() {
 	*x = ListProjectsResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[21]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1663,7 +1891,7 @@ func (x *ListProjectsResponse) String() string {
 func (*ListProjectsResponse) ProtoMessage() {}
 
 func (x *ListProjectsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[21]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1676,7 +1904,7 @@ func (x *ListProjectsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProjectsResponse.ProtoReflect.Descriptor instead.
 func (*ListProjectsResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{21}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListProjectsResponse) GetProjects() []*Project {
@@ -1695,7 +1923,7 @@ type ListEpisodesRequest struct {
 
 func (x *ListEpisodesRequest) Reset() {
 	*x = ListEpisodesRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[22]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1707,7 +1935,7 @@ func (x *ListEpisodesRequest) String() string {
 func (*ListEpisodesRequest) ProtoMessage() {}
 
 func (x *ListEpisodesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[22]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1720,7 +1948,7 @@ func (x *ListEpisodesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEpisodesRequest.ProtoReflect.Descriptor instead.
 func (*ListEpisodesRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{22}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ListEpisodesRequest) GetProjectId() string {
@@ -1739,7 +1967,7 @@ type ListEpisodesResponse struct {
 
 func (x *ListEpisodesResponse) Reset() {
 	*x = ListEpisodesResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[23]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1751,7 +1979,7 @@ func (x *ListEpisodesResponse) String() string {
 func (*ListEpisodesResponse) ProtoMessage() {}
 
 func (x *ListEpisodesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[23]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1764,7 +1992,7 @@ func (x *ListEpisodesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEpisodesResponse.ProtoReflect.Descriptor instead.
 func (*ListEpisodesResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{23}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ListEpisodesResponse) GetEpisodes() []*Episode {
@@ -1785,7 +2013,7 @@ type GetPreviewWorkbenchRequest struct {
 
 func (x *GetPreviewWorkbenchRequest) Reset() {
 	*x = GetPreviewWorkbenchRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[24]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1797,7 +2025,7 @@ func (x *GetPreviewWorkbenchRequest) String() string {
 func (*GetPreviewWorkbenchRequest) ProtoMessage() {}
 
 func (x *GetPreviewWorkbenchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[24]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1810,7 +2038,7 @@ func (x *GetPreviewWorkbenchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPreviewWorkbenchRequest.ProtoReflect.Descriptor instead.
 func (*GetPreviewWorkbenchRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{24}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetPreviewWorkbenchRequest) GetProjectId() string {
@@ -1843,7 +2071,7 @@ type GetPreviewWorkbenchResponse struct {
 
 func (x *GetPreviewWorkbenchResponse) Reset() {
 	*x = GetPreviewWorkbenchResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[25]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1855,7 +2083,7 @@ func (x *GetPreviewWorkbenchResponse) String() string {
 func (*GetPreviewWorkbenchResponse) ProtoMessage() {}
 
 func (x *GetPreviewWorkbenchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[25]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1868,7 +2096,7 @@ func (x *GetPreviewWorkbenchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPreviewWorkbenchResponse.ProtoReflect.Descriptor instead.
 func (*GetPreviewWorkbenchResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{25}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetPreviewWorkbenchResponse) GetAssembly() *PreviewAssembly {
@@ -1889,7 +2117,7 @@ type ListPreviewShotOptionsRequest struct {
 
 func (x *ListPreviewShotOptionsRequest) Reset() {
 	*x = ListPreviewShotOptionsRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[26]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1901,7 +2129,7 @@ func (x *ListPreviewShotOptionsRequest) String() string {
 func (*ListPreviewShotOptionsRequest) ProtoMessage() {}
 
 func (x *ListPreviewShotOptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[26]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1914,7 +2142,7 @@ func (x *ListPreviewShotOptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPreviewShotOptionsRequest.ProtoReflect.Descriptor instead.
 func (*ListPreviewShotOptionsRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{26}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListPreviewShotOptionsRequest) GetProjectId() string {
@@ -1947,7 +2175,7 @@ type ListPreviewShotOptionsResponse struct {
 
 func (x *ListPreviewShotOptionsResponse) Reset() {
 	*x = ListPreviewShotOptionsResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[27]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1959,7 +2187,7 @@ func (x *ListPreviewShotOptionsResponse) String() string {
 func (*ListPreviewShotOptionsResponse) ProtoMessage() {}
 
 func (x *ListPreviewShotOptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[27]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1972,7 +2200,7 @@ func (x *ListPreviewShotOptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPreviewShotOptionsResponse.ProtoReflect.Descriptor instead.
 func (*ListPreviewShotOptionsResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{27}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ListPreviewShotOptionsResponse) GetOptions() []*PreviewShotOption {
@@ -1994,7 +2222,7 @@ type UpsertPreviewAssemblyRequest struct {
 
 func (x *UpsertPreviewAssemblyRequest) Reset() {
 	*x = UpsertPreviewAssemblyRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[28]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2006,7 +2234,7 @@ func (x *UpsertPreviewAssemblyRequest) String() string {
 func (*UpsertPreviewAssemblyRequest) ProtoMessage() {}
 
 func (x *UpsertPreviewAssemblyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[28]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2019,7 +2247,7 @@ func (x *UpsertPreviewAssemblyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertPreviewAssemblyRequest.ProtoReflect.Descriptor instead.
 func (*UpsertPreviewAssemblyRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{28}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *UpsertPreviewAssemblyRequest) GetProjectId() string {
@@ -2059,7 +2287,7 @@ type UpsertPreviewAssemblyResponse struct {
 
 func (x *UpsertPreviewAssemblyResponse) Reset() {
 	*x = UpsertPreviewAssemblyResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[29]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2071,7 +2299,7 @@ func (x *UpsertPreviewAssemblyResponse) String() string {
 func (*UpsertPreviewAssemblyResponse) ProtoMessage() {}
 
 func (x *UpsertPreviewAssemblyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[29]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2084,7 +2312,7 @@ func (x *UpsertPreviewAssemblyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertPreviewAssemblyResponse.ProtoReflect.Descriptor instead.
 func (*UpsertPreviewAssemblyResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{29}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *UpsertPreviewAssemblyResponse) GetAssembly() *PreviewAssembly {
@@ -2104,7 +2332,7 @@ type GetPreviewRuntimeRequest struct {
 
 func (x *GetPreviewRuntimeRequest) Reset() {
 	*x = GetPreviewRuntimeRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[30]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2116,7 +2344,7 @@ func (x *GetPreviewRuntimeRequest) String() string {
 func (*GetPreviewRuntimeRequest) ProtoMessage() {}
 
 func (x *GetPreviewRuntimeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[30]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2129,7 +2357,7 @@ func (x *GetPreviewRuntimeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPreviewRuntimeRequest.ProtoReflect.Descriptor instead.
 func (*GetPreviewRuntimeRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{30}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GetPreviewRuntimeRequest) GetProjectId() string {
@@ -2155,7 +2383,7 @@ type GetPreviewRuntimeResponse struct {
 
 func (x *GetPreviewRuntimeResponse) Reset() {
 	*x = GetPreviewRuntimeResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[31]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2167,7 +2395,7 @@ func (x *GetPreviewRuntimeResponse) String() string {
 func (*GetPreviewRuntimeResponse) ProtoMessage() {}
 
 func (x *GetPreviewRuntimeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[31]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2180,7 +2408,7 @@ func (x *GetPreviewRuntimeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPreviewRuntimeResponse.ProtoReflect.Descriptor instead.
 func (*GetPreviewRuntimeResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{31}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *GetPreviewRuntimeResponse) GetRuntime() *PreviewRuntime {
@@ -2201,7 +2429,7 @@ type RequestPreviewRenderRequest struct {
 
 func (x *RequestPreviewRenderRequest) Reset() {
 	*x = RequestPreviewRenderRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[32]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2213,7 +2441,7 @@ func (x *RequestPreviewRenderRequest) String() string {
 func (*RequestPreviewRenderRequest) ProtoMessage() {}
 
 func (x *RequestPreviewRenderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[32]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2226,7 +2454,7 @@ func (x *RequestPreviewRenderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestPreviewRenderRequest.ProtoReflect.Descriptor instead.
 func (*RequestPreviewRenderRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{32}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *RequestPreviewRenderRequest) GetProjectId() string {
@@ -2259,7 +2487,7 @@ type RequestPreviewRenderResponse struct {
 
 func (x *RequestPreviewRenderResponse) Reset() {
 	*x = RequestPreviewRenderResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[33]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2271,7 +2499,7 @@ func (x *RequestPreviewRenderResponse) String() string {
 func (*RequestPreviewRenderResponse) ProtoMessage() {}
 
 func (x *RequestPreviewRenderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[33]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2284,7 +2512,7 @@ func (x *RequestPreviewRenderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestPreviewRenderResponse.ProtoReflect.Descriptor instead.
 func (*RequestPreviewRenderResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{33}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *RequestPreviewRenderResponse) GetRuntime() *PreviewRuntime {
@@ -2312,7 +2540,7 @@ type ApplyPreviewRenderUpdateRequest struct {
 
 func (x *ApplyPreviewRenderUpdateRequest) Reset() {
 	*x = ApplyPreviewRenderUpdateRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[34]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2324,7 +2552,7 @@ func (x *ApplyPreviewRenderUpdateRequest) String() string {
 func (*ApplyPreviewRenderUpdateRequest) ProtoMessage() {}
 
 func (x *ApplyPreviewRenderUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[34]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2337,7 +2565,7 @@ func (x *ApplyPreviewRenderUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyPreviewRenderUpdateRequest.ProtoReflect.Descriptor instead.
 func (*ApplyPreviewRenderUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{34}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ApplyPreviewRenderUpdateRequest) GetPreviewRuntimeId() string {
@@ -2419,7 +2647,7 @@ type ApplyPreviewRenderUpdateResponse struct {
 
 func (x *ApplyPreviewRenderUpdateResponse) Reset() {
 	*x = ApplyPreviewRenderUpdateResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[35]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2431,7 +2659,7 @@ func (x *ApplyPreviewRenderUpdateResponse) String() string {
 func (*ApplyPreviewRenderUpdateResponse) ProtoMessage() {}
 
 func (x *ApplyPreviewRenderUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[35]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2444,7 +2672,7 @@ func (x *ApplyPreviewRenderUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyPreviewRenderUpdateResponse.ProtoReflect.Descriptor instead.
 func (*ApplyPreviewRenderUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{35}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ApplyPreviewRenderUpdateResponse) GetRuntime() *PreviewRuntime {
@@ -2464,7 +2692,7 @@ type GetAudioWorkbenchRequest struct {
 
 func (x *GetAudioWorkbenchRequest) Reset() {
 	*x = GetAudioWorkbenchRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[36]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2476,7 +2704,7 @@ func (x *GetAudioWorkbenchRequest) String() string {
 func (*GetAudioWorkbenchRequest) ProtoMessage() {}
 
 func (x *GetAudioWorkbenchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[36]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2489,7 +2717,7 @@ func (x *GetAudioWorkbenchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAudioWorkbenchRequest.ProtoReflect.Descriptor instead.
 func (*GetAudioWorkbenchRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{36}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *GetAudioWorkbenchRequest) GetProjectId() string {
@@ -2515,7 +2743,7 @@ type GetAudioWorkbenchResponse struct {
 
 func (x *GetAudioWorkbenchResponse) Reset() {
 	*x = GetAudioWorkbenchResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[37]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2527,7 +2755,7 @@ func (x *GetAudioWorkbenchResponse) String() string {
 func (*GetAudioWorkbenchResponse) ProtoMessage() {}
 
 func (x *GetAudioWorkbenchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[37]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2540,7 +2768,7 @@ func (x *GetAudioWorkbenchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAudioWorkbenchResponse.ProtoReflect.Descriptor instead.
 func (*GetAudioWorkbenchResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{37}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *GetAudioWorkbenchResponse) GetTimeline() *AudioTimeline {
@@ -2564,7 +2792,7 @@ type UpsertAudioTimelineRequest struct {
 
 func (x *UpsertAudioTimelineRequest) Reset() {
 	*x = UpsertAudioTimelineRequest{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[38]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2576,7 +2804,7 @@ func (x *UpsertAudioTimelineRequest) String() string {
 func (*UpsertAudioTimelineRequest) ProtoMessage() {}
 
 func (x *UpsertAudioTimelineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[38]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2589,7 +2817,7 @@ func (x *UpsertAudioTimelineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertAudioTimelineRequest.ProtoReflect.Descriptor instead.
 func (*UpsertAudioTimelineRequest) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{38}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *UpsertAudioTimelineRequest) GetProjectId() string {
@@ -2643,7 +2871,7 @@ type UpsertAudioTimelineResponse struct {
 
 func (x *UpsertAudioTimelineResponse) Reset() {
 	*x = UpsertAudioTimelineResponse{}
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[39]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2655,7 +2883,7 @@ func (x *UpsertAudioTimelineResponse) String() string {
 func (*UpsertAudioTimelineResponse) ProtoMessage() {}
 
 func (x *UpsertAudioTimelineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hualala_project_v1_project_service_proto_msgTypes[39]
+	mi := &file_hualala_project_v1_project_service_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2668,7 +2896,7 @@ func (x *UpsertAudioTimelineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertAudioTimelineResponse.ProtoReflect.Descriptor instead.
 func (*UpsertAudioTimelineResponse) Descriptor() ([]byte, []int) {
-	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{39}
+	return file_hualala_project_v1_project_service_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *UpsertAudioTimelineResponse) GetTimeline() *AudioTimeline {
@@ -2777,13 +3005,36 @@ const file_hualala_project_v1_project_service_proto_rawDesc = "" +
 	"\bplayback\x18\r \x01(\v2+.hualala.project.v1.PreviewPlaybackDeliveryR\bplayback\x12N\n" +
 	"\rexport_output\x18\x0e \x01(\v2).hualala.project.v1.PreviewExportDeliveryR\fexportOutput\x12&\n" +
 	"\x0flast_error_code\x18\x0f \x01(\tR\rlastErrorCode\x12,\n" +
-	"\x12last_error_message\x18\x10 \x01(\tR\x10lastErrorMessage\"\xa1\x01\n" +
+	"\x12last_error_message\x18\x10 \x01(\tR\x10lastErrorMessage\"\xe7\x01\n" +
 	"\x17PreviewPlaybackDelivery\x12#\n" +
 	"\rdelivery_mode\x18\x01 \x01(\tR\fdeliveryMode\x12!\n" +
 	"\fplayback_url\x18\x02 \x01(\tR\vplaybackUrl\x12\x1d\n" +
 	"\n" +
 	"poster_url\x18\x03 \x01(\tR\tposterUrl\x12\x1f\n" +
 	"\vduration_ms\x18\x04 \x01(\rR\n" +
+	"durationMs\x12D\n" +
+	"\btimeline\x18\x05 \x01(\v2(.hualala.project.v1.PreviewTimelineSpineR\btimeline\"\x8a\x01\n" +
+	"\x14PreviewTimelineSpine\x12F\n" +
+	"\bsegments\x18\x01 \x03(\v2*.hualala.project.v1.PreviewTimelineSegmentR\bsegments\x12*\n" +
+	"\x11total_duration_ms\x18\x02 \x01(\rR\x0ftotalDurationMs\"\x89\x03\n" +
+	"\x16PreviewTimelineSegment\x12\x1d\n" +
+	"\n" +
+	"segment_id\x18\x01 \x01(\tR\tsegmentId\x12\x1a\n" +
+	"\bsequence\x18\x02 \x01(\rR\bsequence\x12\x17\n" +
+	"\ashot_id\x18\x03 \x01(\tR\x06shotId\x12\x1b\n" +
+	"\tshot_code\x18\x04 \x01(\tR\bshotCode\x12\x1d\n" +
+	"\n" +
+	"shot_title\x18\x05 \x01(\tR\tshotTitle\x12*\n" +
+	"\x11playback_asset_id\x18\x06 \x01(\tR\x0fplaybackAssetId\x12\"\n" +
+	"\rsource_run_id\x18\a \x01(\tR\vsourceRunId\x12\x19\n" +
+	"\bstart_ms\x18\b \x01(\rR\astartMs\x12\x1f\n" +
+	"\vduration_ms\x18\t \x01(\rR\n" +
+	"durationMs\x12S\n" +
+	"\x12transition_to_next\x18\n" +
+	" \x01(\v2%.hualala.project.v1.PreviewTransitionR\x10transitionToNext\"]\n" +
+	"\x11PreviewTransition\x12'\n" +
+	"\x0ftransition_type\x18\x01 \x01(\tR\x0etransitionType\x12\x1f\n" +
+	"\vduration_ms\x18\x02 \x01(\rR\n" +
 	"durationMs\"\x93\x01\n" +
 	"\x15PreviewExportDelivery\x12!\n" +
 	"\fdownload_url\x18\x01 \x01(\tR\vdownloadUrl\x12\x1b\n" +
@@ -2959,7 +3210,7 @@ func file_hualala_project_v1_project_service_proto_rawDescGZIP() []byte {
 	return file_hualala_project_v1_project_service_proto_rawDescData
 }
 
-var file_hualala_project_v1_project_service_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
+var file_hualala_project_v1_project_service_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
 var file_hualala_project_v1_project_service_proto_goTypes = []any{
 	(*Project)(nil),                          // 0: hualala.project.v1.Project
 	(*Episode)(nil),                          // 1: hualala.project.v1.Episode
@@ -2971,104 +3222,110 @@ var file_hualala_project_v1_project_service_proto_goTypes = []any{
 	(*PreviewShotOption)(nil),                // 7: hualala.project.v1.PreviewShotOption
 	(*PreviewRuntime)(nil),                   // 8: hualala.project.v1.PreviewRuntime
 	(*PreviewPlaybackDelivery)(nil),          // 9: hualala.project.v1.PreviewPlaybackDelivery
-	(*PreviewExportDelivery)(nil),            // 10: hualala.project.v1.PreviewExportDelivery
-	(*AudioClip)(nil),                        // 11: hualala.project.v1.AudioClip
-	(*AudioTrack)(nil),                       // 12: hualala.project.v1.AudioTrack
-	(*AudioTimeline)(nil),                    // 13: hualala.project.v1.AudioTimeline
-	(*CreateProjectRequest)(nil),             // 14: hualala.project.v1.CreateProjectRequest
-	(*CreateProjectResponse)(nil),            // 15: hualala.project.v1.CreateProjectResponse
-	(*CreateEpisodeRequest)(nil),             // 16: hualala.project.v1.CreateEpisodeRequest
-	(*CreateEpisodeResponse)(nil),            // 17: hualala.project.v1.CreateEpisodeResponse
-	(*GetProjectRequest)(nil),                // 18: hualala.project.v1.GetProjectRequest
-	(*GetProjectResponse)(nil),               // 19: hualala.project.v1.GetProjectResponse
-	(*ListProjectsRequest)(nil),              // 20: hualala.project.v1.ListProjectsRequest
-	(*ListProjectsResponse)(nil),             // 21: hualala.project.v1.ListProjectsResponse
-	(*ListEpisodesRequest)(nil),              // 22: hualala.project.v1.ListEpisodesRequest
-	(*ListEpisodesResponse)(nil),             // 23: hualala.project.v1.ListEpisodesResponse
-	(*GetPreviewWorkbenchRequest)(nil),       // 24: hualala.project.v1.GetPreviewWorkbenchRequest
-	(*GetPreviewWorkbenchResponse)(nil),      // 25: hualala.project.v1.GetPreviewWorkbenchResponse
-	(*ListPreviewShotOptionsRequest)(nil),    // 26: hualala.project.v1.ListPreviewShotOptionsRequest
-	(*ListPreviewShotOptionsResponse)(nil),   // 27: hualala.project.v1.ListPreviewShotOptionsResponse
-	(*UpsertPreviewAssemblyRequest)(nil),     // 28: hualala.project.v1.UpsertPreviewAssemblyRequest
-	(*UpsertPreviewAssemblyResponse)(nil),    // 29: hualala.project.v1.UpsertPreviewAssemblyResponse
-	(*GetPreviewRuntimeRequest)(nil),         // 30: hualala.project.v1.GetPreviewRuntimeRequest
-	(*GetPreviewRuntimeResponse)(nil),        // 31: hualala.project.v1.GetPreviewRuntimeResponse
-	(*RequestPreviewRenderRequest)(nil),      // 32: hualala.project.v1.RequestPreviewRenderRequest
-	(*RequestPreviewRenderResponse)(nil),     // 33: hualala.project.v1.RequestPreviewRenderResponse
-	(*ApplyPreviewRenderUpdateRequest)(nil),  // 34: hualala.project.v1.ApplyPreviewRenderUpdateRequest
-	(*ApplyPreviewRenderUpdateResponse)(nil), // 35: hualala.project.v1.ApplyPreviewRenderUpdateResponse
-	(*GetAudioWorkbenchRequest)(nil),         // 36: hualala.project.v1.GetAudioWorkbenchRequest
-	(*GetAudioWorkbenchResponse)(nil),        // 37: hualala.project.v1.GetAudioWorkbenchResponse
-	(*UpsertAudioTimelineRequest)(nil),       // 38: hualala.project.v1.UpsertAudioTimelineRequest
-	(*UpsertAudioTimelineResponse)(nil),      // 39: hualala.project.v1.UpsertAudioTimelineResponse
-	(*timestamppb.Timestamp)(nil),            // 40: google.protobuf.Timestamp
+	(*PreviewTimelineSpine)(nil),             // 10: hualala.project.v1.PreviewTimelineSpine
+	(*PreviewTimelineSegment)(nil),           // 11: hualala.project.v1.PreviewTimelineSegment
+	(*PreviewTransition)(nil),                // 12: hualala.project.v1.PreviewTransition
+	(*PreviewExportDelivery)(nil),            // 13: hualala.project.v1.PreviewExportDelivery
+	(*AudioClip)(nil),                        // 14: hualala.project.v1.AudioClip
+	(*AudioTrack)(nil),                       // 15: hualala.project.v1.AudioTrack
+	(*AudioTimeline)(nil),                    // 16: hualala.project.v1.AudioTimeline
+	(*CreateProjectRequest)(nil),             // 17: hualala.project.v1.CreateProjectRequest
+	(*CreateProjectResponse)(nil),            // 18: hualala.project.v1.CreateProjectResponse
+	(*CreateEpisodeRequest)(nil),             // 19: hualala.project.v1.CreateEpisodeRequest
+	(*CreateEpisodeResponse)(nil),            // 20: hualala.project.v1.CreateEpisodeResponse
+	(*GetProjectRequest)(nil),                // 21: hualala.project.v1.GetProjectRequest
+	(*GetProjectResponse)(nil),               // 22: hualala.project.v1.GetProjectResponse
+	(*ListProjectsRequest)(nil),              // 23: hualala.project.v1.ListProjectsRequest
+	(*ListProjectsResponse)(nil),             // 24: hualala.project.v1.ListProjectsResponse
+	(*ListEpisodesRequest)(nil),              // 25: hualala.project.v1.ListEpisodesRequest
+	(*ListEpisodesResponse)(nil),             // 26: hualala.project.v1.ListEpisodesResponse
+	(*GetPreviewWorkbenchRequest)(nil),       // 27: hualala.project.v1.GetPreviewWorkbenchRequest
+	(*GetPreviewWorkbenchResponse)(nil),      // 28: hualala.project.v1.GetPreviewWorkbenchResponse
+	(*ListPreviewShotOptionsRequest)(nil),    // 29: hualala.project.v1.ListPreviewShotOptionsRequest
+	(*ListPreviewShotOptionsResponse)(nil),   // 30: hualala.project.v1.ListPreviewShotOptionsResponse
+	(*UpsertPreviewAssemblyRequest)(nil),     // 31: hualala.project.v1.UpsertPreviewAssemblyRequest
+	(*UpsertPreviewAssemblyResponse)(nil),    // 32: hualala.project.v1.UpsertPreviewAssemblyResponse
+	(*GetPreviewRuntimeRequest)(nil),         // 33: hualala.project.v1.GetPreviewRuntimeRequest
+	(*GetPreviewRuntimeResponse)(nil),        // 34: hualala.project.v1.GetPreviewRuntimeResponse
+	(*RequestPreviewRenderRequest)(nil),      // 35: hualala.project.v1.RequestPreviewRenderRequest
+	(*RequestPreviewRenderResponse)(nil),     // 36: hualala.project.v1.RequestPreviewRenderResponse
+	(*ApplyPreviewRenderUpdateRequest)(nil),  // 37: hualala.project.v1.ApplyPreviewRenderUpdateRequest
+	(*ApplyPreviewRenderUpdateResponse)(nil), // 38: hualala.project.v1.ApplyPreviewRenderUpdateResponse
+	(*GetAudioWorkbenchRequest)(nil),         // 39: hualala.project.v1.GetAudioWorkbenchRequest
+	(*GetAudioWorkbenchResponse)(nil),        // 40: hualala.project.v1.GetAudioWorkbenchResponse
+	(*UpsertAudioTimelineRequest)(nil),       // 41: hualala.project.v1.UpsertAudioTimelineRequest
+	(*UpsertAudioTimelineResponse)(nil),      // 42: hualala.project.v1.UpsertAudioTimelineResponse
+	(*timestamppb.Timestamp)(nil),            // 43: google.protobuf.Timestamp
 }
 var file_hualala_project_v1_project_service_proto_depIdxs = []int32{
 	4,  // 0: hualala.project.v1.PreviewAssemblyItem.shot:type_name -> hualala.project.v1.PreviewShotSummary
 	5,  // 1: hualala.project.v1.PreviewAssemblyItem.primary_asset:type_name -> hualala.project.v1.PreviewAssetSummary
 	6,  // 2: hualala.project.v1.PreviewAssemblyItem.source_run:type_name -> hualala.project.v1.PreviewRunSummary
 	2,  // 3: hualala.project.v1.PreviewAssembly.items:type_name -> hualala.project.v1.PreviewAssemblyItem
-	40, // 4: hualala.project.v1.PreviewAssembly.created_at:type_name -> google.protobuf.Timestamp
-	40, // 5: hualala.project.v1.PreviewAssembly.updated_at:type_name -> google.protobuf.Timestamp
+	43, // 4: hualala.project.v1.PreviewAssembly.created_at:type_name -> google.protobuf.Timestamp
+	43, // 5: hualala.project.v1.PreviewAssembly.updated_at:type_name -> google.protobuf.Timestamp
 	4,  // 6: hualala.project.v1.PreviewShotOption.shot:type_name -> hualala.project.v1.PreviewShotSummary
 	5,  // 7: hualala.project.v1.PreviewShotOption.current_primary_asset:type_name -> hualala.project.v1.PreviewAssetSummary
 	6,  // 8: hualala.project.v1.PreviewShotOption.latest_run:type_name -> hualala.project.v1.PreviewRunSummary
-	40, // 9: hualala.project.v1.PreviewRuntime.created_at:type_name -> google.protobuf.Timestamp
-	40, // 10: hualala.project.v1.PreviewRuntime.updated_at:type_name -> google.protobuf.Timestamp
+	43, // 9: hualala.project.v1.PreviewRuntime.created_at:type_name -> google.protobuf.Timestamp
+	43, // 10: hualala.project.v1.PreviewRuntime.updated_at:type_name -> google.protobuf.Timestamp
 	9,  // 11: hualala.project.v1.PreviewRuntime.playback:type_name -> hualala.project.v1.PreviewPlaybackDelivery
-	10, // 12: hualala.project.v1.PreviewRuntime.export_output:type_name -> hualala.project.v1.PreviewExportDelivery
-	11, // 13: hualala.project.v1.AudioTrack.clips:type_name -> hualala.project.v1.AudioClip
-	12, // 14: hualala.project.v1.AudioTimeline.tracks:type_name -> hualala.project.v1.AudioTrack
-	40, // 15: hualala.project.v1.AudioTimeline.created_at:type_name -> google.protobuf.Timestamp
-	40, // 16: hualala.project.v1.AudioTimeline.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 17: hualala.project.v1.CreateProjectResponse.project:type_name -> hualala.project.v1.Project
-	1,  // 18: hualala.project.v1.CreateEpisodeResponse.episode:type_name -> hualala.project.v1.Episode
-	0,  // 19: hualala.project.v1.GetProjectResponse.project:type_name -> hualala.project.v1.Project
-	0,  // 20: hualala.project.v1.ListProjectsResponse.projects:type_name -> hualala.project.v1.Project
-	1,  // 21: hualala.project.v1.ListEpisodesResponse.episodes:type_name -> hualala.project.v1.Episode
-	3,  // 22: hualala.project.v1.GetPreviewWorkbenchResponse.assembly:type_name -> hualala.project.v1.PreviewAssembly
-	7,  // 23: hualala.project.v1.ListPreviewShotOptionsResponse.options:type_name -> hualala.project.v1.PreviewShotOption
-	2,  // 24: hualala.project.v1.UpsertPreviewAssemblyRequest.items:type_name -> hualala.project.v1.PreviewAssemblyItem
-	3,  // 25: hualala.project.v1.UpsertPreviewAssemblyResponse.assembly:type_name -> hualala.project.v1.PreviewAssembly
-	8,  // 26: hualala.project.v1.GetPreviewRuntimeResponse.runtime:type_name -> hualala.project.v1.PreviewRuntime
-	8,  // 27: hualala.project.v1.RequestPreviewRenderResponse.runtime:type_name -> hualala.project.v1.PreviewRuntime
-	9,  // 28: hualala.project.v1.ApplyPreviewRenderUpdateRequest.playback:type_name -> hualala.project.v1.PreviewPlaybackDelivery
-	10, // 29: hualala.project.v1.ApplyPreviewRenderUpdateRequest.export_output:type_name -> hualala.project.v1.PreviewExportDelivery
-	8,  // 30: hualala.project.v1.ApplyPreviewRenderUpdateResponse.runtime:type_name -> hualala.project.v1.PreviewRuntime
-	13, // 31: hualala.project.v1.GetAudioWorkbenchResponse.timeline:type_name -> hualala.project.v1.AudioTimeline
-	12, // 32: hualala.project.v1.UpsertAudioTimelineRequest.tracks:type_name -> hualala.project.v1.AudioTrack
-	13, // 33: hualala.project.v1.UpsertAudioTimelineResponse.timeline:type_name -> hualala.project.v1.AudioTimeline
-	14, // 34: hualala.project.v1.ProjectService.CreateProject:input_type -> hualala.project.v1.CreateProjectRequest
-	16, // 35: hualala.project.v1.ProjectService.CreateEpisode:input_type -> hualala.project.v1.CreateEpisodeRequest
-	18, // 36: hualala.project.v1.ProjectService.GetProject:input_type -> hualala.project.v1.GetProjectRequest
-	20, // 37: hualala.project.v1.ProjectService.ListProjects:input_type -> hualala.project.v1.ListProjectsRequest
-	22, // 38: hualala.project.v1.ProjectService.ListEpisodes:input_type -> hualala.project.v1.ListEpisodesRequest
-	24, // 39: hualala.project.v1.ProjectService.GetPreviewWorkbench:input_type -> hualala.project.v1.GetPreviewWorkbenchRequest
-	26, // 40: hualala.project.v1.ProjectService.ListPreviewShotOptions:input_type -> hualala.project.v1.ListPreviewShotOptionsRequest
-	28, // 41: hualala.project.v1.ProjectService.UpsertPreviewAssembly:input_type -> hualala.project.v1.UpsertPreviewAssemblyRequest
-	30, // 42: hualala.project.v1.ProjectService.GetPreviewRuntime:input_type -> hualala.project.v1.GetPreviewRuntimeRequest
-	32, // 43: hualala.project.v1.ProjectService.RequestPreviewRender:input_type -> hualala.project.v1.RequestPreviewRenderRequest
-	34, // 44: hualala.project.v1.ProjectService.ApplyPreviewRenderUpdate:input_type -> hualala.project.v1.ApplyPreviewRenderUpdateRequest
-	36, // 45: hualala.project.v1.ProjectService.GetAudioWorkbench:input_type -> hualala.project.v1.GetAudioWorkbenchRequest
-	38, // 46: hualala.project.v1.ProjectService.UpsertAudioTimeline:input_type -> hualala.project.v1.UpsertAudioTimelineRequest
-	15, // 47: hualala.project.v1.ProjectService.CreateProject:output_type -> hualala.project.v1.CreateProjectResponse
-	17, // 48: hualala.project.v1.ProjectService.CreateEpisode:output_type -> hualala.project.v1.CreateEpisodeResponse
-	19, // 49: hualala.project.v1.ProjectService.GetProject:output_type -> hualala.project.v1.GetProjectResponse
-	21, // 50: hualala.project.v1.ProjectService.ListProjects:output_type -> hualala.project.v1.ListProjectsResponse
-	23, // 51: hualala.project.v1.ProjectService.ListEpisodes:output_type -> hualala.project.v1.ListEpisodesResponse
-	25, // 52: hualala.project.v1.ProjectService.GetPreviewWorkbench:output_type -> hualala.project.v1.GetPreviewWorkbenchResponse
-	27, // 53: hualala.project.v1.ProjectService.ListPreviewShotOptions:output_type -> hualala.project.v1.ListPreviewShotOptionsResponse
-	29, // 54: hualala.project.v1.ProjectService.UpsertPreviewAssembly:output_type -> hualala.project.v1.UpsertPreviewAssemblyResponse
-	31, // 55: hualala.project.v1.ProjectService.GetPreviewRuntime:output_type -> hualala.project.v1.GetPreviewRuntimeResponse
-	33, // 56: hualala.project.v1.ProjectService.RequestPreviewRender:output_type -> hualala.project.v1.RequestPreviewRenderResponse
-	35, // 57: hualala.project.v1.ProjectService.ApplyPreviewRenderUpdate:output_type -> hualala.project.v1.ApplyPreviewRenderUpdateResponse
-	37, // 58: hualala.project.v1.ProjectService.GetAudioWorkbench:output_type -> hualala.project.v1.GetAudioWorkbenchResponse
-	39, // 59: hualala.project.v1.ProjectService.UpsertAudioTimeline:output_type -> hualala.project.v1.UpsertAudioTimelineResponse
-	47, // [47:60] is the sub-list for method output_type
-	34, // [34:47] is the sub-list for method input_type
-	34, // [34:34] is the sub-list for extension type_name
-	34, // [34:34] is the sub-list for extension extendee
-	0,  // [0:34] is the sub-list for field type_name
+	13, // 12: hualala.project.v1.PreviewRuntime.export_output:type_name -> hualala.project.v1.PreviewExportDelivery
+	10, // 13: hualala.project.v1.PreviewPlaybackDelivery.timeline:type_name -> hualala.project.v1.PreviewTimelineSpine
+	11, // 14: hualala.project.v1.PreviewTimelineSpine.segments:type_name -> hualala.project.v1.PreviewTimelineSegment
+	12, // 15: hualala.project.v1.PreviewTimelineSegment.transition_to_next:type_name -> hualala.project.v1.PreviewTransition
+	14, // 16: hualala.project.v1.AudioTrack.clips:type_name -> hualala.project.v1.AudioClip
+	15, // 17: hualala.project.v1.AudioTimeline.tracks:type_name -> hualala.project.v1.AudioTrack
+	43, // 18: hualala.project.v1.AudioTimeline.created_at:type_name -> google.protobuf.Timestamp
+	43, // 19: hualala.project.v1.AudioTimeline.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 20: hualala.project.v1.CreateProjectResponse.project:type_name -> hualala.project.v1.Project
+	1,  // 21: hualala.project.v1.CreateEpisodeResponse.episode:type_name -> hualala.project.v1.Episode
+	0,  // 22: hualala.project.v1.GetProjectResponse.project:type_name -> hualala.project.v1.Project
+	0,  // 23: hualala.project.v1.ListProjectsResponse.projects:type_name -> hualala.project.v1.Project
+	1,  // 24: hualala.project.v1.ListEpisodesResponse.episodes:type_name -> hualala.project.v1.Episode
+	3,  // 25: hualala.project.v1.GetPreviewWorkbenchResponse.assembly:type_name -> hualala.project.v1.PreviewAssembly
+	7,  // 26: hualala.project.v1.ListPreviewShotOptionsResponse.options:type_name -> hualala.project.v1.PreviewShotOption
+	2,  // 27: hualala.project.v1.UpsertPreviewAssemblyRequest.items:type_name -> hualala.project.v1.PreviewAssemblyItem
+	3,  // 28: hualala.project.v1.UpsertPreviewAssemblyResponse.assembly:type_name -> hualala.project.v1.PreviewAssembly
+	8,  // 29: hualala.project.v1.GetPreviewRuntimeResponse.runtime:type_name -> hualala.project.v1.PreviewRuntime
+	8,  // 30: hualala.project.v1.RequestPreviewRenderResponse.runtime:type_name -> hualala.project.v1.PreviewRuntime
+	9,  // 31: hualala.project.v1.ApplyPreviewRenderUpdateRequest.playback:type_name -> hualala.project.v1.PreviewPlaybackDelivery
+	13, // 32: hualala.project.v1.ApplyPreviewRenderUpdateRequest.export_output:type_name -> hualala.project.v1.PreviewExportDelivery
+	8,  // 33: hualala.project.v1.ApplyPreviewRenderUpdateResponse.runtime:type_name -> hualala.project.v1.PreviewRuntime
+	16, // 34: hualala.project.v1.GetAudioWorkbenchResponse.timeline:type_name -> hualala.project.v1.AudioTimeline
+	15, // 35: hualala.project.v1.UpsertAudioTimelineRequest.tracks:type_name -> hualala.project.v1.AudioTrack
+	16, // 36: hualala.project.v1.UpsertAudioTimelineResponse.timeline:type_name -> hualala.project.v1.AudioTimeline
+	17, // 37: hualala.project.v1.ProjectService.CreateProject:input_type -> hualala.project.v1.CreateProjectRequest
+	19, // 38: hualala.project.v1.ProjectService.CreateEpisode:input_type -> hualala.project.v1.CreateEpisodeRequest
+	21, // 39: hualala.project.v1.ProjectService.GetProject:input_type -> hualala.project.v1.GetProjectRequest
+	23, // 40: hualala.project.v1.ProjectService.ListProjects:input_type -> hualala.project.v1.ListProjectsRequest
+	25, // 41: hualala.project.v1.ProjectService.ListEpisodes:input_type -> hualala.project.v1.ListEpisodesRequest
+	27, // 42: hualala.project.v1.ProjectService.GetPreviewWorkbench:input_type -> hualala.project.v1.GetPreviewWorkbenchRequest
+	29, // 43: hualala.project.v1.ProjectService.ListPreviewShotOptions:input_type -> hualala.project.v1.ListPreviewShotOptionsRequest
+	31, // 44: hualala.project.v1.ProjectService.UpsertPreviewAssembly:input_type -> hualala.project.v1.UpsertPreviewAssemblyRequest
+	33, // 45: hualala.project.v1.ProjectService.GetPreviewRuntime:input_type -> hualala.project.v1.GetPreviewRuntimeRequest
+	35, // 46: hualala.project.v1.ProjectService.RequestPreviewRender:input_type -> hualala.project.v1.RequestPreviewRenderRequest
+	37, // 47: hualala.project.v1.ProjectService.ApplyPreviewRenderUpdate:input_type -> hualala.project.v1.ApplyPreviewRenderUpdateRequest
+	39, // 48: hualala.project.v1.ProjectService.GetAudioWorkbench:input_type -> hualala.project.v1.GetAudioWorkbenchRequest
+	41, // 49: hualala.project.v1.ProjectService.UpsertAudioTimeline:input_type -> hualala.project.v1.UpsertAudioTimelineRequest
+	18, // 50: hualala.project.v1.ProjectService.CreateProject:output_type -> hualala.project.v1.CreateProjectResponse
+	20, // 51: hualala.project.v1.ProjectService.CreateEpisode:output_type -> hualala.project.v1.CreateEpisodeResponse
+	22, // 52: hualala.project.v1.ProjectService.GetProject:output_type -> hualala.project.v1.GetProjectResponse
+	24, // 53: hualala.project.v1.ProjectService.ListProjects:output_type -> hualala.project.v1.ListProjectsResponse
+	26, // 54: hualala.project.v1.ProjectService.ListEpisodes:output_type -> hualala.project.v1.ListEpisodesResponse
+	28, // 55: hualala.project.v1.ProjectService.GetPreviewWorkbench:output_type -> hualala.project.v1.GetPreviewWorkbenchResponse
+	30, // 56: hualala.project.v1.ProjectService.ListPreviewShotOptions:output_type -> hualala.project.v1.ListPreviewShotOptionsResponse
+	32, // 57: hualala.project.v1.ProjectService.UpsertPreviewAssembly:output_type -> hualala.project.v1.UpsertPreviewAssemblyResponse
+	34, // 58: hualala.project.v1.ProjectService.GetPreviewRuntime:output_type -> hualala.project.v1.GetPreviewRuntimeResponse
+	36, // 59: hualala.project.v1.ProjectService.RequestPreviewRender:output_type -> hualala.project.v1.RequestPreviewRenderResponse
+	38, // 60: hualala.project.v1.ProjectService.ApplyPreviewRenderUpdate:output_type -> hualala.project.v1.ApplyPreviewRenderUpdateResponse
+	40, // 61: hualala.project.v1.ProjectService.GetAudioWorkbench:output_type -> hualala.project.v1.GetAudioWorkbenchResponse
+	42, // 62: hualala.project.v1.ProjectService.UpsertAudioTimeline:output_type -> hualala.project.v1.UpsertAudioTimelineResponse
+	50, // [50:63] is the sub-list for method output_type
+	37, // [37:50] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_hualala_project_v1_project_service_proto_init() }
@@ -3082,7 +3339,7 @@ func file_hualala_project_v1_project_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hualala_project_v1_project_service_proto_rawDesc), len(file_hualala_project_v1_project_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   40,
+			NumMessages:   43,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

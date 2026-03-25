@@ -258,6 +258,12 @@ func TestPublishPreviewRuntimeUpdatedTrimsScopeAndPayloadFields(t *testing.T) {
 	if got := payload["episode_id"].(string); got != "episode-1" {
 		t.Fatalf("expected episode_id %q, got %q", "episode-1", got)
 	}
+	if _, ok := payload["timeline"]; ok {
+		t.Fatalf("expected preview runtime event payload to stay timeline-free")
+	}
+	if _, ok := payload["segments"]; ok {
+		t.Fatalf("expected preview runtime event payload to stay segment-free")
+	}
 	if got := payload["render_status"].(string); got != "queued" {
 		t.Fatalf("expected render_status %q, got %q", "queued", got)
 	}

@@ -322,7 +322,7 @@ func (s *MemoryStore) snapshot() Snapshot {
 		CollaborationPresences: cloneMap(s.CollaborationPresences),
 		PreviewAssemblies:      cloneMap(s.PreviewAssemblies),
 		PreviewAssemblyItems:   cloneMap(s.PreviewAssemblyItems),
-		PreviewRuntimes:        cloneMap(s.PreviewRuntimes),
+		PreviewRuntimes:        clonePreviewRuntimeMap(s.PreviewRuntimes),
 		AudioTimelines:         cloneMap(s.AudioTimelines),
 		AudioTracks:            cloneMap(s.AudioTracks),
 		AudioClips:             cloneMap(s.AudioClips),
@@ -400,7 +400,7 @@ func (s *MemoryStore) applySnapshot(snapshot Snapshot) {
 	s.CollaborationPresences = cloneMap(snapshot.CollaborationPresences)
 	s.PreviewAssemblies = cloneMap(snapshot.PreviewAssemblies)
 	s.PreviewAssemblyItems = cloneMap(snapshot.PreviewAssemblyItems)
-	s.PreviewRuntimes = cloneMap(snapshot.PreviewRuntimes)
+	s.PreviewRuntimes = clonePreviewRuntimeMap(snapshot.PreviewRuntimes)
 	s.AudioTimelines = cloneMap(snapshot.AudioTimelines)
 	s.AudioTracks = cloneMap(snapshot.AudioTracks)
 	s.AudioClips = cloneMap(snapshot.AudioClips)
