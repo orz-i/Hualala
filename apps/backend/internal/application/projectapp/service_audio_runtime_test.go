@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hualala/apps/backend/internal/application/workflowapp"
 	"github.com/hualala/apps/backend/internal/domain/project"
 	"github.com/hualala/apps/backend/internal/domain/workflow"
 	"github.com/hualala/apps/backend/internal/platform/db"
@@ -607,6 +608,139 @@ func TestApplyAudioRenderUpdateUsesAtomicAudioRuntimeWorkflowSave(t *testing.T) 
 	}
 }
 
+func TestRequestAudioRenderUsesAtomicAudioRuntimeWorkflowDispatch(t *testing.T) {
+	ctx := context.Background()
+	store := &audioRuntimeRepoDouble{MemoryStore: db.NewMemoryStore()}
+	projectID, episodeID, assetIDs, sourceRunID := seedAudioProject(t, ctx, store.MemoryStore)
+	service := NewService(store)
+	service.prepareWorkflowStart = func(_ context.Context, input workflowapp.StartWorkflowInput) (workflowapp.PreparedWorkflowStart, error) {
+		now := time.Now().UTC()
+		run := workflow.WorkflowRun{
+			ID:             store.GenerateWorkflowRunID(),
+			OrgID:          db.DefaultDevOrganizationID,
+			ProjectID:      input.ProjectID,
+			WorkflowType:   input.WorkflowType,
+			ResourceID:     input.ResourceID,
+			Status:         workflow.StatusPending,
+			CurrentStep:    "attempt_1.dispatch",
+			AttemptCount:   1,
+			Provider:       "seedance",
+			IdempotencyKey: "audio.render_mix:" + input.ResourceID,
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		}
+		return workflowapp.PreparedWorkflowStart{
+			Run: run,
+			DispatchStep: workflow.WorkflowStep{
+				ID:            store.GenerateWorkflowStepID(),
+				WorkflowRunID: run.ID,
+				StepKey:       "attempt_1.dispatch",
+				StepOrder:     1,
+				Status:        workflow.StatusCompleted,
+				StartedAt:     now,
+				CompletedAt:   now,
+				CreatedAt:     now,
+				UpdatedAt:     now,
+			},
+			Job: workflow.Job{
+				ID:           store.GenerateJobID(),
+				OrgID:        db.DefaultDevOrganizationID,
+				ProjectID:    input.ProjectID,
+				ResourceType: workflow.ResourceTypeWorkflowRun,
+				ResourceID:   run.ID,
+				JobType:      workflow.JobTypeWorkflowDispatch,
+				Status:       workflow.StatusPending,
+				Priority:     100,
+				Payload:      `{"workflow_run_id":"` + run.ID + `","attempt_count":1}`,
+				ScheduledAt:  now,
+				CreatedAt:    now,
+				UpdatedAt:    now,
+			},
+			Transition: workflow.StateTransition{
+				ID:           store.GenerateStateTransitionID(),
+				OrgID:        db.DefaultDevOrganizationID,
+				ProjectID:    input.ProjectID,
+				ResourceType: workflow.ResourceTypeWorkflowRun,
+				ResourceID:   run.ID,
+				FromState:    "",
+				ToState:      workflow.StatusPending,
+				Reason:       "queued",
+				CreatedAt:    now,
+			},
+		}, nil
+	}
+
+	if _, err := service.UpsertAudioTimeline(ctx, UpsertAudioTimelineInput{
+		ProjectID: projectID,
+		EpisodeID: episodeID,
+		Status:    "ready",
+		Tracks: []AudioTrackInput{
+			{
+				TrackType:     "dialogue",
+				DisplayName:   "对白",
+				Sequence:      1,
+				VolumePercent: 100,
+				Clips: []AudioClipInput{
+					{
+						AssetID:     assetIDs["dialogue"],
+						SourceRunID: sourceRunID,
+						Sequence:    1,
+						StartMs:     0,
+						DurationMs:  12000,
+					},
+				},
+			},
+		},
+	}); err != nil {
+		t.Fatalf("UpsertAudioTimeline returned error: %v", err)
+	}
+
+	if _, err := service.GetAudioRuntime(ctx, GetAudioRuntimeInput{
+		ProjectID: projectID,
+		EpisodeID: episodeID,
+	}); err != nil {
+		t.Fatalf("GetAudioRuntime returned error: %v", err)
+	}
+
+	store.disallowDirectRuntimeSave = true
+	store.disallowDirectWorkflowSave = true
+	store.disallowDirectWorkflowStepSave = true
+	store.disallowDirectJobSave = true
+	store.disallowDirectStateTransitionSave = true
+
+	runtimeState, err := service.RequestAudioRender(ctx, RequestAudioRenderInput{
+		ProjectID: projectID,
+		EpisodeID: episodeID,
+	})
+	if err != nil {
+		t.Fatalf("RequestAudioRender returned error: %v", err)
+	}
+	if !store.atomicDispatchSaveCalled {
+		t.Fatalf("expected RequestAudioRender to use atomic audio runtime/workflow dispatch save")
+	}
+	if got := runtimeState.Runtime.Status; got != "queued" {
+		t.Fatalf("expected runtime status %q, got %q", "queued", got)
+	}
+
+	storedRuntime, ok, err := store.GetAudioRuntime(projectID, episodeID)
+	if err != nil {
+		t.Fatalf("GetAudioRuntime returned error: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected queued audio runtime to remain persisted")
+	}
+	if got := storedRuntime.RenderStatus; got != "queued" {
+		t.Fatalf("expected queued render status %q, got %q", "queued", got)
+	}
+	if _, ok := store.GetWorkflowRun(storedRuntime.RenderWorkflowRunID); !ok {
+		t.Fatalf("expected workflow run %q to be persisted", storedRuntime.RenderWorkflowRunID)
+	}
+	jobs := store.ListJobs(workflow.ResourceTypeWorkflowRun, storedRuntime.RenderWorkflowRunID, workflow.JobTypeWorkflowDispatch, "")
+	if len(jobs) != 1 {
+		t.Fatalf("expected 1 persisted workflow dispatch job, got %d", len(jobs))
+	}
+}
+
 func TestGetAudioRuntimePropagatesLookupErrorsWithoutAutoCreate(t *testing.T) {
 	ctx := context.Background()
 	store := &audioRuntimeRepoDouble{
@@ -643,7 +777,11 @@ type audioRuntimeRepoDouble struct {
 	lookupByIDErr              error
 	disallowDirectRuntimeSave  bool
 	disallowDirectWorkflowSave bool
+	disallowDirectWorkflowStepSave bool
+	disallowDirectJobSave          bool
+	disallowDirectStateTransitionSave bool
 	atomicSaveCalled           bool
+	atomicDispatchSaveCalled   bool
 }
 
 func (s *audioRuntimeRepoDouble) GetAudioRuntime(projectID string, episodeID string) (project.AudioRuntime, bool, error) {
@@ -674,9 +812,40 @@ func (s *audioRuntimeRepoDouble) SaveWorkflowRun(ctx context.Context, record wor
 	return s.MemoryStore.SaveWorkflowRun(ctx, record)
 }
 
+func (s *audioRuntimeRepoDouble) SaveWorkflowStep(ctx context.Context, record workflow.WorkflowStep) error {
+	if s.disallowDirectWorkflowStepSave {
+		return errors.New("direct SaveWorkflowStep should not be used in RequestAudioRender")
+	}
+	return s.MemoryStore.SaveWorkflowStep(ctx, record)
+}
+
+func (s *audioRuntimeRepoDouble) SaveJob(ctx context.Context, record workflow.Job) error {
+	if s.disallowDirectJobSave {
+		return errors.New("direct SaveJob should not be used in RequestAudioRender")
+	}
+	return s.MemoryStore.SaveJob(ctx, record)
+}
+
+func (s *audioRuntimeRepoDouble) SaveStateTransition(ctx context.Context, record workflow.StateTransition) error {
+	if s.disallowDirectStateTransitionSave {
+		return errors.New("direct SaveStateTransition should not be used in RequestAudioRender")
+	}
+	return s.MemoryStore.SaveStateTransition(ctx, record)
+}
+
 func (s *audioRuntimeRepoDouble) SaveAudioRuntimeAndWorkflowRun(_ context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun) error {
 	s.atomicSaveCalled = true
 	s.AudioRuntimes[runtimeRecord.ID] = runtimeRecord
 	s.WorkflowRuns[workflowRun.ID] = workflowRun
+	return nil
+}
+
+func (s *audioRuntimeRepoDouble) SaveAudioRuntimeAndWorkflowDispatch(_ context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun, workflowStep workflow.WorkflowStep, job workflow.Job, transition workflow.StateTransition) error {
+	s.atomicDispatchSaveCalled = true
+	s.AudioRuntimes[runtimeRecord.ID] = runtimeRecord
+	s.WorkflowRuns[workflowRun.ID] = workflowRun
+	s.WorkflowSteps[workflowStep.ID] = workflowStep
+	s.Jobs[job.ID] = job
+	s.StateTransitions[transition.ID] = transition
 	return nil
 }

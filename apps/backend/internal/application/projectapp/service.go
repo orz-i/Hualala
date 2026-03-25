@@ -16,8 +16,9 @@ import (
 )
 
 type Service struct {
-	repo          repository
-	startWorkflow func(context.Context, workflowapp.StartWorkflowInput) (workflow.WorkflowRun, error)
+	repo                 repository
+	startWorkflow        func(context.Context, workflowapp.StartWorkflowInput) (workflow.WorkflowRun, error)
+	prepareWorkflowStart func(context.Context, workflowapp.StartWorkflowInput) (workflowapp.PreparedWorkflowStart, error)
 }
 
 type repository interface {
@@ -27,6 +28,7 @@ type repository interface {
 	db.WorkflowRepository
 	db.PolicyReader
 	SaveAudioRuntimeAndWorkflowRun(ctx context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun) error
+	SaveAudioRuntimeAndWorkflowDispatch(ctx context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun, workflowStep workflow.WorkflowStep, job workflow.Job, transition workflow.StateTransition) error
 	Publisher() *events.Publisher
 }
 
@@ -198,6 +200,10 @@ func NewService(repo repository) *Service {
 		startWorkflow: func(ctx context.Context, input workflowapp.StartWorkflowInput) (workflow.WorkflowRun, error) {
 			service := workflowapp.NewService(repo, repo.Publisher(), nil, policyapp.NewService(repo))
 			return service.StartWorkflow(ctx, input)
+		},
+		prepareWorkflowStart: func(ctx context.Context, input workflowapp.StartWorkflowInput) (workflowapp.PreparedWorkflowStart, error) {
+			service := workflowapp.NewService(repo, repo.Publisher(), nil, policyapp.NewService(repo))
+			return service.PrepareWorkflowStart(ctx, input)
 		},
 	}
 }

@@ -38,6 +38,13 @@ type StartWorkflowInput struct {
 	EstimatedCostCents int64
 }
 
+type PreparedWorkflowStart struct {
+	Run          workflow.WorkflowRun
+	DispatchStep workflow.WorkflowStep
+	Job          workflow.Job
+	Transition   workflow.StateTransition
+}
+
 type GetWorkflowRunInput struct {
 	WorkflowRunID string
 }
@@ -83,22 +90,43 @@ func NewService(repo db.WorkflowRepository, publisher *events.Publisher, executo
 }
 
 func (s *Service) StartWorkflow(ctx context.Context, input StartWorkflowInput) (workflow.WorkflowRun, error) {
-	if s == nil || s.repo == nil {
-		return workflow.WorkflowRun{}, errors.New("workflowapp: repository is required")
-	}
-	if strings.TrimSpace(input.WorkflowType) == "" {
-		return workflow.WorkflowRun{}, errors.New("workflowapp: workflow_type is required")
-	}
-	if strings.TrimSpace(input.ResourceID) == "" {
-		return workflow.WorkflowRun{}, errors.New("workflowapp: resource_id is required")
-	}
-	resolvedProvider, err := resolveProvider(input.WorkflowType, input.Provider)
+	prepared, err := s.PrepareWorkflowStart(ctx, input)
 	if err != nil {
 		return workflow.WorkflowRun{}, err
 	}
+	if err := s.repo.SaveWorkflowRun(ctx, prepared.Run); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
+	if err := s.repo.SaveStateTransition(ctx, prepared.Transition); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
+	if err := s.repo.SaveWorkflowStep(ctx, prepared.DispatchStep); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
+	if err := s.repo.SaveJob(ctx, prepared.Job); err != nil {
+		return workflow.WorkflowRun{}, err
+	}
+	s.publishWorkflowUpdated(ctx, prepared.Run)
+	return prepared.Run, nil
+}
+
+func (s *Service) PrepareWorkflowStart(ctx context.Context, input StartWorkflowInput) (PreparedWorkflowStart, error) {
+	if s == nil || s.repo == nil {
+		return PreparedWorkflowStart{}, errors.New("workflowapp: repository is required")
+	}
+	if strings.TrimSpace(input.WorkflowType) == "" {
+		return PreparedWorkflowStart{}, errors.New("workflowapp: workflow_type is required")
+	}
+	if strings.TrimSpace(input.ResourceID) == "" {
+		return PreparedWorkflowStart{}, errors.New("workflowapp: resource_id is required")
+	}
+	resolvedProvider, err := resolveProvider(input.WorkflowType, input.Provider)
+	if err != nil {
+		return PreparedWorkflowStart{}, err
+	}
 	if s.policy != nil {
 		if err := s.policy.EvaluateBudgetGuard(input.ProjectID, input.EstimatedCostCents); err != nil {
-			return workflow.WorkflowRun{}, err
+			return PreparedWorkflowStart{}, err
 		}
 	}
 
@@ -117,17 +145,54 @@ func (s *Service) StartWorkflow(ctx context.Context, input StartWorkflowInput) (
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
-	if err := s.saveWorkflowRunState(ctx, run, "", "queued"); err != nil {
-		return workflow.WorkflowRun{}, err
+	dispatchStep := workflow.WorkflowStep{
+		ID:            s.repo.GenerateWorkflowStepID(),
+		WorkflowRunID: run.ID,
+		StepKey:       attemptStepKey(run.AttemptCount, "dispatch"),
+		StepOrder:     attemptStepOrder(run.AttemptCount, "dispatch"),
+		Status:        workflow.StatusCompleted,
+		StartedAt:     now,
+		CompletedAt:   now,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
-	if _, err := s.createAttemptStep(ctx, run, "dispatch", workflow.StatusCompleted); err != nil {
-		return workflow.WorkflowRun{}, err
+	payload, err := json.Marshal(workflowJobPayload{
+		WorkflowRunID: run.ID,
+		AttemptCount:  run.AttemptCount,
+	})
+	if err != nil {
+		return PreparedWorkflowStart{}, fmt.Errorf("workflowapp: encode workflow job payload: %w", err)
 	}
-	if err := s.enqueueWorkflowJob(ctx, run); err != nil {
-		return workflow.WorkflowRun{}, err
+	job := workflow.Job{
+		ID:           s.repo.GenerateJobID(),
+		OrgID:        run.OrgID,
+		ProjectID:    run.ProjectID,
+		ResourceType: workflow.ResourceTypeWorkflowRun,
+		ResourceID:   run.ID,
+		JobType:      workflow.JobTypeWorkflowDispatch,
+		Status:       workflow.StatusPending,
+		Priority:     100,
+		Payload:      string(payload),
+		ScheduledAt:  now,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
-	s.publishWorkflowUpdated(ctx, run)
-	return run, nil
+	return PreparedWorkflowStart{
+		Run:          run,
+		DispatchStep: dispatchStep,
+		Job:          job,
+		Transition: workflow.StateTransition{
+			ID:           s.repo.GenerateStateTransitionID(),
+			OrgID:        run.OrgID,
+			ProjectID:    run.ProjectID,
+			ResourceType: workflow.ResourceTypeWorkflowRun,
+			ResourceID:   run.ID,
+			FromState:    "",
+			ToState:      run.Status,
+			Reason:       "queued",
+			CreatedAt:    now,
+		},
+	}, nil
 }
 
 func (s *Service) GetWorkflowRun(_ context.Context, input GetWorkflowRunInput) (workflow.WorkflowRun, error) {

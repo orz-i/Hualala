@@ -1988,6 +1988,108 @@ func TestPostgresStoreAudioRuntimeWorkflowSaveIsAtomic(t *testing.T) {
 	}
 }
 
+func TestPostgresStoreAudioRuntimeWorkflowDispatchSaveIsAtomic(t *testing.T) {
+	cfg := config.Load()
+	if cfg.DBDriver != "postgres" {
+		t.Skipf("requires postgres driver, got %q", cfg.DBDriver)
+	}
+
+	resetNativeIntegrationRuntimeStore(t)
+	runtimeStore, closeFn := openNativeIntegrationRuntimeStore(t, "audio-runtime-dispatch-atomic")
+	defer closeFn()
+
+	ctx := context.Background()
+	now := publishedAt()
+	projectID, episodeID, timelineID := seedAudioRuntimeIntegrationScope(t, ctx, runtimeStore, now)
+	runtimeRecord := project.AudioRuntime{
+		ID:              runtimeStore.GenerateAudioRuntimeID(),
+		ProjectID:       projectID,
+		EpisodeID:       episodeID,
+		AudioTimelineID: timelineID,
+		Status:          "queued",
+		RenderStatus:    "queued",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	workflowRunID := runtimeStore.GenerateWorkflowRunID()
+
+	err := runtimeStore.SaveAudioRuntimeAndWorkflowDispatch(ctx,
+		runtimeRecord,
+		workflow.WorkflowRun{
+			ID:             workflowRunID,
+			OrgID:          db.DefaultDevOrganizationID,
+			ProjectID:      projectID,
+			ResourceID:     runtimeRecord.ID,
+			WorkflowType:   "audio.render_mix",
+			Status:         workflow.StatusPending,
+			CurrentStep:    "attempt_1.dispatch",
+			AttemptCount:   1,
+			Provider:       "seedance",
+			IdempotencyKey: "audio.render_mix:" + runtimeRecord.ID,
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		},
+		workflow.WorkflowStep{
+			ID:            runtimeStore.GenerateWorkflowStepID(),
+			WorkflowRunID: workflowRunID,
+			StepKey:       "attempt_1.dispatch",
+			StepOrder:     1,
+			Status:        workflow.StatusCompleted,
+			StartedAt:     now,
+			CompletedAt:   now,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		},
+		workflow.Job{
+			ID:           "",
+			OrgID:        db.DefaultDevOrganizationID,
+			ProjectID:    projectID,
+			ResourceType: workflow.ResourceTypeWorkflowRun,
+			ResourceID:   workflowRunID,
+			JobType:      workflow.JobTypeWorkflowDispatch,
+			Status:       workflow.StatusPending,
+			Priority:     100,
+			Payload:      `{"workflow_run_id":"` + workflowRunID + `","attempt_count":1}`,
+			ScheduledAt:  now,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		},
+		workflow.StateTransition{
+			ID:           runtimeStore.GenerateStateTransitionID(),
+			OrgID:        db.DefaultDevOrganizationID,
+			ProjectID:    projectID,
+			ResourceType: workflow.ResourceTypeWorkflowRun,
+			ResourceID:   workflowRunID,
+			ToState:      workflow.StatusPending,
+			Reason:       "queued",
+			CreatedAt:    now,
+		},
+	)
+	if err == nil {
+		t.Fatalf("expected SaveAudioRuntimeAndWorkflowDispatch to fail when job is invalid")
+	}
+
+	stored, ok, lookupErr := runtimeStore.GetAudioRuntime(projectID, episodeID)
+	if lookupErr != nil {
+		t.Fatalf("GetAudioRuntime returned error: %v", lookupErr)
+	}
+	if ok {
+		t.Fatalf("expected dispatch transaction rollback to prevent partial audio runtime save, got %+v", stored)
+	}
+	if _, ok := runtimeStore.GetWorkflowRun(workflowRunID); ok {
+		t.Fatalf("expected workflow run rollback for %q", workflowRunID)
+	}
+	if got := len(runtimeStore.ListWorkflowSteps(workflowRunID)); got != 0 {
+		t.Fatalf("expected workflow step rollback, got %d rows", got)
+	}
+	if got := len(runtimeStore.ListJobs(workflow.ResourceTypeWorkflowRun, workflowRunID, workflow.JobTypeWorkflowDispatch, "")); got != 0 {
+		t.Fatalf("expected workflow job rollback, got %d rows", got)
+	}
+	if got := len(runtimeStore.ListStateTransitions(workflow.ResourceTypeWorkflowRun, workflowRunID)); got != 0 {
+		t.Fatalf("expected state transition rollback, got %d rows", got)
+	}
+}
+
 func TestPostgresStoreAudioRuntimeLookupReturnsDecodeErrors(t *testing.T) {
 	cfg := config.Load()
 	if cfg.DBDriver != "postgres" {

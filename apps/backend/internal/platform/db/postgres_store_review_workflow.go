@@ -358,7 +358,11 @@ func saveWorkflowRunExec(ctx context.Context, execer sqlContextExecutor, record 
 }
 
 func (s *PostgresStore) SaveWorkflowStep(ctx context.Context, record workflow.WorkflowStep) error {
-	_, err := s.db.ExecContext(ctx, `
+	return saveWorkflowStepExec(ctx, s.db, record)
+}
+
+func saveWorkflowStepExec(ctx context.Context, execer sqlContextExecutor, record workflow.WorkflowStep) error {
+	_, err := execer.ExecContext(ctx, `
 		INSERT INTO workflow_steps (
 			id, workflow_run_id, step_key, step_order, status,
 			started_at, completed_at, failed_at, error_code, error_message, metadata, created_at, updated_at
@@ -382,11 +386,15 @@ func (s *PostgresStore) SaveWorkflowStep(ctx context.Context, record workflow.Wo
 }
 
 func (s *PostgresStore) SaveJob(ctx context.Context, record workflow.Job) error {
+	return saveJobExec(ctx, s.db, record)
+}
+
+func saveJobExec(ctx context.Context, execer sqlContextExecutor, record workflow.Job) error {
 	payload := strings.TrimSpace(record.Payload)
 	if payload == "" {
 		payload = "{}"
 	}
-	_, err := s.db.ExecContext(ctx, `
+	_, err := execer.ExecContext(ctx, `
 		INSERT INTO jobs (
 			id, organization_id, project_id, resource_type, resource_id, job_type, status, priority,
 			payload, scheduled_at, started_at, completed_at, failed_at, error_code, error_message,
@@ -416,7 +424,11 @@ func (s *PostgresStore) SaveJob(ctx context.Context, record workflow.Job) error 
 }
 
 func (s *PostgresStore) SaveStateTransition(ctx context.Context, record workflow.StateTransition) error {
-	_, err := s.db.ExecContext(ctx, `
+	return saveStateTransitionExec(ctx, s.db, record)
+}
+
+func saveStateTransitionExec(ctx context.Context, execer sqlContextExecutor, record workflow.StateTransition) error {
+	_, err := execer.ExecContext(ctx, `
 		INSERT INTO state_transitions (
 			id, organization_id, project_id, resource_type, resource_id, from_state, to_state, transition_reason, created_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)

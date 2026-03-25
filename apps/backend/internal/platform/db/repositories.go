@@ -30,6 +30,7 @@ type RuntimeStore interface {
 	GatewayResultStore
 	WorkflowRepository
 	SaveAudioRuntimeAndWorkflowRun(ctx context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun) error
+	SaveAudioRuntimeAndWorkflowDispatch(ctx context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun, workflowStep workflow.WorkflowStep, job workflow.Job, transition workflow.StateTransition) error
 	Publisher() *events.Publisher
 }
 
@@ -718,6 +719,16 @@ func (s *MemoryStore) SaveAudioRuntimeAndWorkflowRun(ctx context.Context, runtim
 	return s.save(ctx, func() {
 		s.AudioRuntimes[runtimeRecord.ID] = cloneAudioRuntime(runtimeRecord)
 		s.WorkflowRuns[workflowRun.ID] = workflowRun
+	})
+}
+
+func (s *MemoryStore) SaveAudioRuntimeAndWorkflowDispatch(ctx context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun, workflowStep workflow.WorkflowStep, job workflow.Job, transition workflow.StateTransition) error {
+	return s.save(ctx, func() {
+		s.AudioRuntimes[runtimeRecord.ID] = cloneAudioRuntime(runtimeRecord)
+		s.WorkflowRuns[workflowRun.ID] = workflowRun
+		s.WorkflowSteps[workflowStep.ID] = workflowStep
+		s.Jobs[job.ID] = job
+		s.StateTransitions[transition.ID] = transition
 	})
 }
 

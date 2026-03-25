@@ -73,10 +73,10 @@ func (s *Service) RequestAudioRender(ctx context.Context, input RequestAudioRend
 	if !ok {
 		return AudioRuntimeState{}, errors.New("projectapp: project not found after audio scope validation")
 	}
-	if s.startWorkflow == nil {
+	if s.prepareWorkflowStart == nil {
 		return AudioRuntimeState{}, errors.New("projectapp: workflow starter is required")
 	}
-	run, err := s.startWorkflow(ctx, workflowapp.StartWorkflowInput{
+	prepared, err := s.prepareWorkflowStart(ctx, workflowapp.StartWorkflowInput{
 		OrganizationID: projectRecord.OrganizationID,
 		ProjectID:      projectID,
 		WorkflowType:   "audio.render_mix",
@@ -86,10 +86,10 @@ func (s *Service) RequestAudioRender(ctx context.Context, input RequestAudioRend
 		return AudioRuntimeState{}, err
 	}
 
-	now := time.Now().UTC()
+	now := prepared.Run.UpdatedAt
 	record.AudioTimelineID = timeline.ID
 	record.Status = audioRuntimeStatusQueued
-	record.RenderWorkflowRunID = run.ID
+	record.RenderWorkflowRunID = prepared.Run.ID
 	record.RenderStatus = audioRenderStatusQueued
 	record.MixAssetID = ""
 	record.MixOutput = project.AudioMixDelivery{}
@@ -97,7 +97,7 @@ func (s *Service) RequestAudioRender(ctx context.Context, input RequestAudioRend
 	record.LastErrorCode = ""
 	record.LastErrorMessage = ""
 	record.UpdatedAt = now
-	if err := s.repo.SaveAudioRuntime(ctx, record); err != nil {
+	if err := s.repo.SaveAudioRuntimeAndWorkflowDispatch(ctx, record, prepared.Run, prepared.DispatchStep, prepared.Job, prepared.Transition); err != nil {
 		return AudioRuntimeState{}, err
 	}
 

@@ -38,6 +38,38 @@ func (s *PostgresStore) SaveAudioRuntimeAndWorkflowRun(ctx context.Context, runt
 	return nil
 }
 
+func (s *PostgresStore) SaveAudioRuntimeAndWorkflowDispatch(ctx context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun, workflowStep workflow.WorkflowStep, job workflow.Job, transition workflow.StateTransition) error {
+	if s == nil || s.db == nil {
+		return errors.New("db: postgres store requires database handle")
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("db: begin audio runtime/workflow dispatch tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	if err := saveAudioRuntimeExec(ctx, tx, runtimeRecord); err != nil {
+		return err
+	}
+	if err := saveWorkflowRunExec(ctx, tx, workflowRun); err != nil {
+		return err
+	}
+	if err := saveStateTransitionExec(ctx, tx, transition); err != nil {
+		return err
+	}
+	if err := saveWorkflowStepExec(ctx, tx, workflowStep); err != nil {
+		return err
+	}
+	if err := saveJobExec(ctx, tx, job); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("db: commit audio runtime/workflow dispatch tx: %w", err)
+	}
+	return nil
+}
+
 func saveAudioRuntimeExec(ctx context.Context, execer sqlContextExecutor, record project.AudioRuntime) error {
 	waveforms, err := encodeAudioWaveformReferences(record.Waveforms)
 	if err != nil {
