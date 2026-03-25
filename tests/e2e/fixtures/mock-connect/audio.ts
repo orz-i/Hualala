@@ -1,4 +1,5 @@
 import type { AudioMode, AudioRuntimeState, AudioTimelineState } from "./types.ts";
+import { AUDIO_WAVEFORM_DOCUMENT_VERSION } from "../../../../apps/shared/audio/audioWaveformDocument.ts";
 
 type UpsertAudioTimelineBody = {
   projectId?: string;
@@ -34,6 +35,7 @@ type RequestAudioRenderBody = {
 };
 
 const TRACK_ORDER = ["dialogue", "voiceover", "bgm"] as const;
+const WAVEFORM_PEAK_PATTERN = [0.08, 0.28, 0.48, 0.68, 0.88, 0.68, 0.48, 0.28] as const;
 
 const AUDIO_ASSETS = [
   {
@@ -129,6 +131,38 @@ function buildAudioWaveforms(audioState: AudioTimelineState) {
       },
     ];
   });
+}
+
+function buildAudioWaveformPeaks(durationMs: number) {
+  const peakCount = Math.max(4, Math.min(16, Math.ceil(Math.max(1, durationMs) / 1500)));
+  return Array.from({ length: peakCount }, (_, index) => WAVEFORM_PEAK_PATTERN[index % WAVEFORM_PEAK_PATTERN.length]!);
+}
+
+export function buildAudioWaveformDocumentForUrl(
+  audioState: AudioTimelineState,
+  waveformUrl: string,
+) {
+  let requested: URL;
+  try {
+    requested = new URL(waveformUrl);
+  } catch {
+    return null;
+  }
+
+  const waveform = buildAudioWaveforms(audioState).find((candidate) => {
+    const candidateUrl = new URL(candidate.waveformUrl);
+    return candidateUrl.origin === requested.origin && candidateUrl.pathname === requested.pathname;
+  });
+
+  if (!waveform || waveform.durationMs <= 0) {
+    return null;
+  }
+
+  return {
+    version: AUDIO_WAVEFORM_DOCUMENT_VERSION,
+    duration_ms: waveform.durationMs,
+    peaks: buildAudioWaveformPeaks(waveform.durationMs),
+  };
 }
 
 export function createAudioTimelineState(projectId: string): AudioTimelineState {

@@ -5,11 +5,20 @@ import { mockConnectRoutes } from "../../tests/e2e/fixtures/mockConnectRoutes.ts
 
 function createStubPage() {
   const handlers = [];
+  const contextHandlers = [];
 
   return {
     handlers,
+    contextHandlers,
     async route(pattern, handler) {
       handlers.push({ pattern, handler });
+    },
+    context() {
+      return {
+        route(pattern, handler) {
+          contextHandlers.push({ pattern, handler });
+        },
+      };
     },
   };
 }
