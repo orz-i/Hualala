@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/hualala/apps/backend/internal/domain/project"
@@ -97,6 +98,7 @@ func (s *PostgresStore) GetPreviewRuntime(projectID string, episodeID string) (p
 	}
 	record.Playback.Timeline, err = decodePreviewTimelineSpine(playbackTimelineText)
 	if err != nil {
+		log.Printf("db: failed to decode preview runtime timeline for project=%s episode=%s runtime=%s: %v", record.ProjectID, record.EpisodeID, record.ID, err)
 		return project.PreviewRuntime{}, false
 	}
 	record.CreatedAt = record.CreatedAt.UTC()
@@ -151,6 +153,7 @@ func (s *PostgresStore) GetPreviewRuntimeByID(previewRuntimeID string) (project.
 	}
 	record.Playback.Timeline, err = decodePreviewTimelineSpine(playbackTimelineText)
 	if err != nil {
+		log.Printf("db: failed to decode preview runtime timeline by id for runtime=%s: %v", record.ID, err)
 		return project.PreviewRuntime{}, false
 	}
 	record.CreatedAt = record.CreatedAt.UTC()
