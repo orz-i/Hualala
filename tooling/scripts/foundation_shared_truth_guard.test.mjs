@@ -369,6 +369,10 @@ test("phase3 preview runtime shared truth stays on project proto, sdk, runtime a
     join(repoRoot, "docs", "runbooks", "phase3-preview-runtime-freeze.md"),
     "utf8",
   );
+  const outputFreezeDoc = readFileSync(
+    join(repoRoot, "docs", "runbooks", "phase3-preview-playback-export-freeze.md"),
+    "utf8",
+  );
 
   const expectedFiles = [
     "proto/hualala/project/v1/project_service.proto",
@@ -376,7 +380,9 @@ test("phase3 preview runtime shared truth stays on project proto, sdk, runtime a
     "apps/backend/internal/application/projectapp/service_preview_runtime.go",
     "apps/backend/internal/platform/events/events.go",
     "infra/migrations/0017_phase3_preview_runtime_shared_truth.sql",
+    "infra/migrations/0018_phase3_preview_runtime_outputs.sql",
     "docs/runbooks/phase3-preview-runtime-freeze.md",
+    "docs/runbooks/phase3-preview-playback-export-freeze.md",
   ];
   for (const relativePath of expectedFiles) {
     assert.equal(existsSync(join(repoRoot, ...relativePath.split("/"))), true, `${relativePath} should exist`);
@@ -384,22 +390,42 @@ test("phase3 preview runtime shared truth stays on project proto, sdk, runtime a
 
   assert.match(projectProto, /rpc GetPreviewRuntime/);
   assert.match(projectProto, /rpc RequestPreviewRender/);
+  assert.match(projectProto, /rpc ApplyPreviewRenderUpdate/);
   assert.match(projectProto, /message PreviewRuntime/);
+  assert.match(projectProto, /message PreviewPlaybackDelivery/);
+  assert.match(projectProto, /message PreviewExportDelivery/);
   assert.match(projectProto, /string render_workflow_run_id = 6;/);
   assert.match(projectProto, /string resolved_locale = 10;/);
+  assert.match(projectProto, /PreviewPlaybackDelivery playback = 13;/);
+  assert.match(projectProto, /PreviewExportDelivery export_output = 14;/);
+  assert.match(projectProto, /string last_error_code = 15;/);
+  assert.match(projectProto, /string last_error_message = 16;/);
 
   assert.match(projectService, /getPreviewRuntime/);
   assert.match(projectService, /requestPreviewRender/);
+  assert.match(projectService, /applyPreviewRenderUpdate/);
   assert.match(previewRuntimeService, /GetPreviewRuntime/);
   assert.match(previewRuntimeService, /RequestPreviewRender/);
+  assert.match(previewRuntimeService, /ApplyPreviewRenderUpdate/);
   assert.match(previewRuntimeService, /preview\.render_assembly/);
   assert.match(previewEvents, /project\.preview\.runtime\.updated/);
   assert.match(previewEvents, /preview_runtime_id/);
+  assert.doesNotMatch(previewEvents, /playback_url|download_url|poster_url/);
 
   assert.match(freezeDoc, /project\.preview\.runtime\.updated/);
   assert.match(freezeDoc, /preview\.render_assembly/);
   assert.match(freezeDoc, /playback_asset_id/);
   assert.match(freezeDoc, /export_asset_id/);
+  assert.match(freezeDoc, /phase3-preview-playback-export-freeze\.md/);
+
+  assert.match(outputFreezeDoc, /ApplyPreviewRenderUpdate/);
+  assert.match(outputFreezeDoc, /PreviewPlaybackDelivery/);
+  assert.match(outputFreezeDoc, /PreviewExportDelivery/);
+  assert.match(outputFreezeDoc, /project\.preview\.runtime\.updated/);
+  assert.match(outputFreezeDoc, /delivery_mode/);
+  assert.match(outputFreezeDoc, /download_url/);
+  assert.match(outputFreezeDoc, /playback_url/);
+  assert.match(outputFreezeDoc, /worker 只能通过 `ApplyPreviewRenderUpdate` 回写 runtime/);
 
   assert.doesNotMatch(workflowProto, /GetPreviewRuntime|RequestPreviewRender|PreviewRuntime/);
 });

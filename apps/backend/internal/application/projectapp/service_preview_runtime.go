@@ -8,15 +8,22 @@ import (
 
 	"github.com/hualala/apps/backend/internal/application/workflowapp"
 	"github.com/hualala/apps/backend/internal/domain/project"
+	"github.com/hualala/apps/backend/internal/domain/workflow"
 	"github.com/hualala/apps/backend/internal/platform/db"
 	"github.com/hualala/apps/backend/internal/platform/events"
 )
 
 const (
-	previewRuntimeStatusDraft  = "draft"
-	previewRuntimeStatusQueued = "queued"
-	previewRenderStatusIdle    = "idle"
-	previewRenderStatusQueued  = "queued"
+	previewRuntimeStatusDraft    = "draft"
+	previewRuntimeStatusQueued   = "queued"
+	previewRuntimeStatusRunning  = "running"
+	previewRuntimeStatusReady    = "ready"
+	previewRuntimeStatusFailed   = "failed"
+	previewRenderStatusIdle      = "idle"
+	previewRenderStatusQueued    = "queued"
+	previewRenderStatusRunning   = "running"
+	previewRenderStatusCompleted = "completed"
+	previewRenderStatusFailed    = "failed"
 )
 
 func (s *Service) GetPreviewRuntime(ctx context.Context, input GetPreviewRuntimeInput) (PreviewRuntimeState, error) {
@@ -85,6 +92,12 @@ func (s *Service) RequestPreviewRender(ctx context.Context, input RequestPreview
 	record.RenderWorkflowRunID = run.ID
 	record.RenderStatus = previewRenderStatusQueued
 	record.ResolvedLocale = strings.TrimSpace(input.RequestedLocale)
+	record.PlaybackAssetID = ""
+	record.ExportAssetID = ""
+	record.Playback = project.PreviewPlaybackDelivery{}
+	record.ExportOutput = project.PreviewExportDelivery{}
+	record.LastErrorCode = ""
+	record.LastErrorMessage = ""
 	record.UpdatedAt = now
 	if err := s.repo.SavePreviewRuntime(ctx, record); err != nil {
 		return PreviewRuntimeState{}, err
@@ -94,6 +107,106 @@ func (s *Service) RequestPreviewRender(ctx context.Context, input RequestPreview
 		OrganizationID:      projectRecord.OrganizationID,
 		ProjectID:           projectID,
 		EpisodeID:           episodeID,
+		PreviewRuntimeID:    record.ID,
+		RenderStatus:        record.RenderStatus,
+		RenderWorkflowRunID: record.RenderWorkflowRunID,
+		ResolvedLocale:      record.ResolvedLocale,
+		PlaybackAssetID:     record.PlaybackAssetID,
+		ExportAssetID:       record.ExportAssetID,
+		OccurredAt:          now,
+	})
+
+	return PreviewRuntimeState{Runtime: record}, nil
+}
+
+func (s *Service) ApplyPreviewRenderUpdate(ctx context.Context, input ApplyPreviewRenderUpdateInput) (PreviewRuntimeState, error) {
+	if s == nil || s.repo == nil {
+		return PreviewRuntimeState{}, errors.New("projectapp: repository is required")
+	}
+	previewRuntimeID := strings.TrimSpace(input.PreviewRuntimeID)
+	if previewRuntimeID == "" {
+		return PreviewRuntimeState{}, errors.New("projectapp: preview_runtime_id is required")
+	}
+	renderWorkflowRunID := strings.TrimSpace(input.RenderWorkflowRunID)
+	if renderWorkflowRunID == "" {
+		return PreviewRuntimeState{}, errors.New("projectapp: render_workflow_run_id is required")
+	}
+	renderStatus := strings.TrimSpace(input.RenderStatus)
+	if !isValidPreviewRenderUpdateStatus(renderStatus) {
+		return PreviewRuntimeState{}, errors.New("projectapp: invalid argument: render_status must be running, completed, or failed")
+	}
+	record, ok := s.repo.GetPreviewRuntimeByID(previewRuntimeID)
+	if !ok {
+		return PreviewRuntimeState{}, errors.New("projectapp: preview runtime not found")
+	}
+	if strings.TrimSpace(record.RenderWorkflowRunID) != renderWorkflowRunID {
+		return PreviewRuntimeState{}, errors.New("projectapp: failed precondition: preview runtime workflow run mismatch")
+	}
+	if err := validatePreviewRenderUpdate(input); err != nil {
+		return PreviewRuntimeState{}, err
+	}
+
+	workflowRun, ok := s.repo.GetWorkflowRun(renderWorkflowRunID)
+	if !ok {
+		return PreviewRuntimeState{}, errors.New("projectapp: failed precondition: render workflow run not found")
+	}
+	if strings.TrimSpace(workflowRun.ResourceID) != previewRuntimeID {
+		return PreviewRuntimeState{}, errors.New("projectapp: failed precondition: render workflow run scope mismatch")
+	}
+
+	now := time.Now().UTC()
+	record.UpdatedAt = now
+	if locale := strings.TrimSpace(input.ResolvedLocale); locale != "" {
+		record.ResolvedLocale = locale
+	}
+
+	switch renderStatus {
+	case previewRenderStatusRunning:
+		record.Status = previewRuntimeStatusRunning
+		record.RenderStatus = previewRenderStatusRunning
+		record.LastErrorCode = ""
+		record.LastErrorMessage = ""
+		workflowRun.Status = workflow.StatusRunning
+		workflowRun.LastError = ""
+	case previewRenderStatusCompleted:
+		record.Status = previewRuntimeStatusReady
+		record.RenderStatus = previewRenderStatusCompleted
+		record.PlaybackAssetID = strings.TrimSpace(input.PlaybackAssetID)
+		record.ExportAssetID = strings.TrimSpace(input.ExportAssetID)
+		record.Playback = normalizePreviewPlaybackDelivery(input.Playback)
+		record.ExportOutput = normalizePreviewExportDelivery(input.ExportOutput)
+		record.LastErrorCode = ""
+		record.LastErrorMessage = ""
+		workflowRun.Status = workflow.StatusCompleted
+		workflowRun.LastError = ""
+	case previewRenderStatusFailed:
+		record.Status = previewRuntimeStatusFailed
+		record.RenderStatus = previewRenderStatusFailed
+		record.LastErrorCode = strings.TrimSpace(input.ErrorCode)
+		record.LastErrorMessage = strings.TrimSpace(input.ErrorMessage)
+		workflowRun.Status = workflow.StatusFailed
+		workflowRun.LastError = strings.TrimSpace(input.ErrorMessage)
+		if workflowRun.LastError == "" {
+			workflowRun.LastError = strings.TrimSpace(input.ErrorCode)
+		}
+	}
+
+	workflowRun.UpdatedAt = now
+	if err := s.repo.SavePreviewRuntime(ctx, record); err != nil {
+		return PreviewRuntimeState{}, err
+	}
+	if err := s.repo.SaveWorkflowRun(ctx, workflowRun); err != nil {
+		return PreviewRuntimeState{}, err
+	}
+
+	projectRecord, ok := s.repo.GetProject(record.ProjectID)
+	if !ok {
+		return PreviewRuntimeState{}, errors.New("projectapp: project not found after preview runtime update")
+	}
+	events.PublishPreviewRuntimeUpdated(ctx, s.repo.Publisher(), events.PublishPreviewRuntimeUpdatedInput{
+		OrganizationID:      projectRecord.OrganizationID,
+		ProjectID:           record.ProjectID,
+		EpisodeID:           record.EpisodeID,
 		PreviewRuntimeID:    record.ID,
 		RenderStatus:        record.RenderStatus,
 		RenderWorkflowRunID: record.RenderWorkflowRunID,
@@ -143,6 +256,81 @@ func (s *Service) ensurePreviewRuntime(ctx context.Context, projectID string, ep
 func previewRenderInFlight(renderStatus string) bool {
 	switch strings.TrimSpace(renderStatus) {
 	case "queued", "running":
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidPreviewRenderUpdateStatus(renderStatus string) bool {
+	switch strings.TrimSpace(renderStatus) {
+	case previewRenderStatusRunning, previewRenderStatusCompleted, previewRenderStatusFailed:
+		return true
+	default:
+		return false
+	}
+}
+
+func validatePreviewRenderUpdate(input ApplyPreviewRenderUpdateInput) error {
+	switch strings.TrimSpace(input.RenderStatus) {
+	case previewRenderStatusCompleted:
+		hasPlayback := hasPreviewPlaybackDelivery(input.Playback)
+		hasExport := hasPreviewExportDelivery(input.ExportOutput)
+		if !hasPlayback && !hasExport {
+			return errors.New("projectapp: failed precondition: completed preview render requires playback or export output")
+		}
+		if hasPlayback && strings.TrimSpace(input.PlaybackAssetID) == "" {
+			return errors.New("projectapp: failed precondition: playback_asset_id is required when playback delivery is present")
+		}
+		if hasExport && strings.TrimSpace(input.ExportAssetID) == "" {
+			return errors.New("projectapp: failed precondition: export_asset_id is required when export output is present")
+		}
+		if hasPlayback && !isValidPreviewPlaybackDeliveryMode(input.Playback.DeliveryMode) {
+			return errors.New("projectapp: invalid argument: playback.delivery_mode must be file or manifest")
+		}
+	case previewRenderStatusFailed:
+		if strings.TrimSpace(input.ErrorCode) == "" && strings.TrimSpace(input.ErrorMessage) == "" {
+			return errors.New("projectapp: failed precondition: failed preview render requires error_code or error_message")
+		}
+	}
+	return nil
+}
+
+func hasPreviewPlaybackDelivery(delivery project.PreviewPlaybackDelivery) bool {
+	return strings.TrimSpace(delivery.DeliveryMode) != "" ||
+		strings.TrimSpace(delivery.PlaybackURL) != "" ||
+		strings.TrimSpace(delivery.PosterURL) != "" ||
+		delivery.DurationMs > 0
+}
+
+func hasPreviewExportDelivery(delivery project.PreviewExportDelivery) bool {
+	return strings.TrimSpace(delivery.DownloadURL) != "" ||
+		strings.TrimSpace(delivery.MimeType) != "" ||
+		strings.TrimSpace(delivery.FileName) != "" ||
+		delivery.SizeBytes > 0
+}
+
+func normalizePreviewPlaybackDelivery(delivery project.PreviewPlaybackDelivery) project.PreviewPlaybackDelivery {
+	return project.PreviewPlaybackDelivery{
+		DeliveryMode: strings.TrimSpace(delivery.DeliveryMode),
+		PlaybackURL:  strings.TrimSpace(delivery.PlaybackURL),
+		PosterURL:    strings.TrimSpace(delivery.PosterURL),
+		DurationMs:   delivery.DurationMs,
+	}
+}
+
+func normalizePreviewExportDelivery(delivery project.PreviewExportDelivery) project.PreviewExportDelivery {
+	return project.PreviewExportDelivery{
+		DownloadURL: strings.TrimSpace(delivery.DownloadURL),
+		MimeType:    strings.TrimSpace(delivery.MimeType),
+		FileName:    strings.TrimSpace(delivery.FileName),
+		SizeBytes:   delivery.SizeBytes,
+	}
+}
+
+func isValidPreviewPlaybackDeliveryMode(deliveryMode string) bool {
+	switch strings.TrimSpace(deliveryMode) {
+	case "file", "manifest":
 		return true
 	default:
 		return false

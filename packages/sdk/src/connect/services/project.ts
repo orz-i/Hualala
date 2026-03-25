@@ -1,6 +1,7 @@
 import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { createHualalaClient, type HualalaClientOptions } from "../transport";
 import type {
+  ApplyPreviewRenderUpdateResponse,
   GetAudioWorkbenchResponse,
   GetPreviewRuntimeResponse,
   GetPreviewWorkbenchResponse,
@@ -10,6 +11,7 @@ import type {
   UpsertPreviewAssemblyResponse,
 } from "../../gen/hualala/project/v1/project_service_pb";
 import {
+  ApplyPreviewRenderUpdateResponseSchema,
   GetAudioWorkbenchResponseSchema,
   GetPreviewRuntimeResponseSchema,
   GetPreviewWorkbenchResponseSchema,
@@ -103,6 +105,35 @@ export function createProjectClient(options: HualalaClientOptions = {}) {
         "sdk: failed to request preview render",
       );
     },
+    applyPreviewRenderUpdate(body: {
+      previewRuntimeId: string;
+      renderWorkflowRunId: string;
+      renderStatus: string;
+      resolvedLocale?: string;
+      playbackAssetId?: string;
+      exportAssetId?: string;
+      playback?: {
+        deliveryMode?: string;
+        playbackUrl?: string;
+        posterUrl?: string;
+        durationMs?: number;
+      };
+      exportOutput?: {
+        downloadUrl?: string;
+        mimeType?: string;
+        fileName?: string;
+        sizeBytes?: number;
+      };
+      errorCode?: string;
+      errorMessage?: string;
+    }): Promise<ApplyPreviewRenderUpdateResponse> {
+      return unaryWithSchema<ApplyPreviewRenderUpdateResponse>(
+        ApplyPreviewRenderUpdateResponseSchema,
+        "/hualala.project.v1.ProjectService/ApplyPreviewRenderUpdate",
+        body,
+        "sdk: failed to apply preview render update",
+      );
+    },
     getAudioWorkbench(body: {
       projectId: string;
       episodeId?: string;
@@ -160,6 +191,7 @@ export type ProjectUnaryResponses = {
   upsertPreviewAssembly: UpsertPreviewAssemblyResponse;
   getPreviewRuntime: GetPreviewRuntimeResponse;
   requestPreviewRender: RequestPreviewRenderResponse;
+  applyPreviewRenderUpdate: ApplyPreviewRenderUpdateResponse;
   getAudioWorkbench: GetAudioWorkbenchResponse;
   upsertAudioTimeline: UpsertAudioTimelineResponse;
 };

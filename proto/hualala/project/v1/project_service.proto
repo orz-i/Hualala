@@ -17,6 +17,7 @@ service ProjectService {
   rpc UpsertPreviewAssembly(UpsertPreviewAssemblyRequest) returns (UpsertPreviewAssemblyResponse);
   rpc GetPreviewRuntime(GetPreviewRuntimeRequest) returns (GetPreviewRuntimeResponse);
   rpc RequestPreviewRender(RequestPreviewRenderRequest) returns (RequestPreviewRenderResponse);
+  rpc ApplyPreviewRenderUpdate(ApplyPreviewRenderUpdateRequest) returns (ApplyPreviewRenderUpdateResponse);
   rpc GetAudioWorkbench(GetAudioWorkbenchRequest) returns (GetAudioWorkbenchResponse);
   rpc UpsertAudioTimeline(UpsertAudioTimelineRequest) returns (UpsertAudioTimelineResponse);
 }
@@ -104,6 +105,24 @@ message PreviewRuntime {
   string resolved_locale = 10;
   google.protobuf.Timestamp created_at = 11;
   google.protobuf.Timestamp updated_at = 12;
+  PreviewPlaybackDelivery playback = 13;
+  PreviewExportDelivery export_output = 14;
+  string last_error_code = 15;
+  string last_error_message = 16;
+}
+
+message PreviewPlaybackDelivery {
+  string delivery_mode = 1;
+  string playback_url = 2;
+  string poster_url = 3;
+  uint32 duration_ms = 4;
+}
+
+message PreviewExportDelivery {
+  string download_url = 1;
+  string mime_type = 2;
+  string file_name = 3;
+  int64 size_bytes = 4;
 }
 
 message AudioClip {
@@ -233,6 +252,23 @@ message RequestPreviewRenderRequest {
 }
 
 message RequestPreviewRenderResponse {
+  PreviewRuntime runtime = 1;
+}
+
+message ApplyPreviewRenderUpdateRequest {
+  string preview_runtime_id = 1;
+  string render_workflow_run_id = 2;
+  string render_status = 3;
+  string resolved_locale = 4;
+  string playback_asset_id = 5;
+  string export_asset_id = 6;
+  PreviewPlaybackDelivery playback = 7;
+  PreviewExportDelivery export_output = 8;
+  string error_code = 9;
+  string error_message = 10;
+}
+
+message ApplyPreviewRenderUpdateResponse {
   PreviewRuntime runtime = 1;
 }
 

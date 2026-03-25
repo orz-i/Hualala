@@ -10,7 +10,7 @@
 
 本轮不包含播放器、导出执行和音频联动增强。
 
-runtime shared truth 已单独冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-preview-runtime-freeze.md)。
+runtime shared truth 已冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-preview-runtime-freeze.md)，播放/导出 delivery payload 与 worker callback 已冻结在 [`phase3-preview-playback-export-freeze.md`](./phase3-preview-playback-export-freeze.md)。
 
 ## Creator 路径
 
@@ -88,5 +88,5 @@ runtime shared truth 已单独冻结在 [`phase3-preview-runtime-freeze.md`](./p
 - 只有 `scene / shot` 标题会跟随 locale 变化；`project_title / episode_title` 继续保持当前存储值
 - 若缺少 `snapshot_kind=title` 翻译快照，后端会回退到源标题，页面不额外报错
 - `UpsertPreviewAssembly` 写入 shape 不变，仍只保存 `shotId / primaryAssetId / sourceRunId / sequence`
-- runtime 只暴露素材引用，不暴露播放 URL、manifest、字幕轨、时间轴段落或下载动作
-- 播放器 / 导出执行后续会直接消费 preview runtime contract，而不是复用 assembly metadata shape
+- 当前 UI 仍只展示 runtime 摘要与素材引用，不直接消费 playback/export delivery payload
+- 播放器 / 导出执行后续会直接消费 preview runtime output contract，而不是复用 assembly metadata shape

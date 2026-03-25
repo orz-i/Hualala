@@ -151,3 +151,226 @@ func TestPreviewRuntimeRoutesExposeQueuedRuntimeAndSSE(t *testing.T) {
 		t.Fatalf("expected failed precondition, got %v", connectrpc.CodeOf(err))
 	}
 }
+
+func TestApplyPreviewRenderUpdateRouteExposesRuntimeOutputs(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, newRouteDependenciesFromStore(store))
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	projectClient := projectv1connect.NewProjectServiceClient(server.Client(), server.URL)
+	contentClient := contentv1connect.NewContentServiceClient(server.Client(), server.URL)
+
+	projectResp, err := projectClient.CreateProject(ctx, connectrpc.NewRequest(&projectv1.CreateProjectRequest{
+		OrgId:       connectTestOrgID,
+		Title:       "Preview Runtime Outputs",
+		OwnerUserId: connectTestUserID,
+	}))
+	if err != nil {
+		t.Fatalf("CreateProject returned error: %v", err)
+	}
+	projectID := projectResp.Msg.GetProject().GetProjectId()
+
+	episodeResp, err := projectClient.CreateEpisode(ctx, connectrpc.NewRequest(&projectv1.CreateEpisodeRequest{
+		ProjectId:     projectID,
+		EpisodeNumber: 1,
+		Title:         "第一集",
+	}))
+	if err != nil {
+		t.Fatalf("CreateEpisode returned error: %v", err)
+	}
+	episodeID := episodeResp.Msg.GetEpisode().GetEpisodeId()
+
+	sceneResp, err := contentClient.CreateScene(ctx, connectrpc.NewRequest(&contentv1.CreateSceneRequest{
+		ProjectId:   projectID,
+		EpisodeId:   episodeID,
+		SceneNumber: 1,
+		Title:       "开场",
+	}))
+	if err != nil {
+		t.Fatalf("CreateScene returned error: %v", err)
+	}
+	shotResp, err := contentClient.CreateShot(ctx, connectrpc.NewRequest(&contentv1.CreateShotRequest{
+		SceneId:    sceneResp.Msg.GetScene().GetId(),
+		ShotNumber: 1,
+		Title:      "第一镜",
+	}))
+	if err != nil {
+		t.Fatalf("CreateShot returned error: %v", err)
+	}
+
+	if _, err := projectClient.UpsertPreviewAssembly(ctx, connectrpc.NewRequest(&projectv1.UpsertPreviewAssemblyRequest{
+		ProjectId: projectID,
+		Status:    "ready",
+		Items: []*projectv1.PreviewAssemblyItem{
+			{
+				ShotId:   shotResp.Msg.GetShot().GetId(),
+				Sequence: 1,
+			},
+		},
+	})); err != nil {
+		t.Fatalf("UpsertPreviewAssembly returned error: %v", err)
+	}
+
+	queued, err := projectClient.RequestPreviewRender(ctx, connectrpc.NewRequest(&projectv1.RequestPreviewRenderRequest{
+		ProjectId:       projectID,
+		RequestedLocale: "en-US",
+	}))
+	if err != nil {
+		t.Fatalf("RequestPreviewRender returned error: %v", err)
+	}
+
+	updated, err := projectClient.ApplyPreviewRenderUpdate(ctx, connectrpc.NewRequest(&projectv1.ApplyPreviewRenderUpdateRequest{
+		PreviewRuntimeId:    queued.Msg.GetRuntime().GetPreviewRuntimeId(),
+		RenderWorkflowRunId: queued.Msg.GetRuntime().GetRenderWorkflowRunId(),
+		RenderStatus:        "completed",
+		ResolvedLocale:      "en-US",
+		PlaybackAssetId:     "playback-asset-1",
+		ExportAssetId:       "export-asset-1",
+		Playback: &projectv1.PreviewPlaybackDelivery{
+			DeliveryMode: "manifest",
+			PlaybackUrl:  "https://cdn.example.com/runtime-1.m3u8",
+			PosterUrl:    "https://cdn.example.com/runtime-1.jpg",
+			DurationMs:   30000,
+		},
+		ExportOutput: &projectv1.PreviewExportDelivery{
+			DownloadUrl: "https://cdn.example.com/runtime-1.mp4",
+			MimeType:    "video/mp4",
+			FileName:    "runtime-1.mp4",
+			SizeBytes:   4096,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("ApplyPreviewRenderUpdate returned error: %v", err)
+	}
+	if got := updated.Msg.GetRuntime().GetStatus(); got != "ready" {
+		t.Fatalf("expected runtime status %q, got %q", "ready", got)
+	}
+	if got := updated.Msg.GetRuntime().GetPlayback().GetPlaybackUrl(); got != "https://cdn.example.com/runtime-1.m3u8" {
+		t.Fatalf("expected playback url %q, got %q", "https://cdn.example.com/runtime-1.m3u8", got)
+	}
+	if got := updated.Msg.GetRuntime().GetExportOutput().GetDownloadUrl(); got != "https://cdn.example.com/runtime-1.mp4" {
+		t.Fatalf("expected export download url %q, got %q", "https://cdn.example.com/runtime-1.mp4", got)
+	}
+
+	readback, err := projectClient.GetPreviewRuntime(ctx, connectrpc.NewRequest(&projectv1.GetPreviewRuntimeRequest{
+		ProjectId: projectID,
+	}))
+	if err != nil {
+		t.Fatalf("GetPreviewRuntime returned error: %v", err)
+	}
+	if got := readback.Msg.GetRuntime().GetPlaybackAssetId(); got != "playback-asset-1" {
+		t.Fatalf("expected playback asset id %q, got %q", "playback-asset-1", got)
+	}
+	if got := readback.Msg.GetRuntime().GetExportOutput().GetMimeType(); got != "video/mp4" {
+		t.Fatalf("expected export mime type %q, got %q", "video/mp4", got)
+	}
+
+	_, err = projectClient.ApplyPreviewRenderUpdate(ctx, connectrpc.NewRequest(&projectv1.ApplyPreviewRenderUpdateRequest{
+		PreviewRuntimeId:    queued.Msg.GetRuntime().GetPreviewRuntimeId(),
+		RenderWorkflowRunId: "workflow-run-stale",
+		RenderStatus:        "running",
+	}))
+	if err == nil {
+		t.Fatalf("expected stale runtime update to fail")
+	}
+	if connectrpc.CodeOf(err) != connectrpc.CodeFailedPrecondition {
+		t.Fatalf("expected failed precondition, got %v", connectrpc.CodeOf(err))
+	}
+}
+
+func TestApplyPreviewRenderUpdateRouteAllowsMissingOptionalOutputs(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+
+	mux := http.NewServeMux()
+	RegisterRoutes(mux, newRouteDependenciesFromStore(store))
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	projectClient := projectv1connect.NewProjectServiceClient(server.Client(), server.URL)
+	contentClient := contentv1connect.NewContentServiceClient(server.Client(), server.URL)
+
+	projectResp, err := projectClient.CreateProject(ctx, connectrpc.NewRequest(&projectv1.CreateProjectRequest{
+		OrgId:       connectTestOrgID,
+		Title:       "Preview Runtime Running",
+		OwnerUserId: connectTestUserID,
+	}))
+	if err != nil {
+		t.Fatalf("CreateProject returned error: %v", err)
+	}
+	projectID := projectResp.Msg.GetProject().GetProjectId()
+
+	episodeResp, err := projectClient.CreateEpisode(ctx, connectrpc.NewRequest(&projectv1.CreateEpisodeRequest{
+		ProjectId:     projectID,
+		EpisodeNumber: 1,
+		Title:         "第一集",
+	}))
+	if err != nil {
+		t.Fatalf("CreateEpisode returned error: %v", err)
+	}
+
+	sceneResp, err := contentClient.CreateScene(ctx, connectrpc.NewRequest(&contentv1.CreateSceneRequest{
+		ProjectId:   projectID,
+		EpisodeId:   episodeResp.Msg.GetEpisode().GetEpisodeId(),
+		SceneNumber: 1,
+		Title:       "开场",
+	}))
+	if err != nil {
+		t.Fatalf("CreateScene returned error: %v", err)
+	}
+	shotResp, err := contentClient.CreateShot(ctx, connectrpc.NewRequest(&contentv1.CreateShotRequest{
+		SceneId:    sceneResp.Msg.GetScene().GetId(),
+		ShotNumber: 1,
+		Title:      "第一镜",
+	}))
+	if err != nil {
+		t.Fatalf("CreateShot returned error: %v", err)
+	}
+
+	if _, err := projectClient.UpsertPreviewAssembly(ctx, connectrpc.NewRequest(&projectv1.UpsertPreviewAssemblyRequest{
+		ProjectId: projectID,
+		Status:    "ready",
+		Items: []*projectv1.PreviewAssemblyItem{
+			{
+				ShotId:   shotResp.Msg.GetShot().GetId(),
+				Sequence: 1,
+			},
+		},
+	})); err != nil {
+		t.Fatalf("UpsertPreviewAssembly returned error: %v", err)
+	}
+
+	queued, err := projectClient.RequestPreviewRender(ctx, connectrpc.NewRequest(&projectv1.RequestPreviewRenderRequest{
+		ProjectId:       projectID,
+		RequestedLocale: "zh-CN",
+	}))
+	if err != nil {
+		t.Fatalf("RequestPreviewRender returned error: %v", err)
+	}
+
+	updated, err := projectClient.ApplyPreviewRenderUpdate(ctx, connectrpc.NewRequest(&projectv1.ApplyPreviewRenderUpdateRequest{
+		PreviewRuntimeId:    queued.Msg.GetRuntime().GetPreviewRuntimeId(),
+		RenderWorkflowRunId: queued.Msg.GetRuntime().GetRenderWorkflowRunId(),
+		RenderStatus:        "running",
+		ResolvedLocale:      "zh-CN",
+	}))
+	if err != nil {
+		t.Fatalf("ApplyPreviewRenderUpdate returned error: %v", err)
+	}
+	if got := updated.Msg.GetRuntime().GetStatus(); got != "running" {
+		t.Fatalf("expected runtime status %q, got %q", "running", got)
+	}
+	if got := updated.Msg.GetRuntime().GetRenderStatus(); got != "running" {
+		t.Fatalf("expected render status %q, got %q", "running", got)
+	}
+	if got := updated.Msg.GetRuntime().GetPlayback(); got != nil {
+		t.Fatalf("expected playback output to stay nil, got %#v", got)
+	}
+	if got := updated.Msg.GetRuntime().GetExportOutput(); got != nil {
+		t.Fatalf("expected export output to stay nil, got %#v", got)
+	}
+}

@@ -83,6 +83,19 @@ type RequestPreviewRenderInput struct {
 	RequestedLocale string
 }
 
+type ApplyPreviewRenderUpdateInput struct {
+	PreviewRuntimeID    string
+	RenderWorkflowRunID string
+	RenderStatus        string
+	ResolvedLocale      string
+	PlaybackAssetID     string
+	ExportAssetID       string
+	Playback            project.PreviewPlaybackDelivery
+	ExportOutput        project.PreviewExportDelivery
+	ErrorCode           string
+	ErrorMessage        string
+}
+
 type PreviewAssemblyItemInput struct {
 	ShotID         string
 	PrimaryAssetID string
