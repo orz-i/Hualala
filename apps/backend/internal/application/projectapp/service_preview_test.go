@@ -1102,6 +1102,46 @@ func TestApplyPreviewRenderUpdateRejectsInvalidTimelineSpine(t *testing.T) {
 			},
 		},
 		{
+			name: "negative start offset",
+			playback: project.PreviewPlaybackDelivery{
+				DeliveryMode: "file",
+				PlaybackURL:  "https://cdn.example.com/runtime-negative-start.mp4",
+				DurationMs:   1000,
+				Timeline: project.PreviewTimelineSpine{
+					Segments: []project.PreviewTimelineSegment{
+						{
+							SegmentID:  "segment-1",
+							Sequence:   1,
+							ShotID:     fixture.ShotIDs[0],
+							StartMs:    -500,
+							DurationMs: 1000,
+						},
+					},
+					TotalDurationMs: 500,
+				},
+			},
+		},
+		{
+			name: "negative total duration",
+			playback: project.PreviewPlaybackDelivery{
+				DeliveryMode: "file",
+				PlaybackURL:  "https://cdn.example.com/runtime-negative-total.mp4",
+				DurationMs:   1000,
+				Timeline: project.PreviewTimelineSpine{
+					Segments: []project.PreviewTimelineSegment{
+						{
+							SegmentID:  "segment-1",
+							Sequence:   1,
+							ShotID:     fixture.ShotIDs[0],
+							StartMs:    -2000,
+							DurationMs: 1000,
+						},
+					},
+					TotalDurationMs: -1000,
+				},
+			},
+		},
+		{
 			name: "missing shot id",
 			playback: project.PreviewPlaybackDelivery{
 				DeliveryMode: "file",

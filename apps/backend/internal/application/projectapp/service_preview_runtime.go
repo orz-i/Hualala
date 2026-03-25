@@ -353,6 +353,9 @@ func validatePreviewTimelineSpine(spine project.PreviewTimelineSpine) error {
 	if len(spine.Segments) == 0 {
 		return errors.New("projectapp: invalid argument: playback.timeline.segments must be non-empty when timeline is present")
 	}
+	if spine.TotalDurationMs < 0 {
+		return errors.New("projectapp: invalid argument: playback.timeline.total_duration_ms must be greater than or equal to 0")
+	}
 
 	lastEnd := 0
 	for idx, segment := range spine.Segments {
@@ -365,6 +368,9 @@ func validatePreviewTimelineSpine(spine project.PreviewTimelineSpine) error {
 		}
 		if segment.DurationMs <= 0 {
 			return errors.New("projectapp: invalid argument: playback.timeline.segment.duration_ms must be greater than 0")
+		}
+		if segment.StartMs < 0 {
+			return errors.New("projectapp: invalid argument: playback.timeline.segment.start_ms must be greater than or equal to 0")
 		}
 		if idx > 0 && segment.StartMs < lastEnd {
 			return errors.New("projectapp: invalid argument: playback.timeline.segment.start_ms must stay ordered and non-overlapping")
