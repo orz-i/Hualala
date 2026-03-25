@@ -45,7 +45,18 @@ const saveAudioWorkbenchMock = vi.mocked(saveAudioWorkbench);
 const requestAudioRenderMock = vi.mocked(requestAudioRender);
 const subscribeAudioRuntimeMock = vi.mocked(subscribeAudioRuntime);
 
-function buildAudioWorkbench() {
+function buildAudioWorkbench(
+  timelineOverrides: Partial<{
+    audioTimelineId: string;
+    projectId: string;
+    episodeId: string;
+    status: string;
+    renderWorkflowRunId: string;
+    renderStatus: string;
+    createdAt: string;
+    updatedAt: string;
+  }> = {},
+) {
   return {
     timeline: {
       audioTimelineId: "timeline-project-1",
@@ -56,6 +67,7 @@ function buildAudioWorkbench() {
       renderStatus: "queued",
       createdAt: "2026-03-24T08:00:00.000Z",
       updatedAt: "2026-03-24T08:05:00.000Z",
+      ...timelineOverrides,
     },
     tracks: [],
     summary: {
@@ -338,6 +350,72 @@ describe("useAudioWorkbenchController", () => {
       "voiceover",
       "bgm",
     ]);
+  });
+
+  it("waits for the episode-scoped workbench before loading and subscribing to the audio runtime", async () => {
+    let resolveWorkbench: ((value: ReturnType<typeof buildAudioWorkbench>) => void) | undefined;
+    loadAudioWorkbenchMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveWorkbench = resolve;
+        }),
+    );
+    loadAudioRuntimeMock.mockResolvedValueOnce(
+      buildAudioRuntime({
+        audioRuntimeId: "audio-runtime-episode-1",
+        episodeId: "episode-1",
+        audioTimelineId: "timeline-episode-1",
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useAudioWorkbenchController({
+        enabled: true,
+        projectId: "project-1",
+        t,
+        orgId: "org-1",
+        userId: "user-1",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(loadAudioAssetPoolMock).toHaveBeenCalledTimes(1);
+    });
+    expect(loadAudioRuntimeMock).not.toHaveBeenCalled();
+    expect(subscribeAudioRuntimeMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveWorkbench?.(
+        buildAudioWorkbench({
+          audioTimelineId: "timeline-episode-1",
+          episodeId: "episode-1",
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(result.current.audioWorkbench?.timeline.episodeId).toBe("episode-1");
+    });
+    await waitFor(() => {
+      expect(loadAudioRuntimeMock).toHaveBeenCalledWith({
+        projectId: "project-1",
+        episodeId: "episode-1",
+        orgId: "org-1",
+        userId: "user-1",
+      });
+    });
+
+    expect(loadAudioRuntimeMock).toHaveBeenCalledTimes(1);
+    expect(subscribeAudioRuntimeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org-1",
+        projectId: "project-1",
+        episodeId: "episode-1",
+        orgId: "org-1",
+        userId: "user-1",
+      }),
+    );
+    expect(subscribeAudioRuntimeMock).toHaveBeenCalledTimes(1);
   });
 
   it("requests audio render and keeps draft clips during runtime sse refreshes", async () => {

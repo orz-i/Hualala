@@ -43,6 +43,8 @@ export function useAdminAudioController({
   const [runtimeErrorMessage, setRuntimeErrorMessage] = useState("");
   const audioRuntimeRef = useRef<AdminAudioRuntimeViewModel | null>(null);
   const audioEpisodeId = audioWorkbench?.timeline.episodeId ?? "";
+  const audioRuntimeScopeReady =
+    Boolean(audioWorkbench) && audioWorkbench?.timeline.projectId === projectId;
 
   useEffect(() => {
     audioRuntimeRef.current = audioRuntime;
@@ -95,10 +97,14 @@ export function useAdminAudioController({
   }, [effectiveOrgId, effectiveUserId, enabled, projectId, sessionState, t]);
 
   const refreshAudioRuntime = useCallback(async () => {
+    if (!audioWorkbench || audioWorkbench.timeline.projectId !== projectId) {
+      return null;
+    }
+
     try {
       const nextRuntime = await loadAdminAudioRuntime({
         projectId,
-        episodeId: audioEpisodeId || undefined,
+        episodeId: audioWorkbench.timeline.episodeId || undefined,
         orgId: effectiveOrgId,
         userId: effectiveUserId,
       });
@@ -117,7 +123,7 @@ export function useAdminAudioController({
       });
       throw error;
     }
-  }, [audioEpisodeId, effectiveOrgId, effectiveUserId, projectId]);
+  }, [audioWorkbench, effectiveOrgId, effectiveUserId, projectId]);
 
   useEffect(() => {
     if (!enabled || sessionState !== "ready") {
@@ -125,6 +131,10 @@ export function useAdminAudioController({
         setAudioRuntime(null);
         setRuntimeErrorMessage("");
       });
+      return;
+    }
+
+    if (!audioRuntimeScopeReady) {
       return;
     }
 
@@ -146,10 +156,16 @@ export function useAdminAudioController({
     return () => {
       cancelled = true;
     };
-  }, [enabled, refreshAudioRuntime, sessionState]);
+  }, [audioRuntimeScopeReady, enabled, refreshAudioRuntime, sessionState]);
 
   useEffect(() => {
-    if (!enabled || sessionState !== "ready" || !effectiveOrgId || !projectId) {
+    if (
+      !enabled ||
+      sessionState !== "ready" ||
+      !effectiveOrgId ||
+      !projectId ||
+      !audioRuntimeScopeReady
+    ) {
       return;
     }
 
@@ -172,6 +188,7 @@ export function useAdminAudioController({
     });
   }, [
     audioEpisodeId,
+    audioRuntimeScopeReady,
     effectiveOrgId,
     effectiveUserId,
     enabled,

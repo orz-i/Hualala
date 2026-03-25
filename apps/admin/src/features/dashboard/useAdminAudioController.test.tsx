@@ -30,29 +30,19 @@ const subscribeAdminAudioRuntimeMock = vi.mocked(subscribeAdminAudioRuntime);
 describe("useAdminAudioController", () => {
   const t = createTranslator("zh-CN");
 
-  function buildAudioRuntime(overrides: Record<string, unknown> = {}) {
+  function buildAudioWorkbench(
+    timelineOverrides: Partial<{
+      audioTimelineId: string;
+      projectId: string;
+      episodeId: string;
+      status: string;
+      renderWorkflowRunId: string;
+      renderStatus: string;
+      createdAt: string;
+      updatedAt: string;
+    }> = {},
+  ) {
     return {
-      audioRuntimeId: "audio-runtime-project-1",
-      projectId: "project-1",
-      episodeId: "",
-      audioTimelineId: "timeline-project-1",
-      status: "idle",
-      renderWorkflowRunId: "",
-      renderStatus: "idle",
-      mixAssetId: "",
-      createdAt: "2026-03-25T09:00:00.000Z",
-      updatedAt: "2026-03-25T09:05:00.000Z",
-      mixOutput: null,
-      waveforms: [],
-      lastErrorCode: "",
-      lastErrorMessage: "",
-      ...overrides,
-    };
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    loadAdminAudioWorkbenchMock.mockResolvedValue({
       timeline: {
         audioTimelineId: "timeline-project-1",
         projectId: "project-1",
@@ -62,11 +52,12 @@ describe("useAdminAudioController", () => {
         renderStatus: "queued",
         createdAt: "2026-03-24T08:00:00.000Z",
         updatedAt: "2026-03-24T08:05:00.000Z",
+        ...timelineOverrides,
       },
       tracks: [
         {
           trackId: "track-dialogue",
-          timelineId: "timeline-project-1",
+          timelineId: timelineOverrides.audioTimelineId ?? "timeline-project-1",
           trackType: "dialogue",
           displayName: "对白",
           sequence: 1,
@@ -95,7 +86,32 @@ describe("useAdminAudioController", () => {
         invalidTimingClipCount: 0,
         tracksByType: [{ trackType: "dialogue", count: 1 }],
       },
-    });
+    };
+  }
+
+  function buildAudioRuntime(overrides: Record<string, unknown> = {}) {
+    return {
+      audioRuntimeId: "audio-runtime-project-1",
+      projectId: "project-1",
+      episodeId: "",
+      audioTimelineId: "timeline-project-1",
+      status: "idle",
+      renderWorkflowRunId: "",
+      renderStatus: "idle",
+      mixAssetId: "",
+      createdAt: "2026-03-25T09:00:00.000Z",
+      updatedAt: "2026-03-25T09:05:00.000Z",
+      mixOutput: null,
+      waveforms: [],
+      lastErrorCode: "",
+      lastErrorMessage: "",
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    loadAdminAudioWorkbenchMock.mockResolvedValue(buildAudioWorkbench());
     loadAdminAudioRuntimeMock.mockResolvedValue(buildAudioRuntime());
     loadAssetProvenanceDetailsMock.mockResolvedValue({
       asset: {
@@ -199,6 +215,72 @@ describe("useAdminAudioController", () => {
     });
 
     expect(result.current.audioWorkbench?.tracks[0]?.trackId).toBe("track-dialogue");
+  });
+
+  it("waits for the episode-scoped workbench before loading and subscribing to the audio runtime", async () => {
+    let resolveWorkbench:
+      | ((value: ReturnType<typeof buildAudioWorkbench>) => void)
+      | undefined;
+    loadAdminAudioWorkbenchMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveWorkbench = resolve;
+        }),
+    );
+    loadAdminAudioRuntimeMock.mockResolvedValueOnce(
+      buildAudioRuntime({
+        audioRuntimeId: "audio-runtime-episode-1",
+        episodeId: "episode-1",
+        audioTimelineId: "timeline-episode-1",
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useAdminAudioController({
+        sessionState: "ready",
+        enabled: true,
+        projectId: "project-1",
+        effectiveOrgId: "org-1",
+        effectiveUserId: "user-1",
+        t,
+      }),
+    );
+
+    expect(loadAdminAudioRuntimeMock).not.toHaveBeenCalled();
+    expect(subscribeAdminAudioRuntimeMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveWorkbench?.(
+        buildAudioWorkbench({
+          audioTimelineId: "timeline-episode-1",
+          episodeId: "episode-1",
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(result.current.audioWorkbench?.timeline.episodeId).toBe("episode-1");
+    });
+    await waitFor(() => {
+      expect(loadAdminAudioRuntimeMock).toHaveBeenCalledWith({
+        projectId: "project-1",
+        episodeId: "episode-1",
+        orgId: "org-1",
+        userId: "user-1",
+      });
+    });
+
+    expect(loadAdminAudioRuntimeMock).toHaveBeenCalledTimes(1);
+    expect(subscribeAdminAudioRuntimeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org-1",
+        projectId: "project-1",
+        episodeId: "episode-1",
+        orgId: "org-1",
+        userId: "user-1",
+      }),
+    );
+    expect(subscribeAdminAudioRuntimeMock).toHaveBeenCalledTimes(1);
   });
 
   it("refreshes audio runtime on sse invalidation without clearing the audio workbench", async () => {

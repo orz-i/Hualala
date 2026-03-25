@@ -86,6 +86,8 @@ export function useAudioWorkbenchController({
   }, [audioRuntime]);
 
   const audioEpisodeId = audioWorkbench?.timeline.episodeId ?? "";
+  const audioRuntimeScopeReady =
+    Boolean(audioWorkbench) && audioWorkbench?.timeline.projectId === projectId;
   const draftClipCount = countAudioClips(draftTracks);
 
   useEffect(() => {
@@ -166,10 +168,14 @@ export function useAudioWorkbenchController({
   }, [enabled, orgId, projectId, resetAssetProvenance, t, userId]);
 
   const refreshAudioRuntime = useCallback(async () => {
+    if (!audioWorkbench || audioWorkbench.timeline.projectId !== projectId) {
+      return null;
+    }
+
     try {
       const nextRuntime = await loadAudioRuntime({
         projectId,
-        episodeId: audioWorkbenchRef.current?.timeline.episodeId || undefined,
+        episodeId: audioWorkbench.timeline.episodeId || undefined,
         orgId,
         userId,
       });
@@ -188,7 +194,7 @@ export function useAudioWorkbenchController({
       });
       throw error;
     }
-  }, [orgId, projectId, userId]);
+  }, [audioWorkbench, orgId, projectId, userId]);
 
   const scheduleSilentAudioRuntimeRefresh = useQueuedSilentRefresh(
     "audio-runtime",
@@ -205,6 +211,10 @@ export function useAudioWorkbenchController({
       return;
     }
 
+    if (!audioRuntimeScopeReady) {
+      return;
+    }
+
     let cancelled = false;
 
     refreshAudioRuntime().catch(() => {
@@ -216,10 +226,10 @@ export function useAudioWorkbenchController({
     return () => {
       cancelled = true;
     };
-  }, [enabled, audioEpisodeId, refreshAudioRuntime]);
+  }, [audioEpisodeId, audioRuntimeScopeReady, enabled, refreshAudioRuntime]);
 
   useEffect(() => {
-    if (!enabled || !orgId || !projectId) {
+    if (!enabled || !orgId || !projectId || !audioRuntimeScopeReady) {
       return;
     }
 
@@ -238,6 +248,7 @@ export function useAudioWorkbenchController({
     });
   }, [
     audioEpisodeId,
+    audioRuntimeScopeReady,
     enabled,
     orgId,
     projectId,
