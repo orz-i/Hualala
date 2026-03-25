@@ -598,6 +598,7 @@ func (s *PostgresStore) ListUploadFilesBySessionIDs(sessionIDs []string) []asset
 }
 
 func (s *PostgresStore) SaveMediaAsset(ctx context.Context, record asset.MediaAsset) error {
+	normalizedConsentStatus := asset.NormalizeConsentStatus(record.AIAnnotated, record.ConsentStatus)
 	aiDisclosureStatus := "unknown"
 	if record.AIAnnotated {
 		aiDisclosureStatus = "completed"
@@ -607,7 +608,7 @@ func (s *PostgresStore) SaveMediaAsset(ctx context.Context, record asset.MediaAs
 			id, organization_id, project_id, import_batch_id, upload_file_id, asset_type,
 			source_type, storage_key, ai_disclosure_status, rights_status, consent_status,
 			created_at, updated_at, locale, ai_annotated
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'unknown', $11, $12, $13, $14)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		ON CONFLICT (id) DO UPDATE
 		SET organization_id = EXCLUDED.organization_id,
 		    project_id = EXCLUDED.project_id,
@@ -617,10 +618,11 @@ func (s *PostgresStore) SaveMediaAsset(ctx context.Context, record asset.MediaAs
 		    source_type = EXCLUDED.source_type,
 		    ai_disclosure_status = EXCLUDED.ai_disclosure_status,
 		    rights_status = EXCLUDED.rights_status,
+		    consent_status = EXCLUDED.consent_status,
 		    updated_at = EXCLUDED.updated_at,
 		    locale = EXCLUDED.locale,
 		    ai_annotated = EXCLUDED.ai_annotated
-	`, record.ID, record.OrgID, record.ProjectID, nullableUUID(record.ImportBatchID), nullableUUID(s.lookupUploadFileIDByAssetID(ctx, record.ID)), normalizeAssetMediaType(record.MediaType), defaultString(record.SourceType, "upload_session"), fmt.Sprintf("media-assets/%s", record.ID), aiDisclosureStatus, defaultString(record.RightsStatus, "unknown"), record.CreatedAt, record.UpdatedAt, emptyToNil(record.Locale), record.AIAnnotated)
+	`, record.ID, record.OrgID, record.ProjectID, nullableUUID(record.ImportBatchID), nullableUUID(s.lookupUploadFileIDByAssetID(ctx, record.ID)), normalizeAssetMediaType(record.MediaType), defaultString(record.SourceType, "upload_session"), fmt.Sprintf("media-assets/%s", record.ID), aiDisclosureStatus, defaultString(record.RightsStatus, "unknown"), normalizedConsentStatus, record.CreatedAt, record.UpdatedAt, emptyToNil(record.Locale), record.AIAnnotated)
 	if err != nil {
 		return fmt.Errorf("db: upsert media asset %s: %w", record.ID, err)
 	}
@@ -634,13 +636,14 @@ func (s *PostgresStore) GetMediaAsset(assetID string) (asset.MediaAsset, bool) {
 	record := asset.MediaAsset{}
 	err := s.db.QueryRowContext(context.Background(), `
 		SELECT id::text, organization_id::text, project_id::text, COALESCE(import_batch_id::text, ''),
-		       asset_type, source_type, COALESCE(locale, ''), rights_status, ai_annotated, created_at, updated_at
+		       asset_type, source_type, COALESCE(locale, ''), rights_status, consent_status, ai_annotated, created_at, updated_at
 		FROM media_assets
 		WHERE id = $1
-	`, strings.TrimSpace(assetID)).Scan(&record.ID, &record.OrgID, &record.ProjectID, &record.ImportBatchID, &record.MediaType, &record.SourceType, &record.Locale, &record.RightsStatus, &record.AIAnnotated, &record.CreatedAt, &record.UpdatedAt)
+	`, strings.TrimSpace(assetID)).Scan(&record.ID, &record.OrgID, &record.ProjectID, &record.ImportBatchID, &record.MediaType, &record.SourceType, &record.Locale, &record.RightsStatus, &record.ConsentStatus, &record.AIAnnotated, &record.CreatedAt, &record.UpdatedAt)
 	if err != nil {
 		return asset.MediaAsset{}, false
 	}
+	record.ConsentStatus = asset.NormalizeConsentStatus(record.AIAnnotated, record.ConsentStatus)
 	record.CreatedAt = record.CreatedAt.UTC()
 	record.UpdatedAt = record.UpdatedAt.UTC()
 	return record, true
@@ -652,7 +655,7 @@ func (s *PostgresStore) ListMediaAssetsByIDs(assetIDs []string) []asset.MediaAss
 	}
 	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id::text, organization_id::text, project_id::text, COALESCE(import_batch_id::text, ''),
-		       asset_type, source_type, COALESCE(locale, ''), rights_status, ai_annotated, created_at, updated_at
+		       asset_type, source_type, COALESCE(locale, ''), rights_status, consent_status, ai_annotated, created_at, updated_at
 		FROM media_assets
 		WHERE id = ANY($1::uuid[])
 		ORDER BY id ASC
@@ -665,9 +668,10 @@ func (s *PostgresStore) ListMediaAssetsByIDs(assetIDs []string) []asset.MediaAss
 	items := make([]asset.MediaAsset, 0)
 	for rows.Next() {
 		var record asset.MediaAsset
-		if err := rows.Scan(&record.ID, &record.OrgID, &record.ProjectID, &record.ImportBatchID, &record.MediaType, &record.SourceType, &record.Locale, &record.RightsStatus, &record.AIAnnotated, &record.CreatedAt, &record.UpdatedAt); err != nil {
+		if err := rows.Scan(&record.ID, &record.OrgID, &record.ProjectID, &record.ImportBatchID, &record.MediaType, &record.SourceType, &record.Locale, &record.RightsStatus, &record.ConsentStatus, &record.AIAnnotated, &record.CreatedAt, &record.UpdatedAt); err != nil {
 			return nil
 		}
+		record.ConsentStatus = asset.NormalizeConsentStatus(record.AIAnnotated, record.ConsentStatus)
 		record.CreatedAt = record.CreatedAt.UTC()
 		record.UpdatedAt = record.UpdatedAt.UTC()
 		items = append(items, record)
@@ -681,7 +685,7 @@ func (s *PostgresStore) ListMediaAssetsByImportBatch(importBatchID string) []ass
 	}
 	rows, err := s.db.QueryContext(context.Background(), `
 		SELECT id::text, organization_id::text, project_id::text, COALESCE(import_batch_id::text, ''),
-		       asset_type, source_type, COALESCE(locale, ''), rights_status, ai_annotated, created_at, updated_at
+		       asset_type, source_type, COALESCE(locale, ''), rights_status, consent_status, ai_annotated, created_at, updated_at
 		FROM media_assets
 		WHERE import_batch_id = $1
 		ORDER BY id ASC
@@ -694,9 +698,10 @@ func (s *PostgresStore) ListMediaAssetsByImportBatch(importBatchID string) []ass
 	items := make([]asset.MediaAsset, 0)
 	for rows.Next() {
 		var record asset.MediaAsset
-		if err := rows.Scan(&record.ID, &record.OrgID, &record.ProjectID, &record.ImportBatchID, &record.MediaType, &record.SourceType, &record.Locale, &record.RightsStatus, &record.AIAnnotated, &record.CreatedAt, &record.UpdatedAt); err != nil {
+		if err := rows.Scan(&record.ID, &record.OrgID, &record.ProjectID, &record.ImportBatchID, &record.MediaType, &record.SourceType, &record.Locale, &record.RightsStatus, &record.ConsentStatus, &record.AIAnnotated, &record.CreatedAt, &record.UpdatedAt); err != nil {
 			return nil
 		}
+		record.ConsentStatus = asset.NormalizeConsentStatus(record.AIAnnotated, record.ConsentStatus)
 		record.CreatedAt = record.CreatedAt.UTC()
 		record.UpdatedAt = record.UpdatedAt.UTC()
 		items = append(items, record)

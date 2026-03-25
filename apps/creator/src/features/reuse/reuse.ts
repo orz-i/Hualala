@@ -6,6 +6,7 @@ export type ReusableAssetLibraryItemViewModel = {
   mediaType: string;
   sourceType: string;
   rightsStatus: string;
+  consentStatus: string;
   locale: string;
   aiAnnotated: boolean;
   sourceRunId: string;
@@ -14,40 +15,64 @@ export type ReusableAssetLibraryItemViewModel = {
   blockedReason: string;
 };
 
+function normalizeConsentStatus(aiAnnotated: boolean, consentStatus: string) {
+  const normalized = consentStatus.trim() || "unknown";
+  if (!aiAnnotated && normalized === "unknown") {
+    return "not_required";
+  }
+  return normalized;
+}
+
 export function decideReuseEligibility({
   currentProjectId,
   sourceProjectId,
   rightsStatus,
+  consentStatus,
   aiAnnotated,
 }: {
   currentProjectId: string;
   sourceProjectId: string;
   rightsStatus: string;
+  consentStatus: string;
   aiAnnotated: boolean;
 }) {
-  if (!sourceProjectId || sourceProjectId === currentProjectId) {
+  const normalizedConsentStatus = normalizeConsentStatus(aiAnnotated, consentStatus);
+
+  if (!sourceProjectId) {
     return {
       allowed: false,
-      blockedReason: "creator: asset belongs to the current project",
+      blockedReason: "policyapp: source project is unavailable for cross-project reuse",
+      consentStatus: normalizedConsentStatus,
+    };
+  }
+
+  if (sourceProjectId === currentProjectId) {
+    return {
+      allowed: false,
+      blockedReason: "policyapp: asset belongs to the current project",
+      consentStatus: normalizedConsentStatus,
     };
   }
 
   if (rightsStatus !== "clear") {
     return {
       allowed: false,
-      blockedReason: "creator: rights status does not allow cross-project reuse",
+      blockedReason: "policyapp: rights status does not allow cross-project reuse",
+      consentStatus: normalizedConsentStatus,
     };
   }
 
-  if (aiAnnotated) {
+  if (aiAnnotated && normalizedConsentStatus !== "granted") {
     return {
       allowed: false,
-      blockedReason: "creator: consent status is unavailable for ai_annotated assets",
+      blockedReason: "policyapp: consent status must be granted for ai_annotated assets",
+      consentStatus: normalizedConsentStatus,
     };
   }
 
   return {
     allowed: true,
     blockedReason: "",
+    consentStatus: normalizedConsentStatus,
   };
 }

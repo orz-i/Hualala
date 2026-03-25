@@ -119,7 +119,9 @@ export function AssetProvenanceDialog({
             {t("asset.provenance.assetMeta", {
               sourceType: assetProvenanceDetail.asset.sourceType,
               rightsStatus: assetProvenanceDetail.asset.rightsStatus,
+              consentStatus: assetProvenanceDetail.asset.consentStatus,
               locale: assetProvenanceDetail.asset.locale || "none",
+              aiAnnotated: assetProvenanceDetail.asset.aiAnnotated ? "true" : "false",
             })}
           </p>
         </div>

@@ -51,6 +51,7 @@ export type ImportBatchMediaAssetViewModel = {
   projectId: string;
   sourceType: string;
   rightsStatus: string;
+  consentStatus: string;
   importBatchId: string;
   locale: string;
   aiAnnotated: boolean;
@@ -86,6 +87,7 @@ export type AssetProvenanceDetailViewModel = {
     projectId: string;
     sourceType: string;
     rightsStatus: string;
+    consentStatus: string;
     importBatchId: string;
     locale: string;
     aiAnnotated: boolean;

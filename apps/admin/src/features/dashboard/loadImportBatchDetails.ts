@@ -43,6 +43,7 @@ type ImportBatchWorkbenchResponse = {
     projectId?: string;
     sourceType?: string;
     rightsStatus?: string;
+    consentStatus?: string;
     importBatchId?: string;
     locale?: string;
     aiAnnotated?: boolean;
@@ -116,6 +117,7 @@ export async function loadImportBatchDetails({
       projectId: asset.projectId ?? "",
       sourceType: asset.sourceType ?? "unknown",
       rightsStatus: asset.rightsStatus ?? "unknown",
+      consentStatus: asset.consentStatus ?? "unknown",
       importBatchId: asset.importBatchId ?? "",
       locale: asset.locale ?? "",
       aiAnnotated: asset.aiAnnotated ?? false,

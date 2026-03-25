@@ -120,3 +120,107 @@ func TestEvaluateWorkflowCancellationAllowedAllowsPendingAndRunning(t *testing.T
 		})
 	}
 }
+
+func TestEvaluateAssetReusePolicy(t *testing.T) {
+	service := NewService(db.NewMemoryStore())
+
+	testCases := []struct {
+		name              string
+		input             AssetReusePolicyInput
+		wantAllowed       bool
+		wantConsentStatus string
+		wantBlockedReason string
+	}{
+		{
+			name: "blocks missing source project",
+			input: AssetReusePolicyInput{
+				TargetProjectID: "project-live-1",
+				SourceProjectID: "",
+				RightsStatus:    "clear",
+				ConsentStatus:   "granted",
+				AIAnnotated:     false,
+			},
+			wantAllowed:       false,
+			wantConsentStatus: "granted",
+			wantBlockedReason: "policyapp: source project is unavailable for cross-project reuse",
+		},
+		{
+			name: "blocks current project asset",
+			input: AssetReusePolicyInput{
+				TargetProjectID: "project-live-1",
+				SourceProjectID: "project-live-1",
+				RightsStatus:    "clear",
+				ConsentStatus:   "granted",
+				AIAnnotated:     false,
+			},
+			wantAllowed:       false,
+			wantConsentStatus: "granted",
+			wantBlockedReason: "policyapp: asset belongs to the current project",
+		},
+		{
+			name: "blocks restricted rights",
+			input: AssetReusePolicyInput{
+				TargetProjectID: "project-live-1",
+				SourceProjectID: "project-source-9",
+				RightsStatus:    "restricted",
+				ConsentStatus:   "granted",
+				AIAnnotated:     false,
+			},
+			wantAllowed:       false,
+			wantConsentStatus: "granted",
+			wantBlockedReason: "policyapp: rights status does not allow cross-project reuse",
+		},
+		{
+			name: "blocks ai asset without granted consent",
+			input: AssetReusePolicyInput{
+				TargetProjectID: "project-live-1",
+				SourceProjectID: "project-source-9",
+				RightsStatus:    "clear",
+				ConsentStatus:   "unknown",
+				AIAnnotated:     true,
+			},
+			wantAllowed:       false,
+			wantConsentStatus: "unknown",
+			wantBlockedReason: "policyapp: consent status must be granted for ai_annotated assets",
+		},
+		{
+			name: "normalizes non-ai unknown consent to not_required",
+			input: AssetReusePolicyInput{
+				TargetProjectID: "project-live-1",
+				SourceProjectID: "project-source-9",
+				RightsStatus:    "clear",
+				ConsentStatus:   "unknown",
+				AIAnnotated:     false,
+			},
+			wantAllowed:       true,
+			wantConsentStatus: "not_required",
+		},
+		{
+			name: "allows ai asset with granted consent",
+			input: AssetReusePolicyInput{
+				TargetProjectID: "project-live-1",
+				SourceProjectID: "project-source-9",
+				RightsStatus:    "clear",
+				ConsentStatus:   "granted",
+				AIAnnotated:     true,
+			},
+			wantAllowed:       true,
+			wantConsentStatus: "granted",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := service.EvaluateAssetReusePolicy(tc.input)
+			if got.Allowed != tc.wantAllowed {
+				t.Fatalf("expected allowed=%v, got %v", tc.wantAllowed, got.Allowed)
+			}
+			if got.ConsentStatus != tc.wantConsentStatus {
+				t.Fatalf("expected consent_status %q, got %q", tc.wantConsentStatus, got.ConsentStatus)
+			}
+			if got.BlockedReason != tc.wantBlockedReason {
+				t.Fatalf("expected blocked_reason %q, got %q", tc.wantBlockedReason, got.BlockedReason)
+			}
+		})
+	}
+}

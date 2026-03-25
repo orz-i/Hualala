@@ -445,6 +445,7 @@ function createReuseControllerState() {
         mediaType: "image",
         sourceType: "upload_session",
         rightsStatus: "clear",
+        consentStatus: "not_required",
         locale: "zh-CN",
         aiAnnotated: false,
         sourceRunId: "run-source-1",
@@ -715,12 +716,13 @@ function createAssetProvenanceDetail(assetId: string, sourceRunId = "source-run-
       projectId: "project-1",
       sourceType: "upload_session",
       rightsStatus: "clear",
+      consentStatus: "granted",
       importBatchId: "batch-1",
       locale: "zh-CN",
       aiAnnotated: true,
     },
     provenanceSummary:
-      "source_type=upload_session import_batch_id=batch-1 rights_status=clear",
+      "source_type=upload_session import_batch_id=batch-1 rights_status=clear consent_status=granted",
     candidateAssetId: `candidate-${assetId}`,
     shotExecutionId: "shot-exec-1",
     sourceRunId,
@@ -1362,7 +1364,7 @@ describe("App", () => {
 
     expect(
       await screen.findByText(
-        "source_type=upload_session import_batch_id=batch-1 rights_status=clear",
+        "source_type=upload_session import_batch_id=batch-1 rights_status=clear consent_status=granted",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("来源运行 ID：source-run-batch-2")).toBeInTheDocument();
@@ -1775,7 +1777,7 @@ describe("App", () => {
 
     expect(
       await screen.findByText(
-        "source_type=upload_session import_batch_id=batch-1 rights_status=clear",
+        "source_type=upload_session import_batch_id=batch-1 rights_status=clear consent_status=granted",
       ),
     ).toBeInTheDocument();
     expect(

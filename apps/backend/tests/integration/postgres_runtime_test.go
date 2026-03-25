@@ -2335,6 +2335,7 @@ func seedImportWorkbenchExecutionScenario(t *testing.T, runtimeStore db.RuntimeS
 		SourceType:      "manual_upload",
 		AssetLocale:     "zh-CN",
 		RightsStatus:    "clear",
+		ConsentStatus:   "granted",
 		AiAnnotated:     true,
 	}))
 	if err != nil {
@@ -2428,6 +2429,7 @@ func seedShotWorkbenchPersistenceScenario(t *testing.T, runtimeStore db.RuntimeS
 		SourceType:      "manual_upload",
 		AssetLocale:     "zh-CN",
 		RightsStatus:    "clear",
+		ConsentStatus:   "granted",
 		AiAnnotated:     true,
 	}))
 	if err != nil {
@@ -2562,6 +2564,7 @@ func seedShotExecutionReworkScenario(t *testing.T, runtimeStore db.RuntimeStore,
 		SourceType:      "manual_upload",
 		AssetLocale:     "zh-CN",
 		RightsStatus:    "clear",
+		ConsentStatus:   "granted",
 		AiAnnotated:     true,
 	}))
 	if err != nil {

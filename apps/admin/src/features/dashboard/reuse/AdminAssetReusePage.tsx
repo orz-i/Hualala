@@ -90,6 +90,15 @@ export function AdminAssetReusePage({
                 : t("reuse.summary.blocked"),
             })}
           </p>
+          {audit.assetProvenanceDetail ? (
+            <p style={{ margin: 0 }}>
+              {t("reuse.audit.assetPolicy", {
+                rightsStatus: audit.assetProvenanceDetail.asset.rightsStatus || "unknown",
+                consentStatus: audit.assetProvenanceDetail.asset.consentStatus || "unknown",
+                aiAnnotated: audit.assetProvenanceDetail.asset.aiAnnotated ? "true" : "false",
+              })}
+            </p>
+          ) : null}
           <p style={{ margin: 0 }}>
             {t("reuse.audit.provenanceSummary", {
               summary: audit.assetProvenanceDetail?.provenanceSummary || "none",

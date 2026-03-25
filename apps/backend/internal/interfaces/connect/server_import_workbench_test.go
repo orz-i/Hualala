@@ -62,12 +62,13 @@ func TestImportBatchWorkbenchIncludesUploadArtifacts(t *testing.T) {
 	sessionID := createResp["session_id"].(string)
 
 	completeResp := performConnectUploadJSONRequest(t, server, http.MethodPost, "/upload/sessions/"+sessionID+"/complete", map[string]any{
-		"variant_type":  "original",
-		"mime_type":     "audio/mpeg",
-		"locale":        "zh-CN",
-		"rights_status": "clear",
-		"ai_annotated":  true,
-		"duration_ms":   64000,
+		"variant_type":   "original",
+		"mime_type":      "audio/mpeg",
+		"locale":         "zh-CN",
+		"rights_status":  "clear",
+		"consent_status": "granted",
+		"ai_annotated":   true,
+		"duration_ms":    64000,
 	})
 	assetID := completeResp["asset_id"].(string)
 	uploadFileID := completeResp["upload_file_id"].(string)
@@ -111,6 +112,9 @@ func TestImportBatchWorkbenchIncludesUploadArtifacts(t *testing.T) {
 	}
 	if got := workbench.Msg.GetMediaAssets()[0].GetMediaType(); got != "audio" {
 		t.Fatalf("expected media asset media_type %q, got %q", "audio", got)
+	}
+	if got := workbench.Msg.GetMediaAssets()[0].GetConsentStatus(); got != "granted" {
+		t.Fatalf("expected media asset consent_status %q, got %q", "granted", got)
 	}
 	if len(workbench.Msg.GetItems()) != 1 {
 		t.Fatalf("expected 1 import batch item, got %d", len(workbench.Msg.GetItems()))
@@ -213,6 +217,7 @@ func TestImportBatchWorkbenchIncludesShotExecutionState(t *testing.T) {
 		"mime_type":         "image/png",
 		"locale":            "zh-CN",
 		"rights_status":     "clear",
+		"consent_status":    "granted",
 		"ai_annotated":      true,
 		"width":             1920,
 		"height":            1080,

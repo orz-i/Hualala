@@ -9,12 +9,13 @@ function createAssetProvenanceDetail(assetId: string) {
       projectId: "project-1",
       sourceType: "upload_session",
       rightsStatus: "clear",
+      consentStatus: "granted",
       importBatchId: "batch-1",
       locale: "zh-CN",
       aiAnnotated: true,
     },
     provenanceSummary:
-      "source_type=upload_session import_batch_id=batch-1 rights_status=clear",
+      "source_type=upload_session import_batch_id=batch-1 rights_status=clear consent_status=granted",
     candidateAssetId: "candidate-1",
     shotExecutionId: "shot-exec-1",
     sourceRunId: "source-run-1",
@@ -39,6 +40,9 @@ describe("AssetProvenanceDialog", () => {
     expect(screen.getByText("asset-1")).toBeInTheDocument();
     expect(screen.getByText(/source_type=upload_session/)).toBeInTheDocument();
     expect(screen.getByText("候选素材 ID：candidate-1")).toBeInTheDocument();
+    expect(
+      screen.getByText(/素材元信息：sourceType=upload_session rightsStatus=clear consentStatus=granted/),
+    ).toBeInTheDocument();
 
     const closeButton = screen.getByRole("button", { name: "关闭来源详情" });
     await waitFor(() => {

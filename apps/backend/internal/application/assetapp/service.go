@@ -36,6 +36,7 @@ type AddCandidateAssetInput struct {
 	SourceType      string `json:"source_type"`
 	AssetLocale     string `json:"asset_locale"`
 	RightsStatus    string `json:"rights_status"`
+	ConsentStatus   string `json:"consent_status"`
 	AIAnnotated     bool   `json:"ai_annotated"`
 }
 
@@ -158,6 +159,7 @@ func (s *Service) AddCandidateAsset(ctx context.Context, input AddCandidateAsset
 		SourceType:    strings.TrimSpace(input.SourceType),
 		Locale:        strings.TrimSpace(input.AssetLocale),
 		RightsStatus:  strings.TrimSpace(input.RightsStatus),
+		ConsentStatus: asset.NormalizeConsentStatus(input.AIAnnotated, input.ConsentStatus),
 		AIAnnotated:   input.AIAnnotated,
 		CreatedAt:     now,
 		UpdatedAt:     now,
@@ -376,6 +378,7 @@ func (s *Service) GetAssetProvenanceSummary(_ context.Context, input GetAssetPro
 	if !ok {
 		return AssetProvenanceSummary{}, errors.New("assetapp: asset not found")
 	}
+	record.ConsentStatus = asset.NormalizeConsentStatus(record.AIAnnotated, record.ConsentStatus)
 
 	candidateAssetID := ""
 	shotExecutionID := ""
@@ -389,13 +392,19 @@ func (s *Service) GetAssetProvenanceSummary(_ context.Context, input GetAssetPro
 	variantCount := len(s.assets.ListMediaAssetVariantsByAssetIDs([]string{record.ID}))
 
 	return AssetProvenanceSummary{
-		Asset:             record,
-		ProvenanceSummary: fmt.Sprintf("source_type=%s import_batch_id=%s rights_status=%s", record.SourceType, record.ImportBatchID, record.RightsStatus),
-		CandidateAssetID:  candidateAssetID,
-		ShotExecutionID:   shotExecutionID,
-		SourceRunID:       sourceRunID,
-		ImportBatchID:     record.ImportBatchID,
-		VariantCount:      variantCount,
+		Asset: record,
+		ProvenanceSummary: fmt.Sprintf(
+			"source_type=%s import_batch_id=%s rights_status=%s consent_status=%s",
+			record.SourceType,
+			record.ImportBatchID,
+			record.RightsStatus,
+			record.ConsentStatus,
+		),
+		CandidateAssetID: candidateAssetID,
+		ShotExecutionID:  shotExecutionID,
+		SourceRunID:      sourceRunID,
+		ImportBatchID:    record.ImportBatchID,
+		VariantCount:     variantCount,
 	}, nil
 }
 

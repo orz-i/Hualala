@@ -39,6 +39,7 @@ func (h *assetHandler) AddCandidateAsset(ctx context.Context, req *connectrpc.Re
 		SourceType:      req.Msg.GetSourceType(),
 		AssetLocale:     req.Msg.GetAssetLocale(),
 		RightsStatus:    req.Msg.GetRightsStatus(),
+		ConsentStatus:   req.Msg.GetConsentStatus(),
 		AIAnnotated:     req.Msg.GetAiAnnotated(),
 	})
 	if err != nil {

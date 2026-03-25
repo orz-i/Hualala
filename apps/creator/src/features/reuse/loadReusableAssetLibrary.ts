@@ -35,6 +35,7 @@ type ImportBatchWorkbenchResponse = {
     projectId?: string;
     sourceType?: string;
     rightsStatus?: string;
+    consentStatus?: string;
     importBatchId?: string;
     locale?: string;
     aiAnnotated?: boolean;
@@ -155,6 +156,7 @@ export async function loadReusableAssetLibrary({
         currentProjectId,
         sourceProjectId: normalizedSourceProjectId,
         rightsStatus: asset.rightsStatus ?? "",
+        consentStatus: asset.consentStatus ?? "",
         aiAnnotated: asset.aiAnnotated ?? false,
       });
 
@@ -166,6 +168,7 @@ export async function loadReusableAssetLibrary({
         mediaType: asset.mediaType ?? "",
         sourceType: asset.sourceType ?? payload.importBatch?.sourceType ?? "",
         rightsStatus: asset.rightsStatus ?? "",
+        consentStatus: eligibility.consentStatus,
         locale: asset.locale ?? "",
         aiAnnotated: asset.aiAnnotated ?? false,
         sourceRunId: sourceRunIdByAssetId.get(asset.id) ?? "",
