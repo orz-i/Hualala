@@ -259,6 +259,9 @@ test("preview helpers preserve assembly order and provenance scope", async () =>
 test("audio helpers preserve timeline order and audio asset scope", async () => {
   const {
     createAudioTimelineState,
+    createAudioRuntimeState,
+    buildAudioRuntimePayload,
+    requestAudioRenderState,
     upsertAudioTimelineState,
     buildAudioWorkbenchPayload,
     buildAudioImportBatchSummary,
@@ -298,6 +301,24 @@ test("audio helpers preserve timeline order and audio asset scope", async () => 
   assert.equal(payload.timeline.tracks[0]?.trackId, "track-dialogue");
   assert.equal(payload.timeline.tracks[0]?.volumePercent, 0);
   assert.equal(payload.timeline.tracks[0]?.clips[0]?.startMs, 200);
+
+  const initialRuntime = createAudioRuntimeState(updated);
+  assert.equal(initialRuntime.renderStatus, "idle");
+
+  const { queuedRuntime, settledRuntime, eventPayload } = requestAudioRenderState(
+    initialRuntime,
+    updated,
+    { projectId: "project-1" },
+    1,
+  );
+  const runtimePayload = buildAudioRuntimePayload(queuedRuntime);
+  assert.equal(runtimePayload.runtime?.renderStatus, "queued");
+  assert.equal(settledRuntime.renderStatus, "completed");
+  assert.equal(settledRuntime.mixAssetId, "asset-mix-project-1");
+  assert.equal(settledRuntime.mixOutput?.playbackUrl, "https://cdn.example.com/audio/project-1/mix.mp3");
+  assert.equal(settledRuntime.waveforms[0]?.assetId, "asset-audio-dialogue-1");
+  assert.equal(eventPayload.render_status, "completed");
+  assert.equal(eventPayload.mix_asset_id, "asset-mix-project-1");
 
   const summary = buildAudioImportBatchSummary("project-1");
   assert.equal(summary.projectId, "project-1");
@@ -410,4 +431,7 @@ test("mock connect routes wire all phase2 fixture modules", async () => {
   assert.match(source, /GetCollaborationSession/);
   assert.match(source, /UpsertCollaborationLease/);
   assert.match(source, /ReleaseCollaborationLease/);
+  assert.match(source, /GetAudioRuntime/);
+  assert.match(source, /RequestAudioRender/);
+  assert.match(source, /project\.audio\.runtime\.updated/);
 });

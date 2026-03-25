@@ -1,6 +1,11 @@
 import { useCallback, useRef } from "react";
 
-type SilentRefreshScope = "shot" | "import" | "collaboration" | "preview-runtime";
+type SilentRefreshScope =
+  | "shot"
+  | "import"
+  | "collaboration"
+  | "preview-runtime"
+  | "audio-runtime";
 
 export function useQueuedSilentRefresh(
   scope: SilentRefreshScope,

@@ -4,8 +4,11 @@ import {
   buildAudioAssetProvenancePayload,
   buildAudioImportBatchSummary,
   buildAudioImportBatchWorkbenchPayload,
+  buildAudioRuntimePayload,
   buildAudioWorkbenchPayload,
+  createAudioRuntimeState,
   createAudioTimelineState,
+  requestAudioRenderState,
   upsertAudioTimelineState,
 } from "./mock-connect/audio.ts";
 import {
@@ -94,9 +97,11 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
   let previewState = createPreviewAssemblyState(adminState.budgetSnapshot.projectId);
   let previewRuntimeState = createPreviewRuntimeState(previewState);
   let audioState = createAudioTimelineState(adminState.budgetSnapshot.projectId);
+  let audioRuntimeState = createAudioRuntimeState(audioState);
   let collaborationState = createCollaborationState(adminState.budgetSnapshot.projectId);
   let reuseState = createAssetReuseState("project-live-1");
   let previewRuntimeAttempt = 0;
+  let audioRuntimeAttempt = 0;
   const pendingSseEvents: Array<{
     id: string;
     eventType: string;
@@ -293,6 +298,40 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     }
 
     if ((scenario.audio || scenario.admin) &&
+      pathname === "/hualala.project.v1.ProjectService/GetAudioRuntime") {
+      await route.fulfill(jsonResponse(200, buildAudioRuntimePayload(audioRuntimeState)));
+      return;
+    }
+
+    if ((scenario.audio || scenario.admin) &&
+      pathname === "/hualala.project.v1.ProjectService/RequestAudioRender") {
+      await delay(120);
+      if (audioState.tracks.every((track) => track.clips.length === 0)) {
+        await route.fulfill(jsonResponse(412, { error: "audio timeline is empty" }));
+        return;
+      }
+      audioRuntimeAttempt += 1;
+      const { queuedRuntime, settledRuntime, eventPayload } = requestAudioRenderState(
+        audioRuntimeState,
+        audioState,
+        route.request().postDataJSON() as {
+          projectId?: string;
+          episodeId?: string;
+        },
+        audioRuntimeAttempt,
+        scenario.audio ?? "success",
+      );
+      audioRuntimeState = settledRuntime;
+      pendingSseEvents.push({
+        id: `audio-runtime-${audioRuntimeAttempt}`,
+        eventType: "project.audio.runtime.updated",
+        data: eventPayload,
+      });
+      await route.fulfill(jsonResponse(200, buildAudioRuntimePayload(queuedRuntime)));
+      return;
+    }
+
+    if ((scenario.audio || scenario.admin) &&
       pathname === "/hualala.project.v1.ProjectService/UpsertAudioTimeline") {
       await delay(120);
       const body = route.request().postDataJSON() as {
@@ -323,6 +362,12 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
         }>;
       };
       audioState = upsertAudioTimelineState(audioState, body);
+      audioRuntimeState = {
+        ...audioRuntimeState,
+        projectId: audioState.projectId,
+        episodeId: audioState.episodeId,
+        audioTimelineId: audioState.audioTimelineId,
+      };
       await route.fulfill(jsonResponse(200, buildAudioWorkbenchPayload(audioState)));
       return;
     }

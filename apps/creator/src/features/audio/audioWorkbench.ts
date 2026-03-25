@@ -151,8 +151,12 @@ export function resequenceAudioTracks(tracks: AudioTrackViewModel[]) {
   }));
 }
 
+export function countAudioClips(tracks: AudioTrackViewModel[]) {
+  return tracks.reduce((total, track) => total + track.clips.length, 0);
+}
+
 function buildAudioWorkbenchSummary(tracks: AudioTrackViewModel[]): AudioWorkbenchSummaryViewModel {
-  const clipCount = tracks.reduce((total, track) => total + track.clips.length, 0);
+  const clipCount = countAudioClips(tracks);
   const missingDurationClipCount = tracks.reduce(
     (total, track) => total + track.clips.filter((clip) => clip.durationMs <= 0).length,
     0,

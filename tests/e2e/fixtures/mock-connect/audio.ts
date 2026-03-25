@@ -1,4 +1,4 @@
-import type { AudioTimelineState } from "./types.ts";
+import type { AudioMode, AudioRuntimeState, AudioTimelineState } from "./types.ts";
 
 type UpsertAudioTimelineBody = {
   projectId?: string;
@@ -26,6 +26,11 @@ type UpsertAudioTimelineBody = {
       trimOutMs?: number;
     }>;
   }>;
+};
+
+type RequestAudioRenderBody = {
+  projectId?: string;
+  episodeId?: string;
 };
 
 const TRACK_ORDER = ["dialogue", "voiceover", "bgm"] as const;
@@ -66,6 +71,66 @@ function getTrackDisplayName(trackType: string) {
   }
 }
 
+function findAudioAsset(assetId: string) {
+  return AUDIO_ASSETS.find((candidate) => candidate.assetId === assetId);
+}
+
+function buildAudioMixAssetId(projectId: string) {
+  return `asset-mix-${projectId}`;
+}
+
+function buildAudioRuntimeDuration(audioState: AudioTimelineState) {
+  return audioState.tracks.reduce((trackMax, track) => {
+    const clipMax = track.clips.reduce(
+      (clipEnd, clip) => Math.max(clipEnd, Math.max(0, clip.startMs) + Math.max(0, clip.durationMs)),
+      0,
+    );
+    return Math.max(trackMax, clipMax);
+  }, 0);
+}
+
+function buildAudioMixOutput(audioState: AudioTimelineState) {
+  return {
+    deliveryMode: "file",
+    playbackUrl: `https://cdn.example.com/audio/${audioState.projectId}/mix.mp3`,
+    downloadUrl: `https://cdn.example.com/audio/${audioState.projectId}/mix-download.mp3`,
+    mimeType: "audio/mpeg",
+    fileName: `mix-${audioState.projectId}.mp3`,
+    sizeBytes: 6144,
+    durationMs: buildAudioRuntimeDuration(audioState),
+  };
+}
+
+function buildAudioWaveforms(audioState: AudioTimelineState) {
+  const seen = new Set<string>();
+  const clips = audioState.tracks
+    .slice()
+    .sort((left, right) => left.sequence - right.sequence)
+    .flatMap((track) =>
+      track.clips
+        .slice()
+        .sort((left, right) => left.sequence - right.sequence)
+        .map((clip) => ({ clip, trackId: track.trackId })),
+    );
+
+  return clips.flatMap(({ clip }) => {
+    if (!clip.assetId || seen.has(clip.assetId)) {
+      return [];
+    }
+    seen.add(clip.assetId);
+    const asset = findAudioAsset(clip.assetId);
+    return [
+      {
+        assetId: clip.assetId,
+        variantId: asset?.variantId ?? `variant-${clip.assetId}`,
+        waveformUrl: `https://cdn.example.com/audio/${audioState.projectId}/${clip.assetId}-waveform.json`,
+        mimeType: "application/json",
+        durationMs: clip.durationMs || asset?.durationMs || 0,
+      },
+    ];
+  });
+}
+
 export function createAudioTimelineState(projectId: string): AudioTimelineState {
   return {
     audioTimelineId: `timeline-${projectId}`,
@@ -77,6 +142,46 @@ export function createAudioTimelineState(projectId: string): AudioTimelineState 
     createdAt: "2026-03-24T08:00:00.000Z",
     updatedAt: "2026-03-24T08:05:00.000Z",
     tracks: [],
+  };
+}
+
+export function createAudioRuntimeState(audioState: AudioTimelineState): AudioRuntimeState {
+  return {
+    audioRuntimeId: `audio-runtime-${audioState.projectId}`,
+    projectId: audioState.projectId,
+    episodeId: audioState.episodeId,
+    audioTimelineId: audioState.audioTimelineId,
+    status: "idle",
+    renderWorkflowRunId: "",
+    renderStatus: "idle",
+    mixAssetId: "",
+    mixOutput: null,
+    waveforms: [],
+    lastErrorCode: "",
+    lastErrorMessage: "",
+    createdAt: "2026-03-25T09:00:00.000Z",
+    updatedAt: "2026-03-25T09:00:00.000Z",
+  };
+}
+
+export function buildAudioRuntimePayload(audioRuntimeState: AudioRuntimeState) {
+  return {
+    runtime: {
+      audioRuntimeId: audioRuntimeState.audioRuntimeId,
+      projectId: audioRuntimeState.projectId,
+      episodeId: audioRuntimeState.episodeId,
+      audioTimelineId: audioRuntimeState.audioTimelineId,
+      status: audioRuntimeState.status,
+      renderWorkflowRunId: audioRuntimeState.renderWorkflowRunId,
+      renderStatus: audioRuntimeState.renderStatus,
+      mixAssetId: audioRuntimeState.mixAssetId,
+      mixOutput: audioRuntimeState.mixOutput,
+      waveforms: audioRuntimeState.waveforms,
+      lastErrorCode: audioRuntimeState.lastErrorCode,
+      lastErrorMessage: audioRuntimeState.lastErrorMessage,
+      createdAt: audioRuntimeState.createdAt,
+      updatedAt: audioRuntimeState.updatedAt,
+    },
   };
 }
 
@@ -112,6 +217,64 @@ export function buildAudioWorkbenchPayload(audioState: AudioTimelineState) {
           trimOutMs: clip.trimOutMs,
         })),
       })),
+    },
+  };
+}
+
+export function requestAudioRenderState(
+  audioRuntimeState: AudioRuntimeState,
+  audioState: AudioTimelineState,
+  _body: RequestAudioRenderBody,
+  attempt: number,
+  mode: AudioMode = "success",
+) {
+  const queuedRuntime: AudioRuntimeState = {
+    ...audioRuntimeState,
+    projectId: audioState.projectId,
+    episodeId: audioState.episodeId,
+    audioTimelineId: audioState.audioTimelineId,
+    status: "queued",
+    renderWorkflowRunId: `workflow-audio-${attempt}`,
+    renderStatus: "queued",
+    mixAssetId: "",
+    mixOutput: null,
+    waveforms: [],
+    lastErrorCode: "",
+    lastErrorMessage: "",
+    updatedAt: "2026-03-25T09:01:00.000Z",
+  };
+
+  const settledRuntime: AudioRuntimeState =
+    mode === "failure"
+      ? {
+          ...queuedRuntime,
+          status: "failed",
+          renderStatus: "failed",
+          lastErrorCode: "audio_render_failed",
+          lastErrorMessage: "worker callback timeout",
+          updatedAt: "2026-03-25T09:02:00.000Z",
+        }
+      : {
+          ...queuedRuntime,
+          status: "ready",
+          renderStatus: "completed",
+          mixAssetId: buildAudioMixAssetId(audioState.projectId),
+          mixOutput: buildAudioMixOutput(audioState),
+          waveforms: buildAudioWaveforms(audioState),
+          updatedAt: "2026-03-25T09:02:00.000Z",
+        };
+
+  return {
+    queuedRuntime,
+    settledRuntime,
+    eventPayload: {
+      project_id: settledRuntime.projectId,
+      episode_id: settledRuntime.episodeId,
+      audio_runtime_id: settledRuntime.audioRuntimeId,
+      render_status: settledRuntime.renderStatus,
+      render_workflow_run_id: settledRuntime.renderWorkflowRunId,
+      mix_asset_id: settledRuntime.mixAssetId,
+      occurred_at: settledRuntime.updatedAt,
     },
   };
 }
