@@ -504,7 +504,7 @@ func (p *PostgresPersister) loadProjectsEpisodesScenesShotsSnapshots(ctx context
 	for snapshotRows.Next() {
 		var (
 			id, ownerType, ownerID, snapshotKind, locale, sourceSnapshotID, translationGroupID, translationStatus, body string
-			createdAt, updatedAt                                                                          time.Time
+			createdAt, updatedAt                                                                                        time.Time
 		)
 		if err := snapshotRows.Scan(&id, &ownerType, &ownerID, &snapshotKind, &locale, &sourceSnapshotID, &translationGroupID, &translationStatus, &body, &createdAt, &updatedAt); err != nil {
 			return fmt.Errorf("db: scan content snapshot: %w", err)
@@ -710,7 +710,7 @@ func (p *PostgresPersister) loadAssets(ctx context.Context, snapshot *Snapshot) 
 	assetUploadFiles := make(map[string]string)
 	assetRows, err := p.db.QueryContext(ctx, `
 		SELECT id::text, organization_id::text, project_id::text, COALESCE(import_batch_id::text, ''),
-		       asset_type, source_type, COALESCE(locale, ''), rights_status, ai_annotated, created_at, updated_at,
+		       asset_type, source_type, COALESCE(locale, ''), rights_status, consent_status, ai_annotated, created_at, updated_at,
 		       COALESCE(upload_file_id::text, '')
 		FROM media_assets
 	`)
@@ -720,11 +720,11 @@ func (p *PostgresPersister) loadAssets(ctx context.Context, snapshot *Snapshot) 
 	defer assetRows.Close()
 	for assetRows.Next() {
 		var (
-			id, organizationID, projectID, importBatchID, mediaType, sourceType, locale, rightsStatus, uploadFileID string
-			aiAnnotated                                                                                             bool
-			createdAt, updatedAt                                                                                    time.Time
+			id, organizationID, projectID, importBatchID, mediaType, sourceType, locale, rightsStatus, consentStatus, uploadFileID string
+			aiAnnotated                                                                                                            bool
+			createdAt, updatedAt                                                                                                   time.Time
 		)
-		if err := assetRows.Scan(&id, &organizationID, &projectID, &importBatchID, &mediaType, &sourceType, &locale, &rightsStatus, &aiAnnotated, &createdAt, &updatedAt, &uploadFileID); err != nil {
+		if err := assetRows.Scan(&id, &organizationID, &projectID, &importBatchID, &mediaType, &sourceType, &locale, &rightsStatus, &consentStatus, &aiAnnotated, &createdAt, &updatedAt, &uploadFileID); err != nil {
 			return fmt.Errorf("db: scan media asset: %w", err)
 		}
 		snapshot.MediaAssets[id] = asset.MediaAsset{
@@ -736,6 +736,7 @@ func (p *PostgresPersister) loadAssets(ctx context.Context, snapshot *Snapshot) 
 			SourceType:    sourceType,
 			Locale:        locale,
 			RightsStatus:  rightsStatus,
+			ConsentStatus: asset.NormalizeConsentStatus(aiAnnotated, consentStatus),
 			AIAnnotated:   aiAnnotated,
 			CreatedAt:     createdAt.UTC(),
 			UpdatedAt:     updatedAt.UTC(),
@@ -1339,6 +1340,7 @@ func (p *PostgresPersister) saveExecutionsAssetsReviewBilling(ctx context.Contex
 		}
 	}
 	for _, record := range snapshot.MediaAssets {
+		normalizedConsentStatus := asset.NormalizeConsentStatus(record.AIAnnotated, record.ConsentStatus)
 		aiDisclosureStatus := "unknown"
 		if record.AIAnnotated {
 			aiDisclosureStatus = "completed"
@@ -1348,8 +1350,8 @@ func (p *PostgresPersister) saveExecutionsAssetsReviewBilling(ctx context.Contex
 				id, organization_id, project_id, import_batch_id, upload_file_id, asset_type,
 				source_type, storage_key, ai_disclosure_status, rights_status, consent_status,
 				created_at, updated_at, locale, ai_annotated
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'unknown', $11, $12, $13, $14)
-		`, record.ID, record.OrgID, record.ProjectID, nullableUUID(record.ImportBatchID), nullableUUID(assetUploadFiles[record.ID]), normalizeAssetMediaType(record.MediaType), defaultString(record.SourceType, "upload_session"), fmt.Sprintf("media-assets/%s", record.ID), aiDisclosureStatus, defaultString(record.RightsStatus, "unknown"), record.CreatedAt, record.UpdatedAt, emptyToNil(record.Locale), record.AIAnnotated); err != nil {
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		`, record.ID, record.OrgID, record.ProjectID, nullableUUID(record.ImportBatchID), nullableUUID(assetUploadFiles[record.ID]), normalizeAssetMediaType(record.MediaType), defaultString(record.SourceType, "upload_session"), fmt.Sprintf("media-assets/%s", record.ID), aiDisclosureStatus, defaultString(record.RightsStatus, "unknown"), normalizedConsentStatus, record.CreatedAt, record.UpdatedAt, emptyToNil(record.Locale), record.AIAnnotated); err != nil {
 			return nil, nil, fmt.Errorf("db: insert media asset %s: %w", record.ID, err)
 		}
 	}

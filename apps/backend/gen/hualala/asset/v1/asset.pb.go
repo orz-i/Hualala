@@ -323,6 +323,7 @@ type MediaAsset struct {
 	Locale        string                 `protobuf:"bytes,6,opt,name=locale,proto3" json:"locale,omitempty"`
 	AiAnnotated   bool                   `protobuf:"varint,7,opt,name=ai_annotated,json=aiAnnotated,proto3" json:"ai_annotated,omitempty"`
 	MediaType     string                 `protobuf:"bytes,8,opt,name=media_type,json=mediaType,proto3" json:"media_type,omitempty"`
+	ConsentStatus string                 `protobuf:"bytes,9,opt,name=consent_status,json=consentStatus,proto3" json:"consent_status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -409,6 +410,13 @@ func (x *MediaAsset) GetAiAnnotated() bool {
 func (x *MediaAsset) GetMediaType() string {
 	if x != nil {
 		return x.MediaType
+	}
+	return ""
+}
+
+func (x *MediaAsset) GetConsentStatus() string {
+	if x != nil {
+		return x.ConsentStatus
 	}
 	return ""
 }
@@ -1084,6 +1092,7 @@ type AddCandidateAssetRequest struct {
 	AssetLocale     string                 `protobuf:"bytes,7,opt,name=asset_locale,json=assetLocale,proto3" json:"asset_locale,omitempty"`
 	RightsStatus    string                 `protobuf:"bytes,8,opt,name=rights_status,json=rightsStatus,proto3" json:"rights_status,omitempty"`
 	AiAnnotated     bool                   `protobuf:"varint,9,opt,name=ai_annotated,json=aiAnnotated,proto3" json:"ai_annotated,omitempty"`
+	ConsentStatus   string                 `protobuf:"bytes,10,opt,name=consent_status,json=consentStatus,proto3" json:"consent_status,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1179,6 +1188,13 @@ func (x *AddCandidateAssetRequest) GetAiAnnotated() bool {
 		return x.AiAnnotated
 	}
 	return false
+}
+
+func (x *AddCandidateAssetRequest) GetConsentStatus() string {
+	if x != nil {
+		return x.ConsentStatus
+	}
+	return ""
 }
 
 type AddCandidateAssetResponse struct {
@@ -1816,7 +1832,7 @@ const file_hualala_asset_v1_asset_proto_rawDesc = "" +
 	"\x0fimport_batch_id\x18\x02 \x01(\tR\rimportBatchId\x12\x16\n" +
 	"\x06status\x18\x03 \x01(\tR\x06status\x12&\n" +
 	"\x0fmatched_shot_id\x18\x04 \x01(\tR\rmatchedShotId\x12\x19\n" +
-	"\basset_id\x18\x05 \x01(\tR\aassetId\"\x83\x02\n" +
+	"\basset_id\x18\x05 \x01(\tR\aassetId\"\xaa\x02\n" +
 	"\n" +
 	"MediaAsset\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
@@ -1829,7 +1845,8 @@ const file_hualala_asset_v1_asset_proto_rawDesc = "" +
 	"\x06locale\x18\x06 \x01(\tR\x06locale\x12!\n" +
 	"\fai_annotated\x18\a \x01(\bR\vaiAnnotated\x12\x1d\n" +
 	"\n" +
-	"media_type\x18\b \x01(\tR\tmediaType\"\x8f\x01\n" +
+	"media_type\x18\b \x01(\tR\tmediaType\x12%\n" +
+	"\x0econsent_status\x18\t \x01(\tR\rconsentStatus\"\x8f\x01\n" +
 	"\x12ShotCandidateAsset\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x11shot_execution_id\x18\x02 \x01(\tR\x0fshotExecutionId\x12\x19\n" +
@@ -1893,7 +1910,7 @@ const file_hualala_asset_v1_asset_proto_rawDesc = "" +
 	"\vsource_type\x18\x03 \x01(\tR\n" +
 	"sourceType\"h\n" +
 	"\x19ListImportBatchesResponse\x12K\n" +
-	"\x0eimport_batches\x18\x01 \x03(\v2$.hualala.asset.v1.ImportBatchSummaryR\rimportBatches\"\xd4\x02\n" +
+	"\x0eimport_batches\x18\x01 \x03(\v2$.hualala.asset.v1.ImportBatchSummaryR\rimportBatches\"\xfb\x02\n" +
 	"\x18AddCandidateAssetRequest\x12*\n" +
 	"\x11shot_execution_id\x18\x01 \x01(\tR\x0fshotExecutionId\x12\x1d\n" +
 	"\n" +
@@ -1905,7 +1922,9 @@ const file_hualala_asset_v1_asset_proto_rawDesc = "" +
 	"sourceType\x12!\n" +
 	"\fasset_locale\x18\a \x01(\tR\vassetLocale\x12#\n" +
 	"\rrights_status\x18\b \x01(\tR\frightsStatus\x12!\n" +
-	"\fai_annotated\x18\t \x01(\bR\vaiAnnotated\"W\n" +
+	"\fai_annotated\x18\t \x01(\bR\vaiAnnotated\x12%\n" +
+	"\x0econsent_status\x18\n" +
+	" \x01(\tR\rconsentStatus\"W\n" +
 	"\x19AddCandidateAssetResponse\x12:\n" +
 	"\x05asset\x18\x01 \x01(\v2$.hualala.asset.v1.ShotCandidateAssetR\x05asset\"E\n" +
 	"\x1bListImportBatchItemsRequest\x12&\n" +

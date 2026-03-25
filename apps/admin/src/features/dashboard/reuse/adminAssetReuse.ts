@@ -24,6 +24,24 @@ function decideAdminReuseEligibility(
   const sourceProjectId = assetProvenanceDetail?.asset.projectId ?? "";
   const isCrossProject = Boolean(sourceProjectId) && sourceProjectId !== targetProjectId;
 
+  if (!assetProvenanceDetail) {
+    return {
+      isCrossProject: false,
+      isEligible: false,
+      blockedReason: "",
+      sourceProjectId,
+    };
+  }
+
+  if (!sourceProjectId) {
+    return {
+      isCrossProject: false,
+      isEligible: false,
+      blockedReason: "policyapp: source project is unavailable for cross-project reuse",
+      sourceProjectId,
+    };
+  }
+
   if (!isCrossProject) {
     return {
       isCrossProject: false,
@@ -37,16 +55,19 @@ function decideAdminReuseEligibility(
     return {
       isCrossProject: true,
       isEligible: false,
-      blockedReason: "admin: rights status does not allow cross-project reuse",
+      blockedReason: "policyapp: rights status does not allow cross-project reuse",
       sourceProjectId,
     };
   }
 
-  if (assetProvenanceDetail.asset.aiAnnotated) {
+  const normalizedConsentStatus =
+    assetProvenanceDetail?.asset.consentStatus ||
+    (assetProvenanceDetail?.asset.aiAnnotated ? "unknown" : "not_required");
+  if (assetProvenanceDetail.asset.aiAnnotated && normalizedConsentStatus !== "granted") {
     return {
       isCrossProject: true,
       isEligible: false,
-      blockedReason: "admin: consent status is unavailable for ai_annotated assets",
+      blockedReason: "policyapp: consent status must be granted for ai_annotated assets",
       sourceProjectId,
     };
   }

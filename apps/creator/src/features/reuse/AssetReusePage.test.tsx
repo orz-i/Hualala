@@ -45,6 +45,7 @@ describe("AssetReusePage", () => {
             mediaType: "image",
             sourceType: "upload_session",
             rightsStatus: "clear",
+            consentStatus: "not_required",
             locale: "zh-CN",
             aiAnnotated: false,
             sourceRunId: "run-source-1",
@@ -60,12 +61,13 @@ describe("AssetReusePage", () => {
             mediaType: "image",
             sourceType: "upload_session",
             rightsStatus: "clear",
+            consentStatus: "unknown",
             locale: "zh-CN",
             aiAnnotated: true,
             sourceRunId: "run-source-2",
             mimeType: "image/png",
             allowed: false,
-            blockedReason: "creator: consent status is unavailable for ai_annotated assets",
+            blockedReason: "policyapp: consent status must be granted for ai_annotated assets",
           },
         ]}
         sourceProjectIdInput="project-source-9"
@@ -105,8 +107,11 @@ describe("AssetReusePage", () => {
       within(blockedCard).getByRole("button", { name: "复用为当前镜头主素材" }),
     ).toBeDisabled();
     expect(
-      within(blockedCard).getByText("creator: consent status is unavailable for ai_annotated assets"),
+      within(blockedCard).getByText(
+        "policyapp: consent status must be granted for ai_annotated assets",
+      ),
     ).toBeInTheDocument();
+    expect(within(blockedCard).getByText(/consent/i)).toBeInTheDocument();
 
     expect(onSourceProjectIdInputChange).toHaveBeenCalledWith("project-source-8");
     expect(onLoadSourceProject).toHaveBeenCalledTimes(1);

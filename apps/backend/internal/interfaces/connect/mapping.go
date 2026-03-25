@@ -523,6 +523,7 @@ func mapMediaAsset(record asset.MediaAsset) *assetv1.MediaAsset {
 		SourceType:    record.SourceType,
 		Locale:        record.Locale,
 		RightsStatus:  record.RightsStatus,
+		ConsentStatus: record.ConsentStatus,
 		AiAnnotated:   record.AIAnnotated,
 	}
 }

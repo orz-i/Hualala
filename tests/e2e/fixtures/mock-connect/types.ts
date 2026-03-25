@@ -5,6 +5,7 @@ export type PreviewMode = "success" | "failure";
 export type AudioMode = "success" | "failure";
 export type ReuseMode = "success";
 export type CollaborationMode = "success";
+export type ConsentStatus = "granted" | "unknown" | "not_required" | "denied";
 
 export type MockConnectScenario = {
   admin?: AdminMode;

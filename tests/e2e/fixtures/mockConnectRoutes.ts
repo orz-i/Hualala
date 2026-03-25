@@ -153,8 +153,9 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     await delay(120);
     const body = route.request().postDataJSON() as { assetId?: string };
     const assetId = body.assetId ?? "";
-    if (!canApplyReuseAsset(reuseState, assetId)) {
-      await route.fulfill(jsonResponse(412, { error: "asset reuse blocked" }));
+    const decision = canApplyReuseAsset(reuseState, assetId);
+    if (!decision.allowed) {
+      await route.fulfill(jsonResponse(412, { error: decision.blockedReason }));
       return true;
     }
     reuseState = applyReusePrimaryAsset(reuseState, assetId);

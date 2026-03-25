@@ -423,8 +423,29 @@ test("reuse helpers preserve cross-project scope, blocked eligibility, and selec
   assert.equal(provenance?.sourceRunId, "run-source-1");
   assert.match(provenance?.provenanceSummary ?? "", /rights_status=clear/);
 
-  assert.equal(canApplyReuseAsset(initial, "asset-external-1"), true);
-  assert.equal(canApplyReuseAsset(initial, "asset-external-ai-1"), false);
+  assert.deepEqual(canApplyReuseAsset(initial, "asset-external-1"), {
+    allowed: true,
+    blockedReason: "",
+    consentStatus: "not_required",
+  });
+  assert.deepEqual(canApplyReuseAsset(initial, "asset-external-ai-1"), {
+    allowed: false,
+    blockedReason: "policyapp: consent status must be granted for ai_annotated assets",
+    consentStatus: "unknown",
+  });
+  const missingSource = {
+    ...initial,
+    reusableAssets: initial.reusableAssets.map((asset) =>
+      asset.assetId === "asset-external-1"
+        ? { ...asset, sourceProjectId: "" }
+        : asset,
+    ),
+  };
+  assert.deepEqual(canApplyReuseAsset(missingSource, "asset-external-1"), {
+    allowed: false,
+    blockedReason: "policyapp: source project is unavailable for cross-project reuse",
+    consentStatus: "not_required",
+  });
 
   const updated = applyReusePrimaryAsset(initial, "asset-external-1");
   const shotExecution = buildReuseShotExecutionPayload(updated);

@@ -56,6 +56,7 @@ message MediaAsset {
   string locale = 6;
   bool ai_annotated = 7;
   string media_type = 8;
+  string consent_status = 9;
 }
 
 message ShotCandidateAsset {
@@ -137,6 +138,7 @@ message AddCandidateAssetRequest {
   string asset_locale = 7;
   string rights_status = 8;
   bool ai_annotated = 9;
+  string consent_status = 10;
 }
 
 message AddCandidateAssetResponse {

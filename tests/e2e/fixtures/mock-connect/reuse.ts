@@ -1,3 +1,5 @@
+import type { ConsentStatus } from "./types.ts";
+
 type ReuseAssetState = {
   assetId: string;
   uploadFileId: string;
@@ -7,10 +9,10 @@ type ReuseAssetState = {
   fileName: string;
   mimeType: string;
   rightsStatus: string;
+  consentStatus: ConsentStatus;
   locale: string;
   aiAnnotated: boolean;
   sourceRunId: string;
-  allowed: boolean;
 };
 
 export type AssetReuseState = {
@@ -45,6 +47,56 @@ export type AssetReuseState = {
   };
   reusableAssets: ReuseAssetState[];
 };
+
+function normalizeConsentStatus(aiAnnotated: boolean, consentStatus: string) {
+  const normalized = consentStatus.trim() || "unknown";
+  if (!aiAnnotated && normalized === "unknown") {
+    return "not_required";
+  }
+  return normalized;
+}
+
+function evaluateReuseAssetPolicy(targetProjectId: string, asset: ReuseAssetState) {
+  const normalizedConsentStatus = normalizeConsentStatus(asset.aiAnnotated, asset.consentStatus);
+
+  if (!asset.sourceProjectId) {
+    return {
+      allowed: false,
+      blockedReason: "policyapp: source project is unavailable for cross-project reuse",
+      consentStatus: normalizedConsentStatus,
+    };
+  }
+
+  if (asset.sourceProjectId === targetProjectId) {
+    return {
+      allowed: false,
+      blockedReason: "policyapp: asset belongs to the current project",
+      consentStatus: normalizedConsentStatus,
+    };
+  }
+
+  if (asset.rightsStatus !== "clear") {
+    return {
+      allowed: false,
+      blockedReason: "policyapp: rights status does not allow cross-project reuse",
+      consentStatus: normalizedConsentStatus,
+    };
+  }
+
+  if (asset.aiAnnotated && normalizedConsentStatus !== "granted") {
+    return {
+      allowed: false,
+      blockedReason: "policyapp: consent status must be granted for ai_annotated assets",
+      consentStatus: normalizedConsentStatus,
+    };
+  }
+
+  return {
+    allowed: true,
+    blockedReason: "",
+    consentStatus: normalizedConsentStatus,
+  };
+}
 
 export function createAssetReuseState(targetProjectId: string): AssetReuseState {
   return {
@@ -82,10 +134,10 @@ export function createAssetReuseState(targetProjectId: string): AssetReuseState 
         fileName: "external-hero.png",
         mimeType: "image/png",
         rightsStatus: "clear",
+        consentStatus: "not_required",
         locale: "zh-CN",
         aiAnnotated: false,
         sourceRunId: "run-source-1",
-        allowed: true,
       },
       {
         assetId: "asset-external-ai-1",
@@ -96,10 +148,24 @@ export function createAssetReuseState(targetProjectId: string): AssetReuseState 
         fileName: "external-ai.png",
         mimeType: "image/png",
         rightsStatus: "clear",
+        consentStatus: "unknown",
         locale: "zh-CN",
         aiAnnotated: true,
         sourceRunId: "run-source-ai-1",
-        allowed: false,
+      },
+      {
+        assetId: "asset-external-ai-granted-1",
+        uploadFileId: "upload-file-external-ai-granted-1",
+        variantId: "variant-external-ai-granted-1",
+        sourceProjectId: "project-source-9",
+        importBatchId: "reuse-batch-source-9",
+        fileName: "external-ai-granted.png",
+        mimeType: "image/png",
+        rightsStatus: "clear",
+        consentStatus: "granted",
+        locale: "zh-CN",
+        aiAnnotated: true,
+        sourceRunId: "run-source-ai-granted-1",
       },
     ],
   };
@@ -145,16 +211,20 @@ export function buildReuseImportBatchWorkbenchPayload(
       checksum: `sha256:${asset.assetId}`,
       sizeBytes: 2048,
     })),
-    mediaAssets: reuseState.reusableAssets.map((asset) => ({
-      id: asset.assetId,
-      projectId: asset.sourceProjectId,
-      sourceType: "upload_session",
-      rightsStatus: asset.rightsStatus,
-      importBatchId: asset.importBatchId,
-      locale: asset.locale,
-      aiAnnotated: asset.aiAnnotated,
-      mediaType: "image",
-    })),
+    mediaAssets: reuseState.reusableAssets.map((asset) => {
+      const policy = evaluateReuseAssetPolicy(reuseState.targetProjectId, asset);
+      return {
+        id: asset.assetId,
+        projectId: asset.sourceProjectId,
+        sourceType: "upload_session",
+        rightsStatus: asset.rightsStatus,
+        consentStatus: policy.consentStatus,
+        importBatchId: asset.importBatchId,
+        locale: asset.locale,
+        aiAnnotated: asset.aiAnnotated,
+        mediaType: "image",
+      };
+    }),
     mediaAssetVariants: reuseState.reusableAssets.map((asset) => ({
       id: asset.variantId,
       assetId: asset.assetId,
@@ -182,6 +252,7 @@ export function buildReuseAssetProvenancePayload(
   if (!asset) {
     return null;
   }
+  const policy = evaluateReuseAssetPolicy(reuseState.targetProjectId, asset);
 
   return {
     asset: {
@@ -189,11 +260,12 @@ export function buildReuseAssetProvenancePayload(
       projectId: asset.sourceProjectId,
       sourceType: "upload_session",
       rightsStatus: asset.rightsStatus,
+      consentStatus: policy.consentStatus,
       importBatchId: asset.importBatchId,
       locale: asset.locale,
       aiAnnotated: asset.aiAnnotated,
     },
-    provenanceSummary: `source_type=upload_session import_batch_id=${asset.importBatchId} rights_status=${asset.rightsStatus}`,
+    provenanceSummary: `source_type=upload_session import_batch_id=${asset.importBatchId} rights_status=${asset.rightsStatus} consent_status=${policy.consentStatus}`,
     candidateAssetId: `candidate-${asset.assetId}`,
     shotExecutionId: reuseState.shotWorkbench.shotExecution.id,
     sourceRunId: asset.sourceRunId,
@@ -250,5 +322,11 @@ export function applyReusePrimaryAsset(
 
 export function canApplyReuseAsset(reuseState: AssetReuseState, assetId: string) {
   const matchedAsset = reuseState.reusableAssets.find((asset) => asset.assetId === assetId);
-  return Boolean(matchedAsset?.allowed);
+  return matchedAsset
+    ? evaluateReuseAssetPolicy(reuseState.targetProjectId, matchedAsset)
+    : {
+        allowed: false,
+        blockedReason: "policyapp: asset not found for reuse",
+        consentStatus: "unknown",
+      };
 }

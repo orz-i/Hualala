@@ -102,6 +102,7 @@ func TestAddCandidateAssetPublishesShotExecutionUpdated(t *testing.T) {
 		SourceType:      "manual_upload",
 		AssetLocale:     "zh-CN",
 		RightsStatus:    "clear",
+		ConsentStatus:   "granted",
 		AiAnnotated:     true,
 	}))
 	if err != nil {
@@ -134,6 +135,7 @@ func TestAddCandidateAssetRejectsScopeMismatch(t *testing.T) {
 		SourceType:      "manual_upload",
 		AssetLocale:     "zh-CN",
 		RightsStatus:    "clear",
+		ConsentStatus:   "granted",
 		AiAnnotated:     true,
 	}))
 	if err == nil {
@@ -247,6 +249,7 @@ func TestAssetServiceWritesPublishImportBatchProjectEvents(t *testing.T) {
 		SourceType:      "manual_upload",
 		AssetLocale:     "zh-CN",
 		RightsStatus:    "clear",
+		ConsentStatus:   "granted",
 		AiAnnotated:     true,
 	}))
 	if err != nil {

@@ -46,6 +46,9 @@ describe("GovernanceSessionPanel", () => {
     expect(onUpdateOrgLocaleSettings).toHaveBeenCalledWith({
       defaultLocale: "en-US",
     });
+
+    expect(screen.getByText("素材复用策略摘要")).toBeInTheDocument();
+    expect(screen.getByText(/AI 标注素材需要 consent_status=granted/)).toBeInTheDocument();
   });
 
   it("disables mutable controls when governance is pending or capabilities are missing", () => {

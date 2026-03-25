@@ -15,6 +15,7 @@ type AssetProvenanceResponse = {
     projectId?: string;
     sourceType?: string;
     rightsStatus?: string;
+    consentStatus?: string;
     importBatchId?: string;
     locale?: string;
     aiAnnotated?: boolean;
@@ -50,15 +51,25 @@ export async function loadAssetProvenanceDetails({
     throw new Error("creator: asset provenance payload is incomplete");
   }
 
+  const aiAnnotated = payload.asset.aiAnnotated ?? false;
+  const normalizedConsentStatus = (() => {
+    const candidate = payload.asset?.consentStatus?.trim() || "unknown";
+    if (!aiAnnotated && candidate === "unknown") {
+      return "not_required";
+    }
+    return candidate;
+  })();
+
   return {
     asset: {
       id: payload.asset.id,
       projectId: payload.asset.projectId ?? "",
       sourceType: payload.asset.sourceType ?? "unknown",
       rightsStatus: payload.asset.rightsStatus ?? "unknown",
+      consentStatus: normalizedConsentStatus,
       importBatchId: payload.asset.importBatchId ?? "",
       locale: payload.asset.locale ?? "",
-      aiAnnotated: payload.asset.aiAnnotated ?? false,
+      aiAnnotated,
     },
     provenanceSummary: payload.provenanceSummary ?? "",
     candidateAssetId: payload.candidateAssetId ?? "",

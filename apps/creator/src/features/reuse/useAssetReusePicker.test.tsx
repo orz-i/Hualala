@@ -73,6 +73,7 @@ describe("useAssetReusePicker", () => {
         mediaType: "image",
         sourceType: "upload_session",
         rightsStatus: "clear",
+        consentStatus: "not_required",
         locale: "zh-CN",
         aiAnnotated: false,
         sourceRunId: "run-source-1",
@@ -88,12 +89,13 @@ describe("useAssetReusePicker", () => {
         mediaType: "image",
         sourceType: "upload_session",
         rightsStatus: "clear",
+        consentStatus: "unknown",
         locale: "zh-CN",
         aiAnnotated: true,
         sourceRunId: "run-source-2",
         mimeType: "image/png",
         allowed: false,
-        blockedReason: "creator: consent status is unavailable for ai_annotated assets",
+        blockedReason: "policyapp: consent status must be granted for ai_annotated assets",
       },
     ]);
     selectPrimaryAssetForShotWorkbenchMock.mockResolvedValue();

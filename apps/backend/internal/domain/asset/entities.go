@@ -22,6 +22,7 @@ type MediaAsset struct {
 	SourceType    string
 	Locale        string
 	RightsStatus  string
+	ConsentStatus string
 	AIAnnotated   bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
