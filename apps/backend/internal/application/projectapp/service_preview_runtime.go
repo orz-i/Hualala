@@ -288,6 +288,9 @@ func validatePreviewRenderUpdate(input ApplyPreviewRenderUpdateInput) error {
 		if hasPlayback && !isValidPreviewPlaybackDeliveryMode(input.Playback.DeliveryMode) {
 			return errors.New("projectapp: invalid argument: playback.delivery_mode must be file or manifest")
 		}
+		if err := validatePreviewTimelineSpine(input.Playback.Timeline); err != nil {
+			return err
+		}
 	case previewRenderStatusFailed:
 		if strings.TrimSpace(input.ErrorCode) == "" && strings.TrimSpace(input.ErrorMessage) == "" {
 			return errors.New("projectapp: failed precondition: failed preview render requires error_code or error_message")
@@ -300,7 +303,8 @@ func hasPreviewPlaybackDelivery(delivery project.PreviewPlaybackDelivery) bool {
 	return strings.TrimSpace(delivery.DeliveryMode) != "" ||
 		strings.TrimSpace(delivery.PlaybackURL) != "" ||
 		strings.TrimSpace(delivery.PosterURL) != "" ||
-		delivery.DurationMs > 0
+		delivery.DurationMs > 0 ||
+		hasPreviewTimelineSpine(delivery.Timeline)
 }
 
 func hasPreviewExportDelivery(delivery project.PreviewExportDelivery) bool {
@@ -316,6 +320,7 @@ func normalizePreviewPlaybackDelivery(delivery project.PreviewPlaybackDelivery) 
 		PlaybackURL:  strings.TrimSpace(delivery.PlaybackURL),
 		PosterURL:    strings.TrimSpace(delivery.PosterURL),
 		DurationMs:   delivery.DurationMs,
+		Timeline:     normalizePreviewTimelineSpine(delivery.Timeline),
 	}
 }
 
@@ -334,5 +339,79 @@ func isValidPreviewPlaybackDeliveryMode(deliveryMode string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func hasPreviewTimelineSpine(spine project.PreviewTimelineSpine) bool {
+	return len(spine.Segments) > 0 || spine.TotalDurationMs > 0
+}
+
+func validatePreviewTimelineSpine(spine project.PreviewTimelineSpine) error {
+	if !hasPreviewTimelineSpine(spine) {
+		return nil
+	}
+	if len(spine.Segments) == 0 {
+		return errors.New("projectapp: invalid argument: playback.timeline.segments must be non-empty when timeline is present")
+	}
+
+	lastEnd := 0
+	for idx, segment := range spine.Segments {
+		expectedSequence := idx + 1
+		if segment.Sequence != expectedSequence {
+			return errors.New("projectapp: invalid argument: playback.timeline.sequence must start at 1 and stay contiguous")
+		}
+		if strings.TrimSpace(segment.ShotID) == "" {
+			return errors.New("projectapp: invalid argument: playback.timeline.segment.shot_id is required")
+		}
+		if segment.DurationMs <= 0 {
+			return errors.New("projectapp: invalid argument: playback.timeline.segment.duration_ms must be greater than 0")
+		}
+		if idx > 0 && segment.StartMs < lastEnd {
+			return errors.New("projectapp: invalid argument: playback.timeline.segment.start_ms must stay ordered and non-overlapping")
+		}
+		if segment.TransitionToNext != nil {
+			if strings.TrimSpace(segment.TransitionToNext.TransitionType) == "" {
+				return errors.New("projectapp: invalid argument: playback.timeline.transition.transition_type is required")
+			}
+			if segment.TransitionToNext.DurationMs <= 0 {
+				return errors.New("projectapp: invalid argument: playback.timeline.transition.duration_ms must be greater than 0")
+			}
+		}
+		lastEnd = segment.StartMs + segment.DurationMs
+	}
+	if spine.TotalDurationMs != lastEnd {
+		return errors.New("projectapp: invalid argument: playback.timeline.total_duration_ms must equal the final segment end")
+	}
+	return nil
+}
+
+func normalizePreviewTimelineSpine(spine project.PreviewTimelineSpine) project.PreviewTimelineSpine {
+	if !hasPreviewTimelineSpine(spine) {
+		return project.PreviewTimelineSpine{}
+	}
+	segments := make([]project.PreviewTimelineSegment, 0, len(spine.Segments))
+	for _, segment := range spine.Segments {
+		normalized := project.PreviewTimelineSegment{
+			SegmentID:       strings.TrimSpace(segment.SegmentID),
+			Sequence:        segment.Sequence,
+			ShotID:          strings.TrimSpace(segment.ShotID),
+			ShotCode:        strings.TrimSpace(segment.ShotCode),
+			ShotTitle:       strings.TrimSpace(segment.ShotTitle),
+			PlaybackAssetID: strings.TrimSpace(segment.PlaybackAssetID),
+			SourceRunID:     strings.TrimSpace(segment.SourceRunID),
+			StartMs:         segment.StartMs,
+			DurationMs:      segment.DurationMs,
+		}
+		if segment.TransitionToNext != nil {
+			normalized.TransitionToNext = &project.PreviewTransition{
+				TransitionType: strings.TrimSpace(segment.TransitionToNext.TransitionType),
+				DurationMs:     segment.TransitionToNext.DurationMs,
+			}
+		}
+		segments = append(segments, normalized)
+	}
+	return project.PreviewTimelineSpine{
+		Segments:        segments,
+		TotalDurationMs: spine.TotalDurationMs,
 	}
 }

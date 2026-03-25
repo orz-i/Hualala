@@ -649,6 +649,22 @@ func TestRequestPreviewRenderClearsExistingRuntimeOutputsAndErrors(t *testing.T)
 			PlaybackURL:  "https://cdn.example.com/preview-old.mp4",
 			PosterURL:    "https://cdn.example.com/poster-old.jpg",
 			DurationMs:   42000,
+			Timeline: project.PreviewTimelineSpine{
+				Segments: []project.PreviewTimelineSegment{
+					{
+						SegmentID:       "segment-stale-1",
+						Sequence:        1,
+						ShotID:          fixture.ShotIDs[0],
+						ShotCode:        fixture.ShotCodeByID[fixture.ShotIDs[0]],
+						ShotTitle:       fixture.ShotTitleByID[fixture.ShotIDs[0]],
+						PlaybackAssetID: "playback-asset-stale",
+						SourceRunID:     fixture.LatestRunIDByShotID[fixture.ShotIDs[0]],
+						StartMs:         0,
+						DurationMs:      42000,
+					},
+				},
+				TotalDurationMs: 42000,
+			},
 		},
 		ExportOutput: project.PreviewExportDelivery{
 			DownloadURL: "https://cdn.example.com/export-old.mp4",
@@ -689,6 +705,12 @@ func TestRequestPreviewRenderClearsExistingRuntimeOutputsAndErrors(t *testing.T)
 	}
 	if got := runtimeState.Runtime.Playback.PlaybackURL; got != "" {
 		t.Fatalf("expected playback url to be cleared, got %q", got)
+	}
+	if got := len(runtimeState.Runtime.Playback.Timeline.Segments); got != 0 {
+		t.Fatalf("expected playback timeline segments to be cleared, got %d", got)
+	}
+	if got := runtimeState.Runtime.Playback.Timeline.TotalDurationMs; got != 0 {
+		t.Fatalf("expected playback timeline total duration to be cleared, got %d", got)
 	}
 	if got := runtimeState.Runtime.ExportOutput.DownloadURL; got != "" {
 		t.Fatalf("expected export download url to be cleared, got %q", got)
@@ -763,6 +785,37 @@ func TestApplyPreviewRenderUpdateTransitionsRuntimeAcrossRunningCompletedAndFail
 			PlaybackURL:  "https://cdn.example.com/preview-runtime-1.m3u8",
 			PosterURL:    "https://cdn.example.com/preview-runtime-1.jpg",
 			DurationMs:   30000,
+			Timeline: project.PreviewTimelineSpine{
+				Segments: []project.PreviewTimelineSegment{
+					{
+						SegmentID:       "segment-1",
+						Sequence:        1,
+						ShotID:          fixture.ShotIDs[0],
+						ShotCode:        fixture.ShotCodeByID[fixture.ShotIDs[0]],
+						ShotTitle:       fixture.ShotTitleByID[fixture.ShotIDs[0]],
+						PlaybackAssetID: "playback-asset-1",
+						SourceRunID:     fixture.LatestRunIDByShotID[fixture.ShotIDs[0]],
+						StartMs:         0,
+						DurationMs:      15000,
+						TransitionToNext: &project.PreviewTransition{
+							TransitionType: "cut",
+							DurationMs:     500,
+						},
+					},
+					{
+						SegmentID:       "segment-2",
+						Sequence:        2,
+						ShotID:          fixture.ShotIDs[1],
+						ShotCode:        fixture.ShotCodeByID[fixture.ShotIDs[1]],
+						ShotTitle:       fixture.ShotTitleByID[fixture.ShotIDs[1]],
+						PlaybackAssetID: "playback-asset-2",
+						SourceRunID:     fixture.LatestRunIDByShotID[fixture.ShotIDs[1]],
+						StartMs:         15000,
+						DurationMs:      15000,
+					},
+				},
+				TotalDurationMs: 30000,
+			},
 		},
 		ExportOutput: project.PreviewExportDelivery{
 			DownloadURL: "https://cdn.example.com/preview-export-1.mp4",
@@ -785,6 +838,24 @@ func TestApplyPreviewRenderUpdateTransitionsRuntimeAcrossRunningCompletedAndFail
 	}
 	if got := completed.Runtime.Playback.PlaybackURL; got != "https://cdn.example.com/preview-runtime-1.m3u8" {
 		t.Fatalf("expected playback url to round-trip, got %q", got)
+	}
+	if got := completed.Runtime.Playback.Timeline.TotalDurationMs; got != 30000 {
+		t.Fatalf("expected playback timeline total duration %d, got %d", 30000, got)
+	}
+	if got := len(completed.Runtime.Playback.Timeline.Segments); got != 2 {
+		t.Fatalf("expected 2 playback timeline segments, got %d", got)
+	}
+	if got := completed.Runtime.Playback.Timeline.Segments[0].ShotID; got != fixture.ShotIDs[0] {
+		t.Fatalf("expected first timeline segment shot %q, got %q", fixture.ShotIDs[0], got)
+	}
+	if completed.Runtime.Playback.Timeline.Segments[0].TransitionToNext == nil {
+		t.Fatalf("expected first timeline segment transition summary")
+	}
+	if got := completed.Runtime.Playback.Timeline.Segments[0].TransitionToNext.TransitionType; got != "cut" {
+		t.Fatalf("expected first timeline transition type %q, got %q", "cut", got)
+	}
+	if got := completed.Runtime.Playback.Timeline.Segments[1].StartMs; got != 15000 {
+		t.Fatalf("expected second timeline segment start %d, got %d", 15000, got)
 	}
 	if got := completed.Runtime.ExportOutput.DownloadURL; got != "https://cdn.example.com/preview-export-1.mp4" {
 		t.Fatalf("expected export download url to round-trip, got %q", got)
@@ -887,6 +958,233 @@ func TestApplyPreviewRenderUpdateRejectsCompletedWithoutOutputsAndStaleWorkflowR
 	}
 	if !strings.Contains(strings.ToLower(err.Error()), "failed precondition") {
 		t.Fatalf("expected failed precondition for stale workflow run, got %v", err)
+	}
+}
+
+func TestApplyPreviewRenderUpdateRejectsInvalidTimelineSpine(t *testing.T) {
+	ctx := context.Background()
+	store := db.NewMemoryStore()
+	fixture := seedPreviewProject(t, ctx, store)
+	service := NewService(store)
+
+	if _, err := service.UpsertPreviewAssembly(ctx, UpsertPreviewAssemblyInput{
+		ProjectID: fixture.ProjectID,
+		EpisodeID: fixture.EpisodeID,
+		Status:    "ready",
+		Items: []PreviewAssemblyItemInput{
+			{
+				ShotID:   fixture.ShotIDs[0],
+				Sequence: 1,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("UpsertPreviewAssembly returned error: %v", err)
+	}
+
+	queued, err := service.RequestPreviewRender(ctx, RequestPreviewRenderInput{
+		ProjectID:       fixture.ProjectID,
+		EpisodeID:       fixture.EpisodeID,
+		RequestedLocale: "zh-CN",
+	})
+	if err != nil {
+		t.Fatalf("RequestPreviewRender returned error: %v", err)
+	}
+
+	validBase := project.PreviewPlaybackDelivery{
+		DeliveryMode: "file",
+		PlaybackURL:  "https://cdn.example.com/runtime-1.mp4",
+		DurationMs:   30000,
+		Timeline: project.PreviewTimelineSpine{
+			Segments: []project.PreviewTimelineSegment{
+				{
+					SegmentID:       "segment-1",
+					Sequence:        1,
+					ShotID:          fixture.ShotIDs[0],
+					ShotCode:        fixture.ShotCodeByID[fixture.ShotIDs[0]],
+					ShotTitle:       fixture.ShotTitleByID[fixture.ShotIDs[0]],
+					PlaybackAssetID: "playback-asset-1",
+					SourceRunID:     fixture.LatestRunIDByShotID[fixture.ShotIDs[0]],
+					StartMs:         0,
+					DurationMs:      15000,
+					TransitionToNext: &project.PreviewTransition{
+						TransitionType: "cut",
+						DurationMs:     400,
+					},
+				},
+				{
+					SegmentID:       "segment-2",
+					Sequence:        2,
+					ShotID:          fixture.ShotIDs[1],
+					ShotCode:        fixture.ShotCodeByID[fixture.ShotIDs[1]],
+					ShotTitle:       fixture.ShotTitleByID[fixture.ShotIDs[1]],
+					PlaybackAssetID: "playback-asset-2",
+					SourceRunID:     fixture.LatestRunIDByShotID[fixture.ShotIDs[1]],
+					StartMs:         15000,
+					DurationMs:      15000,
+				},
+			},
+			TotalDurationMs: 30000,
+		},
+	}
+
+	cases := []struct {
+		name     string
+		playback project.PreviewPlaybackDelivery
+	}{
+		{
+			name: "missing segments",
+			playback: project.PreviewPlaybackDelivery{
+				DeliveryMode: "file",
+				PlaybackURL:  "https://cdn.example.com/runtime-empty.mp4",
+				DurationMs:   1000,
+				Timeline: project.PreviewTimelineSpine{
+					TotalDurationMs: 1000,
+				},
+			},
+		},
+		{
+			name: "sequence not contiguous",
+			playback: project.PreviewPlaybackDelivery{
+				DeliveryMode: "file",
+				PlaybackURL:  "https://cdn.example.com/runtime-gap.mp4",
+				DurationMs:   30000,
+				Timeline: project.PreviewTimelineSpine{
+					Segments: []project.PreviewTimelineSegment{
+						{
+							SegmentID:  "segment-gap",
+							Sequence:   2,
+							ShotID:     fixture.ShotIDs[0],
+							StartMs:    0,
+							DurationMs: 30000,
+						},
+					},
+					TotalDurationMs: 30000,
+				},
+			},
+		},
+		{
+			name: "start out of order",
+			playback: project.PreviewPlaybackDelivery{
+				DeliveryMode: "file",
+				PlaybackURL:  "https://cdn.example.com/runtime-overlap.mp4",
+				DurationMs:   30000,
+				Timeline: project.PreviewTimelineSpine{
+					Segments: []project.PreviewTimelineSegment{
+						{
+							SegmentID:  "segment-1",
+							Sequence:   1,
+							ShotID:     fixture.ShotIDs[0],
+							StartMs:    0,
+							DurationMs: 15000,
+						},
+						{
+							SegmentID:  "segment-2",
+							Sequence:   2,
+							ShotID:     fixture.ShotIDs[1],
+							StartMs:    14000,
+							DurationMs: 16000,
+						},
+					},
+					TotalDurationMs: 30000,
+				},
+			},
+		},
+		{
+			name: "total duration mismatch",
+			playback: project.PreviewPlaybackDelivery{
+				DeliveryMode: "file",
+				PlaybackURL:  "https://cdn.example.com/runtime-total.mp4",
+				DurationMs:   30000,
+				Timeline: project.PreviewTimelineSpine{
+					Segments:        validBase.Timeline.Segments,
+					TotalDurationMs: 25000,
+				},
+			},
+		},
+		{
+			name: "missing shot id",
+			playback: project.PreviewPlaybackDelivery{
+				DeliveryMode: "file",
+				PlaybackURL:  "https://cdn.example.com/runtime-shot.mp4",
+				DurationMs:   1000,
+				Timeline: project.PreviewTimelineSpine{
+					Segments: []project.PreviewTimelineSegment{
+						{
+							SegmentID:  "segment-1",
+							Sequence:   1,
+							StartMs:    0,
+							DurationMs: 1000,
+						},
+					},
+					TotalDurationMs: 1000,
+				},
+			},
+		},
+		{
+			name: "transition missing type",
+			playback: project.PreviewPlaybackDelivery{
+				DeliveryMode: "file",
+				PlaybackURL:  "https://cdn.example.com/runtime-transition.mp4",
+				DurationMs:   1000,
+				Timeline: project.PreviewTimelineSpine{
+					Segments: []project.PreviewTimelineSegment{
+						{
+							SegmentID:  "segment-1",
+							Sequence:   1,
+							ShotID:     fixture.ShotIDs[0],
+							StartMs:    0,
+							DurationMs: 1000,
+							TransitionToNext: &project.PreviewTransition{
+								DurationMs: 200,
+							},
+						},
+					},
+					TotalDurationMs: 1000,
+				},
+			},
+		},
+		{
+			name: "transition non-positive duration",
+			playback: project.PreviewPlaybackDelivery{
+				DeliveryMode: "file",
+				PlaybackURL:  "https://cdn.example.com/runtime-transition-duration.mp4",
+				DurationMs:   1000,
+				Timeline: project.PreviewTimelineSpine{
+					Segments: []project.PreviewTimelineSegment{
+						{
+							SegmentID:  "segment-1",
+							Sequence:   1,
+							ShotID:     fixture.ShotIDs[0],
+							StartMs:    0,
+							DurationMs: 1000,
+							TransitionToNext: &project.PreviewTransition{
+								TransitionType: "cut",
+							},
+						},
+					},
+					TotalDurationMs: 1000,
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := service.ApplyPreviewRenderUpdate(ctx, ApplyPreviewRenderUpdateInput{
+				PreviewRuntimeID:    queued.Runtime.ID,
+				RenderWorkflowRunID: queued.Runtime.RenderWorkflowRunID,
+				RenderStatus:        "completed",
+				ResolvedLocale:      "zh-CN",
+				PlaybackAssetID:     "playback-asset-1",
+				Playback:            tc.playback,
+			})
+			if err == nil {
+				t.Fatalf("expected invalid timeline spine to fail")
+			}
+			if !strings.Contains(strings.ToLower(err.Error()), "invalid argument") {
+				t.Fatalf("expected invalid argument error, got %v", err)
+			}
+		})
 	}
 }
 

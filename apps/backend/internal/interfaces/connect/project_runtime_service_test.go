@@ -235,6 +235,26 @@ func TestApplyPreviewRenderUpdateRouteExposesRuntimeOutputs(t *testing.T) {
 			PlaybackUrl:  "https://cdn.example.com/runtime-1.m3u8",
 			PosterUrl:    "https://cdn.example.com/runtime-1.jpg",
 			DurationMs:   30000,
+			Timeline: &projectv1.PreviewTimelineSpine{
+				Segments: []*projectv1.PreviewTimelineSegment{
+					{
+						SegmentId:       "segment-1",
+						Sequence:        1,
+						ShotId:          shotResp.Msg.GetShot().GetId(),
+						ShotCode:        "SHOT-001",
+						ShotTitle:       "第一镜",
+						PlaybackAssetId: "playback-asset-1",
+						SourceRunId:     "run-1",
+						StartMs:         0,
+						DurationMs:      30000,
+						TransitionToNext: &projectv1.PreviewTransition{
+							TransitionType: "cut",
+							DurationMs:     250,
+						},
+					},
+				},
+				TotalDurationMs: 30000,
+			},
 		},
 		ExportOutput: &projectv1.PreviewExportDelivery{
 			DownloadUrl: "https://cdn.example.com/runtime-1.mp4",
@@ -252,6 +272,12 @@ func TestApplyPreviewRenderUpdateRouteExposesRuntimeOutputs(t *testing.T) {
 	if got := updated.Msg.GetRuntime().GetPlayback().GetPlaybackUrl(); got != "https://cdn.example.com/runtime-1.m3u8" {
 		t.Fatalf("expected playback url %q, got %q", "https://cdn.example.com/runtime-1.m3u8", got)
 	}
+	if got := updated.Msg.GetRuntime().GetPlayback().GetTimeline().GetTotalDurationMs(); got != 30000 {
+		t.Fatalf("expected playback timeline total duration %d, got %d", 30000, got)
+	}
+	if got := len(updated.Msg.GetRuntime().GetPlayback().GetTimeline().GetSegments()); got != 1 {
+		t.Fatalf("expected 1 playback timeline segment, got %d", got)
+	}
 	if got := updated.Msg.GetRuntime().GetExportOutput().GetDownloadUrl(); got != "https://cdn.example.com/runtime-1.mp4" {
 		t.Fatalf("expected export download url %q, got %q", "https://cdn.example.com/runtime-1.mp4", got)
 	}
@@ -264,6 +290,9 @@ func TestApplyPreviewRenderUpdateRouteExposesRuntimeOutputs(t *testing.T) {
 	}
 	if got := readback.Msg.GetRuntime().GetPlaybackAssetId(); got != "playback-asset-1" {
 		t.Fatalf("expected playback asset id %q, got %q", "playback-asset-1", got)
+	}
+	if got := readback.Msg.GetRuntime().GetPlayback().GetTimeline().GetSegments()[0].GetTransitionToNext().GetTransitionType(); got != "cut" {
+		t.Fatalf("expected timeline transition type %q, got %q", "cut", got)
 	}
 	if got := readback.Msg.GetRuntime().GetExportOutput().GetMimeType(); got != "video/mp4" {
 		t.Fatalf("expected export mime type %q, got %q", "video/mp4", got)

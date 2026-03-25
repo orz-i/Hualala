@@ -201,7 +201,12 @@ func mapPreviewRuntime(record projectapp.PreviewRuntimeState) *projectv1.Preview
 }
 
 func mapPreviewPlaybackDelivery(record project.PreviewPlaybackDelivery) *projectv1.PreviewPlaybackDelivery {
-	if record == (project.PreviewPlaybackDelivery{}) {
+	if record.DeliveryMode == "" &&
+		record.PlaybackURL == "" &&
+		record.PosterURL == "" &&
+		record.DurationMs == 0 &&
+		len(record.Timeline.Segments) == 0 &&
+		record.Timeline.TotalDurationMs == 0 {
 		return nil
 	}
 	return &projectv1.PreviewPlaybackDelivery{
@@ -209,6 +214,46 @@ func mapPreviewPlaybackDelivery(record project.PreviewPlaybackDelivery) *project
 		PlaybackUrl:  record.PlaybackURL,
 		PosterUrl:    record.PosterURL,
 		DurationMs:   uint32(record.DurationMs),
+		Timeline:     mapPreviewTimelineSpine(record.Timeline),
+	}
+}
+
+func mapPreviewTimelineSpine(record project.PreviewTimelineSpine) *projectv1.PreviewTimelineSpine {
+	if len(record.Segments) == 0 && record.TotalDurationMs == 0 {
+		return nil
+	}
+	segments := make([]*projectv1.PreviewTimelineSegment, 0, len(record.Segments))
+	for _, segment := range record.Segments {
+		segments = append(segments, mapPreviewTimelineSegment(segment))
+	}
+	return &projectv1.PreviewTimelineSpine{
+		Segments:        segments,
+		TotalDurationMs: uint32(record.TotalDurationMs),
+	}
+}
+
+func mapPreviewTimelineSegment(record project.PreviewTimelineSegment) *projectv1.PreviewTimelineSegment {
+	return &projectv1.PreviewTimelineSegment{
+		SegmentId:        record.SegmentID,
+		Sequence:         uint32(record.Sequence),
+		ShotId:           record.ShotID,
+		ShotCode:         record.ShotCode,
+		ShotTitle:        record.ShotTitle,
+		PlaybackAssetId:  record.PlaybackAssetID,
+		SourceRunId:      record.SourceRunID,
+		StartMs:          uint32(record.StartMs),
+		DurationMs:       uint32(record.DurationMs),
+		TransitionToNext: mapPreviewTransition(record.TransitionToNext),
+	}
+}
+
+func mapPreviewTransition(record *project.PreviewTransition) *projectv1.PreviewTransition {
+	if record == nil {
+		return nil
+	}
+	return &projectv1.PreviewTransition{
+		TransitionType: record.TransitionType,
+		DurationMs:     uint32(record.DurationMs),
 	}
 }
 

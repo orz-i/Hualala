@@ -56,7 +56,8 @@
 
 - `delivery_mode` 只允许 `file` 和 `manifest`
 - 若 `delivery_mode=manifest`，`playback_url` 就是 manifest URL
-- 本轮不冻结字幕轨、转场段落、timeline segment、波形或其他 richer payload
+- `playback.timeline` 的 timeline spine richer payload 已冻结到 [`phase3-preview-timeline-spine-freeze.md`](./phase3-preview-timeline-spine-freeze.md)
+- 本轮仍不冻结字幕轨、波形、音轨引用或其他更细 richer payload
 
 ## Worker Callback 规则
 
@@ -119,5 +120,5 @@ payload 仍只允许最小 runtime 摘要：
 - creator/admin 播放器 UI
 - 导出执行页或下载动作
 - 直接可播 URL 的前端消费面
-- 字幕轨、转场段落、timeline 结构
+- 字幕轨、波形、音轨引用和更细 timeline 结构
 - 多轨音频联动

@@ -10,7 +10,7 @@
 
 本轮不包含独立播放器页、导出页和音频联动增强。
 
-runtime shared truth 已冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-preview-runtime-freeze.md)，播放/导出 delivery payload 与 worker callback 已冻结在 [`phase3-preview-playback-export-freeze.md`](./phase3-preview-playback-export-freeze.md)。
+runtime shared truth 已冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-preview-runtime-freeze.md)，播放/导出 delivery payload 与 worker callback 已冻结在 [`phase3-preview-playback-export-freeze.md`](./phase3-preview-playback-export-freeze.md)，timeline spine 已冻结在 [`phase3-preview-timeline-spine-freeze.md`](./phase3-preview-timeline-spine-freeze.md)。
 
 ## Creator 路径
 
@@ -37,6 +37,7 @@ runtime shared truth 已冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-
    - `playback_asset_id`
    - `export_asset_id`
    - playback delivery：`delivery_mode / playback_url / poster_url / duration_ms`
+   - timeline spine：ordered shot segments、`total_duration_ms`、optional transition summary
    - export delivery：`download_url / mime_type / file_name / size_bytes`
    - failed runtime 时的 `last_error_code / last_error_message`
 7. 点击 `请求预演渲染` 后：
@@ -74,7 +75,7 @@ runtime shared truth 已冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-
    - `source_run` 摘要
 5. admin `Runtime` 摘要区会跟 creator 使用同一份 preview runtime truth，并通过相同的 `project.preview.runtime.updated` 事件做刷新。
 6. admin 只做 delivery audit：
-   - 展示 playback/export delivery 摘要和失败信息
+   - 展示 playback/export delivery 摘要、timeline spine 摘要和失败信息
    - 提供“打开播放输出 / 打开导出输出”动作
    - 不嵌入原生播放器
 7. admin 保持只读，只能查看 provenance，不允许改 assembly，也不提供 render 按钮
@@ -101,3 +102,4 @@ runtime shared truth 已冻结在 [`phase3-preview-runtime-freeze.md`](./phase3-
 - `UpsertPreviewAssembly` 写入 shape 不变，仍只保存 `shotId / primaryAssetId / sourceRunId / sequence`
 - creator 只在 `delivery_mode=file` 时用原生内联 `<video>`；`manifest` 仍然退回显式打开动作
 - admin 只展示 delivery audit，不嵌入播放器
+- 后续播放器/导出 consumer 应直接消费 runtime 的 timeline spine，不再从裸 `duration_ms` 和 URL 反推结构

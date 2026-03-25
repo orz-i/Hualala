@@ -68,6 +68,7 @@ type PreviewPlaybackDelivery struct {
 	PlaybackURL  string
 	PosterURL    string
 	DurationMs   int
+	Timeline     PreviewTimelineSpine
 }
 
 type PreviewExportDelivery struct {
@@ -75,6 +76,29 @@ type PreviewExportDelivery struct {
 	MimeType    string
 	FileName    string
 	SizeBytes   int64
+}
+
+type PreviewTimelineSpine struct {
+	Segments        []PreviewTimelineSegment
+	TotalDurationMs int
+}
+
+type PreviewTimelineSegment struct {
+	SegmentID        string
+	Sequence         int
+	ShotID           string
+	ShotCode         string
+	ShotTitle        string
+	PlaybackAssetID  string
+	SourceRunID      string
+	StartMs          int
+	DurationMs       int
+	TransitionToNext *PreviewTransition
+}
+
+type PreviewTransition struct {
+	TransitionType string
+	DurationMs     int
 }
 
 type AudioTimeline struct {
