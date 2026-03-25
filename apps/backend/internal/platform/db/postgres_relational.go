@@ -227,6 +227,9 @@ func (p *PostgresPersister) loadRelationalSnapshot(ctx context.Context, snapshot
 	if err := p.loadProjectsEpisodesScenesShotsSnapshots(ctx, snapshot); err != nil {
 		return err
 	}
+	if err := p.loadModelGovernance(ctx, snapshot); err != nil {
+		return err
+	}
 	if err := p.loadCollaborationAndPreview(ctx, snapshot); err != nil {
 		return err
 	}
@@ -235,6 +238,9 @@ func (p *PostgresPersister) loadRelationalSnapshot(ctx context.Context, snapshot
 	}
 	runExecutionMap, err := p.loadExecutions(ctx, snapshot)
 	if err != nil {
+		return err
+	}
+	if err := p.loadWorkflowRuntime(ctx, snapshot); err != nil {
 		return err
 	}
 	if err := p.loadAssets(ctx, snapshot); err != nil {
@@ -1029,6 +1035,9 @@ func (p *PostgresPersister) saveRelationalSnapshot(ctx context.Context, tx *sql.
 	if err := p.saveProjectsEpisodesScenesShotsSnapshots(ctx, tx, snapshot); err != nil {
 		return err
 	}
+	if err := p.saveModelGovernance(ctx, tx, snapshot); err != nil {
+		return err
+	}
 	if err := p.saveCollaborationAndPreview(ctx, tx, snapshot); err != nil {
 		return err
 	}
@@ -1037,6 +1046,9 @@ func (p *PostgresPersister) saveRelationalSnapshot(ctx context.Context, tx *sql.
 	}
 	usageIDsByRun, budgetIDsByProject, err := p.saveExecutionsAssetsReviewBilling(ctx, tx, snapshot)
 	if err != nil {
+		return err
+	}
+	if err := p.saveWorkflowRuntime(ctx, tx, snapshot); err != nil {
 		return err
 	}
 	if err := p.saveAudioTimelines(ctx, tx, snapshot); err != nil {
@@ -1136,6 +1148,7 @@ func clearMainTables(ctx context.Context, tx *sql.Tx) error {
 	statements := []string{
 		`DELETE FROM billing_events`,
 		`DELETE FROM usage_records`,
+		`DELETE FROM budget_policies`,
 		`DELETE FROM audio_runtimes`,
 		`DELETE FROM audio_clips`,
 		`DELETE FROM audio_tracks`,
@@ -1158,7 +1171,10 @@ func clearMainTables(ctx context.Context, tx *sql.Tx) error {
 		`DELETE FROM upload_sessions`,
 		`DELETE FROM import_batches`,
 		`DELETE FROM shot_execution_runs`,
+		`DELETE FROM context_bundles`,
 		`DELETE FROM shot_executions`,
+		`DELETE FROM prompt_templates`,
+		`DELETE FROM model_profiles`,
 		`DELETE FROM collaboration_presences`,
 		`DELETE FROM collaboration_sessions`,
 		`DELETE FROM content_snapshots`,
@@ -1166,6 +1182,11 @@ func clearMainTables(ctx context.Context, tx *sql.Tx) error {
 		`DELETE FROM scenes`,
 		`DELETE FROM episodes`,
 		`DELETE FROM projects`,
+		`DELETE FROM role_permissions`,
+		`DELETE FROM memberships`,
+		`DELETE FROM roles`,
+		`DELETE FROM users`,
+		`DELETE FROM organizations`,
 	}
 	for _, statement := range statements {
 		if _, err := tx.ExecContext(ctx, statement); err != nil {

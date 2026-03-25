@@ -18,6 +18,15 @@ import {
   buildImportBatchWorkbenchPayload,
 } from "./mock-connect/assets.ts";
 import {
+  applyBackupPackageState,
+  buildGetBackupPackagePayload,
+  buildListBackupPackagesPayload,
+  buildPreflightRestorePayload,
+  createBackupPackageState,
+  createBackupState,
+  findBackupPackage,
+} from "./mock-connect/backup.ts";
+import {
   buildAdminPayload,
   buildDefaultDevSession,
   syncGovernanceState,
@@ -111,6 +120,11 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
   let audioRuntimeState = createAudioRuntimeState(audioState);
   let collaborationState = createCollaborationState(adminState.budgetSnapshot.projectId);
   let reuseState = createAssetReuseState("project-live-1");
+  let backupState = createBackupState({
+    orgId: adminState.governance.currentSession.orgId,
+    userId: adminState.governance.currentSession.userId,
+    projectId: adminState.budgetSnapshot.projectId,
+  });
   let previewRuntimeAttempt = 0;
   let audioRuntimeAttempt = 0;
   const pendingSseEvents: Array<{
@@ -435,6 +449,74 @@ export async function mockConnectRoutes(page: Page, scenario: MockConnectScenari
     }
 
     if (scenario.admin) {
+      if (pathname === "/hualala.backup.v1.BackupService/ListBackupPackages") {
+        await route.fulfill(jsonResponse(200, buildListBackupPackagesPayload(backupState)));
+        return;
+      }
+
+      if (pathname === "/hualala.backup.v1.BackupService/CreateBackupPackage") {
+        await delay(120);
+        const created = createBackupPackageState(backupState, {
+          orgId: adminState.governance.currentSession.orgId,
+          userId: adminState.governance.currentSession.userId,
+          projectId: adminState.budgetSnapshot.projectId,
+        });
+        backupState = created.state;
+        await route.fulfill(
+          jsonResponse(200, {
+            backupPackage: buildGetBackupPackagePayload(created.record).backupPackage,
+          }),
+        );
+        return;
+      }
+
+      if (pathname === "/hualala.backup.v1.BackupService/GetBackupPackage") {
+        const body = route.request().postDataJSON() as { packageId?: string };
+        const record = findBackupPackage(backupState, body.packageId ?? "");
+        if (!record) {
+          await route.fulfill(jsonResponse(404, { error: "backup package not found" }));
+          return;
+        }
+        await route.fulfill(jsonResponse(200, buildGetBackupPackagePayload(record)));
+        return;
+      }
+
+      if (pathname === "/hualala.backup.v1.BackupService/PreflightRestoreBackupPackage") {
+        const body = route.request().postDataJSON() as { packageId?: string };
+        const record = findBackupPackage(backupState, body.packageId ?? "");
+        if (!record) {
+          await route.fulfill(jsonResponse(404, { error: "backup package not found" }));
+          return;
+        }
+        await route.fulfill(jsonResponse(200, buildPreflightRestorePayload(backupState, record)));
+        return;
+      }
+
+      if (pathname === "/hualala.backup.v1.BackupService/ApplyBackupPackage") {
+        const body = route.request().postDataJSON() as {
+          packageId?: string;
+          confirmReplaceRuntime?: boolean;
+        };
+        if (!body.confirmReplaceRuntime) {
+          await route.fulfill(
+            jsonResponse(412, { error: "confirm_replace_runtime is required" }),
+          );
+          return;
+        }
+        const record = findBackupPackage(backupState, body.packageId ?? "");
+        if (!record) {
+          await route.fulfill(jsonResponse(404, { error: "backup package not found" }));
+          return;
+        }
+        backupState = applyBackupPackageState(backupState, record);
+        await route.fulfill(
+          jsonResponse(200, {
+            backupPackage: buildGetBackupPackagePayload(record).backupPackage,
+          }),
+        );
+        return;
+      }
+
       if (pathname === "/hualala.workflow.v1.WorkflowService/ListWorkflowRuns") {
         await route.fulfill(
           jsonResponse(200, {

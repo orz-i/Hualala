@@ -18,14 +18,20 @@ const defaultGatewaySnapshotStoreKey = "gateway_results"
 type PostgresStore struct {
 	db                 *sql.DB
 	publisher          *events.Publisher
+	storeKey           string
 	gatewaySnapshotKey string
 }
 
 func NewPostgresStore(handle *sql.DB, storeKey string) *PostgresStore {
+	normalizedStoreKey := strings.TrimSpace(storeKey)
+	if normalizedStoreKey == "" {
+		normalizedStoreKey = defaultSnapshotStoreKey
+	}
 	return &PostgresStore{
 		db:                 handle,
 		publisher:          events.NewDurablePublisher(newPostgresEventRecorder(handle)),
-		gatewaySnapshotKey: gatewayResultsStoreKey(storeKey),
+		storeKey:           normalizedStoreKey,
+		gatewaySnapshotKey: gatewayResultsStoreKey(normalizedStoreKey),
 	}
 }
 

@@ -1,5 +1,6 @@
 export type AdminRoute =
   | "overview"
+  | "backup"
   | "workflow"
   | "assets"
   | "governance"
@@ -25,6 +26,7 @@ const defaultShotExecutionId = "shot-exec-demo-001";
 
 const routePathMap: Record<AdminRoute, string> = {
   overview: "/overview",
+  backup: "/backup",
   workflow: "/workflow",
   assets: "/assets",
   governance: "/governance",
@@ -38,6 +40,9 @@ function normalizeAdminRoute(pathname: string): AdminRoute {
   const normalizedPathname = pathname.toLowerCase();
   if (normalizedPathname === routePathMap.workflow) {
     return "workflow";
+  }
+  if (normalizedPathname === routePathMap.backup) {
+    return "backup";
   }
   if (normalizedPathname === routePathMap.assets) {
     return "assets";

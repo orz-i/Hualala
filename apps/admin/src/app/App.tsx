@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useLocaleState } from "../i18n";
+import { AdminBackupPage } from "../features/dashboard/AdminBackupPage";
 import { AdminAudioPage } from "../features/dashboard/AdminAudioPage";
 import { AdminAssetsPage } from "../features/dashboard/AdminAssetsPage";
 import { AdminCollaborationPage } from "../features/dashboard/AdminCollaborationPage";
@@ -9,6 +10,7 @@ import { AdminPreviewPage } from "../features/dashboard/AdminPreviewPage";
 import { AdminWorkflowPage } from "../features/dashboard/AdminWorkflowPage";
 import { AdminAssetReusePage } from "../features/dashboard/reuse/AdminAssetReusePage";
 import { useAdminAssetReuseController } from "../features/dashboard/reuse/useAdminAssetReuseController";
+import { useAdminBackupController } from "../features/dashboard/useAdminBackupController";
 import { useAdminAudioController } from "../features/dashboard/useAdminAudioController";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
 import { useAdminCollaborationController } from "../features/dashboard/useAdminCollaborationController";
@@ -93,6 +95,15 @@ export function App() {
   const governance = useAdminGovernanceController({
     sessionState: sessionGate.sessionState,
     enabled: routeState.route === "governance",
+    identityOverride,
+    effectiveOrgId: sessionGate.effectiveOrgId,
+    effectiveUserId: sessionGate.effectiveUserId,
+    t,
+  });
+
+  const backup = useAdminBackupController({
+    sessionState: sessionGate.sessionState,
+    enabled: routeState.route === "backup",
     identityOverride,
     effectiveOrgId: sessionGate.effectiveOrgId,
     effectiveUserId: sessionGate.effectiveUserId,
@@ -269,6 +280,7 @@ export function App() {
 
   const routeErrorMessages: Partial<Record<AdminRouteState["route"], string>> = {
     overview: overview.errorMessage,
+    backup: backup.errorMessage,
     governance: governance.errorMessage,
     collaboration: collaboration.errorMessage,
     audio: audio.errorMessage,
@@ -324,6 +336,10 @@ export function App() {
     return <main style={{ padding: "32px" }}>{t("app.loading")}</main>;
   }
 
+  if (routeState.route === "backup" && !backup.backup) {
+    return <main style={{ padding: "32px" }}>{t("app.loading")}</main>;
+  }
+
   if (routeState.route === "collaboration" && !collaboration.collaborationSession) {
     return <main style={{ padding: "32px" }}>{t("app.loading.collaboration")}</main>;
   }
@@ -349,7 +365,23 @@ export function App() {
 
   let routeContent: ReactNode = null;
 
-  if (routeState.route === "workflow") {
+  if (routeState.route === "backup" && backup.backup) {
+    routeContent = (
+      <AdminBackupPage
+        backup={backup.backup}
+        selectedPackageId={backup.selectedPackageId}
+        restorePreflight={backup.restorePreflight}
+        backupActionFeedback={backup.backupActionFeedback ?? undefined}
+        backupActionPending={backup.backupActionPending}
+        t={t}
+        onSelectBackupPackage={backup.onSelectBackupPackage}
+        onCreateBackupPackage={backup.onCreateBackupPackage}
+        onDownloadBackupPackage={backup.onDownloadBackupPackage}
+        onPreflightRestoreBackupPackage={backup.onPreflightRestoreBackupPackage}
+        onApplyBackupPackage={backup.onApplyBackupPackage}
+      />
+    );
+  } else if (routeState.route === "workflow") {
     routeContent = (
       <AdminWorkflowPage
         workflowMonitor={workflow.workflowMonitor}

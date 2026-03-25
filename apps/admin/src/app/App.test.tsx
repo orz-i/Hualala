@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { useAdminBackupController } from "../features/dashboard/useAdminBackupController";
 import type { AdminOverviewViewModel } from "../features/dashboard/overview";
 import type { AdminOperationsOverviewViewModel } from "../features/dashboard/operationsOverview";
 import { ADMIN_UI_LOCALE_STORAGE_KEY } from "../i18n";
@@ -26,6 +27,7 @@ const {
 }));
 
 let lastAdminOverviewPageProps: Record<string, unknown> | null = null;
+let lastAdminBackupPageProps: Record<string, unknown> | null = null;
 let lastAdminWorkflowPageProps: Record<string, unknown> | null = null;
 let lastAdminAssetsPageProps: Record<string, unknown> | null = null;
 let lastAdminGovernancePageProps: Record<string, unknown> | null = null;
@@ -71,6 +73,17 @@ vi.mock("../features/dashboard/AdminOverviewPage", () => ({
         >
           overview-open-asset
         </button>
+      </div>
+    );
+  },
+}));
+vi.mock("../features/dashboard/AdminBackupPage", () => ({
+  AdminBackupPage: (props: Record<string, unknown>) => {
+    lastAdminBackupPageProps = props;
+    const backup = props.backup as { backupPackages: Array<{ packageId: string }> };
+    return (
+      <div data-testid="admin-backup-page">
+        {backup.backupPackages.map((item) => item.packageId).join(",")}
       </div>
     );
   },
@@ -152,6 +165,9 @@ vi.mock("../features/session/useAdminSessionGate", () => ({
 vi.mock("../features/dashboard/useAdminOverviewController", () => ({
   useAdminOverviewController: vi.fn(),
 }));
+vi.mock("../features/dashboard/useAdminBackupController", () => ({
+  useAdminBackupController: vi.fn(),
+}));
 vi.mock("../features/dashboard/useAdminGovernanceController", () => ({
   useAdminGovernanceController: vi.fn(),
 }));
@@ -179,6 +195,7 @@ vi.mock("../features/dashboard/useAdminRecentChangesSubscription", () => ({
 
 const useAdminSessionGateMock = vi.mocked(useAdminSessionGate);
 const useAdminOverviewControllerMock = vi.mocked(useAdminOverviewController);
+const useAdminBackupControllerMock = vi.mocked(useAdminBackupController);
 const useAdminGovernanceControllerMock = vi.mocked(useAdminGovernanceController);
 const useAdminWorkflowControllerMock = vi.mocked(useAdminWorkflowController);
 const useAdminAssetControllerMock = vi.mocked(useAdminAssetController);
@@ -404,6 +421,55 @@ function buildGovernanceController(overrides: Record<string, unknown> = {}) {
     onCreateRole: vi.fn(),
     onUpdateRole: vi.fn(),
     onDeleteRole: vi.fn(),
+    ...overrides,
+  };
+}
+
+function buildBackupController(overrides: Record<string, unknown> = {}) {
+  return {
+    backup: {
+      currentSession: {
+        sessionId: "dev:org-demo-001:user-demo-001",
+        orgId: "org-demo-001",
+        userId: "user-demo-001",
+        locale: "zh-CN",
+        roleId: "role-admin",
+        roleCode: "admin",
+        permissionCodes: ["session.read", "org.settings.write"],
+        timezone: "Asia/Shanghai",
+      },
+      backupPackages: [
+        {
+          packageId: "package-1",
+          schemaVersion: "backup_v1",
+          restoreMode: "full_runtime_replace",
+          createdAt: "2026-03-25T10:00:00Z",
+          createdByUserId: "user-demo-001",
+          orgIds: ["org-demo-001"],
+          projectIds: ["project-live-001"],
+          counts: {
+            workflow_runs: 1,
+          },
+          payloadBytes: 2048,
+        },
+      ],
+      capabilities: {
+        canManageBackup: true,
+        isRuntimeAvailable: true,
+        unavailableReason: "",
+      },
+    },
+    selectedPackageId: "package-1",
+    restorePreflight: null,
+    errorMessage: "",
+    backupActionFeedback: null,
+    backupActionPending: false,
+    refreshBackup: vi.fn(),
+    onSelectBackupPackage: vi.fn(),
+    onCreateBackupPackage: vi.fn(),
+    onDownloadBackupPackage: vi.fn(),
+    onPreflightRestoreBackupPackage: vi.fn(),
+    onApplyBackupPackage: vi.fn(),
     ...overrides,
   };
 }
@@ -664,6 +730,7 @@ describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     lastAdminOverviewPageProps = null;
+    lastAdminBackupPageProps = null;
     lastAdminWorkflowPageProps = null;
     lastAdminAssetsPageProps = null;
     lastAdminGovernancePageProps = null;
@@ -677,6 +744,7 @@ describe("App", () => {
 
     useAdminSessionGateMock.mockReturnValue(buildSessionGate() as never);
     useAdminOverviewControllerMock.mockReturnValue(buildOverviewController() as never);
+    useAdminBackupControllerMock.mockReturnValue(buildBackupController() as never);
     useAdminGovernanceControllerMock.mockReturnValue(buildGovernanceController() as never);
     useAdminWorkflowControllerMock.mockReturnValue(buildWorkflow() as never);
     useAdminAssetControllerMock.mockReturnValue(buildAsset() as never);
@@ -786,6 +854,27 @@ describe("App", () => {
       }),
     );
     expect(screen.getByTestId("admin-workflow-page")).toHaveTextContent("workflow-run-1");
+    expect(screen.queryByTestId("admin-overview-page")).not.toBeInTheDocument();
+  });
+
+  it("renders the backup route when pathname is /backup", () => {
+    window.history.pushState({}, "", "/backup?projectId=project-live-001");
+
+    render(<App />);
+
+    expect(useAdminBackupControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        effectiveOrgId: "org-demo-001",
+        effectiveUserId: "user-demo-001",
+      }),
+    );
+    expect(screen.getByTestId("admin-backup-page")).toHaveTextContent("package-1");
+    expect(lastAdminBackupPageProps).toEqual(
+      expect.objectContaining({
+        selectedPackageId: "package-1",
+      }),
+    );
     expect(screen.queryByTestId("admin-overview-page")).not.toBeInTheDocument();
   });
 
