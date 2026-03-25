@@ -246,6 +246,59 @@ func (h *projectHandler) GetAudioWorkbench(ctx context.Context, req *connectrpc.
 	}), nil
 }
 
+func (h *projectHandler) GetAudioRuntime(ctx context.Context, req *connectrpc.Request[projectv1.GetAudioRuntimeRequest]) (*connectrpc.Response[projectv1.GetAudioRuntimeResponse], error) {
+	record, err := h.service.GetAudioRuntime(ctx, projectapp.GetAudioRuntimeInput{
+		ProjectID: req.Msg.GetProjectId(),
+		EpisodeID: req.Msg.GetEpisodeId(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&projectv1.GetAudioRuntimeResponse{
+		Runtime: mapAudioRuntime(record),
+	}), nil
+}
+
+func (h *projectHandler) RequestAudioRender(ctx context.Context, req *connectrpc.Request[projectv1.RequestAudioRenderRequest]) (*connectrpc.Response[projectv1.RequestAudioRenderResponse], error) {
+	record, err := h.service.RequestAudioRender(ctx, projectapp.RequestAudioRenderInput{
+		ProjectID: req.Msg.GetProjectId(),
+		EpisodeID: req.Msg.GetEpisodeId(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&projectv1.RequestAudioRenderResponse{
+		Runtime: mapAudioRuntime(record),
+	}), nil
+}
+
+func (h *projectHandler) ApplyAudioRenderUpdate(ctx context.Context, req *connectrpc.Request[projectv1.ApplyAudioRenderUpdateRequest]) (*connectrpc.Response[projectv1.ApplyAudioRenderUpdateResponse], error) {
+	record, err := h.service.ApplyAudioRenderUpdate(ctx, projectapp.ApplyAudioRenderUpdateInput{
+		AudioRuntimeID:      req.Msg.GetAudioRuntimeId(),
+		RenderWorkflowRunID: req.Msg.GetRenderWorkflowRunId(),
+		RenderStatus:        req.Msg.GetRenderStatus(),
+		MixAssetID:          req.Msg.GetMixAssetId(),
+		MixOutput: project.AudioMixDelivery{
+			DeliveryMode: req.Msg.GetMixOutput().GetDeliveryMode(),
+			PlaybackURL:  req.Msg.GetMixOutput().GetPlaybackUrl(),
+			DownloadURL:  req.Msg.GetMixOutput().GetDownloadUrl(),
+			MimeType:     req.Msg.GetMixOutput().GetMimeType(),
+			FileName:     req.Msg.GetMixOutput().GetFileName(),
+			SizeBytes:    req.Msg.GetMixOutput().GetSizeBytes(),
+			DurationMs:   int(req.Msg.GetMixOutput().GetDurationMs()),
+		},
+		Waveforms:    mapAudioWaveformReferenceInputs(req.Msg.GetWaveforms()),
+		ErrorCode:    req.Msg.GetErrorCode(),
+		ErrorMessage: req.Msg.GetErrorMessage(),
+	})
+	if err != nil {
+		return nil, asConnectError(err)
+	}
+	return connectrpc.NewResponse(&projectv1.ApplyAudioRenderUpdateResponse{
+		Runtime: mapAudioRuntime(record),
+	}), nil
+}
+
 func (h *projectHandler) UpsertAudioTimeline(ctx context.Context, req *connectrpc.Request[projectv1.UpsertAudioTimelineRequest]) (*connectrpc.Response[projectv1.UpsertAudioTimelineResponse], error) {
 	tracks := make([]projectapp.AudioTrackInput, 0, len(req.Msg.GetTracks()))
 	for _, track := range req.Msg.GetTracks() {
@@ -286,4 +339,21 @@ func (h *projectHandler) UpsertAudioTimeline(ctx context.Context, req *connectrp
 	return connectrpc.NewResponse(&projectv1.UpsertAudioTimelineResponse{
 		Timeline: mapAudioWorkbench(record),
 	}), nil
+}
+
+func mapAudioWaveformReferenceInputs(records []*projectv1.AudioWaveformReference) []project.AudioWaveformReference {
+	if len(records) == 0 {
+		return nil
+	}
+	waveforms := make([]project.AudioWaveformReference, 0, len(records))
+	for _, record := range records {
+		waveforms = append(waveforms, project.AudioWaveformReference{
+			AssetID:     record.GetAssetId(),
+			VariantID:   record.GetVariantId(),
+			WaveformURL: record.GetWaveformUrl(),
+			MimeType:    record.GetMimeType(),
+			DurationMs:  int(record.GetDurationMs()),
+		})
+	}
+	return waveforms
 }

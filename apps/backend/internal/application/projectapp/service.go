@@ -16,8 +16,9 @@ import (
 )
 
 type Service struct {
-	repo          repository
-	startWorkflow func(context.Context, workflowapp.StartWorkflowInput) (workflow.WorkflowRun, error)
+	repo                 repository
+	startWorkflow        func(context.Context, workflowapp.StartWorkflowInput) (workflow.WorkflowRun, error)
+	prepareWorkflowStart func(context.Context, workflowapp.StartWorkflowInput) (workflowapp.PreparedWorkflowStart, error)
 }
 
 type repository interface {
@@ -26,6 +27,8 @@ type repository interface {
 	db.AssetRepository
 	db.WorkflowRepository
 	db.PolicyReader
+	SaveAudioRuntimeAndWorkflowRun(ctx context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun) error
+	SaveAudioRuntimeAndWorkflowDispatch(ctx context.Context, runtimeRecord project.AudioRuntime, workflowRun workflow.WorkflowRun, workflowStep workflow.WorkflowStep, job workflow.Job, transition workflow.StateTransition) error
 	Publisher() *events.Publisher
 }
 
@@ -66,6 +69,10 @@ type PreviewRuntimeState struct {
 	Runtime project.PreviewRuntime
 }
 
+type AudioRuntimeState struct {
+	Runtime project.AudioRuntime
+}
+
 type GetPreviewWorkbenchInput struct {
 	ProjectID     string
 	EpisodeID     string
@@ -92,6 +99,27 @@ type ApplyPreviewRenderUpdateInput struct {
 	ExportAssetID       string
 	Playback            project.PreviewPlaybackDelivery
 	ExportOutput        project.PreviewExportDelivery
+	ErrorCode           string
+	ErrorMessage        string
+}
+
+type GetAudioRuntimeInput struct {
+	ProjectID string
+	EpisodeID string
+}
+
+type RequestAudioRenderInput struct {
+	ProjectID string
+	EpisodeID string
+}
+
+type ApplyAudioRenderUpdateInput struct {
+	AudioRuntimeID      string
+	RenderWorkflowRunID string
+	RenderStatus        string
+	MixAssetID          string
+	MixOutput           project.AudioMixDelivery
+	Waveforms           []project.AudioWaveformReference
 	ErrorCode           string
 	ErrorMessage        string
 }
@@ -172,6 +200,10 @@ func NewService(repo repository) *Service {
 		startWorkflow: func(ctx context.Context, input workflowapp.StartWorkflowInput) (workflow.WorkflowRun, error) {
 			service := workflowapp.NewService(repo, repo.Publisher(), nil, policyapp.NewService(repo))
 			return service.StartWorkflow(ctx, input)
+		},
+		prepareWorkflowStart: func(ctx context.Context, input workflowapp.StartWorkflowInput) (workflowapp.PreparedWorkflowStart, error) {
+			service := workflowapp.NewService(repo, repo.Publisher(), nil, policyapp.NewService(repo))
+			return service.PrepareWorkflowStart(ctx, input)
 		},
 	}
 }

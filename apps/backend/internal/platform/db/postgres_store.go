@@ -67,6 +67,7 @@ func (*PostgresStore) GeneratePreviewAssemblyItemID() string {
 	return uuid.NewString()
 }
 func (*PostgresStore) GeneratePreviewRuntimeID() string    { return uuid.NewString() }
+func (*PostgresStore) GenerateAudioRuntimeID() string      { return uuid.NewString() }
 func (*PostgresStore) GenerateAudioTimelineID() string     { return uuid.NewString() }
 func (*PostgresStore) GenerateAudioTrackID() string        { return uuid.NewString() }
 func (*PostgresStore) GenerateAudioClipID() string         { return uuid.NewString() }

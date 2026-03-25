@@ -342,6 +342,50 @@ func PublishPreviewRuntimeUpdated(ctx context.Context, publisher *Publisher, inp
 	})
 }
 
+type PublishAudioRuntimeUpdatedInput struct {
+	OrganizationID      string
+	ProjectID           string
+	EpisodeID           string
+	AudioRuntimeID      string
+	RenderStatus        string
+	RenderWorkflowRunID string
+	MixAssetID          string
+	OccurredAt          time.Time
+}
+
+func PublishAudioRuntimeUpdated(ctx context.Context, publisher *Publisher, input PublishAudioRuntimeUpdatedInput) {
+	if publisher == nil {
+		return
+	}
+
+	occurredAt := input.OccurredAt.UTC()
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+	body, err := json.Marshal(map[string]any{
+		"project_id":             strings.TrimSpace(input.ProjectID),
+		"episode_id":             strings.TrimSpace(input.EpisodeID),
+		"audio_runtime_id":       strings.TrimSpace(input.AudioRuntimeID),
+		"render_status":          strings.TrimSpace(input.RenderStatus),
+		"render_workflow_run_id": strings.TrimSpace(input.RenderWorkflowRunID),
+		"mix_asset_id":           strings.TrimSpace(input.MixAssetID),
+		"occurred_at":            occurredAt.Format(time.RFC3339),
+	})
+	if err != nil {
+		return
+	}
+
+	publisher.PublishWithContext(ctx, Event{
+		EventType:      "project.audio.runtime.updated",
+		OrganizationID: strings.TrimSpace(input.OrganizationID),
+		ProjectID:      strings.TrimSpace(input.ProjectID),
+		ResourceType:   "audio_runtime",
+		ResourceID:     strings.TrimSpace(input.AudioRuntimeID),
+		Payload:        string(body),
+		CreatedAt:      occurredAt,
+	})
+}
+
 type subscriber struct {
 	organizationID string
 	projectID      string

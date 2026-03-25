@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ApplyPreviewRenderUpdateRequest, ApplyPreviewRenderUpdateResponse, CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetAudioWorkbenchRequest, GetAudioWorkbenchResponse, GetPreviewRuntimeRequest, GetPreviewRuntimeResponse, GetPreviewWorkbenchRequest, GetPreviewWorkbenchResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListPreviewShotOptionsRequest, ListPreviewShotOptionsResponse, ListProjectsRequest, ListProjectsResponse, RequestPreviewRenderRequest, RequestPreviewRenderResponse, UpsertAudioTimelineRequest, UpsertAudioTimelineResponse, UpsertPreviewAssemblyRequest, UpsertPreviewAssemblyResponse } from "./project_service_pb.js";
+import { ApplyAudioRenderUpdateRequest, ApplyAudioRenderUpdateResponse, ApplyPreviewRenderUpdateRequest, ApplyPreviewRenderUpdateResponse, CreateEpisodeRequest, CreateEpisodeResponse, CreateProjectRequest, CreateProjectResponse, GetAudioRuntimeRequest, GetAudioRuntimeResponse, GetAudioWorkbenchRequest, GetAudioWorkbenchResponse, GetPreviewRuntimeRequest, GetPreviewRuntimeResponse, GetPreviewWorkbenchRequest, GetPreviewWorkbenchResponse, GetProjectRequest, GetProjectResponse, ListEpisodesRequest, ListEpisodesResponse, ListPreviewShotOptionsRequest, ListPreviewShotOptionsResponse, ListProjectsRequest, ListProjectsResponse, RequestAudioRenderRequest, RequestAudioRenderResponse, RequestPreviewRenderRequest, RequestPreviewRenderResponse, UpsertAudioTimelineRequest, UpsertAudioTimelineResponse, UpsertPreviewAssemblyRequest, UpsertPreviewAssemblyResponse } from "./project_service_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -127,6 +127,33 @@ export const ProjectService = {
       name: "UpsertAudioTimeline",
       I: UpsertAudioTimelineRequest,
       O: UpsertAudioTimelineResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.project.v1.ProjectService.GetAudioRuntime
+     */
+    getAudioRuntime: {
+      name: "GetAudioRuntime",
+      I: GetAudioRuntimeRequest,
+      O: GetAudioRuntimeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.project.v1.ProjectService.RequestAudioRender
+     */
+    requestAudioRender: {
+      name: "RequestAudioRender",
+      I: RequestAudioRenderRequest,
+      O: RequestAudioRenderResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc hualala.project.v1.ProjectService.ApplyAudioRenderUpdate
+     */
+    applyAudioRenderUpdate: {
+      name: "ApplyAudioRenderUpdate",
+      I: ApplyAudioRenderUpdateRequest,
+      O: ApplyAudioRenderUpdateResponse,
       kind: MethodKind.Unary,
     },
   }

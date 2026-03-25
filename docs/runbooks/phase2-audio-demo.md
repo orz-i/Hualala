@@ -5,7 +5,8 @@
 - creator 使用 `/audio?projectId=<id>` 作为唯一完整音频编辑面。
 - creator `/preview?projectId=<id>` 只展示音频摘要卡和跳转入口。
 - admin 使用 `/audio?projectId=<id>&shotExecutionId=<id>` 做只读观测。
-- 当前版本不包含真实波形、音频播放器、混音触发入口和新的导入流程。
+- 当前版本的 `/audio` 页面仍不包含真实波形 consumer、音频播放器 UI 和新的导入流程。
+- 从 Phase 3 audio runtime foundation patch 开始，音频混音输出与 waveform 引用已经通过 `GetAudioRuntime / RequestAudioRender / ApplyAudioRenderUpdate` 进入 shared truth；当前 runbook 只覆盖编辑面与摘要入口，不覆盖这些 runtime consumer。
 
 ## 本地验证
 

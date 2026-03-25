@@ -275,6 +275,62 @@ func TestPublishPreviewRuntimeUpdatedTrimsScopeAndPayloadFields(t *testing.T) {
 	}
 }
 
+func TestPublishAudioRuntimeUpdatedTrimsScopeAndPayloadFields(t *testing.T) {
+	publisher := NewPublisher()
+	occurredAt := time.Unix(400, 0).UTC()
+
+	PublishAudioRuntimeUpdated(context.Background(), publisher, PublishAudioRuntimeUpdatedInput{
+		ProjectID:           " project-1 ",
+		EpisodeID:           " episode-1 ",
+		AudioRuntimeID:      " runtime-1 ",
+		RenderStatus:        " queued ",
+		RenderWorkflowRunID: " workflow-run-1 ",
+		MixAssetID:          " mix-asset-1 ",
+		OccurredAt:          occurredAt,
+	})
+
+	items := publisher.List("", "project-1", "")
+	if len(items) != 1 {
+		t.Fatalf("expected 1 runtime event, got %d", len(items))
+	}
+	event := items[0]
+	if got := event.EventType; got != "project.audio.runtime.updated" {
+		t.Fatalf("expected event type %q, got %q", "project.audio.runtime.updated", got)
+	}
+	if got := event.ProjectID; got != "project-1" {
+		t.Fatalf("expected trimmed project id %q, got %q", "project-1", got)
+	}
+	if got := event.ResourceType; got != "audio_runtime" {
+		t.Fatalf("expected resource type %q, got %q", "audio_runtime", got)
+	}
+	if got := event.ResourceID; got != "runtime-1" {
+		t.Fatalf("expected resource id %q, got %q", "runtime-1", got)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(event.Payload), &payload); err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v", err)
+	}
+	if got := payload["episode_id"].(string); got != "episode-1" {
+		t.Fatalf("expected episode_id %q, got %q", "episode-1", got)
+	}
+	if _, ok := payload["waveforms"]; ok {
+		t.Fatalf("expected audio runtime event payload to stay waveform-free")
+	}
+	if _, ok := payload["playback_url"]; ok {
+		t.Fatalf("expected audio runtime event payload to stay delivery-free")
+	}
+	if got := payload["render_status"].(string); got != "queued" {
+		t.Fatalf("expected render_status %q, got %q", "queued", got)
+	}
+	if got := payload["mix_asset_id"].(string); got != "mix-asset-1" {
+		t.Fatalf("expected mix_asset_id %q, got %q", "mix-asset-1", got)
+	}
+	if got := payload["occurred_at"].(string); got != occurredAt.Format(time.RFC3339) {
+		t.Fatalf("expected occurred_at %q, got %q", occurredAt.Format(time.RFC3339), got)
+	}
+}
+
 type stubRecorder struct {
 	appendFn  func(context.Context, Event) (Event, error)
 	listFn    func(context.Context, string, string, string) ([]Event, error)
