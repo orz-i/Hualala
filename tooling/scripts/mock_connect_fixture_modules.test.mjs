@@ -181,6 +181,108 @@ test("scenario initializer keeps admin workflow scope and mock session defaults 
   assert.equal(initialized.creatorShotWorkflowRuns[0]?.resourceId, "shot-execution-1");
 });
 
+test("model governance helpers preserve profile and prompt lifecycle transitions", async () => {
+  const {
+    buildModelGovernanceBaseline,
+    createModelProfileState,
+    updateModelProfileState,
+    setModelProfileStatusState,
+    createPromptTemplateVersionState,
+    updatePromptTemplateDraftState,
+    setPromptTemplateStatusState,
+    listContextBundlesState,
+    getContextBundleState,
+  } = await import("../../tests/e2e/fixtures/mock-connect/model-governance.ts");
+
+  const baseline = buildModelGovernanceBaseline();
+  assert.equal(baseline.modelProfiles[0]?.status, "active");
+  assert.equal(baseline.promptTemplates[0]?.status, "active");
+
+  const withProfile = createModelProfileState(baseline, {
+    provider: "openai",
+    modelName: "gpt-4.1",
+    capabilityType: "text",
+    region: "global",
+    supportedInputLocales: ["zh-CN"],
+    supportedOutputLocales: ["en-US"],
+    pricingSnapshotJson: `{"input":"0.002"}`,
+    rateLimitPolicyJson: `{"rpm":80}`,
+  });
+  assert.equal(withProfile.modelProfiles.at(-1)?.modelName, "gpt-4.1");
+
+  const updatedProfile = updateModelProfileState(withProfile, {
+    modelProfileId: withProfile.modelProfiles.at(-1)?.id ?? "",
+    supportedInputLocales: ["zh-CN", "en-US"],
+    supportedOutputLocales: ["en-US"],
+    pricingSnapshotJson: `{"input":"0.003"}`,
+    rateLimitPolicyJson: `{"rpm":40}`,
+  });
+  assert.deepEqual(updatedProfile.modelProfiles.at(-1)?.supportedInputLocales, ["zh-CN", "en-US"]);
+
+  const pausedProfile = setModelProfileStatusState(updatedProfile, {
+    modelProfileId: updatedProfile.modelProfiles.at(-1)?.id ?? "",
+    status: "paused",
+  });
+  assert.equal(pausedProfile.modelProfiles.at(-1)?.status, "paused");
+
+  const withDraft = createPromptTemplateVersionState(pausedProfile, {
+    templateFamily: "shot.generate",
+    templateKey: "shot.generate.default",
+    locale: "zh-CN",
+    content: "新的草稿版本",
+    inputSchemaJson: `{"type":"object"}`,
+    outputSchemaJson: `{"type":"object"}`,
+  });
+  assert.equal(withDraft.promptTemplates.at(-1)?.status, "draft");
+
+  const revisedDraft = updatePromptTemplateDraftState(withDraft, {
+    promptTemplateId: withDraft.promptTemplates.at(-1)?.id ?? "",
+    content: "修订后的草稿版本",
+    inputSchemaJson: `{"type":"object","required":["goal"]}`,
+    outputSchemaJson: `{"type":"object"}`,
+  });
+  assert.equal(revisedDraft.promptTemplates.at(-1)?.content, "修订后的草稿版本");
+
+  const activatedDraft = setPromptTemplateStatusState(revisedDraft, {
+    promptTemplateId: revisedDraft.promptTemplates.at(-1)?.id ?? "",
+    status: "active",
+  });
+  assert.equal(activatedDraft.promptTemplates.at(-1)?.status, "active");
+
+  assert.throws(
+    () =>
+      setPromptTemplateStatusState(activatedDraft, {
+        promptTemplateId: activatedDraft.promptTemplates.at(-1)?.id ?? "",
+        status: "draft",
+      }),
+    /cannot reopen published prompt template as draft/,
+  );
+
+  const archivedDraft = setPromptTemplateStatusState(activatedDraft, {
+    promptTemplateId: activatedDraft.promptTemplates.at(-1)?.id ?? "",
+    status: "archived",
+  });
+  assert.equal(archivedDraft.promptTemplates.at(-1)?.status, "archived");
+
+  assert.throws(
+    () =>
+      setPromptTemplateStatusState(archivedDraft, {
+        promptTemplateId: archivedDraft.promptTemplates.at(-1)?.id ?? "",
+        status: "draft",
+      }),
+    /cannot reopen published prompt template as draft/,
+  );
+
+  const projectBundles = listContextBundlesState(archivedDraft, {
+    projectId: "project-live-1",
+  });
+  assert.ok(projectBundles.length >= 1);
+  assert.equal(projectBundles[0]?.projectId, "project-live-1");
+
+  const bundle = getContextBundleState(activatedDraft, projectBundles[0]?.id ?? "");
+  assert.equal(bundle?.payloadJson.includes("temperature"), true);
+});
+
 test("preview helpers preserve assembly order and provenance scope", async () => {
   const {
     createPreviewAssemblyState,
@@ -471,6 +573,9 @@ test("mock connect routes wire all phase2 fixture modules", async () => {
   assert.match(source, /GetAudioRuntime/);
   assert.match(source, /RequestAudioRender/);
   assert.match(source, /project\.audio\.runtime\.updated/);
+  assert.match(source, /mock-connect\/model-governance\.ts/);
+  assert.match(source, /ModelGovernanceService\/ListModelProfiles/);
+  assert.match(source, /ModelGovernanceService\/SetPromptTemplateStatus/);
   assert.match(source, /buildAudioWaveformDocumentForUrl/);
   assert.match(source, /cdn\\\.example\\\.com/);
   assert.match(source, /page\.context\(\)\.route/);

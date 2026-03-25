@@ -409,4 +409,15 @@ func seedConnectAuthStore(store *db.MemoryStore) {
 		RoleID: "connect-test-role",
 		Status: "active",
 	}
+	store.RolePermissions["connect-test-role"] = []string{
+		"session.read",
+		"user.preferences.write",
+		"org.members.read",
+		"org.roles.read",
+		"org.members.write",
+		"org.settings.write",
+		"org.roles.write",
+		"org.model_governance.read",
+		"org.model_governance.write",
+	}
 }
