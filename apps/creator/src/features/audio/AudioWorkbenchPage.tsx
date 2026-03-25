@@ -6,6 +6,7 @@ import type {
   AudioWaveformReferenceViewModel,
 } from "../../../../shared/audio/audioRuntime";
 import {
+  buildRuntimeOutputLinkStyle,
   formatRuntimeField,
   formatRuntimeNumber,
 } from "../../../../shared/audio/audioRuntimeFormatting";
@@ -16,6 +17,7 @@ import type {
   AudioTrackViewModel,
   AudioWorkbenchViewModel,
 } from "./audioWorkbench";
+import { countAudioClips } from "./audioWorkbench";
 
 const panelStyle: CSSProperties = {
   borderRadius: "18px",
@@ -54,9 +56,22 @@ const primaryButtonStyle: CSSProperties = {
 
 type OutputLinkProps = {
   href: string;
-  label: string;
+  children: ReactNode;
   style?: CSSProperties;
 };
+
+function OutputLink({ href, children, style }: OutputLinkProps) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      style={buildRuntimeOutputLinkStyle(style)}
+    >
+      {children}
+    </a>
+  );
+}
 
 type AudioWorkbenchPageProps = {
   audioWorkbench: AudioWorkbenchViewModel;
@@ -89,29 +104,6 @@ type AudioWorkbenchPageProps = {
   onOpenAssetProvenance: (assetId: string) => void;
   onCloseAssetProvenance: () => void;
 };
-
-function OutputLink({ href, label, style }: OutputLinkProps) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      style={{
-        ...style,
-        textDecoration: "none",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {label}
-    </a>
-  );
-}
-
-function buildDraftClipCount(draftTracks: AudioTrackViewModel[]) {
-  return draftTracks.reduce((total, track) => total + track.clips.length, 0);
-}
 
 function renderMixOutput(
   mixOutput: AudioMixOutputViewModel | null,
@@ -169,9 +161,10 @@ function renderMixOutput(
       {mixOutput.downloadUrl ? (
         <OutputLink
           href={mixOutput.downloadUrl}
-          label={t("audio.runtime.mix.open")}
           style={secondaryButtonStyle}
-        />
+        >
+          {t("audio.runtime.mix.open")}
+        </OutputLink>
       ) : null}
     </div>
   );
@@ -231,9 +224,10 @@ function renderWaveforms(
           {waveform.waveformUrl ? (
             <OutputLink
               href={waveform.waveformUrl}
-              label={t("audio.runtime.waveforms.open")}
               style={secondaryButtonStyle}
-            />
+            >
+              {t("audio.runtime.waveforms.open")}
+            </OutputLink>
           ) : null}
         </article>
       ))}
@@ -281,7 +275,7 @@ export function AudioWorkbenchPage({
     });
   }, [audioAssetPool, draftTracks]);
 
-  const draftClipCount = buildDraftClipCount(draftTracks);
+  const draftClipCount = countAudioClips(draftTracks);
 
   return (
     <main style={{ display: "grid", gap: "24px", padding: "0 24px 40px" }}>

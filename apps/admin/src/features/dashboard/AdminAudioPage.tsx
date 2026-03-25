@@ -1,6 +1,10 @@
 import type { CSSProperties } from "react";
 import type { AdminTranslator } from "../../i18n";
-import { formatRuntimeField, formatRuntimeNumber } from "../../../../shared/audio/audioRuntimeFormatting";
+import {
+  buildRuntimeOutputLinkStyle,
+  formatRuntimeField,
+  formatRuntimeNumber,
+} from "../../../../shared/audio/audioRuntimeFormatting";
 import type { AssetProvenanceDetailViewModel } from "./assetMonitor";
 import type { AdminAudioWorkbenchViewModel } from "./adminAudio";
 import type { AdminAudioRuntimeViewModel } from "./adminAudioRuntime";
@@ -27,9 +31,22 @@ const buttonStyle: CSSProperties = {
 
 type OutputLinkProps = {
   href: string;
-  label: string;
+  children: string;
   style?: CSSProperties;
 };
+
+function OutputLink({ href, children, style }: OutputLinkProps) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      style={buildRuntimeOutputLinkStyle(style)}
+    >
+      {children}
+    </a>
+  );
+}
 
 type AdminAudioPageProps = {
   audioWorkbench: AdminAudioWorkbenchViewModel;
@@ -42,25 +59,6 @@ type AdminAudioPageProps = {
   onOpenAssetProvenance: (assetId: string) => void;
   onCloseAssetProvenance: () => void;
 };
-
-function OutputLink({ href, label, style }: OutputLinkProps) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      style={{
-        ...style,
-        textDecoration: "none",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {label}
-    </a>
-  );
-}
 
 export function AdminAudioPage({
   audioWorkbench,
@@ -212,9 +210,10 @@ export function AdminAudioPage({
                   {audioRuntime.mixOutput.downloadUrl ? (
                     <OutputLink
                       href={audioRuntime.mixOutput.downloadUrl}
-                      label={t("audio.runtime.mix.open")}
                       style={buttonStyle}
-                    />
+                    >
+                      {t("audio.runtime.mix.open")}
+                    </OutputLink>
                   ) : null}
                 </div>
               ) : (
@@ -275,9 +274,10 @@ export function AdminAudioPage({
                       {waveform.waveformUrl ? (
                         <OutputLink
                           href={waveform.waveformUrl}
-                          label={t("audio.runtime.waveforms.open")}
                           style={buttonStyle}
-                        />
+                        >
+                          {t("audio.runtime.waveforms.open")}
+                        </OutputLink>
                       ) : null}
                     </article>
                   ))}

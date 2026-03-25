@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 export function formatRuntimeField(value: string, fallback: string) {
   return value || fallback;
 }
@@ -18,4 +20,14 @@ export function formatRuntimeNumber(
     return fallback;
   }
   return `${value}${suffix}`;
+}
+
+export function buildRuntimeOutputLinkStyle(style?: CSSProperties): CSSProperties {
+  return {
+    ...style,
+    textDecoration: "none",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  };
 }

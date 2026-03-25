@@ -6,6 +6,7 @@ import { useAssetProvenanceState } from "../shared/useAssetProvenanceState";
 import { waitForFeedbackPaint } from "../shared/waitForFeedbackPaint";
 import type { AudioRuntimeViewModel } from "../../../../shared/audio/audioRuntime";
 import {
+  countAudioClips,
   resequenceAudioClips,
   resequenceAudioTracks,
   seedDraftTracks,
@@ -85,7 +86,7 @@ export function useAudioWorkbenchController({
   }, [audioRuntime]);
 
   const audioEpisodeId = audioWorkbench?.timeline.episodeId ?? "";
-  const draftClipCount = draftTracks.reduce((total, track) => total + track.clips.length, 0);
+  const draftClipCount = countAudioClips(draftTracks);
 
   useEffect(() => {
     if (!enabled) {
@@ -206,17 +207,10 @@ export function useAudioWorkbenchController({
 
     let cancelled = false;
 
-    refreshAudioRuntime().catch((error: unknown) => {
+    refreshAudioRuntime().catch(() => {
       if (cancelled) {
         return;
       }
-      const message = formatActionError(error, "creator: unknown audio runtime error");
-      startTransition(() => {
-        setRuntimeErrorMessage(message);
-        if (!audioRuntimeRef.current) {
-          setAudioRuntime(null);
-        }
-      });
     });
 
     return () => {
