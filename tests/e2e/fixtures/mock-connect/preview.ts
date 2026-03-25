@@ -211,12 +211,43 @@ export function createPreviewRuntimeState(previewState: PreviewAssemblyState): P
   };
 }
 
-function buildPreviewPlaybackDelivery(projectId: string) {
+function buildPreviewPlaybackDelivery(projectId: string, displayLocale = "zh-CN") {
   return {
     deliveryMode: "file",
     playbackUrl: `https://cdn.example.com/${projectId}/preview-runtime.mp4`,
     posterUrl: `https://cdn.example.com/${projectId}/preview-runtime.jpg`,
     durationMs: 31000,
+    timeline: {
+      totalDurationMs: 31000,
+      segments: [
+        {
+          segmentId: "segment-preview-1",
+          sequence: 1,
+          shotId: "shot-preview-1",
+          shotCode: "SHOT-001",
+          shotTitle: localizeShotTitle("shot-preview-1", displayLocale),
+          playbackAssetId: `asset-preview-playback-${projectId}-segment-1`,
+          sourceRunId: "run-preview-1",
+          startMs: 0,
+          durationMs: 12000,
+          transitionToNext: {
+            transitionType: "crossfade",
+            durationMs: 300,
+          },
+        },
+        {
+          segmentId: "segment-preview-2",
+          sequence: 2,
+          shotId: "shot-preview-2",
+          shotCode: "SHOT-002",
+          shotTitle: localizeShotTitle("shot-preview-2", displayLocale),
+          playbackAssetId: `asset-preview-playback-${projectId}-segment-2`,
+          sourceRunId: "run-preview-2",
+          startMs: 12000,
+          durationMs: 19000,
+        },
+      ],
+    },
   };
 }
 
@@ -335,7 +366,7 @@ export function requestPreviewRenderState(
           renderStatus: "completed",
           playbackAssetId: buildPreviewPlaybackAssetId(previewState.projectId),
           exportAssetId: buildPreviewExportAssetId(previewState.projectId),
-          playback: buildPreviewPlaybackDelivery(previewState.projectId),
+          playback: buildPreviewPlaybackDelivery(previewState.projectId, requestedLocale),
           exportOutput: buildPreviewExportOutput(previewState.projectId),
           updatedAt: "2026-03-24T09:12:00.000Z",
         };

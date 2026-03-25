@@ -1,8 +1,32 @@
+export type PreviewTransitionViewModel = {
+  transitionType: string;
+  durationMs: number;
+};
+
+export type PreviewTimelineSegmentViewModel = {
+  segmentId: string;
+  sequence: number;
+  shotId: string;
+  shotCode: string;
+  shotTitle: string;
+  playbackAssetId: string;
+  sourceRunId: string;
+  startMs: number;
+  durationMs: number;
+  transitionToNext: PreviewTransitionViewModel | null;
+};
+
+export type PreviewTimelineSpineViewModel = {
+  totalDurationMs: number;
+  segments: PreviewTimelineSegmentViewModel[];
+};
+
 export type PreviewPlaybackDeliveryViewModel = {
   deliveryMode: string;
   playbackUrl: string;
   posterUrl: string;
   durationMs: number;
+  timeline: PreviewTimelineSpineViewModel | null;
 };
 
 export type PreviewExportDeliveryViewModel = {
@@ -49,6 +73,24 @@ export type PreviewRuntimePayload = {
     playbackUrl?: string;
     posterUrl?: string;
     durationMs?: number;
+    timeline?: {
+      totalDurationMs?: number;
+      segments?: Array<{
+        segmentId?: string;
+        sequence?: number;
+        shotId?: string;
+        shotCode?: string;
+        shotTitle?: string;
+        playbackAssetId?: string;
+        sourceRunId?: string;
+        startMs?: number;
+        durationMs?: number;
+        transitionToNext?: {
+          transitionType?: string;
+          durationMs?: number;
+        };
+      }>;
+    } | null;
   };
   exportOutput?: {
     downloadUrl?: string;
@@ -59,6 +101,52 @@ export type PreviewRuntimePayload = {
   lastErrorCode?: string;
   lastErrorMessage?: string;
 };
+
+function normalizeTransition(
+  transition: {
+    transitionType?: string;
+    durationMs?: number;
+  } | null | undefined,
+): PreviewTransitionViewModel | null {
+  if (!transition) {
+    return null;
+  }
+
+  return {
+    transitionType: transition.transitionType ?? "",
+    durationMs: transition.durationMs ?? 0,
+  };
+}
+
+function normalizeTimeline(
+  timeline: PreviewRuntimePayload["playback"] extends infer Playback
+    ? Playback extends { timeline?: infer Timeline }
+      ? Timeline
+      : never
+    : never,
+): PreviewTimelineSpineViewModel | null {
+  if (!timeline) {
+    return null;
+  }
+
+  return {
+    totalDurationMs: timeline.totalDurationMs ?? 0,
+    segments: [...(timeline.segments ?? [])]
+      .map((segment) => ({
+        segmentId: segment.segmentId ?? "",
+        sequence: segment.sequence ?? 0,
+        shotId: segment.shotId ?? "",
+        shotCode: segment.shotCode ?? "",
+        shotTitle: segment.shotTitle ?? "",
+        playbackAssetId: segment.playbackAssetId ?? "",
+        sourceRunId: segment.sourceRunId ?? "",
+        startMs: segment.startMs ?? 0,
+        durationMs: segment.durationMs ?? 0,
+        transitionToNext: normalizeTransition(segment.transitionToNext),
+      }))
+      .sort((left, right) => left.sequence - right.sequence),
+  };
+}
 
 function normalizePlayback(
   playback: PreviewRuntimePayload["playback"],
@@ -71,6 +159,7 @@ function normalizePlayback(
     playbackUrl: playback.playbackUrl ?? "",
     posterUrl: playback.posterUrl ?? "",
     durationMs: playback.durationMs ?? 0,
+    timeline: normalizeTimeline(playback.timeline),
   };
 }
 

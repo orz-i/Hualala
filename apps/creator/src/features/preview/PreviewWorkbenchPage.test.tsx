@@ -144,6 +144,37 @@ describe("PreviewWorkbenchPage", () => {
             playbackUrl: "https://cdn.example.com/preview-runtime-1.mp4",
             posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
             durationMs: 30000,
+            timeline: {
+              totalDurationMs: 30000,
+              segments: [
+                {
+                  segmentId: "segment-1",
+                  sequence: 1,
+                  shotId: "shot-1",
+                  shotCode: "SHOT-001",
+                  shotTitle: "第一镜",
+                  playbackAssetId: "asset-playback-segment-1",
+                  sourceRunId: "run-segment-1",
+                  startMs: 0,
+                  durationMs: 12000,
+                  transitionToNext: {
+                    transitionType: "crossfade",
+                    durationMs: 300,
+                  },
+                },
+                {
+                  segmentId: "segment-2",
+                  sequence: 2,
+                  shotId: "shot-2",
+                  shotCode: "SHOT-002",
+                  shotTitle: "第二镜",
+                  playbackAssetId: "asset-playback-segment-2",
+                  sourceRunId: "run-segment-2",
+                  startMs: 12000,
+                  durationMs: 18000,
+                },
+              ],
+            },
           },
           exportOutput: {
             downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
@@ -234,6 +265,15 @@ describe("PreviewWorkbenchPage", () => {
       "poster",
       "https://cdn.example.com/preview-runtime-1.jpg",
     );
+    expect(screen.getByText("段落数：2")).toBeInTheDocument();
+    expect(screen.getByText("总时长：30000ms")).toBeInTheDocument();
+    expect(screen.getByText("序号：1")).toBeInTheDocument();
+    expect(screen.getByText("镜头：SHOT-001 / 第一镜")).toBeInTheDocument();
+    expect(screen.getByText("起始：0ms")).toBeInTheDocument();
+    expect(screen.getByText("播放素材：asset-playback-segment-1")).toBeInTheDocument();
+    expect(screen.getByText("来源运行：run-segment-1")).toBeInTheDocument();
+    expect(screen.getByText("转场：crossfade · 300ms")).toBeInTheDocument();
+    expect(screen.getByText("镜头：SHOT-002 / 第二镜")).toBeInTheDocument();
   });
 
   it("falls back to a link-only playback action for manifest delivery and surfaces runtime failures", () => {
@@ -312,5 +352,77 @@ describe("PreviewWorkbenchPage", () => {
     );
     expect(screen.getByText("最后错误码：render_failed")).toBeInTheDocument();
     expect(screen.getByText("最后错误信息：worker callback timeout")).toBeInTheDocument();
+  });
+
+  it("shows an explicit empty timeline message when playback output has no timeline spine", () => {
+    render(
+      <PreviewWorkbenchPage
+        previewWorkbench={{
+          assembly: {
+            assemblyId: "assembly-project-1",
+            projectId: "project-1",
+            episodeId: "",
+            status: "draft",
+            createdAt: "2026-03-23T09:00:00.000Z",
+            updatedAt: "2026-03-23T09:05:00.000Z",
+          },
+          items: [],
+        }}
+        draftItems={[]}
+        shotOptions={[]}
+        selectedShotOptionId=""
+        shotOptionsErrorMessage=""
+        previewRuntime={
+          {
+            previewRuntimeId: "runtime-project-1",
+            projectId: "project-1",
+            episodeId: "",
+            assemblyId: "assembly-project-1",
+            status: "ready",
+            renderWorkflowRunId: "workflow-preview-3",
+            renderStatus: "completed",
+            playbackAssetId: "asset-playback-1",
+            exportAssetId: "",
+            resolvedLocale: "zh-CN",
+            createdAt: "2026-03-24T09:00:00.000Z",
+            updatedAt: "2026-03-24T09:15:00.000Z",
+            playback: {
+              deliveryMode: "file",
+              playbackUrl: "https://cdn.example.com/preview-runtime-1.mp4",
+              posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
+              durationMs: 30000,
+              timeline: null,
+            },
+            exportOutput: null,
+            lastErrorCode: "",
+            lastErrorMessage: "",
+          } as never
+        }
+        runtimeErrorMessage=""
+        requestRenderDisabledReason=""
+        requestRenderPending={false}
+        manualShotIdInput=""
+        assetProvenanceDetail={null}
+        assetProvenancePending={false}
+        assetProvenanceErrorMessage=""
+        audioSummary={null}
+        audioSummaryErrorMessage=""
+        t={t}
+        onSelectedShotOptionIdChange={vi.fn()}
+        onAddItemFromChooser={vi.fn()}
+        onManualShotIdInputChange={vi.fn()}
+        onAddManualItem={vi.fn()}
+        onRequestPreviewRender={vi.fn()}
+        onRemoveItem={vi.fn()}
+        onMoveItem={vi.fn()}
+        onSaveAssembly={vi.fn()}
+        onOpenShotWorkbench={vi.fn()}
+        onOpenAudioWorkbench={vi.fn()}
+        onOpenAssetProvenance={vi.fn()}
+        onCloseAssetProvenance={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("当前播放输出还没有 timeline spine")).toBeInTheDocument();
   });
 });

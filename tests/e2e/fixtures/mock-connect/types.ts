@@ -233,6 +233,24 @@ export type PreviewRuntimeState = {
     playbackUrl: string;
     posterUrl: string;
     durationMs: number;
+    timeline: {
+      totalDurationMs: number;
+      segments: Array<{
+        segmentId: string;
+        sequence: number;
+        shotId: string;
+        shotCode: string;
+        shotTitle: string;
+        playbackAssetId: string;
+        sourceRunId: string;
+        startMs: number;
+        durationMs: number;
+        transitionToNext: {
+          transitionType: string;
+          durationMs: number;
+        } | null;
+      }>;
+    } | null;
   } | null;
   exportOutput: {
     downloadUrl: string;

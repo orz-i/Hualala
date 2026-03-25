@@ -88,6 +88,37 @@ describe("AdminPreviewPage", () => {
             playbackUrl: "https://cdn.example.com/preview-runtime-1.m3u8",
             posterUrl: "https://cdn.example.com/preview-runtime-1.jpg",
             durationMs: 30000,
+            timeline: {
+              totalDurationMs: 30000,
+              segments: [
+                {
+                  segmentId: "segment-1",
+                  sequence: 1,
+                  shotId: "shot-1",
+                  shotCode: "SHOT-001",
+                  shotTitle: "第一镜",
+                  playbackAssetId: "asset-playback-segment-1",
+                  sourceRunId: "run-segment-1",
+                  startMs: 0,
+                  durationMs: 12000,
+                  transitionToNext: {
+                    transitionType: "crossfade",
+                    durationMs: 300,
+                  },
+                },
+                {
+                  segmentId: "segment-2",
+                  sequence: 2,
+                  shotId: "shot-2",
+                  shotCode: "SHOT-002",
+                  shotTitle: "第二镜",
+                  playbackAssetId: "asset-playback-segment-2",
+                  sourceRunId: "run-segment-2",
+                  startMs: 12000,
+                  durationMs: 18000,
+                },
+              ],
+            },
           },
           exportOutput: {
             downloadUrl: "https://cdn.example.com/preview-export-1.mp4",
@@ -128,6 +159,12 @@ describe("AdminPreviewPage", () => {
     expect(
       screen.getByText("Download URL：https://cdn.example.com/preview-export-1.mp4"),
     ).toBeInTheDocument();
+    expect(screen.getByText("段落数：2")).toBeInTheDocument();
+    expect(screen.getByText("总时长：30000ms")).toBeInTheDocument();
+    expect(screen.getByText("序号：1")).toBeInTheDocument();
+    expect(screen.getByText("镜头：SHOT-001 / 第一镜")).toBeInTheDocument();
+    expect(screen.getByText("起始：0ms")).toBeInTheDocument();
+    expect(screen.getByText("转场：crossfade · 300ms")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "打开播放输出" })).toHaveAttribute(
       "href",
       "https://cdn.example.com/preview-runtime-1.m3u8",
@@ -200,5 +237,6 @@ describe("AdminPreviewPage", () => {
     expect(screen.getByText("最后错误信息：worker callback timeout")).toBeInTheDocument();
     expect(screen.getByText("当前还没有可消费的播放 / 导出输出。")).toBeInTheDocument();
     expect(document.querySelector("video")).toBeNull();
+    expect(screen.queryByText("段落数：")).not.toBeInTheDocument();
   });
 });

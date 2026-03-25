@@ -243,6 +243,10 @@ test("preview helpers preserve assembly order and provenance scope", async () =>
   assert.equal(runtimePayload.runtime?.resolvedLocale, "en-US");
   assert.equal(settledRuntime.renderStatus, "completed");
   assert.equal(settledRuntime.playbackAssetId, "asset-preview-playback-project-1");
+  assert.equal(settledRuntime.playback?.timeline?.segments?.length, 2);
+  assert.equal(settledRuntime.playback?.timeline?.totalDurationMs, 31000);
+  assert.equal(settledRuntime.playback?.timeline?.segments?.[0]?.sequence, 1);
+  assert.equal(settledRuntime.playback?.timeline?.segments?.[0]?.transitionToNext?.transitionType, "crossfade");
   assert.equal(eventPayload.render_status, "completed");
   assert.equal(eventPayload.resolved_locale, "en-US");
 
