@@ -29,15 +29,17 @@ export function parseAudioWaveformDocument(
     fail(errorMessage, "version must be audio_waveform_v1");
   }
 
-  if (!Number.isInteger(document.duration_ms) || document.duration_ms <= 0) {
+  const durationMs = document.duration_ms;
+  if (typeof durationMs !== "number" || !Number.isInteger(durationMs) || durationMs <= 0) {
     fail(errorMessage, "duration_ms must be a positive integer");
   }
 
-  if (!Array.isArray(document.peaks) || document.peaks.length === 0) {
+  const rawPeaks = document.peaks;
+  if (!Array.isArray(rawPeaks) || rawPeaks.length === 0) {
     fail(errorMessage, "peaks must be a non-empty array");
   }
 
-  const peaks = document.peaks.map((peak, index) => {
+  const peaks = rawPeaks.map((peak, index) => {
     if (typeof peak !== "number" || !Number.isFinite(peak) || peak < 0 || peak > 1) {
       fail(errorMessage, `peaks[${index}] must be a finite number between 0 and 1`);
     }
@@ -46,7 +48,7 @@ export function parseAudioWaveformDocument(
 
   return {
     version: AUDIO_WAVEFORM_DOCUMENT_VERSION,
-    durationMs: document.duration_ms,
+    durationMs,
     peaks,
   };
 }
