@@ -4,6 +4,12 @@ import type { AssetProvenanceDetailViewModel } from "./assetMonitor";
 import type { AdminPreviewItemViewModel, AdminPreviewWorkbenchViewModel } from "./adminPreview";
 import type { AdminPreviewRuntimeViewModel } from "./adminPreviewRuntime";
 import { AssetProvenanceDialog } from "./overview-page/AssetProvenanceDialog";
+import {
+  formatRuntimeField,
+  formatRuntimeNumber,
+  formatTimelineShot,
+  formatTimelineTransition,
+} from "../../../../shared/preview/previewRuntimeFormatting";
 
 type AdminPreviewPageProps = {
   previewWorkbench: AdminPreviewWorkbenchViewModel;
@@ -80,38 +86,6 @@ function formatSourceRunSummary(item: AdminPreviewItemViewModel, t: AdminTransla
     return t("preview.item.sourceRunId", { sourceRunId: item.sourceRunId });
   }
   return t("preview.item.metadataUnavailable");
-}
-
-function formatRuntimeField(value: string, fallback: string) {
-  return value || fallback;
-}
-
-function formatRuntimeNumber(
-  value: number,
-  suffix: string,
-  fallback: string,
-  options?: { allowZero?: boolean },
-) {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  if (value < 0) {
-    return fallback;
-  }
-  if (value === 0 && !options?.allowZero) {
-    return fallback;
-  }
-  return `${value}${suffix}`;
-}
-
-function formatTimelineShot(
-  shotCode: string,
-  shotTitle: string,
-  fallback: string,
-) {
-  const code = shotCode || fallback;
-  const title = shotTitle || fallback;
-  return `${code} / ${title}`;
 }
 
 function OutputLink({ href, label, style }: OutputLinkProps) {
@@ -369,11 +343,10 @@ export function AdminPreviewPage({
                           {segment.transitionToNext ? (
                             <p style={{ margin: 0 }}>
                               {t("preview.runtime.timeline.transition", {
-                                transition: `${segment.transitionToNext.transitionType || t("preview.runtime.emptyValue")} · ${formatRuntimeNumber(
-                                  segment.transitionToNext.durationMs,
-                                  "ms",
+                                transition: formatTimelineTransition(
+                                  segment.transitionToNext,
                                   t("preview.runtime.emptyValue"),
-                                )}`,
+                                ),
                               })}
                             </p>
                           ) : null}

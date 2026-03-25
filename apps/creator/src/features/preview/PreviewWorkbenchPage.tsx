@@ -9,6 +9,12 @@ import type {
   PreviewWorkbenchViewModel,
 } from "./previewWorkbench";
 import type { PreviewRuntimeViewModel } from "./previewRuntime";
+import {
+  formatRuntimeField,
+  formatRuntimeNumber,
+  formatTimelineShot,
+  formatTimelineTransition,
+} from "../../../../shared/preview/previewRuntimeFormatting";
 
 type PreviewWorkbenchPageProps = {
   previewWorkbench: PreviewWorkbenchViewModel;
@@ -144,55 +150,6 @@ function formatChooserRun(option: PreviewShotOptionViewModel | null, t: CreatorT
     return t("preview.metadata.sourceRunMissing");
   }
   return `${option.latestRunSummary.status || "unknown"} · ${option.latestRunSummary.triggerType || "unknown"}`;
-}
-
-function formatRuntimeField(value: string, fallback: string) {
-  return value || fallback;
-}
-
-function formatRuntimeNumber(
-  value: number,
-  suffix: string,
-  fallback: string,
-  options?: { allowZero?: boolean },
-) {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  if (value < 0) {
-    return fallback;
-  }
-  if (value === 0 && !options?.allowZero) {
-    return fallback;
-  }
-  return `${value}${suffix}`;
-}
-
-function formatTimelineShot(
-  shotCode: string,
-  shotTitle: string,
-  fallback: string,
-) {
-  const code = shotCode || fallback;
-  const title = shotTitle || fallback;
-  return `${code} / ${title}`;
-}
-
-function formatTimelineTransition(
-  previewRuntime: PreviewRuntimeViewModel,
-  t: CreatorTranslator,
-) {
-  return (segment: NonNullable<NonNullable<typeof previewRuntime.playback>["timeline"]>["segments"][number]) => {
-    if (!segment.transitionToNext) {
-      return "";
-    }
-
-    return `${segment.transitionToNext.transitionType || t("preview.runtime.emptyValue")} · ${formatRuntimeNumber(
-      segment.transitionToNext.durationMs,
-      "ms",
-      t("preview.runtime.emptyValue"),
-    )}`;
-  };
 }
 
 function OutputLink({ href, label, style }: OutputLinkProps) {
@@ -549,7 +506,10 @@ export function PreviewWorkbenchPage({
                           {segment.transitionToNext ? (
                             <p style={{ margin: 0 }}>
                               {t("preview.runtime.timeline.transition", {
-                                transition: formatTimelineTransition(previewRuntime, t)(segment),
+                                transition: formatTimelineTransition(
+                                  segment.transitionToNext,
+                                  t("preview.runtime.emptyValue"),
+                                ),
                               })}
                             </p>
                           ) : null}
