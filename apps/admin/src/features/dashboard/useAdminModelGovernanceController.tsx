@@ -53,6 +53,9 @@ export function useAdminModelGovernanceController({
 		useState<ActionFeedback>(null);
 	const [modelGovernanceActionPending, setModelGovernanceActionPending] = useState(false);
 	const sessionPermissionSignature = sessionPermissionCodes.join("|");
+	const canWriteModelGovernance = sessionPermissionCodes.includes(
+		"org.model_governance.write",
+	);
 
 	const refreshModelGovernance = useCallback(async () => {
 		if (!enabled || sessionState !== "ready") {
@@ -92,7 +95,7 @@ export function useAdminModelGovernanceController({
 			successMessage: string;
 			execute: (input: { orgId: string; userId: string }) => Promise<unknown>;
 		}) => {
-			if (!enabled || modelGovernanceActionPending) {
+			if (!enabled || modelGovernanceActionPending || !canWriteModelGovernance) {
 				return;
 			}
 
@@ -139,6 +142,7 @@ export function useAdminModelGovernanceController({
 			modelGovernanceActionPending,
 			refreshModelGovernance,
 			t,
+			canWriteModelGovernance,
 		],
 	);
 

@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ModelGovernancePanelViewModel } from "./governance";
 import { createTranslator } from "../../i18n";
 import { loadModelGovernancePanel } from "./loadModelGovernancePanel";
-import { setModelProfileStatus } from "./mutateModelGovernance";
+import { createModelProfile, setModelProfileStatus } from "./mutateModelGovernance";
 import { useAdminModelGovernanceController } from "./useAdminModelGovernanceController";
 
 vi.mock("./loadModelGovernancePanel", () => ({
@@ -26,6 +26,7 @@ vi.mock("./waitForFeedbackPaint", () => ({
 }));
 
 const loadModelGovernancePanelMock = vi.mocked(loadModelGovernancePanel);
+const createModelProfileMock = vi.mocked(createModelProfile);
 const setModelProfileStatusMock = vi.mocked(setModelProfileStatus);
 
 function createModelGovernancePanel(
@@ -211,5 +212,49 @@ describe("useAdminModelGovernanceController", () => {
     });
 
     expect(loadModelGovernancePanelMock).not.toHaveBeenCalled();
+  });
+
+  it("does not execute write actions when the session lacks model governance write permission", async () => {
+    loadModelGovernancePanelMock.mockResolvedValueOnce(
+      createModelGovernancePanel({
+        capabilities: {
+          canReadModelGovernance: true,
+          canWriteModelGovernance: false,
+        },
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useAdminModelGovernanceController({
+        sessionState: "ready",
+        enabled: true,
+        identityOverride: undefined,
+        effectiveOrgId: "org-demo-001",
+        effectiveUserId: "user-demo-001",
+        sessionPermissionCodes: ["org.model_governance.read"],
+        projectId: "project-live-1",
+        shotId: "",
+        shotExecutionId: "shot-exec-live-1",
+        t,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.modelGovernance?.capabilities.canWriteModelGovernance).toBe(false);
+    });
+
+    act(() => {
+      result.current.onCreateModelProfile({
+        provider: "openai",
+        modelName: "gpt-4.1-mini",
+        capabilityType: "text",
+        supportedInputLocales: ["zh-CN"],
+        supportedOutputLocales: ["zh-CN"],
+      });
+    });
+
+    expect(createModelProfileMock).not.toHaveBeenCalled();
+    expect(result.current.modelGovernanceActionPending).toBe(false);
+    expect(result.current.modelGovernanceActionFeedback).toBeNull();
   });
 });
