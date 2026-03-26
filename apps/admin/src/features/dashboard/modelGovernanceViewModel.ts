@@ -1,22 +1,26 @@
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type {
 	ContextBundleViewModel,
 	ModelProfileViewModel,
 	PromptTemplateViewModel,
 } from "./governance";
 
+type TimestampLike = {
+	seconds: bigint | number | string;
+	nanos?: number;
+};
+
 type ModelProfileShape = Omit<ModelProfileViewModel, "createdAt" | "updatedAt"> & {
-	createdAt?: Timestamp;
-	updatedAt?: Timestamp;
+	createdAt?: TimestampLike;
+	updatedAt?: TimestampLike;
 };
 
 type PromptTemplateShape = Omit<PromptTemplateViewModel, "createdAt" | "updatedAt"> & {
-	createdAt?: Timestamp;
-	updatedAt?: Timestamp;
+	createdAt?: TimestampLike;
+	updatedAt?: TimestampLike;
 };
 
 type ContextBundleShape = Omit<ContextBundleViewModel, "createdAt"> & {
-	createdAt?: Timestamp;
+	createdAt?: TimestampLike;
 };
 
 export function mapModelProfileViewModel(modelProfile: ModelProfileShape): ModelProfileViewModel {
@@ -78,7 +82,7 @@ export function mapContextBundleViewModel(
 	};
 }
 
-function timestampToIso(timestamp?: Timestamp) {
+function timestampToIso(timestamp?: TimestampLike) {
 	if (!timestamp) {
 		return "";
 	}
