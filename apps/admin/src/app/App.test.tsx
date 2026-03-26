@@ -5,6 +5,7 @@ import type { AdminOperationsOverviewViewModel } from "../features/dashboard/ope
 import { ADMIN_UI_LOCALE_STORAGE_KEY } from "../i18n";
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
 import { useAdminGovernanceController } from "../features/dashboard/useAdminGovernanceController";
+import { useAdminModelGovernanceController } from "../features/dashboard/useAdminModelGovernanceController";
 import { useAdminOverviewController } from "../features/dashboard/useAdminOverviewController";
 import { useAdminAssetReuseController } from "../features/dashboard/reuse/useAdminAssetReuseController";
 import { useAdminAudioController } from "../features/dashboard/useAdminAudioController";
@@ -132,7 +133,12 @@ vi.mock("../features/dashboard/AdminGovernancePage", () => ({
   AdminGovernancePage: (props: Record<string, unknown>) => {
     lastAdminGovernancePageProps = props;
     const governance = props.governance as { currentSession: { orgId: string } };
-    return <div data-testid="admin-governance-page">{governance.currentSession.orgId}</div>;
+    const modelGovernance = props.modelGovernance as { filters: { projectId: string } };
+    return (
+      <div data-testid="admin-governance-page">
+        {governance.currentSession.orgId}:{modelGovernance.filters.projectId}
+      </div>
+    );
   },
 }));
 vi.mock("../features/dashboard/AdminCollaborationPage", () => ({
@@ -171,6 +177,9 @@ vi.mock("../features/dashboard/useAdminBackupController", () => ({
 vi.mock("../features/dashboard/useAdminGovernanceController", () => ({
   useAdminGovernanceController: vi.fn(),
 }));
+vi.mock("../features/dashboard/useAdminModelGovernanceController", () => ({
+  useAdminModelGovernanceController: vi.fn(),
+}));
 vi.mock("../features/dashboard/useAdminWorkflowController", () => ({
   useAdminWorkflowController: vi.fn(),
 }));
@@ -197,6 +206,7 @@ const useAdminSessionGateMock = vi.mocked(useAdminSessionGate);
 const useAdminOverviewControllerMock = vi.mocked(useAdminOverviewController);
 const useAdminBackupControllerMock = vi.mocked(useAdminBackupController);
 const useAdminGovernanceControllerMock = vi.mocked(useAdminGovernanceController);
+const useAdminModelGovernanceControllerMock = vi.mocked(useAdminModelGovernanceController);
 const useAdminWorkflowControllerMock = vi.mocked(useAdminWorkflowController);
 const useAdminAssetControllerMock = vi.mocked(useAdminAssetController);
 const useAdminAssetReuseControllerMock = vi.mocked(useAdminAssetReuseController);
@@ -474,6 +484,85 @@ function buildBackupController(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function buildModelGovernanceController(overrides: Record<string, unknown> = {}) {
+  return {
+    modelGovernance: {
+      filters: {
+        projectId: "project-live-001",
+        shotId: "",
+        shotExecutionId: "shot-exec-live-001",
+      },
+      capabilities: {
+        canReadModelGovernance: true,
+        canWriteModelGovernance: true,
+      },
+      modelProfiles: [
+        {
+          id: "model-profile-1",
+          orgId: "org-demo-001",
+          provider: "openai",
+          modelName: "gpt-image-1",
+          capabilityType: "image",
+          region: "global",
+          supportedInputLocales: ["zh-CN"],
+          supportedOutputLocales: ["zh-CN"],
+          pricingSnapshotJson: "{\"input\":\"0.01\"}",
+          rateLimitPolicyJson: "{\"rpm\":60}",
+          status: "active",
+          createdAt: "2026-03-25T09:00:00.000Z",
+          updatedAt: "2026-03-25T09:00:00.000Z",
+        },
+      ],
+      promptTemplates: [
+        {
+          id: "prompt-template-1",
+          orgId: "org-demo-001",
+          templateFamily: "shot.generate",
+          templateKey: "shot.generate.default",
+          locale: "zh-CN",
+          version: 1,
+          content: "默认模板",
+          inputSchemaJson: "{\"type\":\"object\"}",
+          outputSchemaJson: "{\"type\":\"object\"}",
+          status: "draft",
+          createdAt: "2026-03-25T09:01:00.000Z",
+          updatedAt: "2026-03-25T09:01:00.000Z",
+        },
+      ],
+      contextBundles: [
+        {
+          id: "context-bundle-1",
+          orgId: "org-demo-001",
+          projectId: "project-live-001",
+          shotId: "shot-live-1",
+          shotExecutionId: "shot-exec-live-001",
+          modelProfileId: "model-profile-1",
+          promptTemplateId: "prompt-template-1",
+          inputLocale: "zh-CN",
+          outputLocale: "en-US",
+          resolvedPromptVersion: 1,
+          sourceSnapshotIds: ["snapshot-live-1"],
+          referencedAssetIds: ["asset-live-1"],
+          payloadJson: "{\"temperature\":0.2}",
+          createdByUserId: "user-demo-001",
+          createdAt: "2026-03-25T09:02:00.000Z",
+        },
+      ],
+    },
+    errorMessage: "",
+    modelGovernanceActionFeedback: null,
+    modelGovernanceActionPending: false,
+    refreshModelGovernance: vi.fn(),
+    onCreateModelProfile: vi.fn(),
+    onUpdateModelProfile: vi.fn(),
+    onSetModelProfileStatus: vi.fn(),
+    onCreatePromptTemplateVersion: vi.fn(),
+    onUpdatePromptTemplateDraft: vi.fn(),
+    onSetPromptTemplateStatus: vi.fn(),
+    ...overrides,
+  };
+}
+
 function buildWorkflow(overrides: Record<string, unknown> = {}) {
   return {
     workflowMonitor: {
@@ -746,6 +835,9 @@ describe("App", () => {
     useAdminOverviewControllerMock.mockReturnValue(buildOverviewController() as never);
     useAdminBackupControllerMock.mockReturnValue(buildBackupController() as never);
     useAdminGovernanceControllerMock.mockReturnValue(buildGovernanceController() as never);
+    useAdminModelGovernanceControllerMock.mockReturnValue(
+      buildModelGovernanceController() as never,
+    );
     useAdminWorkflowControllerMock.mockReturnValue(buildWorkflow() as never);
     useAdminAssetControllerMock.mockReturnValue(buildAsset() as never);
     useAdminAssetReuseControllerMock.mockReturnValue(buildAssetReuse() as never);
@@ -805,6 +897,17 @@ describe("App", () => {
         effectiveOrgId: "org-override-001",
         effectiveUserId: "user-override-001",
         enabled: false,
+      }),
+    );
+    expect(useAdminModelGovernanceControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identityOverride: {
+          orgId: "org-override-001",
+          userId: "user-override-001",
+        },
+        enabled: false,
+        projectId: "project-query-1",
+        shotExecutionId: "shot-query-1",
       }),
     );
     expect(useAdminWorkflowControllerMock).toHaveBeenCalledWith(
@@ -892,8 +995,21 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(screen.getByTestId("admin-governance-page")).toHaveTextContent("org-demo-001");
+    expect(screen.getByTestId("admin-governance-page")).toHaveTextContent(
+      "org-demo-001:project-live-001",
+    );
     expect(screen.queryByTestId("admin-overview-page")).not.toBeInTheDocument();
+    expect(useAdminModelGovernanceControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        projectId: "project-live-001",
+        shotExecutionId: "shot-exec-demo-001",
+        sessionPermissionCodes: expect.arrayContaining([
+          "org.model_governance.read",
+          "org.model_governance.write",
+        ]),
+      }),
+    );
   });
 
   it("renders the collaboration route when pathname is /collaboration", () => {

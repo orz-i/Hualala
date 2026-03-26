@@ -15,6 +15,7 @@ import { useAdminAudioController } from "../features/dashboard/useAdminAudioCont
 import { useAdminAssetController } from "../features/dashboard/useAdminAssetController";
 import { useAdminCollaborationController } from "../features/dashboard/useAdminCollaborationController";
 import { useAdminGovernanceController } from "../features/dashboard/useAdminGovernanceController";
+import { useAdminModelGovernanceController } from "../features/dashboard/useAdminModelGovernanceController";
 import { useAdminOverviewController } from "../features/dashboard/useAdminOverviewController";
 import { useAdminPreviewController } from "../features/dashboard/useAdminPreviewController";
 import { useAdminRecentChangesSubscription } from "../features/dashboard/useAdminRecentChangesSubscription";
@@ -107,6 +108,22 @@ export function App() {
     identityOverride,
     effectiveOrgId: sessionGate.effectiveOrgId,
     effectiveUserId: sessionGate.effectiveUserId,
+    t,
+  });
+
+  const modelGovernance = useAdminModelGovernanceController({
+    sessionState: sessionGate.sessionState,
+    enabled: routeState.route === "governance",
+    identityOverride,
+    effectiveOrgId: sessionGate.effectiveOrgId,
+    effectiveUserId: sessionGate.effectiveUserId,
+    sessionPermissionCodes:
+      governance.governance?.currentSession.permissionCodes ??
+      sessionGate.session?.permissionCodes ??
+      [],
+    projectId,
+    shotId: routeState.shotId ?? "",
+    shotExecutionId,
     t,
   });
 
@@ -281,7 +298,7 @@ export function App() {
   const routeErrorMessages: Partial<Record<AdminRouteState["route"], string>> = {
     overview: overview.errorMessage,
     backup: backup.errorMessage,
-    governance: governance.errorMessage,
+    governance: governance.errorMessage || modelGovernance.errorMessage,
     collaboration: collaboration.errorMessage,
     audio: audio.errorMessage,
     preview: preview.errorMessage,
@@ -332,7 +349,10 @@ export function App() {
     return <main style={{ padding: "32px" }}>{t("app.loading")}</main>;
   }
 
-  if (routeState.route === "governance" && !governance.governance) {
+  if (
+    routeState.route === "governance" &&
+    (!governance.governance || !modelGovernance.modelGovernance)
+  ) {
     return <main style={{ padding: "32px" }}>{t("app.loading")}</main>;
   }
 
@@ -452,12 +472,21 @@ export function App() {
         }}
       />
     );
-  } else if (routeState.route === "governance" && governance.governance) {
+  } else if (
+    routeState.route === "governance" &&
+    governance.governance &&
+    modelGovernance.modelGovernance
+  ) {
     routeContent = (
       <AdminGovernancePage
         governance={governance.governance}
+        modelGovernance={modelGovernance.modelGovernance}
         governanceActionFeedback={governance.governanceActionFeedback ?? undefined}
         governanceActionPending={governance.governanceActionPending}
+        modelGovernanceActionFeedback={
+          modelGovernance.modelGovernanceActionFeedback ?? undefined
+        }
+        modelGovernanceActionPending={modelGovernance.modelGovernanceActionPending}
         t={t}
         onUpdateUserPreferences={governance.onUpdateUserPreferences}
         onUpdateMemberRole={governance.onUpdateMemberRole}
@@ -465,6 +494,12 @@ export function App() {
         onCreateRole={governance.onCreateRole}
         onUpdateRole={governance.onUpdateRole}
         onDeleteRole={governance.onDeleteRole}
+        onCreateModelProfile={modelGovernance.onCreateModelProfile}
+        onUpdateModelProfile={modelGovernance.onUpdateModelProfile}
+        onSetModelProfileStatus={modelGovernance.onSetModelProfileStatus}
+        onCreatePromptTemplateVersion={modelGovernance.onCreatePromptTemplateVersion}
+        onUpdatePromptTemplateDraft={modelGovernance.onUpdatePromptTemplateDraft}
+        onSetPromptTemplateStatus={modelGovernance.onSetPromptTemplateStatus}
       />
     );
   } else if (routeState.route === "collaboration" && collaboration.collaborationSession) {
