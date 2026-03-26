@@ -334,7 +334,11 @@ export function ModelGovernancePanel({
 										rateLimitPolicyJson: profile.rateLimitPolicyJson || "{}",
 									};
 									return (
-										<div key={profile.id} style={cardStyle}>
+										<div
+											key={profile.id}
+											data-testid={`model-profile-card-${profile.id}`}
+											style={cardStyle}
+										>
 											<strong>{profile.provider}/{profile.modelName}</strong>
 											<p style={metricStyle}>
 												{t("governance.model.profiles.meta.status", {
@@ -429,7 +433,7 @@ export function ModelGovernancePanel({
 														})
 													}
 												>
-													{t("governance.model.profiles.action.save", { id: profile.id })}
+													{t("governance.model.profiles.action.save")}
 												</button>
 												<button
 													type="button"
@@ -441,7 +445,7 @@ export function ModelGovernancePanel({
 														})
 													}
 												>
-													{t("governance.model.profiles.action.pause", { id: profile.id })}
+													{t("governance.model.profiles.action.pause")}
 												</button>
 												<button
 													type="button"
@@ -453,7 +457,7 @@ export function ModelGovernancePanel({
 														})
 													}
 												>
-													{t("governance.model.profiles.action.activate", { id: profile.id })}
+													{t("governance.model.profiles.action.activate")}
 												</button>
 												<button
 													type="button"
@@ -465,7 +469,7 @@ export function ModelGovernancePanel({
 														})
 													}
 												>
-													{t("governance.model.profiles.action.archive", { id: profile.id })}
+													{t("governance.model.profiles.action.archive")}
 												</button>
 											</div>
 										</div>
@@ -615,7 +619,9 @@ export function ModelGovernancePanel({
 											<label style={{ display: "grid", gap: "6px" }}>
 												<span>{t("governance.model.prompts.editInputSchema")}</span>
 												<textarea
-													aria-label={`${t("governance.model.prompts.inputSchema")} ${template.id}`}
+													aria-label={t("governance.model.prompts.inputSchemaFor", {
+														id: template.id,
+													})}
 													value={draft.inputSchemaJson}
 													disabled={!draftEditable || !canWrite || isPending}
 													onChange={(event) =>
@@ -633,7 +639,9 @@ export function ModelGovernancePanel({
 											<label style={{ display: "grid", gap: "6px" }}>
 												<span>{t("governance.model.prompts.editOutputSchema")}</span>
 												<textarea
-													aria-label={`${t("governance.model.prompts.outputSchema")} ${template.id}`}
+													aria-label={t("governance.model.prompts.outputSchemaFor", {
+														id: template.id,
+													})}
 													value={draft.outputSchemaJson}
 													disabled={!draftEditable || !canWrite || isPending}
 													onChange={(event) =>
@@ -667,9 +675,7 @@ export function ModelGovernancePanel({
 														})
 													}
 												>
-													{t("governance.model.prompts.action.updateDraft", {
-														id: template.id,
-													})}
+													{t("governance.model.prompts.action.updateDraft")}
 												</button>
 												<button
 													type="button"
@@ -681,7 +687,7 @@ export function ModelGovernancePanel({
 														})
 													}
 												>
-													{t("governance.model.prompts.action.publish", { id: template.id })}
+													{t("governance.model.prompts.action.publish")}
 												</button>
 												<button
 													type="button"
@@ -693,7 +699,7 @@ export function ModelGovernancePanel({
 														})
 													}
 												>
-													{t("governance.model.prompts.action.archive", { id: template.id })}
+													{t("governance.model.prompts.action.archive")}
 												</button>
 											</div>
 										</div>
@@ -721,7 +727,11 @@ export function ModelGovernancePanel({
 								</p>
 							) : (
 								modelGovernance.contextBundles.map((bundle) => (
-									<div key={bundle.id} style={cardStyle}>
+									<div
+										key={bundle.id}
+										data-testid={`context-bundle-card-${bundle.id}`}
+										style={cardStyle}
+									>
 										<strong>{bundle.id}</strong>
 										<p style={metricStyle}>
 											{bundle.projectId} / {bundle.shotId} / {bundle.shotExecutionId}
@@ -737,7 +747,7 @@ export function ModelGovernancePanel({
 											type="button"
 											onClick={() => setSelectedContextBundleId(bundle.id)}
 										>
-											{t("governance.model.context.action.view", { id: bundle.id })}
+											{t("governance.model.context.action.view")}
 										</button>
 									</div>
 								))

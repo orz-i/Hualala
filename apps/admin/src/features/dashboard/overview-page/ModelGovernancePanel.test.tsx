@@ -131,7 +131,8 @@ describe("ModelGovernancePanel", () => {
       rateLimitPolicyJson: "{}",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "暂停 profile model-profile-1" }));
+    const profileCard = screen.getByTestId("model-profile-card-model-profile-1");
+    fireEvent.click(within(profileCard).getByRole("button", { name: "暂停 Profile" }));
     expect(onSetModelProfileStatus).toHaveBeenCalledWith({
       modelProfileId: "model-profile-1",
       status: "paused",
@@ -157,17 +158,13 @@ describe("ModelGovernancePanel", () => {
     });
 
     const activeCard = screen.getByTestId("prompt-template-card-prompt-template-1");
-    expect(
-      within(activeCard).getByRole("button", { name: "更新 draft prompt-template-1" }),
-    ).toBeDisabled();
+    expect(within(activeCard).getByRole("button", { name: "更新 draft" })).toBeDisabled();
 
     const draftCard = screen.getByTestId("prompt-template-card-prompt-template-2");
     fireEvent.change(within(draftCard).getByLabelText("Prompt 内容 prompt-template-2"), {
       target: { value: "更新后的草稿模板" },
     });
-    fireEvent.click(
-      within(draftCard).getByRole("button", { name: "更新 draft prompt-template-2" }),
-    );
+    fireEvent.click(within(draftCard).getByRole("button", { name: "更新 draft" }));
     expect(onUpdatePromptTemplateDraft).toHaveBeenCalledWith({
       promptTemplateId: "prompt-template-2",
       content: "更新后的草稿模板",
@@ -175,13 +172,14 @@ describe("ModelGovernancePanel", () => {
       outputSchemaJson: "{\"type\":\"object\"}",
     });
 
-    fireEvent.click(within(draftCard).getByRole("button", { name: "发布版本 prompt-template-2" }));
+    fireEvent.click(within(draftCard).getByRole("button", { name: "发布版本" }));
     expect(onSetPromptTemplateStatus).toHaveBeenCalledWith({
       promptTemplateId: "prompt-template-2",
       status: "active",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "查看上下文详情 context-bundle-1" }));
+    const contextBundleCard = screen.getByTestId("context-bundle-card-context-bundle-1");
+    fireEvent.click(within(contextBundleCard).getByRole("button", { name: "查看上下文详情" }));
     const detailCard = screen.getByTestId("context-bundle-detail");
     expect(detailCard).toHaveTextContent("project-live-1");
     expect(detailCard).toHaveTextContent("snapshot-live-1");

@@ -43,16 +43,18 @@ test("model governance: admin manages profiles and prompt versions without regre
   await expect(page.getByText("Prompt 新版本已创建")).toBeVisible();
   const draftPromptCard = page.getByTestId("prompt-template-card-prompt-template-2");
   await expect(draftPromptCard).toBeVisible();
-  await draftPromptCard.getByRole("button", { name: "发布版本 prompt-template-2" }).click();
+  await draftPromptCard.getByRole("button", { name: "发布版本" }).click();
 
   await expect(page.getByText("Prompt 状态已更新")).toBeVisible();
   await expect(draftPromptCard.getByText("状态：active")).toBeVisible();
 
-  await page.getByRole("button", { name: "暂停 profile model-profile-1" }).click();
+  const firstProfileCard = page.getByTestId("model-profile-card-model-profile-1");
+  await firstProfileCard.getByRole("button", { name: "暂停 Profile" }).click();
   await expect(page.getByText("模型 Profile 状态已更新")).toBeVisible();
-  await expect(page.getByRole("button", { name: "启用 profile model-profile-1" })).toBeVisible();
+  await expect(firstProfileCard.getByRole("button", { name: "启用 Profile" })).toBeVisible();
 
-  await page.getByRole("button", { name: "查看上下文详情 context-bundle-1" }).click();
+  const contextBundleCard = page.getByTestId("context-bundle-card-context-bundle-1");
+  await contextBundleCard.getByRole("button", { name: "查看上下文详情" }).click();
   const contextBundleDetail = page.getByTestId("context-bundle-detail");
   await expect(contextBundleDetail).toBeVisible();
   await expect(contextBundleDetail.getByText("project-live-1")).toBeVisible();
